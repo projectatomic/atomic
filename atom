@@ -67,16 +67,23 @@ def run(args):
     try:
         d.inspect_image(args.image)
     except docker.errors.APIError:
-        d.pull(args.image)
+        d.pull(args.image, stream=True)
         
     cargs = ["docker", "run","--rm", "-t", "-i", 
-             "-e", "confdir=/etc/%s" % args.name,
-             "-e", "logdir=/var/log/%s" % args.name,
-             "-e", "datadir=/var/lib/%s" % args.name,
+             "-e", "CONFDIR=/etc/%s" % args.name,
+             "-e", "LOGDIR=/var/log/%s" % args.name,
+             "-e", "DATADIR=/var/lib/%s" % args.name,
              "--name", args.name, 
              args.image] + args.command
+    if "LABEL" in inspect:
+        if "RUN" in inspect[LABEL]:
+            cargs = inspect[LABEL]["RUN"].Split()
+    
     print(" ".join(cargs))
-    check_call(cargs)
+    check_call(cargs, env={
+        "CONFDIR": "/etc/%s" % args.name,
+        "LOGDIR": "/var/log/%s" % args.name,
+        "DATADIR":"/var/lib/%s" % args.name})
 
 def update(args):
     d = docker.Client()
@@ -91,27 +98,34 @@ def install(args):
         args.name = args.image
     d = docker.Client()
     try:
-        inspect = d.inspect_image(args.image)
+        inspect = d.inspect_image(args.image)["Config"]
     except docker.errors.APIError:
         d.pull(args.image)
         inspect = d.inspect_image(args.image)
 
-    if "LABEL" in inspect:
-        if "install" in inspect[LABEL]:
-            cargs = inspect[LABEL]["install"].Split()
-    
     cargs = ["docker", "run",
              "--privileged",
              "-v", "/:/host",
-             "--net=host",
+            "--net=host",
              "--ipc=host",
              "--pid=host",
-             "-e", "confdir=/etc/%s" % args.name,
-             "-e", "logdir=/var/log/%s" % args.name,
-             "-e", "datadir=/var/lib/%s" % args.name,
+             "-e", "CONFDIR=/etc/%s" % args.name,
+             "-e", "LOGDIR=/var/log/%s" % args.name,
+             "-e", "DATADIR=/var/lib/%s" % args.name,
              "--name", args.name, 
              args.image, "install" ]
+
+    if "Labels" in inspect:
+        if "INSTALL" in inspect["Labels"]:
+            print inspect["Labels"]["INSTALL"]
+            cargs = inspect["Labels"]["INSTALL"].split()
+    
     print(cargs)
+
+#    check_call(cargs, env={
+#        "CONFDIR": "/etc/%s" % args.name,
+#        "LOGDIR": "/var/log/%s" % args.name,
+#        "DATADIR":"/var/lib/%s" % args.name})
 
 def SetFunc(function):
     class customAction(argparse.Action):
@@ -133,6 +147,7 @@ if __name__ == '__main__':
 
     updatep = subparser.add_parser("update",help=_("Pull latest Image from repository"))
     updatep.set_defaults(func=update)
+    updatep.add_argument("image", help=_("Container image"))
     
     removep = subparser.add_parser("remove",help=_("Remove Image from system"))
     removep.set_defaults(func=remove)
