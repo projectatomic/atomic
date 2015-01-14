@@ -1,0 +1,161 @@
+#! /usr/bin/python -Es
+# Copyright (C) 2014 Red Hat
+# AUTHOR: Dan Walsh <dwalsh@redhat.com>
+# see file 'COPYING' for use and warranty information
+#
+# atom is a tool for managing Atomic Containers
+#
+#    This program is free software; you can redistribute it and/or
+#    modify it under the terms of the GNU General Public License as
+#    published by the Free Software Foundation; either version 2 of
+#    the License, or (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, write to the Free Software
+#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+#                                        02111-1307  USA
+#
+#
+import sys, os
+import argparse
+import gettext
+import docker
+import subprocess
+from subprocess import check_call
+PROGNAME="atom"
+gettext.bindtextdomain(PROGNAME, "/usr/share/locale")
+gettext.textdomain(PROGNAME)
+try:
+    gettext.install(PROGNAME,
+                    unicode=True,
+                    codeset = 'utf-8')
+except TypeError:
+    # Failover to python3 install
+    gettext.install(PROGNAME,
+                    codeset = 'utf-8')
+except IOError:
+    import builtins
+    builtins.__dict__['_'] = str
+
+def run(args):
+    if not args.name:
+        args.name = args.image
+    d = docker.Client()
+    try:
+        d.inspect_container(args.name)
+        try:
+            return check_call(["docker", "exec", args.name] + args.command)
+        except subprocess.CalledProcessError:
+            try:
+                check_call(["docker", "start", args.name])
+                return check_call(["docker", "exec", args.name] + args.command)
+            except subprocess.CalledProcessError:
+                pass
+    except docker.errors.APIError:
+        pass
+    
+    try:
+        d.remove_container(args.image)
+    except docker.errors.APIError:
+        pass
+
+    try:
+        d.inspect_image(args.image)
+    except docker.errors.APIError:
+        d.pull(args.image)
+        
+    cargs = ["docker", "run","--rm", "-t", "-i", 
+             "-e", "confdir=/etc/%s" % args.name,
+             "-e", "logdir=/var/log/%s" % args.name,
+             "-e", "datadir=/var/lib/%s" % args.name,
+             "--name", args.name, 
+             args.image] + args.command
+    print(" ".join(cargs))
+    check_call(cargs)
+
+def update(args):
+    d = docker.Client()
+    d.pull(args.image)
+
+def remove(args):
+    cargs = ["docker", "remove", args.image ]
+    print(cargs)
+
+def install(args):
+    if not args.name:
+        args.name = args.image
+    d = docker.Client()
+    try:
+        inspect = d.inspect_image(args.image)
+    except docker.errors.APIError:
+        d.pull(args.image)
+        inspect = d.inspect_image(args.image)
+
+    if "LABEL" in inspect:
+        if "install" in inspect[LABEL]:
+            cargs = inspect[LABEL]["install"].Split()
+    
+    cargs = ["docker", "run",
+             "--privileged",
+             "-v", "/:/host",
+             "--net=host",
+             "--ipc=host",
+             "--pid=host",
+             "-e", "confdir=/etc/%s" % args.name,
+             "-e", "logdir=/var/log/%s" % args.name,
+             "-e", "datadir=/var/lib/%s" % args.name,
+             "--name", args.name, 
+             args.image, "install" ]
+    print(cargs)
+
+def SetFunc(function):
+    class customAction(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            setattr(namespace, self.dest, function)
+    return customAction
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Atomic Container Run Tool')
+    subparser = parser.add_subparsers(help=_("commands"))
+    runp = subparser.add_parser("run",help=_("Execute Image Run Method (Default)"))
+    runp.set_defaults(func=run)
+    runp.add_argument("-n", "--name", dest="name",
+                      default=None,
+                      help=_("Name of container"))
+    runp.add_argument("image", help=_("Container image"))
+    runp.add_argument("command", nargs=argparse.REMAINDER, 
+                      help=_("Command to execute within the container"))
+
+    updatep = subparser.add_parser("update",help=_("Pull latest Image from repository"))
+    updatep.set_defaults(func=update)
+    
+    removep = subparser.add_parser("remove",help=_("Remove Image from system"))
+    removep.set_defaults(func=remove)
+
+    installp = subparser.add_parser("install",help=_("Execute Image Install Method"))
+    installp.set_defaults(func=install)
+    installp.add_argument("image", help=_("Container image"))
+    installp.add_argument("command", nargs=argparse.REMAINDER, 
+                      help=_("Command to execute within the container"))
+    installp.add_argument("-n", "--name", dest="name",
+                      default=None,
+                      help=_("Name of container"))
+    try:
+        args = parser.parse_args()
+        args.func(args)
+        sys.exit(0)
+    except ValueError as e:
+        sys.stderr.write("%s: %s\n" % (e.__class__.__name__, str(e)))
+        sys.exit(1)
+    except IOError as e:
+        sys.stderr.write("%s: %s\n" % (e.__class__.__name__, str(e)))
+        sys.exit(1)
+    except KeyboardInterrupt:
+        sys.exit(0)
+    except subprocess.CalledProcessError as e:
+        sys.exit(e.returncode)
