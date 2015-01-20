@@ -26,7 +26,7 @@ import argparse
 import gettext
 import docker
 import subprocess
-from subprocess import check_call
+
 PROGNAME="atom"
 gettext.bindtextdomain(PROGNAME, "/usr/share/locale")
 gettext.textdomain(PROGNAME)
@@ -49,50 +49,64 @@ def run(args):
     try:
         d.inspect_container(args.name)
         try:
-            return check_call(["docker", "exec", args.name] + args.command)
+            return subprocess.check_call(["docker", "exec", args.name] + args.command)
         except subprocess.CalledProcessError:
             try:
-                check_call(["docker", "start", args.name])
-                return check_call(["docker", "exec", args.name] + args.command)
+                subprocess.check_call(["docker", "start", args.name])
+                return subprocess.check_call(["docker", "exec", args.name] + args.command)
             except subprocess.CalledProcessError:
                 pass
     except docker.errors.APIError:
         pass
     
     try:
-        d.remove_container(args.image)
+        d.remove_container(args.name)
     except docker.errors.APIError:
         pass
 
     try:
-        d.inspect_image(args.image)
+        inspect = d.inspect_image(args.image)
     except docker.errors.APIError:
         d.pull(args.image, stream=True)
+        inspect = d.inspect_image(args.image)
         
-    cargs = ["docker", "run","--rm", "-t", "-i", 
-             "-e", "CONFDIR=/etc/%s" % args.name,
-             "-e", "LOGDIR=/var/log/%s" % args.name,
-             "-e", "DATADIR=/var/lib/%s" % args.name,
+    cargs = ["/usr/bin/docker", "run",
+             "-t",
+             "-i",
+             "--rm", 
+             "-e", "CONFDIR=${CONFDIR}",
+             "-e", "LOGDIR=${LOGDIR}",
+             "-e", "DATADIR=${DATADIR}",
              "--name", args.name, 
-             args.image] + args.command
+             "IMAGE" ] + args.command
+
     if "LABEL" in inspect:
         if "RUN" in inspect[LABEL]:
-            cargs = inspect[LABEL]["RUN"].Split()
-    
-    print(" ".join(cargs))
-    check_call(cargs, env={
+            cargs = inspect[LABEL]["RUN"].Split() + args.command
+
+    cmd = gen_cmd(cargs, args.image)
+    print(cmd)
+    return (subprocess.check_call(cmd, env={
         "CONFDIR": "/etc/%s" % args.name,
         "LOGDIR": "/var/log/%s" % args.name,
-        "DATADIR":"/var/lib/%s" % args.name})
+        "DATADIR":"/var/lib/%s" % args.name}, shell=True))
 
 def update(args):
-    d = docker.Client()
-    d.pull(args.image)
+   return subprocess.check_call(["docker", "rmi", args.image])
 
 def remove(args):
-    cargs = ["docker", "remove", args.image ]
-    print(cargs)
+    d = docker.Client()
+    return d.remove_image(args.image)
 
+def gen_cmd(cargs, image):
+    nargs = []
+    for c in cargs:
+        if c == "IMAGE":
+            nargs.append(image)
+        else:
+            nargs.append(c)
+    return " ".join(nargs)
+    
 def install(args):
     if not args.name:
         args.name = args.image
@@ -103,29 +117,34 @@ def install(args):
         d.pull(args.image)
         inspect = d.inspect_image(args.image)
 
-    cargs = ["docker", "run",
+    cargs = ["/usr/bin/docker", "run",
+             "-t",
+             "-i",
+             "--rm", 
              "--privileged",
              "-v", "/:/host",
             "--net=host",
              "--ipc=host",
              "--pid=host",
-             "-e", "CONFDIR=/etc/%s" % args.name,
-             "-e", "LOGDIR=/var/log/%s" % args.name,
-             "-e", "DATADIR=/var/lib/%s" % args.name,
+             "-e", "CONFDIR=${CONFDIR}",
+             "-e", "LOGDIR=${LOGDIR}",
+             "-e", "DATADIR=${DATADIR}",
              "--name", args.name, 
-             args.image, "install" ]
+             "IMAGE", "/usr/bin/INSTALLCMD" ]
 
     if "Labels" in inspect:
         if "INSTALL" in inspect["Labels"]:
-            print inspect["Labels"]["INSTALL"]
             cargs = inspect["Labels"]["INSTALL"].split()
-    
-    print(cargs)
 
-#    check_call(cargs, env={
-#        "CONFDIR": "/etc/%s" % args.name,
-#        "LOGDIR": "/var/log/%s" % args.name,
-#        "DATADIR":"/var/lib/%s" % args.name})
+    cmd = gen_cmd(cargs, args.image)
+    print(cmd)
+    
+    cmd = " ".join(cargs)
+    print(cmd)
+    return(subprocess.check_call(cmd, env={
+        "CONFDIR": "/etc/%s" % args.name,
+        "LOGDIR": "/var/log/%s" % args.name,
+        "DATADIR":"/var/lib/%s" % args.name}, shell=True))
 
 def SetFunc(function):
     class customAction(argparse.Action):
@@ -151,6 +170,7 @@ if __name__ == '__main__':
     
     removep = subparser.add_parser("remove",help=_("Remove Image from system"))
     removep.set_defaults(func=remove)
+    removep.add_argument("image", help=_("Container image"))
 
     installp = subparser.add_parser("install",help=_("Execute Image Install Method"))
     installp.set_defaults(func=install)
@@ -162,8 +182,7 @@ if __name__ == '__main__':
                       help=_("Name of container"))
     try:
         args = parser.parse_args()
-        args.func(args)
-        sys.exit(0)
+        sys.exit(args.func(args))
     except ValueError as e:
         sys.stderr.write("%s: %s\n" % (e.__class__.__name__, str(e)))
         sys.exit(1)
