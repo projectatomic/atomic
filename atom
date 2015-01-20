@@ -42,110 +42,154 @@ except IOError:
     import builtins
     builtins.__dict__['_'] = str
 
-def run(args):
-    if not args.name:
-        args.name = args.image
-    d = docker.Client()
-    try:
-        d.inspect_container(args.name)
-        try:
-            return subprocess.check_call(["docker", "exec", args.name] + args.command)
-        except subprocess.CalledProcessError:
-            try:
-                subprocess.check_call(["docker", "start", args.name])
-                return subprocess.check_call(["docker", "exec", args.name] + args.command)
-            except subprocess.CalledProcessError:
-                pass
-    except docker.errors.APIError:
-        pass
-    
-    try:
-        d.remove_container(args.name)
-    except docker.errors.APIError:
-        pass
+class Atom:
+    INSTALL_ARGS = ["/usr/bin/docker", "run",
+                    "-t",
+                    "-i",
+                    "--rm", 
+                    "--privileged",
+                    "-v", "/:/host",
+                    "--net=host",
+                    "--ipc=host",
+                    "--pid=host",
+                    "-e", "CONFDIR=${CONFDIR}",
+                    "-e", "LOGDIR=${LOGDIR}",
+                    "-e", "DATADIR=${DATADIR}",
+                    "--name", "NAME", 
+                    "IMAGE", "/usr/bin/INSTALLCMD" ]
 
-    try:
-        inspect = d.inspect_image(args.image)
-    except docker.errors.APIError:
-        d.pull(args.image, stream=True)
-        inspect = d.inspect_image(args.image)
+    RUN_ARGS = ["/usr/bin/docker", "run",
+                "-t",
+                "-i",
+                "--rm", 
+                "-e", "CONFDIR=${CONFDIR}",
+                "-e", "LOGDIR=${LOGDIR}",
+                "-e", "DATADIR=${DATADIR}",
+                "--name", "NAME", 
+                "IMAGE" ]
         
-    cargs = ["/usr/bin/docker", "run",
-             "-t",
-             "-i",
-             "--rm", 
-             "-e", "CONFDIR=${CONFDIR}",
-             "-e", "LOGDIR=${LOGDIR}",
-             "-e", "DATADIR=${DATADIR}",
-             "--name", args.name, 
-             "IMAGE" ] + args.command
+    def __init__(self):
+        self.d = docker.Client()
+        self.name = None
+        self.image = None
 
-    if "LABEL" in inspect:
-        if "RUN" in inspect[LABEL]:
-            cargs = inspect[LABEL]["RUN"].Split() + args.command
+    def set_args(self, args):
+        self.args=args
+        try:
+            self.image = args.image
+        except:
+            pass
+        try:
+            self.command = args.command
+        except:
+            self.command = None
+        try:
+            self.name = args.name
+        except:
+            pass
 
-    cmd = gen_cmd(cargs, args.image)
-    print(cmd)
-    return (subprocess.check_call(cmd, env={
-        "CONFDIR": "/etc/%s" % args.name,
-        "LOGDIR": "/var/log/%s" % args.name,
-        "DATADIR":"/var/lib/%s" % args.name}, shell=True))
+        if not self.name:
+            self.name = self.image
 
-def update(args):
-   return subprocess.check_call(["docker", "rmi", args.image])
+    def run(self):
+        try:
+            self.d.inspect_container(self.name)
+            try:
+                return subprocess.check_call(["docker", "exec", self.name] + self.command)
+            except subprocess.CalledProcessError:
+                try:
+                    subprocess.check_call(["docker", "start", self.name])
+                    return subprocess.check_call(["docker", "exec", self.name] + self.command)
+                except subprocess.CalledProcessError:
+                    pass
+        except docker.errors.APIError:
+            pass
 
-def remove(args):
-    d = docker.Client()
-    return d.remove_image(args.image)
+        try:
+            self.d.remove_container(self.name)
+        except docker.errors.APIError:
+            pass
 
-def gen_cmd(cargs, image):
-    nargs = []
-    for c in cargs:
-        if c == "IMAGE":
-            nargs.append(image)
-        else:
-            nargs.append(c)
-    return " ".join(nargs)
+        try:
+            inspect = self.d.inspect_image(self.image)
+        except docker.errors.APIError:
+            self.d.pull(self.image, stream=True)
+            inspect = self.d.inspect_image(self.image)
+        
+        args = self.RUN_ARGS + self.command
+        
+        if "LABEL" in inspect:
+            if "RUN" in inspect[LABEL]:
+                args = inspect[LABEL]["RUN"].Split() + self.command
+
+        cmd = self.gen_cmd(args)
+        print(cmd)
+        return (subprocess.check_call(cmd, env={
+            "CONFDIR": "/etc/%s" % self.name,
+            "LOGDIR": "/var/log/%s" % self.name,
+            "DATADIR":"/var/lib/%s" % self.name}, shell=True))
+
+    def update(self):
+        return subprocess.check_call(["docker", "pull", self.image])
+
+    def remove(self):
+        return subprocess.check_call(["docker", "rmi", self.image])
+
+    def gen_cmd(self,cargs):
+        args = []
+        for c in cargs:
+            if c == "IMAGE":
+                args.append(self.image)
+                continue
+            if c == "NAME":
+                args.append(self.name)
+                continue
+            args.append(c)
+        return " ".join(args)
     
-def install(args):
-    if not args.name:
-        args.name = args.image
-    d = docker.Client()
-    try:
-        inspect = d.inspect_image(args.image)["Config"]
-    except docker.errors.APIError:
-        d.pull(args.image)
-        inspect = d.inspect_image(args.image)
+    def install(self):
+        try:
+            inspect = self.d.inspect_image(self.image)["Config"]
+        except docker.errors.APIError:
+            self.d.pull(self.image)
+            inspect = self.d.inspect_image(self.image)
 
-    cargs = ["/usr/bin/docker", "run",
-             "-t",
-             "-i",
-             "--rm", 
-             "--privileged",
-             "-v", "/:/host",
-            "--net=host",
-             "--ipc=host",
-             "--pid=host",
-             "-e", "CONFDIR=${CONFDIR}",
-             "-e", "LOGDIR=${LOGDIR}",
-             "-e", "DATADIR=${DATADIR}",
-             "--name", args.name, 
-             "IMAGE", "/usr/bin/INSTALLCMD" ]
+        args = self.INSTALL_ARGS
 
-    if "Labels" in inspect:
-        if "INSTALL" in inspect["Labels"]:
-            cargs = inspect["Labels"]["INSTALL"].split()
+        if "Labels" in inspect:
+            if "INSTALL" in inspect["Labels"]:
+                args = inspect["Labels"]["INSTALL"].split()
 
-    cmd = gen_cmd(cargs, args.image)
-    print(cmd)
+        cmd = self.gen_cmd(args)
+        print(cmd)
     
-    cmd = " ".join(cargs)
-    print(cmd)
-    return(subprocess.check_call(cmd, env={
-        "CONFDIR": "/etc/%s" % args.name,
-        "LOGDIR": "/var/log/%s" % args.name,
-        "DATADIR":"/var/lib/%s" % args.name}, shell=True))
+        return(subprocess.check_call(cmd, env={
+            "CONFDIR": "/etc/%s" % self.name,
+            "LOGDIR": "/var/log/%s" % self.name,
+            "DATADIR":"/var/lib/%s" % self.name}, shell=True))
 
+    def help(self):
+        return _('Atomic Container Run Tool')
+    
+    def defaults(self):
+        print(_("""
+        Default configuration
+
+        'atom run' attempts to read the LABEL RUN field in the container image,
+        if this field does not exists atom run defaults to the following command:
+
+ %s
+        
+        'atom install' attempts to read the LABEL INSTALL field in the container image,
+        if this field does not exists atom install defaults to the following command:
+
+ %s
+
+        These defaults are suggested values for your container images.
+
+        atom will replace the NAME and IMAGE fields with the name and image specified via the command,  NAME will be replaced with IMAGE if it is not specified.
+        """ % (" ".join(self.RUN_ARGS), " ".join(self.INSTALL_ARGS))))
+    
 def SetFunc(function):
     class customAction(argparse.Action):
         def __call__(self, parser, namespace, values, option_string=None):
@@ -153,10 +197,12 @@ def SetFunc(function):
     return customAction
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Atomic Container Run Tool')
+    atom=Atom()
+    parser = argparse.ArgumentParser(description=atom.help())
     subparser = parser.add_subparsers(help=_("commands"))
+                                     
     runp = subparser.add_parser("run",help=_("Execute Image Run Method (Default)"))
-    runp.set_defaults(func=run)
+    runp.set_defaults(func=atom.run)
     runp.add_argument("-n", "--name", dest="name",
                       default=None,
                       help=_("Name of container"))
@@ -165,24 +211,27 @@ if __name__ == '__main__':
                       help=_("Command to execute within the container"))
 
     updatep = subparser.add_parser("update",help=_("Pull latest Image from repository"))
-    updatep.set_defaults(func=update)
+    updatep.set_defaults(func=atom.update)
     updatep.add_argument("image", help=_("Container image"))
     
     removep = subparser.add_parser("remove",help=_("Remove Image from system"))
-    removep.set_defaults(func=remove)
+    removep.set_defaults(func=atom.remove)
     removep.add_argument("image", help=_("Container image"))
 
     installp = subparser.add_parser("install",help=_("Execute Image Install Method"))
-    installp.set_defaults(func=install)
+    installp.set_defaults(func=atom.install)
     installp.add_argument("image", help=_("Container image"))
     installp.add_argument("command", nargs=argparse.REMAINDER, 
                       help=_("Command to execute within the container"))
     installp.add_argument("-n", "--name", dest="name",
                       default=None,
                       help=_("Name of container"))
+    defp = subparser.add_parser("defaults",help=_("List Default RUN/INSTALL Values"))
+    defp.set_defaults(func=atom.defaults)
     try:
         args = parser.parse_args()
-        sys.exit(args.func(args))
+        atom.set_args(args)
+        sys.exit(args.func())
     except ValueError as e:
         sys.stderr.write("%s: %s\n" % (e.__class__.__name__, str(e)))
         sys.exit(1)
