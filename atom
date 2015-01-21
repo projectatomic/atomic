@@ -46,32 +46,54 @@ class Atom:
     INSTALL_ARGS = ["/usr/bin/docker", "run",
                     "-t",
                     "-i",
-                    "--rm", 
+                    "--rm",
                     "--privileged",
                     "-v", "/:/host",
                     "--net=host",
                     "--ipc=host",
                     "--pid=host",
+                    "-e", "HOST=/host",
+                    "-e", "NAME=NAME",
+                    "-e", "IMAGE=IMAGE",
                     "-e", "CONFDIR=${CONFDIR}",
                     "-e", "LOGDIR=${LOGDIR}",
                     "-e", "DATADIR=${DATADIR}",
-                    "--name", "NAME", 
+                    "--name", "NAME",
                     "IMAGE", "/usr/bin/INSTALLCMD" ]
+
+    SPC_ARGS = ["/usr/bin/docker", "run",
+                "-t",
+                "-i",
+                "--rm",
+                "--privileged",
+                "-v", "/:/host",
+                "--net=host",
+                "--ipc=host",
+                "--pid=host",
+                "-e", "HOST=/host",
+                "-e", "NAME=NAME",
+                "-e", "IMAGE=IMAGE",
+                "-e", "CONFDIR=${CONFDIR}",
+                "-e", "LOGDIR=${LOGDIR}",
+                "-e", "DATADIR=${DATADIR}",
+                "--name", "NAME",
+                "IMAGE" ]
 
     RUN_ARGS = ["/usr/bin/docker", "run",
                 "-t",
                 "-i",
-                "--rm", 
+                "--rm",
                 "-e", "CONFDIR=${CONFDIR}",
                 "-e", "LOGDIR=${LOGDIR}",
                 "-e", "DATADIR=${DATADIR}",
-                "--name", "NAME", 
+                "--name", "NAME",
                 "IMAGE" ]
-        
+
     def __init__(self):
         self.d = docker.Client()
         self.name = None
         self.image = None
+        self.spc = False
 
     def set_args(self, args):
         self.args=args
@@ -83,6 +105,12 @@ class Atom:
             self.command = args.command
         except:
             self.command = None
+
+        try:
+            self.spc = args.spc
+        except:
+            self.spc = False
+
         try:
             self.name = args.name
         except:
@@ -110,17 +138,20 @@ class Atom:
         except docker.errors.APIError:
             pass
 
-        try:
-            inspect = self.d.inspect_image(self.image)
-        except docker.errors.APIError:
-            self.d.pull(self.image, stream=True)
-            inspect = self.d.inspect_image(self.image)
-        
-        args = self.RUN_ARGS + self.command
-        
-        if "LABEL" in inspect:
-            if "RUN" in inspect[LABEL]:
-                args = inspect[LABEL]["RUN"].Split() + self.command
+        if self.spc:
+            args = self.SPC_ARGS + self.command
+        else:
+            try:
+                inspect = self.d.inspect_image(self.image)["Config"]
+            except docker.errors.APIError:
+                self.d.pull(self.image, stream=True)
+                inspect = self.d.inspect_image(self.image)["Config"]
+
+            args = self.RUN_ARGS + self.command
+
+            if "Labels" in inspect:
+                if "RUN" in inspect["Labels"]:
+                    args = inspect["Labels"]["RUN"].split() + self.command
 
         cmd = self.gen_cmd(args)
         print(cmd)
@@ -141,12 +172,18 @@ class Atom:
             if c == "IMAGE":
                 args.append(self.image)
                 continue
+            if c == "IMAGE=IMAGE":
+                args.append("IMAGE=%s" % self.image)
+                continue
+            if c == "NAME=NAME":
+                args.append("NAME=%s" % self.name)
+                continue
             if c == "NAME":
                 args.append(self.name)
                 continue
             args.append(c)
         return " ".join(args)
-    
+
     def install(self):
         try:
             inspect = self.d.inspect_image(self.image)["Config"]
@@ -162,7 +199,7 @@ class Atom:
 
         cmd = self.gen_cmd(args)
         print(cmd)
-    
+
         return(subprocess.check_call(cmd, env={
             "CONFDIR": "/etc/%s" % self.name,
             "LOGDIR": "/var/log/%s" % self.name,
@@ -170,7 +207,7 @@ class Atom:
 
     def help(self):
         return _('Atomic Container Run Tool')
-    
+
     def defaults(self):
         print(_("""
         Default configuration
@@ -179,7 +216,7 @@ class Atom:
         if this field does not exists atom run defaults to the following command:
 
  %s
-        
+
         'atom install' attempts to read the LABEL INSTALL field in the container image,
         if this field does not exists atom install defaults to the following command:
 
@@ -189,7 +226,7 @@ class Atom:
 
         atom will replace the NAME and IMAGE fields with the name and image specified via the command,  NAME will be replaced with IMAGE if it is not specified.
         """ % (" ".join(self.RUN_ARGS), " ".join(self.INSTALL_ARGS))))
-    
+
 def SetFunc(function):
     class customAction(argparse.Action):
         def __call__(self, parser, namespace, values, option_string=None):
@@ -200,20 +237,24 @@ if __name__ == '__main__':
     atom=Atom()
     parser = argparse.ArgumentParser(description=atom.help())
     subparser = parser.add_subparsers(help=_("commands"))
-                                     
+
     runp = subparser.add_parser("run",help=_("Execute Image Run Method (Default)"))
     runp.set_defaults(func=atom.run)
     runp.add_argument("-n", "--name", dest="name",
                       default=None,
                       help=_("Name of container"))
+    runp.add_argument("--spc",
+                      default=False,
+                      action="store_true",
+                      help=_("Use Super Privileged Container mode"))
     runp.add_argument("image", help=_("Container image"))
-    runp.add_argument("command", nargs=argparse.REMAINDER, 
+    runp.add_argument("command", nargs=argparse.REMAINDER,
                       help=_("Command to execute within the container"))
 
     updatep = subparser.add_parser("update",help=_("Pull latest Image from repository"))
     updatep.set_defaults(func=atom.update)
     updatep.add_argument("image", help=_("Container image"))
-    
+
     removep = subparser.add_parser("remove",help=_("Remove Image from system"))
     removep.set_defaults(func=atom.remove)
     removep.add_argument("image", help=_("Container image"))
@@ -221,7 +262,7 @@ if __name__ == '__main__':
     installp = subparser.add_parser("install",help=_("Execute Image Install Method"))
     installp.set_defaults(func=atom.install)
     installp.add_argument("image", help=_("Container image"))
-    installp.add_argument("command", nargs=argparse.REMAINDER, 
+    installp.add_argument("command", nargs=argparse.REMAINDER,
                       help=_("Command to execute within the container"))
     installp.add_argument("-n", "--name", dest="name",
                       default=None,
