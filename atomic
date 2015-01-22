@@ -1,9 +1,9 @@
-#! /usr/bin/python -Es
+#!/bin/python -Es
 # Copyright (C) 2014 Red Hat
 # AUTHOR: Dan Walsh <dwalsh@redhat.com>
 # see file 'COPYING' for use and warranty information
 #
-# atom is a tool for managing Atomic Containers
+# atomic is a tool for managing Atomic Systems and Containers
 #
 #    This program is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU General Public License as
@@ -27,7 +27,7 @@ import gettext
 import docker
 import subprocess
 
-PROGNAME="atom"
+PROGNAME="atomic"
 gettext.bindtextdomain(PROGNAME, "/usr/share/locale")
 gettext.textdomain(PROGNAME)
 try:
@@ -42,7 +42,7 @@ except IOError:
     import builtins
     builtins.__dict__['_'] = str
 
-class Atom:
+class Atomic:
     INSTALL_ARGS = ["/usr/bin/docker", "run",
                     "-t",
                     "-i",
@@ -123,11 +123,11 @@ class Atom:
         try:
             self.d.inspect_container(self.name)
             try:
-                return subprocess.check_call(["docker", "exec", self.name] + self.command)
+                return subprocess.check_call(["/usr/bin/docker", "exec", self.name] + self.command)
             except subprocess.CalledProcessError:
                 try:
-                    subprocess.check_call(["docker", "start", self.name])
-                    return subprocess.check_call(["docker", "exec", self.name] + self.command)
+                    subprocess.check_call(["/usr/bin/docker", "start", self.name])
+                    return subprocess.check_call(["/usr/bin/docker", "exec", self.name] + self.command)
                 except subprocess.CalledProcessError:
                     pass
         except docker.errors.APIError:
@@ -150,7 +150,7 @@ class Atom:
             args = self.RUN_ARGS + self.command
 
             if "Labels" in inspect:
-                if "RUN" in inspect["Labels"]:
+                if inspect["Labels"] and "RUN" in inspect["Labels"]:
                     args = inspect["Labels"]["RUN"].split() + self.command
 
         cmd = self.gen_cmd(args)
@@ -160,11 +160,42 @@ class Atom:
             "LOGDIR": "/var/log/%s" % self.name,
             "DATADIR":"/var/lib/%s" % self.name}, shell=True))
 
-    def update(self):
-        return subprocess.check_call(["docker", "pull", self.image])
+    def status(self):
+        return subprocess.check_call(["/usr/bin/rpm-ostree", "status"] + self.command)
 
-    def remove(self):
-        return subprocess.check_call(["docker", "rmi", self.image])
+    def upgrade(self):
+        return subprocess.check_call(["/usr/bin/rpm-ostree", "upgrade"] + self.command)
+
+    def rollback(self):
+        return subprocess.check_call(["/usr/bin/rpm-ostree", "rollback"]+ self.command)
+
+    def update(self):
+        return subprocess.check_call(["/usr/bin/docker", "pull", self.image])
+
+    def uninstall(self):
+        try: 
+            inspect = self.d.inspect_container(self.name)["Config"]
+            if "Labels" in inspect:
+                if inspect["Labels"] and "UNINSTALL" in inspect["Labels"]:
+                    args = inspect["Labels"]["UNINSTALL"].split()
+                    cmd = self.gen_cmd(args)
+                    print(cmd)
+                    subprocess.check_call(cmd, env={
+                        "CONFDIR": "/etc/%s" % self.name,
+                        "LOGDIR": "/var/log/%s" % self.name,
+                        "DATADIR":"/var/lib/%s" % self.name}, shell=True)
+        except docker.errors.APIError:
+            pass
+
+        if self.name != self.image:
+            return subprocess.check_call(["/usr/bin/docker", "rm", self.name])
+        else:
+            try: 
+                self.d.remove_container(self.image)["Config"]
+            except docker.errors.APIError:
+                pass
+            return subprocess.check_call(["/usr/bin/docker", "rmi", self.image])
+            
 
     def gen_cmd(self,cargs):
         args = []
@@ -191,40 +222,42 @@ class Atom:
             self.d.pull(self.image)
             inspect = self.d.inspect_image(self.image)
 
-        args = self.INSTALL_ARGS
-
         if "Labels" in inspect:
-            if "INSTALL" in inspect["Labels"]:
+            if inspect["Labels"] and "INSTALL" in inspect["Labels"]:
                 args = inspect["Labels"]["INSTALL"].split()
 
-        cmd = self.gen_cmd(args)
-        print(cmd)
+                cmd = self.gen_cmd(args)
+                print(cmd)
 
-        return(subprocess.check_call(cmd, env={
-            "CONFDIR": "/etc/%s" % self.name,
-            "LOGDIR": "/var/log/%s" % self.name,
-            "DATADIR":"/var/lib/%s" % self.name}, shell=True))
+            return(subprocess.check_call(cmd, env={
+                "CONFDIR": "/etc/%s" % self.name,
+                "LOGDIR": "/var/log/%s" % self.name,
+                "DATADIR":"/var/lib/%s" % self.name}, shell=True))
 
     def help(self):
-        return _('Atomic Container Run Tool')
+        if os.path.exists("/usr/bin/rpm-ostree"):
+            return _('Atomic Management Tool')
+        else:
+            return _('Atomic Container Tool')
+            
 
     def defaults(self):
         print(_("""
         Default configuration
 
-        'atom run' attempts to read the LABEL RUN field in the container image,
+        'atomic run' attempts to read the LABEL RUN field in the container image,
         if this field does not exists atom run defaults to the following command:
 
  %s
 
-        'atom install' attempts to read the LABEL INSTALL field in the container image,
+        'atomic install' attempts to read the LABEL INSTALL field in the container image,
         if this field does not exists atom install defaults to the following command:
 
  %s
 
         These defaults are suggested values for your container images.
 
-        atom will replace the NAME and IMAGE fields with the name and image specified via the command,  NAME will be replaced with IMAGE if it is not specified.
+        atomic will replace the NAME and IMAGE fields with the name and image specified via the command,  NAME will be replaced with IMAGE if it is not specified.
         """ % (" ".join(self.RUN_ARGS), " ".join(self.INSTALL_ARGS))))
 
 def SetFunc(function):
@@ -234,12 +267,24 @@ def SetFunc(function):
     return customAction
 
 if __name__ == '__main__':
-    atom=Atom()
-    parser = argparse.ArgumentParser(description=atom.help())
-    subparser = parser.add_subparsers(help=_("commands"))
+    atomic=Atomic()
+    parser = argparse.ArgumentParser(description=atomic.help())
+    subparser = parser.add_subparsers(help=_("Commands"))
+    if os.path.exists("/usr/bin/rpm-ostree"):
+        upgradep = subparser.add_parser("upgrade",help=_("Perform Atomic System Upgrade"))
+        upgradep.set_defaults(func=atomic.upgrade)
+        upgradep.add_argument("command", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
 
+        rollbackp = subparser.add_parser("rollback",help=_("Revert Atomic to the previously booted tree"))
+        rollbackp.set_defaults(func=atomic.rollback)
+        rollbackp.add_argument("command", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
+
+        statusp = subparser.add_parser("status",help=_("""Get the version of the booted Atomic system"""))
+        statusp.set_defaults(func=atomic.status)
+        statusp.add_argument("command", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
+        
     runp = subparser.add_parser("run",help=_("Execute Image Run Method (Default)"))
-    runp.set_defaults(func=atom.run)
+    runp.set_defaults(func=atomic.run)
     runp.add_argument("-n", "--name", dest="name",
                       default=None,
                       help=_("Name of container"))
@@ -252,26 +297,31 @@ if __name__ == '__main__':
                       help=_("Command to execute within the container"))
 
     updatep = subparser.add_parser("update",help=_("Pull latest Image from repository"))
-    updatep.set_defaults(func=atom.update)
+    updatep.set_defaults(func=atomic.update)
     updatep.add_argument("image", help=_("Container image"))
 
-    removep = subparser.add_parser("remove",help=_("Remove Image from system"))
-    removep.set_defaults(func=atom.remove)
-    removep.add_argument("image", help=_("Container image"))
+    uninstallp = subparser.add_parser("uninstall",help=_("Execute Image Uninstall Method"))
+    uninstallp.set_defaults(func=atomic.uninstall)
+    uninstallp.add_argument("-n", "--name", dest="name",
+                            default=None,
+                            help=_("Name of container"))
+    uninstallp.add_argument("image", help=_("Container image"))
 
     installp = subparser.add_parser("install",help=_("Execute Image Install Method"))
-    installp.set_defaults(func=atom.install)
+    installp.set_defaults(func=atomic.install)
     installp.add_argument("image", help=_("Container image"))
     installp.add_argument("command", nargs=argparse.REMAINDER,
                       help=_("Command to execute within the container"))
     installp.add_argument("-n", "--name", dest="name",
                       default=None,
                       help=_("Name of container"))
-    defp = subparser.add_parser("defaults",help=_("List Default RUN/INSTALL Values"))
-    defp.set_defaults(func=atom.defaults)
+    defp = subparser.add_parser("defaults",help=_("List default commands with which atomic will RUN/INSTALL/UNINSTALL containers"))
+    
+    defp.set_defaults(func=atomic.defaults)
+
     try:
         args = parser.parse_args()
-        atom.set_args(args)
+        atomic.set_args(args)
         sys.exit(args.func())
     except ValueError as e:
         sys.stderr.write("%s: %s\n" % (e.__class__.__name__, str(e)))
