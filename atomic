@@ -1,9 +1,4 @@
-<<<<<<< .merge_file_od84KE
 #!/bin/python -Es
-||||||| .merge_file_5fZT6E
-=======
-#! /usr/bin/python -Es
->>>>>>> .merge_file_9IdcaF
 # Copyright (C) 2014 Red Hat
 # AUTHOR: Dan Walsh <dwalsh@redhat.com>
 # see file 'COPYING' for use and warranty information
@@ -88,15 +83,9 @@ class Atomic:
                 "-t",
                 "-i",
                 "--rm",
-<<<<<<< .merge_file_od84KE
-                "-v", "${LOGDIR}:/var/log",
-                "-v", "${DATADIR}:/var/lib",
-||||||| .merge_file_5fZT6E
-=======
                 "-e", "CONFDIR=${CONFDIR}",
                 "-e", "LOGDIR=${LOGDIR}",
                 "-e", "DATADIR=${DATADIR}",
->>>>>>> .merge_file_9IdcaF
                 "--name", "NAME",
                 "IMAGE" ]
 
@@ -161,12 +150,7 @@ class Atomic:
             args = self.RUN_ARGS + self.command
 
             if "Labels" in inspect:
-<<<<<<< .merge_file_od84KE
                 if inspect["Labels"] and "RUN" in inspect["Labels"]:
-||||||| .merge_file_5fZT6E
-=======
-                if "RUN" in inspect["Labels"]:
->>>>>>> .merge_file_9IdcaF
                     args = inspect["Labels"]["RUN"].split() + self.command
 
         cmd = self.gen_cmd(args)
@@ -176,7 +160,6 @@ class Atomic:
             "LOGDIR": "/var/log/%s" % self.name,
             "DATADIR":"/var/lib/%s" % self.name}, shell=True))
 
-<<<<<<< .merge_file_od84KE
     def host(self):
         if self.args.rollback:
             return subprocess.check_call(["/usr/bin/rpm-ostree", "rollback"]+ self.command)
@@ -184,22 +167,10 @@ class Atomic:
             return subprocess.check_call(["/usr/bin/rpm-ostree", "upgrade"]+ self.command)
         if self.args.status:
             return subprocess.check_call(["/usr/bin/rpm-ostree", "status"]+ self.command)
-||||||| .merge_file_5fZT6E
-=======
-    def status(self):
-        return subprocess.check_call(["/usr/bin/rpm-ostree", "status"] + self.command)
-
-    def upgrade(self):
-        return subprocess.check_call(["/usr/bin/rpm-ostree", "upgrade"] + self.command)
-
-    def rollback(self):
-        return subprocess.check_call(["/usr/bin/rpm-ostree", "rollback"]+ self.command)
->>>>>>> .merge_file_9IdcaF
 
     def update(self):
         return subprocess.check_call(["/usr/bin/docker", "pull", self.image])
 
-<<<<<<< .merge_file_od84KE
     def uninstall(self):
         try: 
             inspect = self.d.inspect_container(self.name)["Config"]
@@ -224,11 +195,6 @@ class Atomic:
                 pass
             return subprocess.check_call(["/usr/bin/docker", "rmi", self.image])
             
-||||||| .merge_file_5fZT6E
-=======
-    def remove(self):
-        return subprocess.check_call(["/usr/bin/docker", "rmi", self.image])
->>>>>>> .merge_file_9IdcaF
 
     def gen_cmd(self,cargs):
         args = []
@@ -255,38 +221,17 @@ class Atomic:
             self.d.pull(self.image)
             inspect = self.d.inspect_image(self.image)
 
-        args = self.INSTALL_ARGS
-
         if "Labels" in inspect:
-<<<<<<< .merge_file_od84KE
             if inspect["Labels"] and "INSTALL" in inspect["Labels"]:
-||||||| .merge_file_5fZT6E
-=======
-            if "INSTALL" in inspect["Labels"]:
->>>>>>> .merge_file_9IdcaF
                 args = inspect["Labels"]["INSTALL"].split()
 
-<<<<<<< .merge_file_od84KE
                 cmd = self.gen_cmd(args)
                 print(cmd)
-||||||| .merge_file_5fZT6E
-=======
-        cmd = self.gen_cmd(args)
-        print(cmd)
->>>>>>> .merge_file_9IdcaF
 
-<<<<<<< .merge_file_od84KE
             return(subprocess.check_call(cmd, env={
                 "CONFDIR": "/etc/%s" % self.name,
                 "LOGDIR": "/var/log/%s" % self.name,
                 "DATADIR":"/var/lib/%s" % self.name}, shell=True))
-||||||| .merge_file_5fZT6E
-=======
-        return(subprocess.check_call(cmd, env={
-            "CONFDIR": "/etc/%s" % self.name,
-            "LOGDIR": "/var/log/%s" % self.name,
-            "DATADIR":"/var/lib/%s" % self.name}, shell=True))
->>>>>>> .merge_file_9IdcaF
 
     def help(self):
         if os.path.exists("/usr/bin/rpm-ostree"):
@@ -329,7 +274,6 @@ if __name__ == '__main__':
     defp.set_defaults(func=atomic.defaults)
 
     if os.path.exists("/usr/bin/rpm-ostree"):
-<<<<<<< .merge_file_od84KE
         hostp = subparser.add_parser("host",help=_("execute Atomic host commands"))
         hostp.set_defaults(func=atomic.host)
         group = hostp.add_mutually_exclusive_group(required=True)
@@ -354,44 +298,16 @@ if __name__ == '__main__':
                       default=None,
                       help=_("name of container"))
     runp = subparser.add_parser("run",help=_("execute container image run method (default)"))
-||||||| .merge_file_5fZT6E
-=======
-        upgradep = subparser.add_parser("upgrade",help=_("Perform Atomic System Upgrade"))
-        upgradep.set_defaults(func=atomic.upgrade)
-        upgradep.add_argument("command", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
-
-        rollbackp = subparser.add_parser("rollback",help=_("Revert Atomic to the previously booted tree"))
-        rollbackp.set_defaults(func=atomic.rollback)
-        rollbackp.add_argument("command", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
-
-        statusp = subparser.add_parser("status",help=_("""Get the version of the booted Atomic system"""))
-        statusp.set_defaults(func=atomic.status)
-        statusp.add_argument("command", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
-        
-    runp = subparser.add_parser("run",help=_("Execute Image Run Method (Default)"))
->>>>>>> .merge_file_9IdcaF
     runp.set_defaults(func=atomic.run)
     runp.add_argument("-n", "--name", dest="name",
                       default=None,
-<<<<<<< .merge_file_od84KE
                       help=_("name of container"))
-||||||| .merge_file_5fZT6E
-=======
-                      help=_("Name of container"))
->>>>>>> .merge_file_9IdcaF
     runp.add_argument("--spc",
                       default=False,
                       action="store_true",
-<<<<<<< .merge_file_od84KE
                       help=_("use super privileged container mode"))
     runp.add_argument("image", help=_("container image"))
-||||||| .merge_file_5fZT6E
-=======
-                      help=_("Use Super Privileged Container mode"))
-    runp.add_argument("image", help=_("Container image"))
->>>>>>> .merge_file_9IdcaF
     runp.add_argument("command", nargs=argparse.REMAINDER,
-<<<<<<< .merge_file_od84KE
                       help=_("command to execute within the container"))
 
     uninstallp = subparser.add_parser("uninstall",help=_("execute container image uninstall method"))
@@ -400,40 +316,10 @@ if __name__ == '__main__':
                             default=None,
                             help=_("name of container"))
     uninstallp.add_argument("image", help=_("container image"))
-||||||| .merge_file_5fZT6E
-=======
-                      help=_("Command to execute within the container"))
->>>>>>> .merge_file_9IdcaF
 
-<<<<<<< .merge_file_od84KE
     updatep = subparser.add_parser("update",help=_("pull latest container image from repository"))
-||||||| .merge_file_5fZT6E
-=======
-    updatep = subparser.add_parser("update",help=_("Pull latest Image from repository"))
->>>>>>> .merge_file_9IdcaF
     updatep.set_defaults(func=atomic.update)
-<<<<<<< .merge_file_od84KE
     updatep.add_argument("image", help=_("container image"))
-||||||| .merge_file_5fZT6E
-=======
-    updatep.add_argument("image", help=_("Container image"))
-
-    removep = subparser.add_parser("remove",help=_("Remove Image from system"))
-    removep.set_defaults(func=atomic.remove)
-    removep.add_argument("image", help=_("Container image"))
-
-    installp = subparser.add_parser("install",help=_("Execute Image Install Method"))
-    installp.set_defaults(func=atomic.install)
-    installp.add_argument("image", help=_("Container image"))
-    installp.add_argument("command", nargs=argparse.REMAINDER,
-                      help=_("Command to execute within the container"))
-    installp.add_argument("-n", "--name", dest="name",
-                      default=None,
-                      help=_("Name of container"))
-    defp = subparser.add_parser("defaults",help=_("List default commands with which atomic will RUN/INSTALL/REMOVE containers"))
-    
-    defp.set_defaults(func=atomic.defaults)
->>>>>>> .merge_file_9IdcaF
 
     try:
         args = parser.parse_args()
