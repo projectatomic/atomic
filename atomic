@@ -280,7 +280,7 @@ if __name__ == '__main__':
         group.add_argument("--rollback", dest="rollback", default=False,
                            action="store_true",
                            help=_("revert Atomic to the previously booted tree"))
-        group.add_argument("--status", dest="rollback", default=False,
+        group.add_argument("--status", dest="status", default=False,
                            action="store_true",
                            help=_("get the version of the booted Atomic system"""))
         group.add_argument("--upgrade", dest="upgrade", default=False,
