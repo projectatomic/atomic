@@ -149,7 +149,7 @@ class Atomic:
 
             args = self.RUN_ARGS + self.command
 
-            if "Labels" in inspect:
+            if inspect and "Labels" in inspect:
                 if inspect["Labels"] and "RUN" in inspect["Labels"]:
                     args = inspect["Labels"]["RUN"].split() + self.command
 
@@ -174,7 +174,7 @@ class Atomic:
     def uninstall(self):
         try: 
             inspect = self.d.inspect_container(self.name)["Config"]
-            if "Labels" in inspect:
+            if inspect and "Labels" in inspect:
                 if inspect["Labels"] and "UNINSTALL" in inspect["Labels"]:
                     args = inspect["Labels"]["UNINSTALL"].split()
                     cmd = self.gen_cmd(args)
@@ -219,9 +219,9 @@ class Atomic:
             inspect = self.d.inspect_image(self.image)["Config"]
         except docker.errors.APIError:
             self.d.pull(self.image)
-            inspect = self.d.inspect_image(self.image)
+            inspect = self.d.inspect_image(self.image)["Config"]
 
-        if "Labels" in inspect:
+        if inspect and "Labels" in inspect:
             if inspect["Labels"] and "INSTALL" in inspect["Labels"]:
                 args = inspect["Labels"]["INSTALL"].split()
 
