@@ -160,13 +160,20 @@ class Atomic:
             "LOGDIR": "/var/log/%s" % self.name,
             "DATADIR":"/var/lib/%s" % self.name}, shell=True))
 
-    def host(self):
-        if self.args.rollback:
-            return subprocess.check_call(["/usr/bin/rpm-ostree", "rollback"]+ self.command)
-        if self.args.upgrade:
-            return subprocess.check_call(["/usr/bin/rpm-ostree", "upgrade"]+ self.command)
-        if self.args.status:
-            return subprocess.check_call(["/usr/bin/rpm-ostree", "status"]+ self.command)
+    def _rpmostree(self, *args):
+        os.execl("/usr/bin/rpm-ostree", "rpm-ostree", *args)
+
+    def host_status(self):
+        self._rpmostree("status")
+
+    def host_upgrade(self):
+        argv = ["upgrade"]
+        if self.args.host_upgrade_reboot:
+            argv.append("--reboot")
+        self._rpmostree(*argv)
+
+    def host_rollback(self):
+        self._rpmostree("rollback")
 
     def update(self):
         return subprocess.check_call(["/usr/bin/docker", "pull", self.image])
@@ -275,19 +282,16 @@ if __name__ == '__main__':
 
     if os.path.exists("/usr/bin/rpm-ostree"):
         hostp = subparser.add_parser("host",help=_("execute Atomic host commands"))
-        hostp.set_defaults(func=atomic.host)
-        group = hostp.add_mutually_exclusive_group(required=True)
-        group.add_argument("--rollback", dest="rollback", default=False,
-                           action="store_true",
-                           help=_("revert Atomic to the previously booted tree"))
-        group.add_argument("--status", dest="status", default=False,
-                           action="store_true",
-                           help=_("get the version of the booted Atomic system"""))
-        group.add_argument("--upgrade", dest="upgrade", default=False,
-                           action="store_true",
-                           help=_("perform Atomic system upgrade"))
-        hostp.add_argument("command", nargs=argparse.REMAINDER, help=_("additional options to pass to rpm-ostree"))
-
+        host_subparser = hostp.add_subparsers(help=_("Host Commands"))
+        rollbackp = host_subparser.add_parser("rollback", help=_("revert Atomic to the previously booted tree"))
+        rollbackp.set_defaults(func=atomic.host_rollback)
+        statusp = host_subparser.add_parser("status", help=_("List information about all deployments"))
+        statusp.set_defaults(func=atomic.host_status)
+        upgradep = host_subparser.add_parser("upgrade", help=_("List information about all deployments"))
+        upgradep.set_defaults(func=atomic.host_upgrade)
+        upgradep.add_argument("-r", "--reboot", dest="host_upgrade_reboot",
+                              action="store_true",
+                              help=_("If an upgrade is available, reboot after deployment is complete"))
 
     installp = subparser.add_parser("install",help=_("execute container image install method"))
     installp.set_defaults(func=atomic.install)
