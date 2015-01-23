@@ -5,6 +5,7 @@
 atomic-host - Manage Atomic Host Commands
 
 # SYNOPSIS
+atomic host rollback|status|upgrade
 Manage content trees on the Atomic host
 
 #NOTE
@@ -14,12 +15,16 @@ Atomic management commands are only available if you are running on an Atomic Ho
 **--help**
   Print usage statement
 
-**--rollback**
+**rollback**
 Revert Atomic to the previously booted tree
-**--status**
+**-r** **--reboot**
+Initiate a reboot after rollback is prepared
+**status**
 Get the version of the booted Atomic system
-**--upgrade**
+**upgrade**
 Perform Atomic system upgrade
+**-r** **--reboot**
+If an upgrade is available, reboot after deployment is complete
 
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)

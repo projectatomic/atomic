@@ -168,12 +168,14 @@ class Atomic:
 
     def host_upgrade(self):
         argv = ["upgrade"]
-        if self.args.host_upgrade_reboot:
+        if self.args.reboot:
             argv.append("--reboot")
         self._rpmostree(*argv)
 
     def host_rollback(self):
         self._rpmostree("rollback")
+        if self.args.reboot:
+            argv.append("--reboot")
 
     def update(self):
         return subprocess.check_call(["/usr/bin/docker", "pull", self.image])
@@ -285,11 +287,15 @@ if __name__ == '__main__':
         host_subparser = hostp.add_subparsers(help=_("Host Commands"))
         rollbackp = host_subparser.add_parser("rollback", help=_("revert Atomic to the previously booted tree"))
         rollbackp.set_defaults(func=atomic.host_rollback)
+        rollbackp.add_argument("-r", "--reboot", dest="reboot",
+                               action="store_true",
+                               help=_("Initiate a reboot after rollback is prepared"))
+
         statusp = host_subparser.add_parser("status", help=_("List information about all deployments"))
         statusp.set_defaults(func=atomic.host_status)
         upgradep = host_subparser.add_parser("upgrade", help=_("List information about all deployments"))
         upgradep.set_defaults(func=atomic.host_upgrade)
-        upgradep.add_argument("-r", "--reboot", dest="host_upgrade_reboot",
+        upgradep.add_argument("-r", "--reboot", dest="reboot",
                               action="store_true",
                               help=_("If an upgrade is available, reboot after deployment is complete"))
 
