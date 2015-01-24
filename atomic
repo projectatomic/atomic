@@ -141,7 +141,7 @@ class Atomic:
         try:
             inspect = self.d.inspect_image(self.image)["Config"]
         except docker.errors.APIError:
-            self.d.pull(self.image, stream=True)
+            self.update()
             inspect = self.d.inspect_image(self.image)["Config"]
 
         if self.spc:
@@ -227,7 +227,7 @@ class Atomic:
         try:
             inspect = self.d.inspect_image(self.image)["Config"]
         except docker.errors.APIError:
-            self.d.pull(self.image)
+            self.update()
             inspect = self.d.inspect_image(self.image)["Config"]
 
         if inspect and "Labels" in inspect:
