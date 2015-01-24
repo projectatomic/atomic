@@ -123,11 +123,11 @@ class Atomic:
         try:
             self.d.inspect_container(self.name)
             try:
-                return subprocess.check_call(["/usr/bin/docker", "exec", self.name] + self.command)
+                return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command)
             except subprocess.CalledProcessError:
                 try:
                     subprocess.check_call(["/usr/bin/docker", "start", self.name])
-                    return subprocess.check_call(["/usr/bin/docker", "exec", self.name] + self.command)
+                    return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command)
                 except subprocess.CalledProcessError:
                     pass
         except docker.errors.APIError:
