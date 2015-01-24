@@ -117,7 +117,7 @@ class Atomic:
             pass
 
         if not self.name:
-            self.name = self.image
+            self.name = self.image.split("/")[-1].split(":")[0]
 
     def run(self):
         try:
@@ -336,10 +336,10 @@ if __name__ == '__main__':
         atomic.set_args(args)
         sys.exit(args.func())
     except ValueError as e:
-        sys.stderr.write("%s: %s\n" % (e.__class__.__name__, str(e)))
+        sys.stderr.write("%s\n" % str(e))
         sys.exit(1)
     except IOError as e:
-        sys.stderr.write("%s: %s\n" % (e.__class__.__name__, str(e)))
+        sys.stderr.write("%s\n" % str(e))
         sys.exit(1)
     except KeyboardInterrupt:
         sys.exit(0)
