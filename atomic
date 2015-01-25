@@ -55,11 +55,14 @@ class Atomic:
                     "-e", "HOST=/host",
                     "-e", "NAME=NAME",
                     "-e", "IMAGE=IMAGE",
+                    "-v", "${CONFDIR}:/etc/NAME",
+                    "-v", "${LOGDIR}:/var/log/NAME",
+                    "-v", "${DATADIR}:/var/lib/NAME",
                     "-e", "CONFDIR=${CONFDIR}",
                     "-e", "LOGDIR=${LOGDIR}",
                     "-e", "DATADIR=${DATADIR}",
                     "--name", "NAME",
-                    "IMAGE", "/usr/bin/INSTALLCMD" ]
+                    "IMAGE"]
 
     SPC_ARGS = ["/usr/bin/docker", "run",
                 "-t",
@@ -81,9 +84,6 @@ class Atomic:
                 "-t",
                 "-i",
                 "--rm",
-                "-e", "CONFDIR=${CONFDIR}",
-                "-e", "LOGDIR=${LOGDIR}",
-                "-e", "DATADIR=${DATADIR}",
                 "--name", "NAME",
                 "IMAGE" ]
 
@@ -245,10 +245,18 @@ class Atomic:
             return _('Atomic Management Tool')
         else:
             return _('Atomic Container Tool')
-            
 
     def print_spc(self):
         return " ".join(self.SPC_ARGS)
+    
+    def print_run(self):
+        return " ".join(self.RUN_ARGS)
+    
+    def print_install(self):
+        return " ".join(self.INSTALL_ARGS) + " /usr/bin/INSTALLCMD"
+
+    def print_uninstall(self):
+        return " ".join(self.INSTALL_ARGS) + " /usr/bin/UNINSTALLCMD"
     
     def defaults(self):
         print(_("""
@@ -300,15 +308,20 @@ if __name__ == '__main__':
                               action="store_true",
                               help=_("If an upgrade is available, reboot after deployment is complete"))
 
-    installp = subparser.add_parser("install",help=_("execute container image install method"))
+    installp = subparser.add_parser("install",
+                                    help=_("execute container image install method"),
+                                    epilog="atomic install attempts to read the LABEL INSTALL field in the image, if it does not exist atomic will just pull the image on to your machine.  You could add a LABEL INSTALL command to your Dockerfile like: 'LABEL INSTALL %s'" % atomic.print_install() )
+
     installp.set_defaults(func=atomic.install)
     installp.add_argument("image", help=_("container image"))
     installp.add_argument("command", nargs=argparse.REMAINDER,
-                      help=_("command to execute within the container"))
+                          help=_("execute container image install method."))
     installp.add_argument("-n", "--name", dest="name",
                       default=None,
                       help=_("name of container"))
-    runp = subparser.add_parser("run",help=_("execute container image run method (default)"))
+    runp = subparser.add_parser("run",
+                                help=_("execute container image run method."),
+                                epilog="atomic run defaults to the followign command, if image does not specify LABEL RUN\n'%s'" % atomic.print_run() )
     runp.set_defaults(func=atomic.run)
     runp.add_argument("-n", "--name", dest="name",
                       default=None,
@@ -321,7 +334,10 @@ if __name__ == '__main__':
     runp.add_argument("command", nargs=argparse.REMAINDER,
                       help=_("command to execute within the container"))
 
-    uninstallp = subparser.add_parser("uninstall",help=_("execute container image uninstall method"))
+    uninstallp = subparser.add_parser("uninstall",
+                                      help=_("execute container image uninstall method"),
+                                                                          epilog="atomic install attempts to read the LABEL UNINSTALL field in the image, if it does not exist atomic will just pull the image on to your machine.  You could add a LABEL INSTALL command to your Dockerfile like: 'LABEL UNINSTALL %s'" % atomic.print_uninstall() )
+
     uninstallp.set_defaults(func=atomic.uninstall)
     uninstallp.add_argument("-n", "--name", dest="name",
                             default=None,
