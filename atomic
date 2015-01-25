@@ -67,15 +67,13 @@ class Atomic:
                 "--rm",
                 "--privileged",
                 "-v", "/:/host",
+                "-v", "/run:/run",
                 "--net=host",
                 "--ipc=host",
                 "--pid=host",
                 "-e", "HOST=/host",
                 "-e", "NAME=NAME",
                 "-e", "IMAGE=IMAGE",
-                "-e", "CONFDIR=${CONFDIR}",
-                "-e", "LOGDIR=${LOGDIR}",
-                "-e", "DATADIR=${DATADIR}",
                 "--name", "NAME",
                 "IMAGE" ]
 
@@ -249,6 +247,9 @@ class Atomic:
             return _('Atomic Container Tool')
             
 
+    def print_spc(self):
+        return " ".join(self.SPC_ARGS)
+    
     def defaults(self):
         print(_("""
         Default configuration
@@ -315,7 +316,7 @@ if __name__ == '__main__':
     runp.add_argument("--spc",
                       default=False,
                       action="store_true",
-                      help=_("use super privileged container mode"))
+                      help=_("use super privileged container mode: '%s'") % atomic.print_spc() )
     runp.add_argument("image", help=_("container image"))
     runp.add_argument("command", nargs=argparse.REMAINDER,
                       help=_("command to execute within the container"))
