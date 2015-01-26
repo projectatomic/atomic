@@ -116,6 +116,8 @@ class Atomic:
 
         if not self.name:
             self.name = self.image.split("/")[-1].split(":")[0]
+            if self.spc:
+                self.name = self.name + "-spc"
 
     def run(self):
         try:
