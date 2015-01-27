@@ -141,7 +141,7 @@ class Atomic:
         except:
             pass
 
-        if not self.name:
+        if not self.name and self.image is not None:
             self.name = self.image.split("/")[-1].split(":")[0]
             if self.spc:
                 self.name = self.name + "-spc"
