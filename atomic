@@ -25,6 +25,7 @@ import sys, os
 import argparse
 import gettext
 import docker
+import json
 import subprocess
 
 PROGNAME="atomic"
@@ -93,6 +94,32 @@ class Atomic:
         self.image = None
         self.spc = False
 
+    def writeOut(self, output):
+        sys.stdout.flush()
+        sys.stdout.write(output + "\n")
+
+    def update(self):
+        prevstatus = ""
+        prev = ""
+        for line in self.d.pull(self.image, stream=True):
+            bar = json.loads(line)
+            status = bar['status']
+            if prevstatus != status:
+                print status
+            if 'id' not in bar:
+                continue    
+            if status == "Downloading":
+                self.writeOut(bar['progress'] + " ")
+            elif status == "Extracting":
+                self.writeOut("Extracting: " + bar['id'])
+            elif status == "Pull complete":
+                pass
+            elif status.startswith("Pulling"):
+                self.writeOut("Pulling: " + bar['id'])
+
+            prevstatus = status        
+        print("")
+        
     def set_args(self, args):
         self.args=args
         try:
@@ -176,9 +203,6 @@ class Atomic:
         self._rpmostree("rollback")
         if self.args.reboot:
             argv.append("--reboot")
-
-    def update(self):
-        return subprocess.check_call(["/usr/bin/docker", "pull", self.image])
 
     def uninstall(self):
         try: 
