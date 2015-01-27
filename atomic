@@ -323,7 +323,7 @@ if __name__ == '__main__':
                       help=_("name of container"))
     runp = subparser.add_parser("run",
                                 help=_("execute container image run method."),
-                                epilog="atomic run defaults to the followign command, if image does not specify LABEL RUN\n'%s'" % atomic.print_run() )
+                                epilog="atomic run defaults to the following command, if image does not specify LABEL RUN\n'%s'" % atomic.print_run() )
     runp.set_defaults(func=atomic.run)
     runp.add_argument("-n", "--name", dest="name",
                       default=None,
