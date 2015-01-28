@@ -203,9 +203,10 @@ class Atomic:
         self._rpmostree(*argv)
 
     def host_rollback(self):
-        self._rpmostree("rollback")
+        argv = ["rollback"]
         if self.args.reboot:
             argv.append("--reboot")
+        self._rpmostree(*argv)
 
     def uninstall(self):
         try: 
