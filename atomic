@@ -43,7 +43,7 @@ except IOError:
     import builtins
     builtins.__dict__['_'] = str
 
-class Atomic:
+class Atomic(object):
     INSTALL_ARGS = ["/usr/bin/docker", "run",
                     "-t",
                     "-i",
