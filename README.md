@@ -1,6 +1,20 @@
-# Atomic tool 
-The goal of this tool is to define the commands necessary to manage a container
-based application.
+# Atomic: /usr/bin/atomic
+
+This project defines the entrypoint for Project Atomic hosts.  On a
+Project Atomic system, there are at least three distinct software
+delivery vehicles; Docker (often used in combination with the
+traditional RPM/yum), and rpm-ostree to provide atomic upgrades of the
+host system.
+
+The goal of Atomic is to provide a high level, coherent entrypoint to
+the system, and fill in gaps.
+
+For Docker, `atomic` can make it easier to interact with special kinds
+of containers, such as super-privileged debugging tools and the like.
+
+The `atomic host` subcommand wraps `rpm-ostree`, currently just
+providing a friendlier name, but in the future Atomic may provide more
+unified management.
 
 ## atomic run
 
