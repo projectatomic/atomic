@@ -322,8 +322,8 @@ def SetFunc(function):
 
 class HelpByDefaultArgumentParser(argparse.ArgumentParser):
     def error(self, message):
-        sys.stderr.write('error: %s\n' % message)
         self.print_help()
+        sys.stderr.write('\nerror: %s\n' % message)
         sys.exit(2)
 
 if __name__ == '__main__':
