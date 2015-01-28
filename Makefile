@@ -8,6 +8,7 @@ all: python-build
 
 python-build: atomic
 	$(PYTHON) setup.py build
+	pylint -E --additional-builtins _ atomic
 
 clean:
 	$(PYTHON) setup.py clean
