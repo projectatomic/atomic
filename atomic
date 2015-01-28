@@ -1,5 +1,5 @@
-#!/bin/python -Es
-# Copyright (C) 2014 Red Hat
+#!/usr/bin/python -Es
+# Copyright (C) 2014-2015 Red Hat
 # AUTHOR: Dan Walsh <dwalsh@redhat.com>
 # see file 'COPYING' for use and warranty information
 #
@@ -68,7 +68,6 @@ class Atomic:
     SPC_ARGS = ["/usr/bin/docker", "run",
                 "-t",
                 "-i",
-                "--rm",
                 "--privileged",
                 "-v", "/:/host",
                 "-v", "/run:/run",
@@ -84,7 +83,6 @@ class Atomic:
     RUN_ARGS = ["/usr/bin/docker", "run",
                 "-t",
                 "-i",
-                "--rm",
                 "--name", "NAME",
                 "IMAGE" ]
 
@@ -153,10 +151,10 @@ class Atomic:
         try:
             self.d.inspect_container(self.name)
             try:
-                return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command)
+                return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command, stderr=subprocess.PIPE)
             except subprocess.CalledProcessError:
                 try:
-                    subprocess.check_call(["/usr/bin/docker", "start", self.name])
+                    subprocess.check_call(["/usr/bin/docker", "start", self.name], stderr=subprocess.PIPE)
                     return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command)
                 except subprocess.CalledProcessError:
                     pass
@@ -188,7 +186,7 @@ class Atomic:
         return (subprocess.check_call(cmd, env={
             "CONFDIR": "/etc/%s" % self.name,
             "LOGDIR": "/var/log/%s" % self.name,
-            "DATADIR":"/var/lib/%s" % self.name}, shell=True))
+            "DATADIR":"/var/lib/%s" % self.name}, shell=True, stderr=subprocess.PIPE))
 
     def _rpmostree(self, *args):
         os.execl("/usr/bin/rpm-ostree", "rpm-ostree", *args)
@@ -250,6 +248,15 @@ class Atomic:
             args.append(c)
         return " ".join(args)
 
+    def info(self):
+        try:
+            labels = self.d.inspect_image(self.image)["Config"]["Labels"]
+        except docker.errors.APIError:
+            self.update()
+            labels = self.d.inspect_image(self.image)["Config"]["Labels"]
+        for label in labels:
+            print ("%-13s: %s" % (label, labels[label]))
+        
     def install(self):
         try:
             inspect = self.d.inspect_image(self.image)["Config"]
@@ -337,6 +344,12 @@ if __name__ == '__main__':
                               action="store_true",
                               help=_("If an upgrade is available, reboot after deployment is complete"))
 
+    infop = subparser.add_parser("info",
+                                 help=_("dispaly label information about an image"),
+                                 epilog="atomic info attempts to read and display the LABEL information about an image")
+    infop.set_defaults(func=atomic.info)
+    infop.add_argument("image", help=_("container image"))
+
     installp = subparser.add_parser("install",
                                     help=_("execute container image install method"),
                                     epilog="atomic install attempts to read the LABEL INSTALL field in the image, if it does not exist atomic will just pull the image on to your machine.  You could add a LABEL INSTALL command to your Dockerfile like: 'LABEL INSTALL %s'" % atomic.print_install() )
@@ -390,6 +403,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         sys.exit(0)
     except subprocess.CalledProcessError as e:
+        print ""
         sys.exit(e.returncode)
     except docker.errors.DockerException as e:
         sys.stderr.write("%s\n" % str(e))

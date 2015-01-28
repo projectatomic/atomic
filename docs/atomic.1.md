@@ -6,7 +6,7 @@ atomic \- Atomic Management Tool
 
 # SYNOPSIS
 **atomic** [OPTIONS] COMMAND [arg...]
-  {defaults,host,install,run,uninstall,update}
+  {defaults,host,info,install,run,uninstall,update}
 
 # DESCRIPTION
 Atomic Management Tool
@@ -20,6 +20,9 @@ Atomic Management Tool
 list Default RUN/INSTALL/UNINSTALL Values
 
 **atomic-host(1)**
+execute Atomic commands
+
+**atomic-info(1)**
 execute Atomic commands
 
 **atomic-install(1)**
