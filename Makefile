@@ -6,7 +6,7 @@ PYTHON ?= /usr/bin/python
 
 all: python-build
 
-python-build: info.c search.c common.h policy.h policy.c
+python-build: atomic
 	$(PYTHON) setup.py build
 
 clean:
