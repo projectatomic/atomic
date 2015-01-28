@@ -312,9 +312,15 @@ def SetFunc(function):
             setattr(namespace, self.dest, function)
     return customAction
 
+class HelpByDefaultArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        sys.stderr.write('error: %s\n' % message)
+        self.print_help()
+        sys.exit(2)
+
 if __name__ == '__main__':
     atomic=Atomic()
-    parser = argparse.ArgumentParser(description=atomic.help())
+    parser = HelpByDefaultArgumentParser(description=atomic.help())
     subparser = parser.add_subparsers(help=_("Commands"))
     defp = subparser.add_parser("defaults",help=_("list default commands with which Atomic will RUN/INSTALL/UNINSTALL containers"))
     
