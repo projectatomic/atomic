@@ -99,6 +99,9 @@ class Atomic:
         sys.stdout.write(output + "\n")
 
     def update(self):
+        return subprocess.check_call(["/usr/bin/docker", "pull", self.image])
+        
+    def pull(self):
         prevstatus = ""
         prev = ""
         for line in self.d.pull(self.image, stream=True):
@@ -388,3 +391,6 @@ if __name__ == '__main__':
         sys.exit(0)
     except subprocess.CalledProcessError as e:
         sys.exit(e.returncode)
+    except docker.errors.DockerException as e:
+        sys.stderr.write("%s\n" % str(e))
+        sys.exit(1)
