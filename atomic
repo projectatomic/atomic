@@ -222,10 +222,10 @@ class Atomic(object):
             pass
 
         if self.name != self.image:
-            return subprocess.check_call(["/usr/bin/docker", "rm", self.name])
+            self.d.remove_container(self.name)
         else:
             try: 
-                self.d.remove_container(self.image)["Config"]
+                self.d.remove_container(self.image)
             except docker.errors.APIError:
                 pass
             return subprocess.check_call(["/usr/bin/docker", "rmi", self.image])
