@@ -272,10 +272,10 @@ class Atomic(object):
                 cmd = self.gen_cmd(args)
                 print(cmd)
 
-            return(subprocess.check_call(cmd, env={
-                "CONFDIR": "/etc/%s" % self.name,
-                "LOGDIR": "/var/log/%s" % self.name,
-                "DATADIR":"/var/lib/%s" % self.name}, shell=True))
+                return(subprocess.check_call(cmd, env={
+                    "CONFDIR": "/etc/%s" % self.name,
+                    "LOGDIR": "/var/log/%s" % self.name,
+                    "DATADIR":"/var/lib/%s" % self.name}, shell=True))
 
     def help(self):
         if os.path.exists("/usr/bin/rpm-ostree"):
