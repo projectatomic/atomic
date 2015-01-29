@@ -80,7 +80,7 @@ class Atomic(object):
                 "--name", "NAME",
                 "IMAGE" ]
 
-    RUN_ARGS = ["/usr/bin/docker", "run",
+    RUN_ARGS = ["/usr/bin/docker", "create",
                 "-t",
                 "-i",
                 "--name", "NAME",
@@ -224,8 +224,10 @@ class Atomic(object):
                 "DATADIR":"/var/lib/%s" % self.name}, shell=True, stderr=subprocess.PIPE)
                 
         else:
+            missing_RUN = False
             args = self._get_args("RUN")
             if not args:
+                missing_RUN = True 
                 args = self.RUN_ARGS + self._get_cmd()
                 
             cmd = self.gen_cmd(args)
@@ -233,9 +235,9 @@ class Atomic(object):
             subprocess.check_call(cmd, env={
                 "CONFDIR": "/etc/%s" % self.name,
                 "LOGDIR": "/var/log/%s" % self.name,
-                "DATADIR":"/var/lib/%s" % self.name}, shell=True, stderr=subprocess.PIPE)
-            if self.command:
-                return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command)
+                "DATADIR":"/var/lib/%s" % self.name}, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            if missing_RUN:
+                self._start()
 
     def _rpmostree(self, *args):
         os.execl("/usr/bin/rpm-ostree", "rpm-ostree", *args)
