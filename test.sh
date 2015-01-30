@@ -5,7 +5,9 @@ atomic install busybox
 atomic uninstall busybox
 atomic run --spc busybox /bin/ps
 atomic run busybox /bin/ps
-atomic run busybox /bin/sh
+atomic run --name=atomic_test busybox sleep 6000
+atomic run --name=atomic_test busybox ps 
+atomic uninstall --name=atomic_test busybox
 cat > Dockerfile <<EOF
 FROM busybox
 LABEL RUN /usr/bin/docker run -ti --rm IMAGE /bin/echo RUN
