@@ -1,4 +1,5 @@
-#!/bin/sh -x -e
+#!/bin/bash -xe
+
 atomic uninstall busybox
 atomic install busybox
 atomic uninstall busybox
