@@ -149,15 +149,22 @@ class Atomic(object):
             if self.spc:
                 self.name = self.name + "-spc"
 
+    
+    def _getconfig(self, key, default=None):
+        assert self.inspect is not None
+        cfg = self.inspect.get("Config")
+        if cfg is None:
+            return default
+        return cfg.get(key, default)
+
     def _get_cmd(self):
-        cmd = self.inspect["Config"]["Cmd"]
-        if not cmd:
-            cmd = [ "/bin/sh" ]
-        return cmd
-
+        return self._getconfig("Cmd", [ "/bin/sh" ])
+        
     def _interactive(self):
-        return self.inspect["Config"]["AttachStderr"] and self.inspect["Config"]["AttachStdout"] and self.inspect["Config"]["AttachStdin"]
-
+        return (self._getconfig("AttachStdin", False) and
+                self._getconfig("AttachStdout", False) and
+                self._getconfig("AttachStderr", False))
+        
     def _running(self):
         if self._interactive():
             cmd = ["/usr/bin/docker", "exec", "-t", "-i", self.name]
@@ -433,7 +440,7 @@ if __name__ == '__main__':
                       help=_("name of container"))
     runp = subparser.add_parser("run",
                                 help=_("execute container image run method."),
-                                epilog="atomic run defaults to the followign command, if image does not specify LABEL RUN\n'%s'" % atomic.print_run() )
+                                epilog="atomic run defaults to the following command, if image does not specify LABEL RUN\n'%s'" % atomic.print_run() )
     runp.set_defaults(func=atomic.run)
     runp.add_argument("-n", "--name", dest="name",
                       default=None,
