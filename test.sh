@@ -1,5 +1,6 @@
-#!/bin/sh -x -e
-atomic uninstall busybox
+#!/bin/bash -xe
+
+atomic uninstall busybox || true
 atomic install busybox
 atomic uninstall busybox
 atomic run --spc busybox /bin/ps
