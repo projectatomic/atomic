@@ -235,7 +235,7 @@ class Atomic(object):
             subprocess.check_call(cmd, env={
                 "CONFDIR": "/etc/%s" % self.name,
                 "LOGDIR": "/var/log/%s" % self.name,
-                "DATADIR":"/var/lib/%s" % self.name}, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+                "DATADIR":"/var/lib/%s" % self.name}, shell=True)
             if missing_RUN:
                 self._start()
 
