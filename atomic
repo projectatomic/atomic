@@ -68,16 +68,17 @@ class Atomic(object):
     SPC_ARGS = ["/usr/bin/docker", "run",
                 "-t",
                 "-i",
+                "--rm",
                 "--privileged",
                 "-v", "/:/host",
                 "-v", "/run:/run",
+                "-v", "/etc/localtime:/etc/localtime",
                 "--net=host",
                 "--ipc=host",
                 "--pid=host",
                 "-e", "HOST=/host",
                 "-e", "NAME=NAME",
                 "-e", "IMAGE=IMAGE",
-                "--name", "NAME",
                 "IMAGE" ]
 
     RUN_ARGS = ["/usr/bin/docker", "create",
@@ -99,7 +100,7 @@ class Atomic(object):
 
     def update(self):
         return subprocess.check_call(["/usr/bin/docker", "pull", self.image])
-        
+
     def pull(self):
         prevstatus = ""
         prev = ""
@@ -109,7 +110,7 @@ class Atomic(object):
             if prevstatus != status:
                 print status
             if 'id' not in bar:
-                continue    
+                continue
             if status == "Downloading":
                 self.writeOut(bar['progress'] + " ")
             elif status == "Extracting":
@@ -119,9 +120,9 @@ class Atomic(object):
             elif status.startswith("Pulling"):
                 self.writeOut("Pulling: " + bar['id'])
 
-            prevstatus = status        
+            prevstatus = status
         print("")
-        
+
     def set_args(self, args):
         self.args=args
         try:
@@ -153,10 +154,10 @@ class Atomic(object):
         if not cmd:
             cmd = [ "/bin/sh" ]
         return cmd
-        
+
     def _interactive(self):
         return self.inspect["Config"]["AttachStderr"] and self.inspect["Config"]["AttachStdout"] and self.inspect["Config"]["AttachStdin"]
-        
+
     def _running(self):
         if self._interactive():
             cmd = ["/usr/bin/docker", "exec", "-t", "-i", self.name]
@@ -167,7 +168,7 @@ class Atomic(object):
             return subprocess.check_call(cmd, stderr=subprocess.PIPE)
         else:
             print "Container is running"
-            
+
     def _start(self):
         if self._interactive():
             if self.command:
@@ -181,14 +182,14 @@ class Atomic(object):
                 return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command)
             else:
                 return subprocess.check_call(["/usr/bin/docker", "start", self.name], stderr=subprocess.PIPE)
-            
+
     def _get_args(self, label):
         config = self.inspect["Config"]
         if config and "Labels" in config:
             if config["Labels"] and label in config["Labels"]:
                 return config["Labels"][label].split()
         return None
-    
+
     def run(self):
         try:
             self.inspect = self.d.inspect_container(self.name)
@@ -218,26 +219,28 @@ class Atomic(object):
 
             cmd = self.gen_cmd(args)
             print(cmd)
-            subprocess.check_call(cmd, env={
-                "CONFDIR": "/etc/%s" % self.name,
-                "LOGDIR": "/var/log/%s" % self.name,
-                "DATADIR":"/var/lib/%s" % self.name}, shell=True, stderr=subprocess.PIPE)
-                
         else:
             missing_RUN = False
             args = self._get_args("RUN")
             if not args:
-                missing_RUN = True 
+                missing_RUN = True
                 args = self.RUN_ARGS + self._get_cmd()
-                
+
             cmd = self.gen_cmd(args)
             print(cmd)
-            subprocess.check_call(cmd, env={
-                "CONFDIR": "/etc/%s" % self.name,
-                "LOGDIR": "/var/log/%s" % self.name,
-                "DATADIR":"/var/lib/%s" % self.name}, shell=True)
+
             if missing_RUN:
-                self._start()
+                subprocess.check_call(cmd, env={
+                    "CONFDIR": "/etc/%s" % self.name,
+                    "LOGDIR": "/var/log/%s" % self.name,
+                    "DATADIR":"/var/lib/%s" % self.name}, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+                return self._start()
+
+        subprocess.check_call(cmd, env={
+            "CONFDIR": "/etc/%s" % self.name,
+            "LOGDIR": "/var/log/%s" % self.name,
+            "DATADIR":"/var/lib/%s" % self.name}, shell=True)
+
 
     def _rpmostree(self, *args):
         os.execl("/usr/bin/rpm-ostree", "rpm-ostree", *args)
@@ -258,7 +261,7 @@ class Atomic(object):
         self._rpmostree(*argv)
 
     def uninstall(self):
-        try: 
+        try:
             self.inspect = self.d.inspect_container(self.name)
             args = self._get_args("UNINSTALL")
             if args:
@@ -286,8 +289,12 @@ class Atomic(object):
             self.d.remove_container(self.image)
         except docker.errors.APIError:
             pass
-        subprocess.check_call(["/usr/bin/docker", "rmi", self.image])
-            
+        try:
+            self.inspect = self.d.inspect_image(self.image)
+            subprocess.check_call(["/usr/bin/docker", "rmi", self.image])
+        except docker.errors.APIError:
+            pass
+
 
     def gen_cmd(self,cargs):
         args = []
@@ -315,7 +322,7 @@ class Atomic(object):
             labels = self.d.inspect_image(self.image)["Config"]["Labels"]
         for label in labels:
             print ("%-13s: %s" % (label, labels[label]))
-        
+
     def install(self):
         try:
             self.inspect = self.d.inspect_image(self.image)
@@ -332,7 +339,7 @@ class Atomic(object):
                 "CONFDIR": "/etc/%s" % self.name,
                 "LOGDIR": "/var/log/%s" % self.name,
                 "DATADIR":"/var/lib/%s" % self.name}, shell=True))
-        
+
     def help(self):
         if os.path.exists("/usr/bin/rpm-ostree"):
             return _('Atomic Management Tool')
@@ -341,16 +348,16 @@ class Atomic(object):
 
     def print_spc(self):
         return " ".join(self.SPC_ARGS)
-    
+
     def print_run(self):
         return " ".join(self.RUN_ARGS)
-    
+
     def print_install(self):
         return " ".join(self.INSTALL_ARGS) + " /usr/bin/INSTALLCMD"
 
     def print_uninstall(self):
         return " ".join(self.INSTALL_ARGS) + " /usr/bin/UNINSTALLCMD"
-    
+
     def defaults(self):
         print(_("""
         Default configuration
@@ -387,7 +394,7 @@ if __name__ == '__main__':
     parser = HelpByDefaultArgumentParser(description=atomic.help())
     subparser = parser.add_subparsers(help=_("Commands"))
     defp = subparser.add_parser("defaults",help=_("list default commands with which Atomic will RUN/INSTALL/UNINSTALL containers"))
-    
+
     defp.set_defaults(func=atomic.defaults)
 
     if os.path.exists("/usr/bin/rpm-ostree"):
