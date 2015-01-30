@@ -148,14 +148,21 @@ class Atomic(object):
             if self.spc:
                 self.name = self.name + "-spc"
 
+    
+    def _getconfig(self, key, default=None):
+        assert self.inspect is not None
+        cfg = self.inspect.get("Config")
+        if cfg is None:
+            return default
+        return cfg.get(key, default)
+
     def _get_cmd(self):
-        cmd = self.inspect["Config"]["Cmd"]
-        if not cmd:
-            cmd = [ "/bin/sh" ]
-        return cmd
+        return self._getconfig("Cmd", [ "/bin/sh" ])
         
     def _interactive(self):
-        return self.inspect["Config"]["AttachStderr"] and self.inspect["Config"]["AttachStdout"] and self.inspect["Config"]["AttachStdin"]
+        return (self._getconfig("AttachStdin", False) and
+                self._getconfig("AttachStdout", False) and
+                self._getconfig("AttachStderr", False))
         
     def _running(self):
         if self._interactive():
