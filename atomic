@@ -155,7 +155,10 @@ class Atomic(object):
         cfg = self.inspect.get("Config")
         if cfg is None:
             return default
-        return cfg.get(key, default)
+        val = cfg.get(key, default)
+        if val is None:
+            return default
+        return val
 
     def _get_cmd(self):
         return self._getconfig("Cmd", [ "/bin/sh" ])
