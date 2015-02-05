@@ -383,25 +383,6 @@ and create new container on the '%(image)s' image.
     def print_uninstall(self):
         return " ".join(self.INSTALL_ARGS) + " /usr/bin/UNINSTALLCMD"
 
-    def defaults(self):
-        print(_("""
-        Default configuration
-
-        'atomic run' attempts to read the LABEL RUN field in the container image,
-        if this field does not exists atom run defaults to the following command:
-
- %s
-
-        'atomic install' attempts to read the LABEL INSTALL field in the container image,
-        if this field does not exists atom install defaults to the following command:
-
- %s
-
-        These defaults are suggested values for your container images.
-
-        atomic will replace the NAME and IMAGE fields with the name and image specified via the command,  NAME will be replaced with IMAGE if it is not specified.
-        """ % (" ".join(self.RUN_ARGS), " ".join(self.INSTALL_ARGS))))
-
 def SetFunc(function):
     class customAction(argparse.Action):
         def __call__(self, parser, namespace, values, option_string=None):
@@ -417,30 +398,27 @@ class HelpByDefaultArgumentParser(argparse.ArgumentParser):
 if __name__ == '__main__':
     atomic=Atomic()
     parser = HelpByDefaultArgumentParser(description=atomic.help())
-    subparser = parser.add_subparsers(help=_("Commands"))
-    defp = subparser.add_parser("defaults",help=_("list default commands with which Atomic will RUN/INSTALL/UNINSTALL containers"))
-
-    defp.set_defaults(func=atomic.defaults)
+    subparser = parser.add_subparsers(help=_("commands"))
 
     if os.path.exists("/usr/bin/rpm-ostree"):
         hostp = subparser.add_parser("host",help=_("execute Atomic host commands"))
-        host_subparser = hostp.add_subparsers(help=_("Host Commands"))
-        rollbackp = host_subparser.add_parser("rollback", help=_("revert Atomic to the previously booted tree"))
+        host_subparser = hostp.add_subparsers(help=_("host commands"))
+        rollbackp = host_subparser.add_parser("rollback", help=_("switch to alternate tree at boot"))
         rollbackp.set_defaults(func=atomic.host_rollback)
         rollbackp.add_argument("-r", "--reboot", dest="reboot",
                                action="store_true",
-                               help=_("Initiate a reboot after rollback is prepared"))
+                               help=_("initiate a reboot after rollback is prepared"))
 
-        statusp = host_subparser.add_parser("status", help=_("List information about all deployments"))
+        statusp = host_subparser.add_parser("status", help=_("list information about all deployments"))
         statusp.set_defaults(func=atomic.host_status)
-        upgradep = host_subparser.add_parser("upgrade", help=_("List information about all deployments"))
+        upgradep = host_subparser.add_parser("upgrade", help=_("upgrade to the latest Atomic tree if one is availabel"))
         upgradep.set_defaults(func=atomic.host_upgrade)
         upgradep.add_argument("-r", "--reboot", dest="reboot",
                               action="store_true",
-                              help=_("If an upgrade is available, reboot after deployment is complete"))
+                              help=_("if an upgrade is available, reboot after deployment is complete"))
 
     infop = subparser.add_parser("info",
-                                 help=_("dispaly label information about an image"),
+                                 help=_("display label information about an image"),
                                  epilog="atomic info attempts to read and display the LABEL information about an image")
     infop.set_defaults(func=atomic.info)
     infop.add_argument("image", help=_("container image"))
@@ -452,12 +430,12 @@ if __name__ == '__main__':
     installp.set_defaults(func=atomic.install)
     installp.add_argument("image", help=_("container image"))
     installp.add_argument("command", nargs=argparse.REMAINDER,
-                          help=_("execute container image install method."))
+                          help=_("execute container image install method"))
     installp.add_argument("-n", "--name", dest="name",
                       default=None,
                       help=_("name of container"))
     runp = subparser.add_parser("run",
-                                help=_("execute container image run method."),
+                                help=_("execute container image run method"),
                                 epilog="atomic run defaults to the following command, if image does not specify LABEL RUN\n'%s'" % atomic.print_run() )
     runp.set_defaults(func=atomic.run)
     runp.add_argument("-n", "--name", dest="name",
