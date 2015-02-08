@@ -94,9 +94,9 @@ class Atomic(object):
         self.spc = False
         self.inspect = None
 
-    def writeOut(self, output):
+    def writeOut(self, output, lf="\n"):
         sys.stdout.flush()
-        sys.stdout.write(output + "\n")
+        sys.stdout.write(output + lf)
 
     def update(self):
         return subprocess.check_call(["/usr/bin/docker", "pull", self.image])
@@ -108,7 +108,7 @@ class Atomic(object):
             bar = json.loads(line)
             status = bar['status']
             if prevstatus != status:
-                print status
+                self.writeOut(status, "")
             if 'id' not in bar:
                 continue
             if status == "Downloading":
@@ -121,7 +121,7 @@ class Atomic(object):
                 self.writeOut("Pulling: " + bar['id'])
 
             prevstatus = status
-        print("")
+        self.writeOut("")
 
     def set_args(self, args):
         self.args=args
@@ -163,6 +163,9 @@ class Atomic(object):
     def _get_cmd(self):
         return self._getconfig("Cmd", [ "/bin/sh" ])
         
+    def _get_labels(self):
+        return self._getconfig("Labels", [])
+        
     def _interactive(self):
         return (self._getconfig("AttachStdin", False) and
                 self._getconfig("AttachStdout", False) and
@@ -177,7 +180,7 @@ class Atomic(object):
                 cmd += self._get_cmd()
             return subprocess.check_call(cmd, stderr=subprocess.PIPE)
         else:
-            print "Container is running"
+            self.writeOut("Container is running")
 
     def _start(self):
         if self._interactive():
@@ -194,10 +197,9 @@ class Atomic(object):
                 return subprocess.check_call(["/usr/bin/docker", "start", self.name], stderr=subprocess.PIPE)
 
     def _get_args(self, label):
-        config = self.inspect["Config"]
-        if config and "Labels" in config:
-            if config["Labels"] and label in config["Labels"]:
-                return config["Labels"][label].split()
+        labels = self._get_labels()
+        if label in labels:
+            return labels[label].split()
         return None
 
     def _check_latest(self):
@@ -243,7 +245,7 @@ and create new container on the '%(image)s' image.
                 args = self.SPC_ARGS +  self._get_cmd()
 
             cmd = self.gen_cmd(args)
-            print(cmd)
+            self.writeOut(cmd)
         else:
             missing_RUN = False
             args = self._get_args("RUN")
@@ -252,7 +254,7 @@ and create new container on the '%(image)s' image.
                 args = self.RUN_ARGS + self._get_cmd()
 
             cmd = self.gen_cmd(args)
-            print(cmd)
+            self.writeOut(cmd)
 
             if missing_RUN:
                 subprocess.check_call(cmd, env={
@@ -291,7 +293,7 @@ and create new container on the '%(image)s' image.
             args = self._get_args("UNINSTALL")
             if args:
                 cmd = self.gen_cmd(args)
-                print(cmd)
+                self.writeOut(cmd)
                 subprocess.check_call(cmd, env={
                     "CONFDIR": "/etc/%s" % self.name,
                     "LOGDIR": "/var/log/%s" % self.name,
@@ -341,12 +343,14 @@ and create new container on the '%(image)s' image.
 
     def info(self):
         try:
-            labels = self.d.inspect_image(self.image)["Config"]["Labels"]
+            self.inspect = self.d.inspect_image(self.image)
         except docker.errors.APIError:
             self.update()
-            labels = self.d.inspect_image(self.image)["Config"]["Labels"]
+            self.inspect = self.d.inspect_image(self.image)
+
+        labels = self._get_labels()
         for label in labels:
-            print ("%-13s: %s" % (label, labels[label]))
+            self.writeOut("%-13s: %s" % (label, labels[label]))
 
     def install(self):
         try:
@@ -358,7 +362,7 @@ and create new container on the '%(image)s' image.
         args = self._get_args("INSTALL")
         if args:
             cmd = self.gen_cmd(args)
-            print(cmd)
+            self.writeOut(cmd)
 
             return(subprocess.check_call(cmd, env={
                 "CONFDIR": "/etc/%s" % self.name,
@@ -476,7 +480,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         sys.exit(0)
     except subprocess.CalledProcessError as e:
-        print ""
+        sys.stderr.write("\n")
         sys.exit(e.returncode)
     except docker.errors.DockerException as e:
         sys.stderr.write("%s\n" % str(e))
