@@ -316,12 +316,8 @@ and create new container on the '%(image)s' image.
             self.d.remove_container(self.image)
         except docker.errors.APIError:
             pass
-        try:
-            self.inspect = self.d.inspect_image(self.image)
-            subprocess.check_call(["/usr/bin/docker", "rmi", self.image])
-        except docker.errors.APIError:
-            pass
-
+        self.inspect = self.d.inspect_image(self.image)
+        subprocess.check_call(["/usr/bin/docker", "rmi", self.image])
 
     def gen_cmd(self,cargs):
         args = []
