@@ -411,7 +411,7 @@ if __name__ == '__main__':
 
         statusp = host_subparser.add_parser("status", help=_("list information about all deployments"))
         statusp.set_defaults(func=atomic.host_status)
-        upgradep = host_subparser.add_parser("upgrade", help=_("upgrade to the latest Atomic tree if one is availabel"))
+        upgradep = host_subparser.add_parser("upgrade", help=_("upgrade to the latest Atomic tree if one is available"))
         upgradep.set_defaults(func=atomic.host_upgrade)
         upgradep.add_argument("-r", "--reboot", dest="reboot",
                               action="store_true",
