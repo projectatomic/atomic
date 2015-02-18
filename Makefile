@@ -4,7 +4,7 @@ SYSCONFDIR ?= $(DESTDIR)/etc/sysconfig
 PROFILEDIR ?= $(DESTDIR)/etc/profile.d
 PYTHON ?= /usr/bin/python
 
-all: python-build
+all: python-build docs
 
 test:
 	sh ./test.sh
@@ -12,6 +12,13 @@ test:
 python-build: atomic
 	$(PYTHON) setup.py build
 	pylint -E --additional-builtins _ atomic
+
+MANPAGES_MD = $(wildcard docs/*.md)
+
+docs/%.1: docs/%.1.md
+	go-md2man -in $< -out $@.tmp && mv $@.tmp $@
+
+docs: $(MANPAGES_MD:%.md=%)
 
 clean:
 	$(PYTHON) setup.py clean
@@ -24,3 +31,6 @@ install: all
 
 	[ -d $(PROFILEDIR) ] || mkdir -p $(PROFILEDIR)
 	install -m 644 atomic.sh $(PROFILEDIR)
+
+	install -d $(PREFIX)/share/man/man1
+	install $(basename $(MANPAGES_MD)) $(PREFIX)/share/man/man1
