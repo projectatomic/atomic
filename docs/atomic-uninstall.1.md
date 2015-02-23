@@ -6,6 +6,7 @@ atomic-uninstall - Remove/Uninstall container/container image from system
 
 # SYNOPSIS
 **atomic uninstall**
+[**-f**][**--force**]
 [**-h**]
 IMAGE
 
@@ -14,7 +15,7 @@ IMAGE
 container IMAGE, if this field does not exists **atom uninstall** will just
 uninstall the image.
 
-If the contaimer image has a LABEL UNINSTALL instruction like the folling:
+If the container image has a LABEL UNINSTALL instruction like the following:
 
 ```LABEL UNINSTALL /usr/bin/docker run -t -i --rm --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=NAME -e IMAGE=IMAGE -e CONFDIR=${CONFDIR} -e LOGDIR=${LOGDIR} -e DATADIR=${DATADIR} --name NAME IMAGE /bin/uninstall.sh```
 
@@ -23,6 +24,9 @@ image specified via the command,  `atomic uninstall` will also pass in the CONFD
 
 
 # OPTIONS:
+**-f** **--force**
+  Remove all containers based on this image
+
 **--help**
   Print usage statement
 

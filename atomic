@@ -93,12 +93,24 @@ class Atomic(object):
         self.image = None
         self.spc = False
         self.inspect = None
+        self.force = False
 
     def writeOut(self, output, lf="\n"):
         sys.stdout.flush()
         sys.stdout.write(output + lf)
 
+    def force_delete_containers(self):
+        if self.d.inspect_image(self.image) != None:
+            image = self.image
+            if self.image.find(":") == -1:
+                image += ":latest"
+            for c in self.d.containers(all=True):
+                if c["Image"] == image:
+                    self.d.remove_container(c["Id"], force=True)
+
     def update(self):
+        if self.force:
+            self.force_delete_containers()
         return subprocess.check_call(["/usr/bin/docker", "pull", self.image])
 
     def pull(self):
@@ -141,6 +153,11 @@ class Atomic(object):
 
         try:
             self.name = args.name
+        except:
+            pass
+
+        try:
+            self.force = args.force
         except:
             pass
 
@@ -214,6 +231,11 @@ uninstall the '%(name)s' container.
 # atomic uninstall --name %(name)s %(image)s
 
 and create new container on the '%(image)s' image.
+
+atomic update --force %(image)s
+
+removes all containers based on an image.
+
 """ % { "name" : self.name, "image" : self.image} )
 
     def run(self):
@@ -288,6 +310,8 @@ and create new container on the '%(image)s' image.
         self._rpmostree(*argv)
 
     def uninstall(self):
+        if self.force:
+            self.force_delete_containers()
         try:
             self.inspect = self.d.inspect_container(self.name)
             args = self._get_args("UNINSTALL")
@@ -451,16 +475,25 @@ if __name__ == '__main__':
 
     uninstallp = subparser.add_parser("uninstall",
                                       help=_("execute container image uninstall method"),
-                                                                          epilog="atomic uninstall attempts to read the LABEL UNINSTALL field in the image, if it does not exist atomic will uninstall the image on your machine.  You could add a LABEL UNINSTALL command to your Dockerfile like: 'LABEL UNINSTALL %s'" % atomic.print_uninstall() )
+                                                                          epilog="atomic uninstall attempts to read the LABEL UNINSTALL field in the image, if it does not exist atomic will remove the image from your machine.  You could add a LABEL UNINSTALL command to your Dockerfile like: 'LABEL UNINSTALL %s'" % atomic.print_uninstall() )
 
     uninstallp.set_defaults(func=atomic.uninstall)
     uninstallp.add_argument("-n", "--name", dest="name",
                             default=None,
                             help=_("name of container"))
+    uninstallp.add_argument("-f", "--force",
+                            default=False,
+                            action="store_true",
+                            help=_("remove all containers based on this image"))
     uninstallp.add_argument("image", help=_("container image"))
 
-    updatep = subparser.add_parser("update",help=_("pull latest container image from repository"))
+    updatep = subparser.add_parser("update",help=_("pull latest container image from repository"), epilog="atomic update downloads the latest container image. If a previously container based on this image exists, the container will continue to use the old image.  Use --force to remove the container.")
+
     updatep.set_defaults(func=atomic.update)
+    updatep.add_argument("-f", "--force",
+                         default=False,
+                         action="store_true",
+                         help=_("remove all containers based on this image"))
     updatep.add_argument("image", help=_("container image"))
 
     try:
