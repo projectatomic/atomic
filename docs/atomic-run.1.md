@@ -8,6 +8,7 @@ atomic-run - Execute container image run method
 **atomic run**
 [**-h**]
 [**--name**[=*NAME*]]
+[**--spc**]
 IMAGE [COMMAND] [ARG...]
 
 # DESCRIPTION
@@ -15,7 +16,7 @@ IMAGE [COMMAND] [ARG...]
 IMAGE.
 
 
-If the contaimer image has a LABEL RUN instruction like the folling:
+If the container image has a LABEL RUN instruction like the following:
 
 ```LABEL RUN /usr/bin/docker run -t -i --rm --cap_add=SYS_ADMIN --net=host -v ${LOGDIR}:/var/log -v ${DATADIR}:/var/lib --name NAME IMAGE```
 
@@ -35,7 +36,7 @@ atomic will replace the NAME and IMAGE fields with the name and image specified 
 NAME will default to the IMAGENAME if it is not specified.
 
 **--spc**
-  Run container in super priviliged container mode
+  Run container in super privileged container mode
 
   The image will run with the following command:
   

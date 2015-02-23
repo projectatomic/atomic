@@ -14,7 +14,7 @@ IMAGE [COMMAND] [ARG...]
 **atomic install** attempts to read the `LABEL INSTALL` field in the container
 IMAGE, if this field does not exists `atom install` will install the IMAGE
 
-If the contaimer image has a LABEL INSTALL instruction like the folling:
+If the container image has a LABEL INSTALL instruction like the following:
 
 ```LABEL INSTALL /usr/bin/docker run -t -i --rm --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=NAME -e IMAGE=IMAGE -e CONFDIR=${CONFDIR} -e LOGDIR=${LOGDIR} -e DATADIR=${DATADIR} --name NAME IMAGE /bin/install.sh```
 
