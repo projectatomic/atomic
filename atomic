@@ -149,7 +149,7 @@ class Atomic(object):
             if self.spc:
                 self.name = self.name + "-spc"
 
-    
+
     def _getconfig(self, key, default=None):
         assert self.inspect is not None
         cfg = self.inspect.get("Config")
@@ -162,15 +162,15 @@ class Atomic(object):
 
     def _get_cmd(self):
         return self._getconfig("Cmd", [ "/bin/sh" ])
-        
+
     def _get_labels(self):
         return self._getconfig("Labels", [])
-        
+
     def _interactive(self):
         return (self._getconfig("AttachStdin", False) and
                 self._getconfig("AttachStdout", False) and
                 self._getconfig("AttachStderr", False))
-        
+
     def _running(self):
         if self._interactive():
             cmd = ["/usr/bin/docker", "exec", "-t", "-i", self.name]
@@ -206,8 +206,8 @@ class Atomic(object):
         inspect = self.d.inspect_image(self.image)
         if inspect["Id"] != self.inspect["Image"]:
             response = ""
-            sys.stdout.write("""The '%(name)s' container is using an older version of the installed 
-'%(image)s' container image. If you wish to use the newer image, 
+            sys.stdout.write("""The '%(name)s' container is using an older version of the installed
+'%(image)s' container image. If you wish to use the newer image,
 you must either create a new container with a new name or
 uninstall the '%(name)s' container.
 
