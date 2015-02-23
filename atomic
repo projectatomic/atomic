@@ -451,7 +451,7 @@ if __name__ == '__main__':
 
     uninstallp = subparser.add_parser("uninstall",
                                       help=_("execute container image uninstall method"),
-                                                                          epilog="atomic install attempts to read the LABEL UNINSTALL field in the image, if it does not exist atomic will just pull the image on to your machine.  You could add a LABEL INSTALL command to your Dockerfile like: 'LABEL UNINSTALL %s'" % atomic.print_uninstall() )
+                                                                          epilog="atomic uninstall attempts to read the LABEL UNINSTALL field in the image, if it does not exist atomic will uninstall the image on your machine.  You could add a LABEL UNINSTALL command to your Dockerfile like: 'LABEL UNINSTALL %s'" % atomic.print_uninstall() )
 
     uninstallp.set_defaults(func=atomic.uninstall)
     uninstallp.add_argument("-n", "--name", dest="name",
