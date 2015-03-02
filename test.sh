@@ -26,8 +26,8 @@ LABEL INSTALL /usr/bin/docker run -ti --rm IMAGE /bin/echo INSTALL
 LABEL UNINSTALL /usr/bin/docker run -ti --rm IMAGE /bin/echo UNINSTALL
 EOF
 docker build -t atomic_busybox .
-./atomic run atomic_busybox
-./atomic install atomic_busybox
-./atomic uninstall atomic_busybox
+./atomic run atomic_busybox | grep RUN
+./atomic install atomic_busybox | grep INSTALL
+./atomic uninstall atomic_busybox | grep UNINSTALL
 rm -f Dockerfile
 ./atomic uninstall busybox

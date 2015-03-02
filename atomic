@@ -314,14 +314,6 @@ removes all containers based on an image.
             self.force_delete_containers()
         try:
             self.inspect = self.d.inspect_container(self.name)
-            args = self._get_args("UNINSTALL")
-            if args:
-                cmd = self.gen_cmd(args)
-                self.writeOut(cmd)
-                subprocess.check_call(cmd, env={
-                    "CONFDIR": "/etc/%s" % self.name,
-                    "LOGDIR": "/var/log/%s" % self.name,
-                    "DATADIR":"/var/lib/%s" % self.name}, shell=True)
         except docker.errors.APIError:
             pass
 
@@ -341,6 +333,14 @@ removes all containers based on an image.
         except docker.errors.APIError:
             pass
         self.inspect = self.d.inspect_image(self.image)
+        args = self._get_args("UNINSTALL")
+        if args:
+            cmd = self.gen_cmd(args)
+            self.writeOut(cmd)
+            subprocess.check_call(cmd, env={
+                "CONFDIR": "/etc/%s" % self.name,
+                "LOGDIR": "/var/log/%s" % self.name,
+                "DATADIR":"/var/lib/%s" % self.name}, shell=True)
         subprocess.check_call(["/usr/bin/docker", "rmi", self.image])
 
     def gen_cmd(self,cargs):
