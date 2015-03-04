@@ -291,6 +291,23 @@ removes all containers based on an image.
             "DATADIR":"/var/lib/%s" % self.name}, shell=True)
 
 
+    def stop(self):
+        self.inspect = self.d.inspect_container(self.name)
+        args = self._get_args("STOP")
+        if args:
+            cmd = self.gen_cmd(args)
+            self.writeOut(cmd)
+
+            subprocess.check_call(cmd, env={
+                "CONFDIR": "/etc/%s" % self.name,
+                "LOGDIR": "/var/log/%s" % self.name,
+                "DATADIR":"/var/lib/%s" % self.name}, shell=True)
+
+
+        # Container exists
+        if self.inspect["State"]["Running"]:
+            self.d.stop(self.name)
+
     def _rpmostree(self, *args):
         os.execl("/usr/bin/rpm-ostree", "rpm-ostree", *args)
 
@@ -458,6 +475,15 @@ if __name__ == '__main__':
     installp.add_argument("-n", "--name", dest="name",
                       default=None,
                       help=_("name of container"))
+    stopp = subparser.add_parser("stop",
+                                help=_("execute container image stop method"),
+                                 epilog="atomic will just stop the container if it is running, if image does not specify LABEL STOP\n")
+    stopp.set_defaults(func=atomic.stop)
+    stopp.add_argument("-n", "--name", dest="name",
+                      default=None,
+                      help=_("name of container"))
+    stopp.add_argument("image", help=_("container image"))
+
     runp = subparser.add_parser("run",
                                 help=_("execute container image run method"),
                                 epilog="atomic run defaults to the following command, if image does not specify LABEL RUN\n'%s'" % atomic.print_run() )
