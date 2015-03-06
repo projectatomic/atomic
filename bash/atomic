@@ -1,0 +1,362 @@
+#!/bin/bash
+#
+# bash completion file for core atomic commands
+# copied from the docker bash completion
+#
+#
+# This script provides completion of:
+#  - commands and their options
+#  - container ids and names
+#  - image repos and tags
+#  - filepaths
+#
+# To enable the completions either:
+#  - place this file in /etc/bash_completion.d
+#  or
+#  - copy this file to e.g. ~/.atomic-completion.sh and add the line
+#    below to your .bashrc after bash completion features are loaded
+#    . ~/.atomic-completion.sh
+#
+# Note:
+# Currently, the completions will not work if the atomic daemon is not
+# bound to the default communication port/socket
+# If the atomic daemon is using a unix socket for communication your user
+# must have access to the socket for the completions to function correctly
+#
+# Note for developers:
+# Please arrange options sorted alphabetically by long name with the short 
+# options immediately following their corresponding long form.
+# This order should be applied to lists, alternatives and code blocks.
+
+__docker_q() {
+	docker 2>/dev/null "$@"
+}
+
+_atomic_atomic() {
+	local boolean_options="
+		--help -h
+	"
+	case "$prev" in
+		$main_options_with_args_glob )
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "$boolean_options $main_options_with_args" -- "$cur" ) )
+			;;
+		*)
+			COMPREPLY=( $( compgen -W "${commands[*]} help" -- "$cur" ) )
+			;;
+	esac
+}
+
+__atomic_containers_all() {
+	local IFS=$'\n'
+	local containers=( $(__docker_q ps -aq --no-trunc) )
+	if [ "$1" ]; then
+		containers=( $(__docker_q inspect --format "{{if $1}}{{.Id}}{{end}}" "${containers[@]}") )
+	fi
+	local names=( $(__docker_q inspect --format '{{.Name}}' "${containers[@]}") )
+	names=( "${names[@]#/}" ) # trim off the leading "/" from the container names
+	unset IFS
+	COMPREPLY=( $(compgen -W "${names[*]} ${containers[*]}" -- "$cur") )
+}
+
+__atomic_containers_running() {
+	__atomic_containers_all '.State.Running'
+}
+
+__atomic_containers_stopped() {
+	__atomic_containers_all 'not .State.Running'
+}
+
+__atomic_containers_pauseable() {
+	__atomic_containers_all 'and .State.Running (not .State.Paused)'
+}
+
+__atomic_containers_unpauseable() {
+	__atomic_containers_all '.State.Paused'
+}
+
+__atomic_image_repos() {
+	local repos="$(__docker_q images | awk 'NR>1 && $1 != "<none>" { print $1 }')"
+	COMPREPLY=( $(compgen -W "$repos" -- "$cur") )
+}
+
+__atomic_image_repos_and_tags() {
+	local reposAndTags="$(__docker_q images | awk 'NR>1 && $1 != "<none>" { print $1; print $1":"$2 }')"
+	COMPREPLY=( $(compgen -W "$reposAndTags" -- "$cur") )
+	__ltrim_colon_completions "$cur"
+}
+
+__atomic_image_repos_and_tags_and_ids() {
+	local images="$(__docker_q images -a --no-trunc | awk 'NR>1 { print $3; if ($1 != "<none>") { print $1; print $1":"$2 } }')"
+	COMPREPLY=( $(compgen -W "$images" -- "$cur") )
+	__ltrim_colon_completions "$cur"
+}
+
+__atomic_containers_and_images() {
+	__atomic_containers_all
+	local containers=( "${COMPREPLY[@]}" )
+	__atomic_image_repos_and_tags_and_ids
+	COMPREPLY+=( "${containers[@]}" )
+}
+
+__atomic_pos_first_nonflag() {
+	local argument_flags=$1
+
+	local counter=$cpos
+	while [ $counter -le $cword ]; do
+		if [ -n "$argument_flags" ] && eval "case '${words[$counter]}' in $argument_flags) true ;; *) false ;; esac"; then
+			(( counter++ ))
+		else
+			case "${words[$counter]}" in
+				-*)
+					;;
+				*)
+					break
+					;;
+			esac
+		fi
+		(( counter++ ))
+	done
+
+	echo $counter
+}
+
+# Transforms a multiline list of strings into a single line string
+# with the words separated by "|".
+# This is used to prepare arguments to __atomic_pos_first_nonflag().
+__atomic_to_alternatives() {
+	local parts=( $1 )
+	local IFS='|'
+	echo "${parts[*]}"
+}
+
+# Transforms a multiline list of options into an extglob pattern
+# suitable for use in case statements.
+__atomic_to_extglob() {
+	local extglob=$( __atomic_to_alternatives "$1" )
+	echo "@($extglob)"
+}
+
+_atomic_help() {
+	local counter=$(__atomic_pos_first_nonflag)
+	if [ $cword -eq $counter ]; then
+		COMPREPLY=( $( compgen -W "${commands[*]}" -- "$cur" ) )
+	fi
+}
+
+_atomic_info() {
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "-h" -- "$cur" ) )
+			;;
+		*)
+		    __atomic_image_repos_and_tags
+		    ;;
+	esac
+}
+
+_atomic_update() {
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "--force -t" -- "$cur" ) )
+			;;
+		*)
+		    __atomic_image_repos_and_tags
+		    ;;
+	esac
+}
+
+_atomic_uninstall() {
+	__atomic_image_repos_and_tags_and_ids
+}
+
+_atomic_run() {
+	local options_with_args="
+		--name -n
+		--spc
+	"
+
+	local all_options="$options_with_args
+		--help
+	"
+
+	[ "$command" = "run" ] && all_options="$all_options"
+
+	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
+
+	case "$prev" in
+		$options_with_args_glob )
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+			;;
+		*)
+			local counter=$( __atomic_pos_first_nonflag $( __atomic_to_alternatives "$options_with_args" ) )
+
+			if [ $cword -eq $counter ]; then
+				__atomic_image_repos_and_tags_and_ids
+			fi
+			;;
+	esac
+}
+
+_atomic_install() {
+	local options_with_args="
+		--name -n
+	"
+	local all_options="$options_with_args
+		--help
+	"
+
+	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
+
+	case "$prev" in
+		$options_with_args_glob )
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "--name -n" -- "$cur" ) )
+			;;
+		*)
+		    __atomic_image_repos_and_tags_and_ids
+			;;
+	esac
+}
+
+_atomic_stop() {
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "--name -n" -- "$cur" ) )
+			;;
+		*)
+			__atomic_containers_running
+			;;
+	esac
+}
+
+_atomic_host_rollback() {
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "--reboot -h --help" -- "$cur" ) )
+			;;
+		*)
+			;;
+	esac
+}
+
+_atomic_host_status() {
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "-h --help" -- "$cur" ) )
+			;;
+		*)
+			;;
+	esac
+}
+
+_atomic_host_upgrade() {
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "--reboot -h --help" -- "$cur" ) )
+			;;
+		*)
+			;;
+	esac
+}
+
+_atomic_host_host() {
+	local boolean_options="
+		--help -h
+	"
+	case "$prev" in
+		$main_options_with_args_glob )
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "$boolean_options $main_options_with_args" -- "$cur" ) )
+			;;
+		*)
+			COMPREPLY=( $( compgen -W "${commands[*]} help" -- "$cur" ) )
+			;;
+	esac
+}
+
+_atomic_host() {
+	local commands=(
+	        rollback
+		status
+		upgrade
+	)
+
+	local completions_func=_atomic_host_${prev}
+	declare -F $completions_func >/dev/null && $completions_func
+
+	return 0
+}
+
+_atomic() {
+	local previous_extglob_setting=$(shopt -p extglob)
+	shopt -s extglob
+
+	local commands=(
+	        host
+		info
+		install
+		stop
+		run
+		uninstall
+		update
+	)
+
+	local main_options_with_args="
+		--help
+	"
+
+	local main_options_with_args_glob=$(__atomic_to_extglob "$main_options_with_args")
+
+	COMPREPLY=()
+	local cur prev words cword
+	_get_comp_words_by_ref -n : cur prev words cword
+
+	local command='atomic' cpos=0
+	local counter=1
+	while [ $counter -lt $cword ]; do
+		case "${words[$counter]}" in
+			$main_options_with_args_glob )
+				(( counter++ ))
+				;;
+			-*)
+				;;
+			*)
+				command="${words[$counter]}"
+				cpos=$counter
+				(( cpos++ ))
+				break
+				;;
+		esac
+		(( counter++ ))
+	done
+
+	local completions_func=_atomic_${command}
+	declare -F $completions_func >/dev/null && $completions_func
+
+	eval "$previous_extglob_setting"
+	return 0
+}
+
+complete -F _atomic atomic

@@ -3,6 +3,7 @@ PREFIX ?= $(DESTDIR)/usr
 SYSCONFDIR ?= $(DESTDIR)/etc/sysconfig
 PROFILEDIR ?= $(DESTDIR)/etc/profile.d
 PYTHON ?= /usr/bin/python
+BASHCOMPLETIONDIR ?= $(PREFIX)/share/bash-completion/completions/
 
 all: python-build docs
 
@@ -34,3 +35,6 @@ install: all
 
 	install -d $(PREFIX)/share/man/man1
 	install $(basename $(MANPAGES_MD)) $(PREFIX)/share/man/man1
+	-mkdir -p $(BASHCOMPLETIONDIR)
+	install -m 644 bash/atomic $(BASHCOMPLETIONDIR)
+
