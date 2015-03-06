@@ -27,6 +27,7 @@ import gettext
 import docker
 import json
 import subprocess
+import requests
 
 PROGNAME="atomic"
 gettext.bindtextdomain(PROGNAME, "/usr/share/locale")
@@ -100,7 +101,7 @@ class Atomic(object):
         sys.stdout.write(output + lf)
 
     def force_delete_containers(self):
-        if self.d.inspect_image(self.image) != None:
+        if self._inspect_image():
             image = self.image
             if self.image.find(":") == -1:
                 image += ":latest"
@@ -213,6 +214,24 @@ class Atomic(object):
             else:
                 return subprocess.check_call(["/usr/bin/docker", "start", self.name], stderr=subprocess.PIPE)
 
+    def _inspect_image(self):
+        try:
+            return self.d.inspect_image(self.image)
+        except docker.errors.APIError:
+            pass
+        except requests.exceptions.ConnectionError as e:
+            raise IOError("Unable to communicate with docker daemon: %s\n" % str(e))
+        return None
+
+    def _inspect_container(self):
+        try:
+            return self.d.inspect_container(self.name)
+        except docker.errors.APIError:
+            pass
+        except requests.exceptions.ConnectionError as e:
+            raise IOError("Unable to communicate with docker daemon: %s\n" % str(e))
+        return None
+
     def _get_args(self, label):
         labels = self._get_labels()
         if label in labels:
@@ -220,7 +239,7 @@ class Atomic(object):
         return None
 
     def _check_latest(self):
-        inspect = self.d.inspect_image(self.image)
+        inspect = self._inspect_image()
         if inspect["Id"] != self.inspect["Image"]:
             response = ""
             sys.stdout.write("""The '%(name)s' container is using an older version of the installed
@@ -249,10 +268,7 @@ removes all containers based on an image.
         return command
 
     def run(self):
-        try:
-            self.inspect = self.d.inspect_container(self.name)
-        except docker.errors.APIError:
-            pass
+        self.inspect = self._inspect_container()
 
         if self.inspect:
             self._check_latest()
@@ -266,12 +282,10 @@ removes all containers based on an image.
                 raise ValueError("Container '%s' must be running before executing a command into it.\nExecute the following to create the container:\n%s" % (self.name, self.container_run_command()))
 
         # Container does not exist
-        try:
-            self.inspect = self.d.inspect_image(self.image)
-        except docker.errors.APIError:
-            # Image does not exist
+        self.inspect = self._inspect_image()
+        if not self.inspect:
             self.update()
-            self.inspect = self.d.inspect_image(self.image)
+            self.inspect = self._inspect_image()
 
         if self.spc:
             if self.command:
@@ -305,7 +319,7 @@ removes all containers based on an image.
 
 
     def stop(self):
-        self.inspect = self.d.inspect_container(self.name)
+        self.inspect = self._inspect_container()
         args = self._get_args("STOP")
         if args:
             cmd = self.gen_cmd(args)
@@ -340,12 +354,10 @@ removes all containers based on an image.
         self._rpmostree(*argv)
 
     def uninstall(self):
+        self.inspect = self._inspect_container()
+
         if self.force:
             self.force_delete_containers()
-        try:
-            self.inspect = self.d.inspect_container(self.name)
-        except docker.errors.APIError:
-            pass
 
         if self.name != self.image:
             try:
@@ -362,7 +374,7 @@ removes all containers based on an image.
             self.d.remove_container(self.image)
         except docker.errors.APIError:
             pass
-        self.inspect = self.d.inspect_image(self.image)
+        self.inspect = self._inspect_image()
         args = self._get_args("UNINSTALL")
         if args:
             cmd = self.gen_cmd(args)
@@ -392,22 +404,20 @@ removes all containers based on an image.
         return " ".join(args)
 
     def info(self):
-        try:
-            self.inspect = self.d.inspect_image(self.image)
-        except docker.errors.APIError:
+        self.inspect = self._inspect_image()
+        if not self.inspect:
             self.update()
-            self.inspect = self.d.inspect_image(self.image)
+            self.inspect = self._inspect_image()
 
         labels = self._get_labels()
         for label in labels:
             self.writeOut("%-13s: %s" % (label, labels[label]))
 
     def install(self):
-        try:
-            self.inspect = self.d.inspect_image(self.image)
-        except docker.errors.APIError:
+        self.inspect = self._inspect_image()
+        if not self.inspect:
             self.update()
-            self.inspect = self.d.inspect_image(self.image)
+            self.inspect = self._inspect_image()
 
         args = self._get_args("INSTALL")
         if args:
