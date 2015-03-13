@@ -34,7 +34,7 @@ install: all
 	install -m 644 atomic.sh $(PROFILEDIR)
 
 	install -d $(PREFIX)/share/man/man1
-	install $(basename $(MANPAGES_MD)) $(PREFIX)/share/man/man1
+	install -m 644 $(basename $(MANPAGES_MD)) $(PREFIX)/share/man/man1
 	-mkdir -p $(BASHCOMPLETIONDIR)
 	install -m 644 bash/atomic $(BASHCOMPLETIONDIR)
 
