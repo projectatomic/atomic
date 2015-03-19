@@ -1,13 +1,13 @@
 # Atomic: /usr/bin/atomic
 
-This project defines the entrypoint for Project Atomic hosts.  On a
-Project Atomic system, there are at least two distinct software
+This project defines the entrypoint for Project Atomic hosts.  On an
+Atomic Host, there are at least two distinct software
 delivery vehicles; Docker (often used in combination with the
-traditional RPM/yum), and rpm-ostree to provide atomic upgrades of the
+traditional RPM/yum/dnf), and rpm-ostree to provide atomic upgrades of the
 host system.
 
 The goal of Atomic is to provide a high level, coherent entrypoint to
-the system, and fill in gaps.
+the system, and fill in gaps in Linux container implementations.
 
 For Docker, `atomic` can make it easier to interact with special kinds
 of containers, such as super-privileged debugging tools and the like.
