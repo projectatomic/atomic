@@ -447,6 +447,21 @@ removes all containers based on an image.
     def print_uninstall(self):
         return " ".join(self.INSTALL_ARGS) + " /usr/bin/UNINSTALLCMD"
 
+    def version(self):
+        def get_label(label):
+            val = self._get_args(label)
+            if val:
+                return val[0]
+            return ""
+
+        try:
+            self.inspect = self.d.inspect_image(self.image)
+        except docker.errors.APIError:
+            self.update()
+            self.inspect = self.d.inspect_image(self.image)
+
+        self.writeOut(("%s %s %s" % (get_label("Name"), get_label("Version"), get_label("Release"))).strip())
+
 def SetFunc(function):
     class customAction(argparse.Action):
         def __call__(self, parser, namespace, values, option_string=None):
@@ -544,6 +559,12 @@ if __name__ == '__main__':
                          action="store_true",
                          help=_("remove all containers based on this image"))
     updatep.add_argument("image", help=_("container image"))
+
+    versionp = subparser.add_parser("version",
+                                    help=_("display image 'Name Version Release' label"),
+                                    epilog="atomic version displays the image version information, if it is provided")
+    versionp.set_defaults(func=atomic.version)
+    versionp.add_argument("image", help=_("container image"))
 
     try:
         args = parser.parse_args()
