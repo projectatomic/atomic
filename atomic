@@ -198,7 +198,10 @@ class Atomic(object):
                 cmd += self._get_cmd()
             return subprocess.check_call(cmd, stderr=subprocess.PIPE)
         else:
-            self.writeOut("Container is running")
+            if self.command:
+                return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command)
+            else:
+                self.writeOut("Container is running")
 
     def _start(self):
         if self._interactive():
