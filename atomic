@@ -27,6 +27,11 @@ import gettext
 import docker
 import json
 import subprocess
+try:
+    from subprocess import DEVNULL # pylint: disable=no-name-in-module
+except ImportError:
+    import os
+    DEVNULL = open(os.devnull, 'wb')
 import requests
 
 PROGNAME="atomic"
@@ -196,26 +201,27 @@ class Atomic(object):
                 cmd += self.command
             else:
                 cmd += self._get_cmd()
-            return subprocess.check_call(cmd, stderr=subprocess.PIPE)
+            return subprocess.check_call(cmd, stderr=DEVNULL)
         else:
             if self.command:
-                return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command)
+                return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command,
+                                             stderr=DEVNULL)
             else:
                 self.writeOut("Container is running")
 
     def _start(self):
         if self._interactive():
             if self.command:
-                subprocess.check_call(["/usr/bin/docker", "start", self.name], stderr=subprocess.PIPE)
+                subprocess.check_call(["/usr/bin/docker", "start", self.name], stderr=DEVNULL)
                 return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command)
             else:
-                return subprocess.check_call(["/usr/bin/docker", "start", "-i", "-a", self.name], stderr=subprocess.PIPE)
+                return subprocess.check_call(["/usr/bin/docker", "start", "-i", "-a", self.name], stderr=DEVNULL)
         else:
             if self.command:
-                subprocess.check_call(["/usr/bin/docker", "start", self.name], stderr=subprocess.PIPE)
+                subprocess.check_call(["/usr/bin/docker", "start", self.name], stderr=DEVNULL)
                 return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command)
             else:
-                return subprocess.check_call(["/usr/bin/docker", "start", self.name], stderr=subprocess.PIPE)
+                return subprocess.check_call(["/usr/bin/docker", "start", self.name], stderr=DEVNULL)
 
     def _inspect_image(self):
         try:
@@ -312,7 +318,7 @@ removes all containers based on an image.
                 subprocess.check_call(cmd, env={
                     "CONFDIR": "/etc/%s" % self.name,
                     "LOGDIR": "/var/log/%s" % self.name,
-                    "DATADIR":"/var/lib/%s" % self.name}, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+                    "DATADIR":"/var/lib/%s" % self.name}, shell=True, stderr=DEVNULL, stdout=DEVNULL)
                 return self._start()
 
         subprocess.check_call(cmd, env={
