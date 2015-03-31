@@ -22,7 +22,7 @@ atomic would execute this command before stoping the container.
 
 atomic will replace the NAME and IMAGE fields with the name and image specified via the command,  NAME will be replaced with IMAGE if it is not specified.
 
-If this field does not exists `atomic stop` will just stop the container, if
+If this field does not exist, `atomic stop` will just stop the container, if
 the container is running.
 
 # OPTIONS:
