@@ -12,7 +12,7 @@ IMAGE [COMMAND] [ARG...]
 
 # DESCRIPTION
 **atomic install** attempts to read the `LABEL INSTALL` field in the container
-IMAGE, if this field does not exists `atom install` will install the IMAGE
+IMAGE, if this field does not exist, `atomic install` will install the IMAGE
 
 If the container image has a LABEL INSTALL instruction like the following:
 

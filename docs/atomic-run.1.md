@@ -20,7 +20,7 @@ If the container image has a LABEL RUN instruction like the following:
 
 ```LABEL RUN /usr/bin/docker run -t -i --rm --cap_add=SYS_ADMIN --net=host -v ${LOGDIR}:/var/log -v ${DATADIR}:/var/lib --name NAME IMAGE```
 
-If this field does not exists atom run defaults to the following
+If this field does not exist, `atomic run` defaults to the following:
 ```/usr/bin/docker run -t -i --rm -v ${LOGDIR}:/var/log -v ${DATADIR}:/var/lib --name NAME IMAGE```
 
 These defaults are suggested values for your container images.
