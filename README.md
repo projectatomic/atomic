@@ -27,7 +27,7 @@ For example if you built an 'ntpd' container application, that required the
 SYS_TIME capability, you could add meta data to your container image using the
 command:
 
-LABEL RUN /usr/bin/docker run -d --cap-add=SYS_TYPE ntpd
+`LABEL RUN /usr/bin/docker run -d --cap-add=SYS_TIME ntpd`
 
 Now if you executed `atomic run ntpd`, it would read the `LABEL RUN` json
 metadata from the container image and execute this command.
