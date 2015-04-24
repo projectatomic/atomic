@@ -160,10 +160,21 @@ _atomic_info() {
 	esac
 }
 
+_atomic_version() {
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "--recurse -r" -- "$cur" ) )
+			;;
+		*)
+		    __atomic_image_repos_and_tags
+		    ;;
+	esac
+}
+
 _atomic_update() {
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "--force -t" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "--force -f" -- "$cur" ) )
 			;;
 		*)
 		    __atomic_image_repos_and_tags
@@ -319,6 +330,7 @@ _atomic() {
 		install
 		stop
 		run
+		version
 		uninstall
 		update
 	)

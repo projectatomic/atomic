@@ -51,6 +51,16 @@ except IOError:
     import builtins
     builtins.__dict__['_'] = str
 
+images=[]
+def findRepoTag(d, id):
+    global images
+    if len(images) == 0:
+        images = d.images()
+    for image in images:
+        if id == image["Id"]:
+            return image["RepoTags"][0]
+    return ""
+
 class Atomic(object):
     INSTALL_ARGS = ["/usr/bin/docker", "run",
                     "-t",
@@ -102,10 +112,20 @@ class Atomic(object):
         self.spc = False
         self.inspect = None
         self.force = False
+        self.images = []
 
     def writeOut(self, output, lf="\n"):
         sys.stdout.flush()
         sys.stdout.write(output + lf)
+
+    def get_label(self, label, image=None):
+        inspect = self._inspect_image(image)
+        cfg = inspect.get("Config", None)
+        if cfg:
+            labels = cfg.get("Labels", [])
+            if labels and label in labels:
+                return labels[label]
+        return ""
 
     def force_delete_containers(self):
         if self._inspect_image():
@@ -251,8 +271,10 @@ class Atomic(object):
             else:
                 return subprocess.check_call(["/usr/bin/docker", "start", self.name], stderr=DEVNULL)
 
-    def _inspect_image(self):
+    def _inspect_image(self, image=None):
         try:
+            if image:
+                return self.d.inspect_image(image)
             return self.d.inspect_image(self.image)
         except docker.errors.APIError:
             pass
@@ -484,6 +506,23 @@ removes all containers based on an image.
     def print_uninstall(self):
         return " ".join(self.INSTALL_ARGS) + " /usr/bin/UNINSTALLCMD"
 
+    def _get_layer(self, image):
+        def get_label(label):
+            return self.get_label(label, image["Id"])
+        image = self._inspect_image(image)
+        if not image:
+            raise ValueError("Image '%s' does not exist" % self.image)
+        return({ "Id": image['Id'], "Name": get_label("Name"), "Version" : ("%s:%s:%s" % (get_label("Name"),get_label("Version"),get_label("Release"))).strip(":"), "Tag": findRepoTag(self.d, image['Id']), "Parent": image['Parent']})
+
+    def get_layers(self):
+        layers = []
+        layer = self._get_layer(self.image)
+        layers.append(layer)
+        while layer["Parent"] != "":
+                layer = self._get_layer(layer["Parent"])
+                layers.append(layer)
+        return layers
+
     def version(self):
         def get_label(label):
             val = self._get_args(label)
@@ -497,7 +536,13 @@ removes all containers based on an image.
             self.update()
             self.inspect = self.d.inspect_image(self.image)
 
-        self.writeOut(("%s %s %s" % (get_label("Name"), get_label("Version"), get_label("Release"))).strip())
+        if self.args.recurse:
+            for layer in self.get_layers():
+                self.writeOut("%s %s %s" % (layer["Id"],layer["Version"],layer["Tag"]))
+        else:
+            layer = self._get_layer(self.image)
+            self.writeOut("%s %s %s" % (layer["Id"],layer["Version"],layer["Tag"]))
+
 
 def SetFunc(function):
     class customAction(argparse.Action):
@@ -584,6 +629,7 @@ if __name__ == '__main__':
                             help=_("name of container"))
     uninstallp.add_argument("-f", "--force",
                             default=False,
+                            dest="force",
                             action="store_true",
                             help=_("remove all containers based on this image"))
     uninstallp.add_argument("image", help=_("container image"))
@@ -593,6 +639,7 @@ if __name__ == '__main__':
     updatep.set_defaults(func=atomic.update)
     updatep.add_argument("-f", "--force",
                          default=False,
+                         dest="force",
                          action="store_true",
                          help=_("remove all containers based on this image"))
     updatep.add_argument("image", help=_("container image"))
@@ -626,6 +673,11 @@ if __name__ == '__main__':
     versionp = subparser.add_parser("version",
                                     help=_("display image 'Name Version Release' label"),
                                     epilog="atomic version displays the image version information, if it is provided")
+    versionp.add_argument("-r", "--recurse",
+                         default=False,
+                         dest="recurse",
+                         action="store_true",
+                         help=_("recurse through all layers"))
     versionp.set_defaults(func=atomic.version)
     versionp.add_argument("image", help=_("container image"))
 
