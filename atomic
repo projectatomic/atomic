@@ -27,6 +27,8 @@ import gettext
 import docker
 import json
 import subprocess
+import atomicpulp
+import getpass
 try:
     from subprocess import DEVNULL # pylint: disable=no-name-in-module
 except ImportError:
@@ -140,6 +142,32 @@ class Atomic(object):
 
             prevstatus = status
         self.writeOut("")
+
+    def upload(self):
+        if not self.args.username:
+            self.args.username = raw_input("Registry Username: ")
+        if not self.args.password:
+            self.args.password = getpass.getpass("Registry Password: ")
+            
+        if self.args.pulp:
+            return atomicpulp.push_image_to_pulp(self.image, self.args.url, self.args.username, self.args.password, self.args.verify_ssl, self.d)
+        else:
+            self.d.login(self.args.username, self.args.password)
+            for line in self.d.push(self.image, stream=True):
+                bar = json.loads(line)
+                status = bar['status']
+                if prevstatus != status:
+                    self.writeOut(status, "")
+                if 'id' not in bar:
+                    continue
+                if status == "Uploading":
+                    self.writeOut(bar['progress'] + " ")
+                elif status == "Push complete":
+                    pass
+                elif status.startswith("Pushing"):
+                    self.writeOut("Pushing: " + bar['id'])
+
+                prevstatus = status
 
     def set_args(self, args):
         self.args=args
@@ -568,6 +596,32 @@ if __name__ == '__main__':
                          action="store_true",
                          help=_("remove all containers based on this image"))
     updatep.add_argument("image", help=_("container image"))
+
+    uploadp = subparser.add_parser("upload",help=_("upload latest image to repository"), epilog="atomic upload uploads the latest specified image.")
+
+    uploadp.set_defaults(func=atomic.upload)
+    uploadp.add_argument("--pulp",
+                         default=False,
+                         action="store_true",
+                         help=_("upload image using pulp"))
+    config = atomicpulp.PulpConfig().config()
+    uploadp.add_argument("--verify_ssl",
+                         default=config["verify_ssl"],
+                         action="store_true",
+                         help=_("verify ssl of registry"))
+    uploadp.add_argument("-U", "--url",
+                         dest="url",
+                         default=config["url"],
+                         help=_("Url for remote registry"))
+    uploadp.add_argument("-u", "--username",
+                         default=config["username"],
+                         dest="username",
+                         help=_("Username for remote registry"))
+    uploadp.add_argument("-p", "--password",
+                         default=config["password"],
+                         dest="password",
+                         help=_("Password for remote registry"))
+    uploadp.add_argument("image", help=_("container image"))
 
     versionp = subparser.add_parser("version",
                                     help=_("display image 'Name Version Release' label"),
