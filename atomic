@@ -523,6 +523,48 @@ removes all containers based on an image.
                 layers.append(layer)
         return layers
 
+    def _get_image(self, image):
+        def get_label(label):
+            return self.get_label(label, image["Id"])
+
+        return { "Id": image['Id'], "Name": get_label("Name"), "Version" : ("%s:%s:%s" % (get_label("Name"),get_label("Version"),get_label("Release"))).strip(":"), "Tag": image["RepoTags"][0]}
+
+    def get_images(self):
+        if len(self.images) > 0:
+            return self.images
+
+        images = self.d.images()
+        for image in images:
+            self.images.append(self._get_image(image))
+
+        return self.images
+
+    def verify(self):
+        def get_label(label):
+            val = self._get_args(label)
+            if val:
+                return val[0]
+            return ""
+        self.inspect = self._inspect_image()
+        current_name = get_label("Name")
+        version = ""
+        if current_name:
+            version = "%s:%s:%s" % (current_name,get_label("Version"),get_label("Release"))
+
+        prev = ""
+        name = None
+        for layer in self.get_layers():
+            if name == layer["Name"]:
+                continue
+            name = layer["Name"]
+            if len(name)>0:
+                for i in self.get_images():
+                    if i["Name"] == name:
+                        if i["Version"] > layer["Version"]:
+                            self.writeOut("Image '%s' contains a layer '%s' that is out of date image version '%s' is available." % (self.image, layer["Version"], i["Version"]))
+                            self.writeOut("You should rebuild the '%s' image useing docker build, it could be vulnerable." % (self.image))
+                            break
+
     def version(self):
         def get_label(label):
             val = self._get_args(label)
@@ -680,6 +722,12 @@ if __name__ == '__main__':
                          help=_("recurse through all layers"))
     versionp.set_defaults(func=atomic.version)
     versionp.add_argument("image", help=_("container image"))
+
+    verifyp = subparser.add_parser("verify",
+                                    help=_("verify image is fully updated"),
+                                    epilog="atomic verify checks whether there is a newer image available and scans through all layers to see if any of the sublayers have a new version available")
+    verifyp.set_defaults(func=atomic.verify)
+    verifyp.add_argument("image", help=_("container image"))
 
     try:
         args = parser.parse_args()

@@ -160,6 +160,14 @@ _atomic_info() {
 	esac
 }
 
+_atomic_verify() {
+	case "$cur" in
+		*)
+		    __atomic_image_repos_and_tags
+		    ;;
+	esac
+}
+
 _atomic_version() {
 	case "$cur" in
 		-*)
@@ -330,6 +338,7 @@ _atomic() {
 		install
 		stop
 		run
+		verify
 		version
 		uninstall
 		update
