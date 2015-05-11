@@ -34,5 +34,8 @@ execute image run method (default)
 **atomic-uninstall(1)**
 uninstall container from system
 
+**atomic-upload(1)**
+upload container image to the repository
+
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)

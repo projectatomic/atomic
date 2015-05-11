@@ -19,6 +19,7 @@ class PulpServer(object):
         self._chunk_size = 1048576  # 1 MB per upload call
 
     def _call_pulp(self, url, req_type='get', payload=None):
+        # FIXME: remove debug print statements if not desired or move to debug mode
         if req_type == 'get':
             #print('Calling Pulp URL "{0}"'.format(url))
             r = requests.get(url, auth=(self._username, self._password), verify=self._verify_ssl)
