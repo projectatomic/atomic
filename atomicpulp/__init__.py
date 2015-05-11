@@ -1,6 +1,6 @@
 import sys, os
-from pulp import PulpServer
-from config import PulpConfig
+from .pulp import PulpServer
+from .config import PulpConfig
 
 def writeOut(output, lf="\n"):
     sys.stdout.flush()
