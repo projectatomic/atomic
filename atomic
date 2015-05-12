@@ -144,6 +144,7 @@ class Atomic(object):
         self.writeOut("")
 
     def upload(self):
+        prevstatus = ""
         if not self.args.username:
             self.args.username = raw_input("Registry Username: ")
         if not self.args.password:
