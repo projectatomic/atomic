@@ -305,7 +305,7 @@ removes all containers based on an image.
         return command
 
     def _new_env(self):
-        env = os.environ
+        env = dict(os.environ)
         env["CONFDIR"] =  "/etc/%s" % self.name
         env["LOGDIR"]  =  "/var/log/%s" % self.name
         env["DATADIR"] = "/var/lib/%s" % self.name
