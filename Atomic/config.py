@@ -9,7 +9,7 @@ class PulpConfig(object):
     [server]
     host = <pulp-server-hostname.example.com>
     verify_ssl = false
-    
+
     # optional auth section
     [auth]
     username: <user>
@@ -21,9 +21,9 @@ class PulpConfig(object):
         self.c.read(self.config_file)
         self.url = self._get("server", "host")
         self.username = self._get("auth", "username")
-        self.password = self._get("auth", "password") 
+        self.password = self._get("auth", "password")
         self.verify_ssl = self._getboolean("server", "verify_ssl")
-    
+
     def _get(self, section, val):
         try:
             return self.c.get(section, val)
@@ -31,7 +31,7 @@ class PulpConfig(object):
             return None
         except ValueError as e:
             raise ValueError("Bad Value for %s in %s. %s" % (val, self.config_file, e ))
-    
+
     def _getboolean(self, section, val):
         try:
             return self.c.getboolean(section, val)
@@ -39,7 +39,7 @@ class PulpConfig(object):
             return True
         except ValueError as e:
             raise ValueError("Bad Value for %s in %s. %s" % (val, self.config_file, e ))
-    
+
     def config(self):
         return {"url": self.url, "verify_ssl": self.verify_ssl, "username": self.username, "password": self.password}
 

@@ -130,7 +130,7 @@ class Atomic(object):
             self.args.username = raw_input("Registry Username: ")
         if not self.args.password:
             self.args.password = getpass.getpass("Registry Password: ")
-            
+
         if self.args.pulp:
             return push_image_to_pulp(self.image, self.args.url, self.args.username, self.args.password, self.args.verify_ssl, self.d)
         else:
@@ -546,5 +546,3 @@ removes all containers based on an image.
         else:
             layer = self._get_layer(self.image)
             self.writeOut("%s %s %s" % (layer["Id"],layer["Version"],layer["Tag"]))
-
-
