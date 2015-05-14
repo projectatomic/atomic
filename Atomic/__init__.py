@@ -1,6 +1,7 @@
 import sys, os
 from .pulp import PulpServer
 from .config import PulpConfig
+from .atomic import Atomic
 
 def writeOut(output, lf="\n"):
     sys.stdout.flush()
@@ -33,7 +34,7 @@ def push_image_to_pulp(image, server_url, username, password, verify_ssl, docker
             pulp.create_repo(image, repo)
     except Exception as e:
         raise IOError('Failed to create Pulp repository: {0}'.format(e))
-        
+
     try:
         writeOut('Uploading image "{0}" to pulp server "{1}"'.format(image, server_url))
         pulp.upload_docker_image(image, repo)

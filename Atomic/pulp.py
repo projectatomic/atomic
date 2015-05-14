@@ -46,7 +46,7 @@ class PulpServer(object):
         #print('Pulp JSON response:\n{0}'.format(json.dumps(r_json, indent=2)))
 
         if 'error_message' in r_json:
-            sys.stderror.write('Error messages from Pulp response:\n{0}'.format(r_json['error_message']))
+            sys.stderr.write('Error messages from Pulp response:\n{0}'.format(r_json['error_message']))
 
         if 'spawned_tasks' in r_json:
             for task in r_json['spawned_tasks']:
