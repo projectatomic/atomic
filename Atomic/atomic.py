@@ -341,6 +341,9 @@ removes all containers based on an image.
 
     def stop(self):
         self.inspect = self._inspect_container()
+        if self.inspect is None:
+            raise ValueError("Container '%s' does not exists" % self.name)
+
         args = self._get_args("STOP")
         if args:
             cmd = self.gen_cmd(args)
