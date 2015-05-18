@@ -43,12 +43,6 @@ except IOError:
     import builtins
     builtins.__dict__['_'] = str
 
-def SetFunc(function):
-    class customAction(argparse.Action):
-        def __call__(self, parser, namespace, values, option_string=None):
-            setattr(namespace, self.dest, function)
-    return customAction
-
 class HelpByDefaultArgumentParser(argparse.ArgumentParser):
     def error(self, message):
         self.print_help()
@@ -177,13 +171,13 @@ if __name__ == '__main__':
                          dest="recurse",
                          action="store_true",
                          help=_("recurse through all layers"))
-    versionp.set_defaults(func=atomic.version)
+    versionp.set_defaults(func=atomic.print_version)
     versionp.add_argument("image", help=_("container image"))
 
     verifyp = subparser.add_parser("verify",
                                     help=_("verify image is fully updated"),
                                     epilog="atomic verify checks whether there is a newer image available and scans through all layers to see if any of the sublayers have a new version available")
-    verifyp.set_defaults(func=atomic.verify)
+    verifyp.set_defaults(func=atomic.print_verify)
     verifyp.add_argument("image", help=_("container image"))
 
     try:

@@ -38,3 +38,12 @@ install: all
 	-mkdir -p $(BASHCOMPLETIONDIR)
 	install -m 644 bash/atomic $(BASHCOMPLETIONDIR)
 
+	-mkdir -p $(DESTDIR)/etc/dbus-1/system.d/
+	install -m 644 org.atomic.conf $(DESTDIR)/etc/dbus-1/system.d/
+	-mkdir -p $(DESTDIR)/usr/share/dbus-1/system-services
+	install -m 644 org.atomic.service $(DESTDIR)/usr/share/dbus-1/system-services
+	-mkdir -p $(DESTDIR)/usr/share/polkit-1/actions/
+	install -m 644 org.atomic.policy $(DESTDIR)/usr/share/polkit-1/actions/
+
+	-mkdir -p $(DESTDIR)/usr/share/atomic
+	install -m 755 atomic_server.py $(DESTDIR)/usr/share/atomic
