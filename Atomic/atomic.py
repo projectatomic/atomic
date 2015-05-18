@@ -342,7 +342,9 @@ removes all containers based on an image.
     def stop(self):
         self.inspect = self._inspect_container()
         if self.inspect is None:
-            raise ValueError("Container '%s' does not exists" % self.name)
+            self.inspect = self._inspect_image()
+            if self.inspect is None:
+                raise ValueError("Container/Image '%s' does not exists" % self.name)
 
         args = self._get_args("STOP")
         if args:
@@ -356,8 +358,11 @@ removes all containers based on an image.
 
 
         # Container exists
-        if self.inspect["State"]["Running"]:
-            self.d.stop(self.name)
+        try:
+            if self.inspect["State"]["Running"]:
+                self.d.stop(self.name)
+        except KeyError:
+            pass
 
     def _rpmostree(self, *args):
         os.execl("/usr/bin/rpm-ostree", "rpm-ostree", *args)
