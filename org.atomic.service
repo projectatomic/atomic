@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=org.atomic
+Exec=/usr/share/atomic/atomic_server.py
+User=root

@@ -439,8 +439,10 @@ removes all containers based on an image.
             self.inspect = self._inspect_image()
 
         labels = self._get_labels()
+        buf = ""
         for label in labels:
-            self.writeOut("%-13s: %s" % (label, labels[label]))
+            buf +=("%-13s: %s\n" % (label, labels[label]))
+        return buf
 
     def install(self):
         self.inspect = self._inspect_image()
@@ -482,15 +484,16 @@ removes all containers based on an image.
         image = self._inspect_image(image)
         if not image:
             raise ValueError("Image '%s' does not exist" % self.image)
-        return({ "Id": image['Id'], "Name": get_label("Name"), "Version" : ("%s:%s:%s" % (get_label("Name"),get_label("Version"),get_label("Release"))).strip(":"), "Tag": findRepoTag(self.d, image['Id']), "Parent": image['Parent']})
+        version = ("%s-%s-%s" % (get_label("Name"),get_label("Version"), get_label("Release"))).strip("-")
+        return({ "Id": image['Id'], "Name": get_label("Name"), "Version" : version,  "Tag": findRepoTag(self.d, image['Id']), "Parent": image['Parent']})
 
     def get_layers(self):
         layers = []
         layer = self._get_layer(self.image)
         layers.append(layer)
         while layer["Parent"] != "":
-                layer = self._get_layer(layer["Parent"])
-                layers.append(layer)
+            layer = self._get_layer(layer["Parent"])
+            layers.append(layer)
         return layers
 
     def _get_image(self, image):
@@ -516,6 +519,8 @@ removes all containers based on an image.
                 return val[0]
             return ""
         self.inspect = self._inspect_image()
+        if not self.inspect:
+            raise ValueError("Image %s does not exist" % self.image)
         current_name = get_label("Name")
         version = ""
         if current_name:
@@ -523,6 +528,7 @@ removes all containers based on an image.
 
         prev = ""
         name = None
+        buf = ""
         for layer in self.get_layers():
             if name == layer["Name"]:
                 continue
@@ -531,9 +537,13 @@ removes all containers based on an image.
                 for i in self.get_images():
                     if i["Name"] == name:
                         if i["Version"] > layer["Version"]:
-                            self.writeOut("Image '%s' contains a layer '%s' that is out of date image version '%s' is available." % (self.image, layer["Version"], i["Version"]))
-                            self.writeOut("You should rebuild the '%s' image useing docker build, it could be vulnerable." % (self.image))
+                            buf = ("Image '%s' contains a layer '%s' that is out of date image version '%s' is available." % (self.image, layer["Version"], i["Version"]))
+                            buf += ("You should rebuild the '%s' image useing docker build, it could be vulnerable." % (self.image))
                             break
+        return buf
+
+    def print_verify(self):
+        self.writeOut(self.verify())
 
     def version(self):
         def get_label(label):
@@ -549,8 +559,19 @@ removes all containers based on an image.
             self.inspect = self.d.inspect_image(self.image)
 
         if self.args.recurse:
-            for layer in self.get_layers():
-                self.writeOut("%s %s %s" % (layer["Id"],layer["Version"],layer["Tag"]))
+            return self.get_layers()
         else:
-            layer = self._get_layer(self.image)
-            self.writeOut("%s %s %s" % (layer["Id"],layer["Version"],layer["Tag"]))
+            return [ self._get_layer(self.image) ]
+
+    def print_version(self):
+        for layer in self.version():
+            version = layer["Version"]
+            if layer["Version"] == '':
+                version="None"
+            self.writeOut("%s %s %s" % (layer["Id"],version,layer["Tag"]))
+
+def SetFunc(function):
+    class customAction(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            setattr(namespace, self.dest, function)
+    return customAction
