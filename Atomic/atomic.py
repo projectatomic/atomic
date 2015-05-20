@@ -255,8 +255,8 @@ class Atomic(object):
 
     def _get_args(self, label):
         labels = self._get_labels()
-        if label in labels:
-            return labels[label].split()
+        for l in label, label.lower(), label.capitalize(), label.upper():
+            return labels[l].split()
         return None
 
     def _check_latest(self):
@@ -537,8 +537,8 @@ removes all containers based on an image.
                 for i in self.get_images():
                     if i["Name"] == name:
                         if i["Version"] > layer["Version"]:
-                            buf = ("Image '%s' contains a layer '%s' that is out of date image version '%s' is available." % (self.image, layer["Version"], i["Version"]))
-                            buf += ("You should rebuild the '%s' image useing docker build, it could be vulnerable." % (self.image))
+                            buf = ("Image '%s' contains a layer '%s' that is out of date.\nImage version '%s' is available, current version could container vulnerabilities." % (self.image, layer["Version"], i["Version"]))
+                            buf += ("You should rebuild the '%s' image using docker build." % (self.image))
                             break
         return buf
 
