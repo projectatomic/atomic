@@ -8,7 +8,7 @@ atomic-uninstall - Remove/Uninstall container/container image from system
 **atomic uninstall**
 [**-f**][**--force**]
 [**-h**]
-IMAGE
+IMAGE [ARG...]
 
 # DESCRIPTION
 **atomic uninstall** attempts to read the `LABEL UNINSTALL` field in the
@@ -20,8 +20,8 @@ If the container image has a LABEL UNINSTALL instruction like the following:
 ```LABEL UNINSTALL /usr/bin/docker run -t -i --rm --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=NAME -e IMAGE=IMAGE -e CONFDIR=${CONFDIR} -e LOGDIR=${LOGDIR} -e DATADIR=${DATADIR} --name NAME IMAGE /bin/uninstall.sh```
 
 `atomic uninstall` will replace the NAME and IMAGE fields with the name and
-image specified via the command,  `atomic uninstall` will also pass in the CONFDIR, LOGDIR and DATADIR environment variables to the container.
-
+image specified via the command,  `atomic uninstall` will also pass in the CONFDIR, LOGDIR and DATADIR environment variables to the container. Any additional
+arguments will be appended to the command.
 
 # OPTIONS:
 **-f** **--force**

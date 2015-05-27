@@ -8,7 +8,7 @@ atomic-install - Execute Image Install Method
 **atomic install**
 [**-h**]
 [**--name**[=*NAME*]]
-IMAGE [COMMAND] [ARG...]
+IMAGE [ARG...]
 
 # DESCRIPTION
 **atomic install** attempts to read the `LABEL INSTALL` field in the container
@@ -20,7 +20,8 @@ If the container image has a LABEL INSTALL instruction like the following:
 
 `atomic install` will replace the NAME and IMAGE fields with the name and
 image specified via the command,  NAME will be replaced with IMAGE if it is
-not specified. `atomic install` will also pass in the CONFDIR, LOGDIR and DATADIR environment variables to the container.
+not specified. `atomic install` will also pass in the CONFDIR, LOGDIR and DATADIR environment variables to the container.  Any additional arguments will be
+appended to the command.
 
 # OPTIONS:
 **--help**

@@ -82,12 +82,12 @@ if __name__ == '__main__':
                                     epilog="atomic install attempts to read the LABEL INSTALL field in the image, if it does not exist atomic will just pull the image on to your machine.  You could add a LABEL INSTALL command to your Dockerfile like: 'LABEL INSTALL %s'" % atomic.print_install() )
 
     installp.set_defaults(func=atomic.install)
-    installp.add_argument("image", help=_("container image"))
-    installp.add_argument("command", nargs=argparse.REMAINDER,
-                          help=_("execute container image install method"))
     installp.add_argument("-n", "--name", dest="name",
                       default=None,
                       help=_("name of container"))
+    installp.add_argument("image", help=_("container image"))
+    installp.add_argument("args", nargs=argparse.REMAINDER,
+                          help=_("Additional arguments appended to the image uninstall method"))
     stopp = subparser.add_parser("stop",
                                 help=_("execute container image stop method"),
                                  epilog="atomic will just stop the container if it is running, if image does not specify LABEL STOP\n")
@@ -126,6 +126,8 @@ if __name__ == '__main__':
                             action="store_true",
                             help=_("remove all containers based on this image"))
     uninstallp.add_argument("image", help=_("container image"))
+    uninstallp.add_argument("args", nargs=argparse.REMAINDER,
+                          help=_("Additional arguments appended to the image install method"))
 
     updatep = subparser.add_parser("update",help=_("pull latest container image from repository"), epilog="atomic update downloads the latest container image. If a previously container based on this image exists, the container will continue to use the old image.  Use --force to remove the container.")
 
