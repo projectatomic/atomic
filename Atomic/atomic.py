@@ -6,6 +6,7 @@ import json
 import subprocess
 import getpass
 import requests
+import pipes
 try:
     from subprocess import DEVNULL # pylint: disable=no-name-in-module
 except ImportError:
@@ -406,7 +407,7 @@ removes all containers based on an image.
         self.inspect = self._inspect_image()
         args = self._get_args("UNINSTALL")
         if args:
-            cmd = self.gen_cmd(args + self.args.args)
+            cmd = self.gen_cmd(args + map(pipes.quote, self.args.args))
             self.writeOut(cmd)
             subprocess.check_call(cmd, env={
                 "CONFDIR": "/etc/%s" % self.name,
@@ -452,7 +453,7 @@ removes all containers based on an image.
 
         args = self._get_args("INSTALL")
         if args:
-            cmd = self.gen_cmd(args + self.args.args)
+            cmd = self.gen_cmd(args + map(pipes.quote, self.args.args))
             self.writeOut(cmd)
 
             return(subprocess.check_call(cmd, env={
