@@ -2,7 +2,23 @@ import sys
 import requests
 import json
 
-requests.packages.urllib3.disable_warnings()
+# On latest Fedora, this is a symlink
+if hasattr(requests, 'packages'):
+    requests.packages.urllib3.disable_warnings()
+else:
+    # But with python-requests-2.4.3-1.el7.noarch, we need
+    # to talk to urllib3 directly
+    have_urllib3 = False
+    try:
+        import urllib3
+        have_urllib3 = True
+    except ImportError, e:
+        pass
+    if have_urllib3:
+        # Except only call disable-warnings if it exists
+        if hasattr(urllib3, 'disable_warnings'):
+            urllib3.disable_warnings()
+
 class PulpServer(object):
     """Interact with Pulp API"""
     def __init__(self, server_url, username, password, verify_ssl, docker_client):
