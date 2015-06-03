@@ -10,7 +10,10 @@ test_image() {
     ./atomic run --name=atomic_test ${IMAGE} sleep 6000 &
     ./atomic run --name=atomic_test ${IMAGE} ps 
     ./atomic version ${IMAGE}
+    ./atomic version -r ${IMAGE}
+    ./atomic verify ${IMAGE}
     ./atomic uninstall --name=atomic_test ${IMAGE}
+    ./atomic uninstall ${IMAGE}_noexist || /bin/true
 }
 test_image busybox
 test_image fedora

@@ -256,8 +256,9 @@ class Atomic(object):
 
     def _get_args(self, label):
         labels = self._get_labels()
-        for l in label, label.lower(), label.capitalize(), label.upper():
-            return labels[l].split()
+        for l in [label, label.lower(), label.capitalize(), label.upper()]:
+            if l in labels:
+                return labels[l].split()
         return None
 
     def _check_latest(self):
@@ -385,10 +386,8 @@ removes all containers based on an image.
 
     def uninstall(self):
         self.inspect = self._inspect_container()
-
-        if self.force:
+        if self.inspect and self.force:
             self.force_delete_containers()
-
         if self.name != self.image:
             try:
                 # Attempt to remove container, if it exists just return
@@ -405,6 +404,9 @@ removes all containers based on an image.
         except docker.errors.APIError:
             pass
         self.inspect = self._inspect_image()
+        if not self.inspect:
+            raise ValueError("Image '%s' is not installed" % self.image)
+
         args = self._get_args("UNINSTALL")
         if args:
             cmd = self.gen_cmd(args + map(pipes.quote, self.args.args))
