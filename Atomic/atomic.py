@@ -503,7 +503,7 @@ removes all containers based on an image.
         def get_label(label):
             return self.get_label(label, image["Id"])
 
-        return { "Id": image['Id'], "Name": get_label("Name"), "Version" : ("%s:%s:%s" % (get_label("Name"),get_label("Version"),get_label("Release"))).strip(":"), "Tag": image["RepoTags"][0]}
+        return { "Id": image['Id'], "Name": get_label("Name"), "Version" : ("%s-%s-%s" % (get_label("Name"),get_label("Version"),get_label("Release"))).strip(":"), "Tag": image["RepoTags"][0]}
 
     def get_images(self):
         if len(self.images) > 0:
@@ -527,7 +527,7 @@ removes all containers based on an image.
         current_name = get_label("Name")
         version = ""
         if current_name:
-            version = "%s:%s:%s" % (current_name,get_label("Version"),get_label("Release"))
+            version = "%s-%s-%s" % (current_name,get_label("Version"),get_label("Release"))
 
         prev = ""
         name = None
