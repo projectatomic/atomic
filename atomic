@@ -88,6 +88,21 @@ if __name__ == '__main__':
     installp.add_argument("image", help=_("container image"))
     installp.add_argument("args", nargs=argparse.REMAINDER,
                           help=_("Additional arguments appended to the image uninstall method"))
+
+    mountp = subparser.add_parser("mount",
+                                  help=_("mount container image to a specified "
+                                    "directory"),
+                                  epilog="atomic mount attempts to mount a "
+                                    "container image to a specified directory so "
+                                    "that its contents may be inspected.")
+    mountp.set_defaults(func=atomic.mount)
+    mountp.add_argument("-o", "--options", dest="options",
+                      default="",
+                      help=_("comma-separated list of mount options, "
+                          "defaults are 'ro,nodev,nosuid'"),)
+    mountp.add_argument("image", help=_("image/container id"))
+    mountp.add_argument("mountpoint", help=_("filesystem location to mount the image/container"))
+
     stopp = subparser.add_parser("stop",
                                 help=_("execute container image stop method"),
                                  epilog="atomic will just stop the container if it is running, if image does not specify LABEL STOP\n")
@@ -128,6 +143,14 @@ if __name__ == '__main__':
     uninstallp.add_argument("image", help=_("container image"))
     uninstallp.add_argument("args", nargs=argparse.REMAINDER,
                           help=_("Additional arguments appended to the image install method"))
+
+    unmountp = subparser.add_parser("unmount",
+                                   help=_("unmount container image"),
+                                   epilog="atomic unmount will unmount a "
+                                   "container image previously mounted with "
+                                   "atomic mount")
+    unmountp.set_defaults(func=atomic.unmount)
+    unmountp.add_argument("mountpoint", help=_("filesystem location of image/container to be unmounted"))
 
     updatep = subparser.add_parser("update",help=_("pull latest container image from repository"), epilog="atomic update downloads the latest container image. If a previously container based on this image exists, the container will continue to use the old image.  Use --force to remove the container.")
 

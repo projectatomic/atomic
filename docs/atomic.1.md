@@ -28,11 +28,17 @@ execute Atomic commands
 **atomic-install(1)**
 execute image install method
 
+**atomic-mount(1)**
+mount image or container to filesystem
+
 **atomic-run(1)**
 execute image run method (default)
 
 **atomic-uninstall(1)**
 uninstall container from system
+
+**atomic-unmount(1)**
+unmount previously mounted image or container
 
 **atomic-upload(1)**
 upload container image to the repository

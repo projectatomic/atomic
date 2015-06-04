@@ -37,6 +37,12 @@ docker build -t atomic_busybox .
 ./atomic run atomic_busybox | grep RUN
 ./atomic install atomic_busybox | grep INSTALL
 ./atomic version atomic_busybox | grep Atomic
+mkdir -p ./.mnt_test
+./atomic mount atomic_busybox ./.mnt_test
+ls -Z ./.mnt_test/bin/sh
+cat ./.mnt_test/etc/os-release | grep PRETTY_NAME
+./atomic unmount ./.mnt_test
+rm -r ./.mnt_test
 ./atomic uninstall atomic_busybox | grep UNINSTALL
 rm -f Dockerfile
 ./atomic uninstall busybox
