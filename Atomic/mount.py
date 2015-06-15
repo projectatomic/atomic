@@ -1,451 +1,418 @@
-#!/usr/bin/env python
-# Copyright (C) 2015 Brent Baude <bbaude@redhat.com>
+# Copyright (C) 2015 Red Hat, All rights reserved.
+# AUTHORS: William Temple <wtemple@redhat.com>
+#          Brent Baude    <bbaude@redhat.com>
 #
-# This library is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 2 of the License, or (at your option) any later version.
+# This library is a component of Project Atomic.
 #
-# This library is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Lesser General Public License for more details.
+#    Project Atomic is free software; you can redistribute it and/or
+#    modify it under the terms of the GNU General Public License as
+#    published by the Free Software Foundation; either version 2 of
+#    the License, or (at your option) any later version.
 #
-# You should have received a copy of the GNU Lesser General Public
-# License along with this library; if not, write to the
-# Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-# Boston, MA 02111-1307, USA.
+#    Project Atomic is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with Project Atomic; if not, write to the Free Software
+#    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+#    02110-1301 USA.
+#
 
-
-"""Docker Mount Python API"""
+import os
 
 import docker
-import os
-import collections
-import subprocess
 import json
 
+import util
 
-class DockerMountError(Exception):
-    """Docker Error"""
-    pass
+from fnmatch import fnmatch as matches
+
+""" Module for mounting and unmounting containerized applications. """
 
 
-class DockerMount(object):
-    """Main DockerMount Class"""
-    _mount = collections.namedtuple('mount_tuple',
-                                    ['container_id', 'thin_pathname',
-                                     'mount_path', 'thin_dev_name',
-                                     'dtype'])
+class MountError(Exception):
+    """Generic error mounting a candidate container."""
+    def __init__(self, val):
+        self.val = val
 
-    def __init__(self, mnt_point=None, override=False, prefix="thin",
-            mkdir=True):
-        self.override = override
-        self.mnt_point = mnt_point
-        self.prefix = prefix
-        self.mkdir = mkdir
-        self.dev_name = None
-        # Check if docker is running
-        if not os.path.exists("/var/run/docker.pid"):
-            raise DockerMountError("Docker does not appear to be running")
+    def __str__(self):
+        return str(self.val)
 
-        self.conn = docker.Client(base_url='unix://var/run/docker.sock',
-                                  timeout=10)
-        self.docker_info = self.conn.info()
-        self.driver = self.docker_info['Driver']
-        self.return_tuple = collections.namedtuple('returns',
-                                                   ['return_code', 'stderr',
-                                                    'stdout'])
 
-    def no_docker_backend(self, iid):
-        '''
-        A work-around for those without vgoyal's docker back-end
-        patches.  This will be deprecated as soon as we have
-        RHEL patches for it
-        '''
-        docker_meta = "/var/lib/docker/devicemapper/metadata"
-        desc_file = os.path.join(docker_meta, iid)
+class SelectionMatchError(MountError):
+    """Input identifier matched multiple mount candidates."""
+    def __init__(self, i, matches):
+        self.val = ('"{0}" matched multiple items. Try one of the following:\n'
+                    '{1}'.format(i, '\n'.join(['\t' + m for m in matches])))
+
+
+class Mount:
+    """
+    A class which contains backend-independent methods useful for mounting and
+    unmounting containers.
+    """
+    def __init__(self, mountpoint, live=False):
+        """
+        Constructs the Mount class with a mountpoint.
+        Optional: mount a running container live (read/write)
+        """
+        self.mountpoint = mountpoint
+        self.live = live
+
+    def mount(self, identifier, options=[]):
+        raise NotImplementedError('Mount subclass does not implement mount() '
+                                  'method.')
+
+    def unmount(self):
+        raise NotImplementedError('Mount subclass does not implement unmount()'
+                                  ' method.')
+
+    # LVM DeviceMapper Utility Methods
+    @staticmethod
+    def _activate_thin_device(name, dm_id, size, pool):
+        """
+        Provisions an LVM device-mapper thin device reflecting,
+        DM device id 'dm_id' in the docker pool.
+        """
+        table = '0 {0} thin /dev/mapper/{1} {2}'.format(int(size)/512,
+                                                        pool, dm_id)
+        cmd = ['dmsetup', 'create', name, '--table', table]
+        r = util.subp(cmd)
+        if r.return_code != 0:
+            raise MountError('Failed to create thin device: ' + r.stderr)
+
+    @staticmethod
+    def _remove_thin_device(name):
+        """
+        Destroys a thin device via subprocess call.
+        """
+        r = util.subp(['dmsetup', 'remove', name])
+        if r.return_code != 0:
+            raise MountError('Could not remove thin device:\n' + r.stderr)
+
+    @staticmethod
+    def _is_device_active(device):
+        """
+        Checks dmsetup to see if a device is already active
+        """
+        cmd = ['dmsetup', 'info', device]
+        dmsetup_info = util.subp(cmd)
+        for dm_line in dmsetup_info.stdout.split("\n"):
+            line = dm_line.split(':')
+            if ('State' in line[0].strip()) and ('ACTIVE' in line[1].strip()):
+                return True
+        return False
+
+    @staticmethod
+    def _get_fs(thin_pathname):
+        """
+        Returns the file system type (xfs, ext4) of a given device
+        """
+        cmd = ['lsblk', '-o', 'FSTYPE', '-n', thin_pathname]
+        fs_return = util.subp(cmd)
+        return fs_return.stdout.strip()
+
+    @staticmethod
+    def mount_path(source, target, optstring='', bind=False):
+        """
+        Subprocess call to mount dev at path.
+        """
+        cmd = ['mount']
+        if bind:
+            cmd.append('--bind')
+        if optstring:
+            cmd.append('-o')
+            cmd.append(optstring)
+        cmd.append(source)
+        cmd.append(target)
+        r = util.subp(cmd)
+        if r.return_code != 0:
+            raise MountError('Could not mount docker container:\n' +
+                             ' '.join(cmd) + '\n' + r.stderr)
+
+    @staticmethod
+    def get_dev_at_mountpoint(mntpoint):
+        """
+        Retrieves the device mounted at mntpoint, or raises
+        MountError if none.
+        """
+        results = util.subp(['findmnt', '-o', 'SOURCE', mntpoint])
+        if results.return_code != 0:
+            raise MountError('No device mounted at ' + mntpoint)
+
+        return results.stdout.replace('SOURCE\n', '').strip().split('\n')[-1]
+
+    @staticmethod
+    def unmount_path(path):
+        """
+        Unmounts the directory specified by path.
+        """
+        r = util.subp(['umount', path])
+        if r.return_code != 0:
+            raise ValueError(r.stderr)
+
+
+class DockerMount(Mount):
+    """
+    A class which can be used to mount and unmount docker containers and
+    images on a filesystem location.
+    """
+    def __init__(self, mountpoint, live=False):
+        Mount.__init__(self, mountpoint, live)
+        self.client = docker.Client()
+
+    def _create_temp_container(self, iid):
+        """
+        Create a temporary container from a given iid.
+
+        Temporary containers are marked with a sentinel environment
+        variable so that they can be cleaned on unmount.
+        """
+        try:
+            return self.client.create_container(
+                                 image=iid, command='/bin/true',
+                                 environment=['_ATOMIC_TEMP_CONTAINER'],
+                                 detach=True, mem_limit='4m',
+                                 network_disabled=True)['Id']
+        except docker.errors.APIError as ex:
+            raise MountError('Error creating temporary container:\n' + str(ex))
+
+    def _clone(self, cid):
+        """
+        Create a temporary image snapshot from a given cid.
+
+        Temporary image snapshots are marked with a sentinel label
+        so that they can be cleaned on unmount.
+        """
+        try:
+            iid = self.client.commit(
+                    container=cid,
+                    conf={
+                            'Labels': {
+                                'io.projectatomic.Temporary': 'true'
+                            }
+                        }
+                    )['Id']
+        except docker.errors.APIError as ex:
+            raise MountError(str(ex))
+        return self._create_temp_container(iid)
+
+    def _identifier_as_cid(self, identifier):
+        """
+        Returns a container uuid for identifier.
+
+        If identifier is an image UUID or image tag, create a temporary
+        container and return its uuid.
+        """
+        def __cname_matches(container, identifier):
+            return any([n for n in container['Names']
+                        if matches(n, '/' + identifier)])
+
+        # Determine if identifier is a container
+        containers = [c['Id'] for c in self.client.containers(all=True)
+                      if (__cname_matches(c, identifier) or
+                          matches(c['Id'], identifier + '*'))]
+
+        if len(containers) > 1:
+            raise SelectionMatchError(identifier, containers)
+        elif len(containers) == 1:
+            c = containers[0]
+            return c if self.live else self._clone(c)
+
+        # Determine if identifier is an image UUID
+        images = [i for i in set(self.client.images(all=True, quiet=True))
+                  if i.startswith(identifier)]
+
+        if len(images) > 1:
+            raise SelectionMatchError(identifier, images)
+        elif len(images) == 1:
+            return self._create_temp_container(images[0])
+
+        # Match image tag.
+        images = util.image_by_name(identifier)
+        if len(images) > 1:
+            tags = [t for i in images for t in i['RepoTags']]
+            raise SelectionMatchError(identifier, tags)
+        elif len(images) == 1:
+            return self._create_temp_container(images[0]['Id'])
+
+        raise MountError('{} did not match any image or container.'
+                         ''.format(identifier))
+
+    @staticmethod
+    def _no_gd_api(cid):
+        # TODO: Deprecated
+        desc_file = os.path.join('/var/lib/docker/devicemapper/metadata', cid)
         desc = json.loads(open(desc_file).read())
         return desc['size'], desc['device_id']
 
-    def get_image_info(self, iid, dtype):
-        '''
-        Collections information about an image and returns in a
-        tuple containing the graph driver, thin_device_id, iid, and
-        thin_device_size
-        '''
-
-        if dtype is "image":
-            image_info = self.conn.inspect_image(iid)
-        else:
-            image_info = self.conn.inspect_container(iid)
-
-        image_tuple = collections.namedtuple(
-            'ImageInfo', ['graphdriver', 'thin_device_id', 'thin_device_size',
-                          'iid', 'dtype'])
-        # Check if we have the back-end
-        if 'GraphDriver' in image_info:
-
-            # Breaking out to comply with Pep8
-            thin_device_id = image_info['GraphDriver']['Data'][0][1]
-            thin_device_size = image_info['GraphDriver']['Data'][1][1]
-            iid = image_info['Id']
-            graphdriver = image_info['GraphDriver']['Name']
-
-        # No backend, so will be deprecated
-        else:
-            graphdriver = None
-            thin_device_size, thin_device_id = self.no_docker_backend(iid)
-
-        image_ret = image_tuple(graphdriver=graphdriver,
-                                thin_device_id=thin_device_id,
-                                thin_device_size=thin_device_size,
-                                iid=iid,
-                                dtype=dtype)
-        return image_ret
-
-    def get_cid(self, input_name):
+    def mount(self, identifier, options=[]):
         """
-        Given a container name or container id, it will return the
-        container id
+        Mounts a container or image referred to by identifier to
+        the host filesystem.
         """
-        containers = self.conn.containers(all=True)
-        for container in containers:
-            if 'Names' in container and container['Names'] is not None:
-                if (container['Id'].startswith(input_name)) or \
-                        (('Names' in container) and
-                         (any(input_name in item for item in
-                              container['Names']))):
-                    return container['Id']
-                    break
-        return None
+        driver = self.client.info()['Driver']
+        driver_mount_fn = getattr(self, "_mount_" + driver,
+                                  self._unsupported_backend)
 
-    def is_device_active(self, device):
-        '''
-        Checks dmsetup to see if a device is already active
-        '''
-        cmd = ['dmsetup', 'info', device]
-        dmsetup_info = self.subp(cmd)
-        for dm_line in dmsetup_info.stdout.split("\n"):
-            line = dm_line.split(":")
-            if ("State" in line[0].strip()) and ("ACTIVE" in line[1].strip()):
-                return self.return_tuple(return_code=0, stderr='',
-                                         stdout='DM {0} is already "\
-                                                 "active'.format(device))
-        return self.return_tuple(return_code=1, stderr='', stdout='')
+        driver_mount_fn(identifier, options)
 
-    def _decompose_image_name(self, input_name):
-        reg, name, tag = "", "", ""
-        if "/" in input_name:
-            reg, name = input_name.split("/", 1)
-        else:
-            name = input_name
-        if ":" in name:
-            name, tag = name.split(":", 1)
-        return reg, name, tag
+    def _unsupported_backend(self, identifier, options):
+        raise MountError('Atomic mount is not supported on the {} docker '
+                         'storage backend.'
+                         ''.format(self.client.info()['Driver']))
 
-    def _namesearch(self, input_name):
+    def _default_options(self, options, default_con=None, default_options=[]):
         """
-        Converts input of '[registry/]name[:tag]' to ID of the image identified
-        by input_name or produces None (no such image). Raises DockerMountError
-        if two images matching the given information have different IDs.
+        Merges user options with default options and determines security
+        context.
         """
-        reg, name, tag = self._decompose_image_name(input_name)
+        if not options:
+            options=default_options
+        # Uses a try/except/finally block to merge default options
+        # with user options. By default, mounts are 'ro,nosuid,nodev'
+        # and default SELinux context. User can explicitly override.
+        try:
+            for o in options:
+                # User specified context. Exception inhibits default
+                # context.
+                if o.find('context=') != -1:
+                    raise StopIteration()
+            # Default container context
+            options.append('context="' +
+                           (default_con if default_con else
+                            util.default_container_context()) + '"')
+        except StopIteration:
+            pass
+        finally:
+            for o in options:
+                if o == 'ro' or o == 'rw':
+                    default_options.remove('ro')
+                elif o == 'nosuid' or o == 'suid':
+                    default_options.remove('nosuid')
+                elif o == 'nodev' or o == 'dev':
+                    default_options.remove('nodev')
+            return options + default_options
 
-        images = self.conn.images(all=True)
+    def _mount_devicemapper(self, identifier, options):
+        """
+        Devicemapper mount backend.
+        """
+        if os.geteuid() != 0:
+            raise MountError('Insufficient privileges to mount device.')
 
-        matches = []
-        for image in images:
-            for identifier in image['RepoTags']:
-                i_reg, i_name, i_tag = self._decompose_image_name(identifier)
-                if reg in i_reg and name in i_name and tag in i_tag:
-                    matches.append(image)
-                    break
+        if self.live and options:
+            raise MountError('Cannot set mount options for live container '
+                             'mount.')
 
-        if len(matches) > 1:
-            raise DockerMountError(
-            "Unable to find a unique image for '{}'. ".format(input_name) +
-            "Try one of the following: \n{}".format(
-                "\n".join("\n".join(match['RepoTags']) for match in matches)))
-        elif len(matches) == 1:
-            return matches[0]['Id']
+        info = self.client.info()
 
-    def get_iid(self, input_name):
-        '''
-        Find the image id based on a input_name which can be
-        an image id, image name, or an image name:tag name.
-        '''
+        cid = self._identifier_as_cid(identifier)
+        cinfo = self.client.inspect_container(cid)
 
-        # Check if the input name is a container
-        cid = self.get_cid(input_name)
+        if self.live and not cinfo['State']['Running']:
+                self._cleanup_container(cinfo)
+                raise MountError('Cannot live mount non-running container.')
 
-        if cid is not None:
-            return cid, "container"
+        options = self._default_options(
+                options, default_con=cinfo['MountLabel'],
+                default_options=[] if self.live else ['ro', 'nosuid', 'nodev'])
 
-        dtype = "image"
+        dm_dev_name, dm_dev_id, dm_dev_size = '', '', ''
+        dm_pool = info['DriverStatus'][0][1]
 
-        # Check if the input_name was an image name or name:tag
-        image_id = self._namesearch(input_name)
-        if image_id is not None:
-            return image_id, dtype
-
-        # Maybe input name is an image id (or portion)
-        all_images = self.conn.images(all=True)
-        for image in all_images:
-            if image['Id'].startswith(input_name):
-                return image['Id'], dtype
-
-        raise DockerMountError("Unable to associate {0} with any image"
-                               .format(input_name))
-
-    def create_container(self, iid):
-        '''
-        Simple creation of a container
-        '''
-        container = self.conn.create_container(iid, command="/bin/true")
-        return container['Id']
-
-    def remove_container(self, cid):
-        '''
-        Simple removal of a container
-        '''
-        return self.conn.remove_container(cid)
-
-    def activate_thin_device(self, image_tuple):
-        '''
-        Activates a thin device when given an image tuple
-        containing the thin device size and thin device id.
-
-        It returns a tuple that contains the return code,
-        stderrm and stdout output.
-        '''
-        pool_name = self.docker_info['DriverStatus'][0][1]
-        if (self.is_device_active(self.dev_name)).return_code == 1:
-            table = '0 {0} thin /dev/mapper/{1} {2}'\
-                    ''.format(str(image_tuple.thin_device_size/512), pool_name,
-                              str(image_tuple.thin_device_id))
-
-            cmd = ['dmsetup', 'create', self.dev_name,
-                   '--table', '{0}'.format(table)]
-            return self.subp(cmd)
+        if 'GraphDriver' in cinfo:
+            dm_dev_name = cinfo['GraphDriver']['Data']['DeviceName']
+            dm_dev_id = cinfo['GraphDriver']['Data']['DeviceId']
+            dm_dev_size = cinfo['GraphDriver']['Data']['DeviceSize']
         else:
-            return self.return_tuple(1,
-                                     stderr='Device {0} is already '
-                                            'active'.format(self.dev_name),
-                                     stdout='')
+            # TODO: deprecated when GraphDriver patch makes it upstream
+            dm_dev_id, dm_dev_size = _no_gd_api(cid)
+            dm_dev_name = dm_pool.replace('pool', cid)
 
-    def remove_thin_device(self, device):
-        '''
-        Removes the thin device given a device name
-        '''
-        cmd = ['dmsetup', 'remove', device]
-        return self.subp(cmd)
+        dm_dev_path = os.path.join('/dev/mapper', dm_dev_name)
+        # If the device isn't already there, activate it.
+        if not os.path.exists(dm_dev_path):
+            if self.live:
+                raise MountError('Error: Attempted to live-mount unactivated '
+                                 'device.')
+            Mount._activate_thin_device(dm_dev_name, dm_dev_id, dm_dev_size,
+                                        dm_pool)
 
-    def subp(self, cmd):
-        '''
-        Standard subprocess definition that controls return
-        values in a tuple
-        '''
-        dm_proc = subprocess.Popen(cmd, stderr=subprocess.PIPE,
-                                   stdout=subprocess.PIPE)
-        out, err = dm_proc.communicate()
-        return self.return_tuple(return_code=dm_proc.returncode,
-                                 stderr=err, stdout=out)
+        # XFS should get nosuid
+        fstype = Mount._get_fs(dm_dev_path)
+        if fstype.upper() == 'XFS' and 'suid' not in options:
+            if 'nosuid' not in options:
+                options.append('nosuid')
 
-    def _get_fs(self, thin_pathname):
-        '''
-        Returns the file system type (xfs, ext4) of a given
-        device
-        '''
-        cmd = ['lsblk', '-o', 'FSTYPE', '-n', thin_pathname]
-        fs_return = self.subp(cmd)
-        return fs_return.stdout.strip
+        try:
+            Mount.mount_path(dm_dev_path, self.mountpoint,
+                             optstring=(','.join(options)))
+        except MountError as de:
+            if not self.live:
+                Mount._remove_thin_device(dm_dev_name)
+            self._cleanup_container(cinfo)
+            raise de
 
-    # image-input can be an image id or image name
-    def mount(self, image_input, nest_dir=True, bind_rootfs=False,
-            options="ro"):
-        '''
-        When given an image id, mount will create a temporary
-        container based on the image, create a thin pool device,
-        create a temporary dir at the specific mount point, and
-        mount the thin pool device to the temporary mount point.
+    def _cleanup_container(self, cinfo):
+        """
+        Remove a container and clean up its image if necessary.
+        """
+        # I'm not a fan of doing this again here.
+        env = cinfo['Config']['Env']
+        if (env and '_ATOMIC_TEMP_CONTAINER' not in env) or not env:
+            return
 
-        If any of the above steps fail, a DockerMountError is raised.
-        The mount functions returns a tuple with the container_id,
-        thin_pathname, mount_path, and thin_dev_name.
-
-        This tuple can be passed to the cleanup def to remove all the
-        temporary information.
-        '''
-
-        iid, dtype = self.get_iid(image_input)
-        if dtype is "image":
-            container_id = self.create_container(iid)
-        else:
-            container_id = iid
-
-        image_tuple = self.get_image_info(iid, dtype)
-        self.dev_name = self.prefix + "-{0}-{1}".format(image_tuple.iid,
-                                              container_id[:6])
-        activate = self.activate_thin_device(image_tuple)
-        mnt_dir = "/mnt/" if self.mnt_point is None else self.mnt_point
-
-        if nest_dir:
-            mnt_path = os.path.join(mnt_dir, self.dev_name)
-        else:
-                        mnt_path = mnt_dir
-
-        if not os.path.exists(mnt_dir) and not self.mkdir:
-            self.remove_container(container_id)
-            if activate.return_code != 1:
-                self.remove_thin_device(self.dev_name)
-            raise DockerMountError("Mount point {} does not exist".format(mnt_dir))
-        elif self.mkdir:
-            os.mkdir(mnt_dir)
-
-        thin_pathname = os.path.join("/dev/mapper", self.dev_name)
-
-        return_info = self._mount(container_id=container_id,
-                                  thin_pathname=thin_pathname,
-                                  mount_path=mnt_path,
-                                  thin_dev_name=self.dev_name,
-                                  dtype=dtype)
-        if activate.return_code == 1:
-            # Activating the thin pool failed
-            # Clean up container
-            self.remove_container(container_id)
-            raise DockerMountError("Activating thin pool failed "
-                                   "with: {0}".format(activate.stderr))
-
-        if os.path.exists(mnt_path) and self.override is False and nest_dir is True:
-            # The directory already exists
-            # Clean up container
-            # Clean up the thin pool
-            self.remove_thin_device(self.dev_name)
-            self.remove_container(container_id)
-            raise DockerMountError("The directory {0} already exists. "
-                                   "Choose a different mount point or pass"
-                                   " the --override to the DockerMount "
-                                   "class.".format(mnt_dir))
-
-        fstype = str(self._get_fs(return_info.thin_pathname))
-
-        if fstype.upper() == "XFS" and ",nouuid" not in options:
-            options = options + ",nouuid"
-
-        cmd = ['mount', '-o', '{0}'.format(options),
-               return_info.thin_pathname, return_info.mount_path]
-
-        make_mount = self.subp(cmd)
-
-        if make_mount.return_code is not 0:
-            self.remove_thin_device(self.dev_name)
-            self.remove_container(container_id)
-            raise DockerMountError("Unable to mount the thin-pool: "
-                                   "{0}".format(make_mount.stderr))
-
-        #Bind /rootfs in the container to the mount point for usability,
-        # this is a pretty ugly hack and long-term we want a better solution.
-        if bind_rootfs:
-            cmd = ['mount', '--bind', return_info.mount_path + "/rootfs",
-                    return_info.mount_path]
-
-            bind_mount = self.subp(cmd)
-
-            if bind_mount.return_code is not 0:
-                self.remove_thin_device(self.dev_name)
-                self.remove_container(container_id)
-                raise DockerMountError("Unable to bind rootfs to mount point: "
-                                    "{0}".format(bind_mount.stderr))
-
-        return return_info
+        iid = cinfo['Image']
+        self.client.remove_container(cinfo['Id'])
+        labels = self.client.inspect_image(iid)['Config']['Labels']
+        # TODO: Config.Labels should be {} and not None if no labels.
+        #       This prevents labels from being iterable if there are
+        #       none.
+        if labels and 'io.projectatomic.Temporary' in labels:
+            if labels['io.projectatomic.Temporary'] == 'true':
+                self.client.remove_image(iid)
 
     def unmount(self):
-        '''
-        Allows for a standalone umount and clean up of things when
-        only the mount-point is known.  This is useful for those
-        using this class in standalone mode where the image_tuple
-        returned from mount is lost
-        '''
+        """
+        Unmounts and cleans-up after a previous mount().
+        """
+        driver = self.client.info()['Driver']
+        driver_unmount_fn = getattr(self, "_unmount_" + driver,
+                                    self._unsupported_backend)
+        driver_unmount_fn()
 
-        path_name = self.mnt_point
+    def _unmount_devicemapper(self):
+        """
+        Devicemapper unmount backend.
+        """
+        pool = self.client.info()['DriverStatus'][0][1]
+        dev = Mount.get_dev_at_mountpoint(self.mountpoint)
 
-        cmd = ['findmnt', '-n', '-o', 'SOURCE', path_name]
-        out = self.subp(cmd)
-        device_name = (out.stdout).strip()
-        needs_unbind = False
-        mounts = []
+        dev_name = dev.replace('/dev/mapper/', '')
+        if not dev_name.startswith('docker-'):
+            raise MountError('Device mounted at {} is not a docker container.'
+                             ''.format(self.mountpoint))
 
-        if "\n" in device_name:
-            mounts = device_name.split("\n")
-            needs_unbind = True
-            device_name = mounts[-2]
-
-        thin_dev_name = os.path.basename(device_name)
-
-        if not thin_dev_name or not thin_dev_name.startswith(self.prefix + "-"):
-            raise DockerMountError(("No atomic mount at {0}, or the mount "
-                    "location is contaminated.\nRun: `findmnt {0}` for more "
-                    "information.").format(self.mnt_point))
-
-        if len(mounts) is not 1:
-            # This feels like a weird hack, how otherwise can we maintain a
-            # stack of mounts on the same directory?
-            if not (os.path.basename(mounts[-1]) == "rootfs]"):
-                raise DockerMountError(("{} is contaminated by additional "
-                "mounts.").format(self.mnt_point))
-
-        if needs_unbind:
-            cmd= ['umount', path_name]
-            unbind = self.subp(cmd)
-            if unbind.return_code is not 0:
-                raise DockerMountError(
-                        "Unable to unbind rootfs:\n{}".format(unbind.stderr))
-
-        iid, short_cid = thin_dev_name.replace(self.prefix + "-", "").split("-")
-        _, dtype = (self.get_iid(iid))
-        cid = self.get_cid(short_cid)
-
-        umount_tuple = self._mount(container_id=cid,
-                                   thin_pathname=device_name,
-                                   mount_path=path_name,
-                                   thin_dev_name=os.path.basename(device_name),
-                                   dtype=dtype)
-
-        return self.cleanup(umount_tuple)
-
-    def cleanup(self, return_info):
-        '''
-        When given the tuple returned from mount, cleanup will
-        umount the temporary mount, remove the thin device,
-        remove the temporary container, and remove the temporary
-        directory.
-        '''
-        # umount the mnt_dir
-        cmd = ['umount', return_info.mount_path]
-        make_unmount = self.subp(cmd)
-        if make_unmount.return_code is not 0:
-            raise DockerMountError("Unable to mount {0} due to {1}: "
-                                   .format(return_info.mount_path,
-                                           make_unmount.stderr))
-
-        # remove the thin device
-        remove_thin = self.remove_thin_device(return_info.thin_dev_name)
-        if remove_thin.return_code is not 0:
-            raise DockerMountError("Unable to remove thin device {0} "
-                                   "due to {1}"
-                                   .format(return_info.thin_dev_name,
-                                           remove_thin.stderr))
-
-        # Remove mount dir.
+        cid = dev_name.replace(pool.replace('pool', ''), '')
         try:
-            if self.mkdir:
-                os.rmdir(return_info.mount_path)
-        except OSError as os_err:
-            raise DockerMountError("Unable to remove dir {0} due to {1}"
-                    .format(return_info.mount_path, os_err))
+            self.client.inspect_container(cid)
+        except docker.errors.APIError:
+            raise MountError('Failed to associate device {0} mounted at {1} '
+                             'with any container.'.format(dev_name,
+                                                          self.mountpoint))
 
-        # Remove the temporary container now
-        if return_info.dtype is "image":
-            self.remove_container(return_info.container_id)
+        Mount.unmount_path(self.mountpoint)
+        cinfo = self.client.inspect_container(cid)
 
+        # Was the container live mounted? If so, done.
+        # TODO: Container.Config.Env should be {} (iterable) not None.
+        #       Fix in docker-py.
+        env = cinfo['Config']['Env']
+        if (env and '_ATOMIC_TEMP_CONTAINER' not in env) or not env:
+            return
+
+        Mount._remove_thin_device(dev_name)
+        self._cleanup_container(cinfo)

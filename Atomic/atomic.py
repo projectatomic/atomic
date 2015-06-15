@@ -9,6 +9,7 @@ import requests
 import pipes
 import mount
 import selinux
+import util
 try:
     from subprocess import DEVNULL # pylint: disable=no-name-in-module
 except ImportError:
@@ -184,15 +185,6 @@ class Atomic(object):
             self.name = self.image.split("/")[-1].split(":")[0]
             if self.spc:
                 self.name = self.name + "-spc"
-
-    def _get_selinux_label(self):
-        if selinux.is_selinux_enabled() != 0:
-            fd = open(selinux.selinux_lxc_contexts_path())
-            for i in fd.readlines():
-                name,context = i.split("=")
-                if name.strip() == "file":
-                    return context.strip("\n\" ")
-        return ""
 
     def _getconfig(self, key, default=None):
         assert self.inspect is not None
@@ -562,43 +554,36 @@ removes all containers based on an image.
     def print_verify(self):
         self.writeOut(self.verify())
 
-    def _mount_default_options(self):
-        defopts = "ro,nodev,nosuid"
-        selinux_default_context = self._get_selinux_label()
-        if selinux_default_context:
-            defopts += ",context=" + selinux_default_context
-        return defopts
-
     def mount(self):
         if os.geteuid() != 0:
             raise ValueError("This command must be run as root.")
         try:
-            opts = self.args.options
-            if "rw" in opts.split(","):
-                raise ValueError("Invalid option: 'rw'.")
-            mount.DockerMount(
-                    mnt_point=self.args.mountpoint,
-                    override=True,
-                    prefix="atomic",
-                    mkdir=False).mount(
-                            self.args.image,
-                            nest_dir=False,
-                            bind_rootfs=True,
-                            options=(opts if opts else
-                                self._mount_default_options()))
-        except mount.DockerMountError as dme:
-            return dme
+            options = [opt for opt in self.args.options.split(',') if opt]
+            mount.DockerMount(self.args.mountpoint,
+                              self.args.live).mount(self.args.image, options)
+
+            if not self.args.no_bind:
+                mount.Mount.mount_path(os.path.join(self.args.mountpoint,
+                                                    "rootfs"),
+                                       self.args.mountpoint, bind=True)
+
+        except mount.MountError as dme:
+            raise ValueError(str(dme))
 
     def unmount(self):
         if os.geteuid() != 0:
             raise ValueError("This command must be run as root.")
         try:
-            return mount.DockerMount(
-                    mnt_point=self.args.mountpoint,
-                    prefix="atomic",
-                    mkdir=False).unmount()
-        except mount.DockerMountError as dme:
-            return dme
+            dev = mount.Mount.get_dev_at_mountpoint(self.args.mountpoint)
+
+            # If there's a bind-mount over the directory, unbind it.
+            if dev.rsplit('[', 1)[-1].strip(']') == '/rootfs':
+                mount.Mount.unmount_path(self.args.mountpoint)
+
+            return mount.DockerMount(self.args.mountpoint).unmount()
+
+        except mount.MountError as dme:
+            raise ValueError(str(dme))
 
     def version(self):
         def get_label(label):
