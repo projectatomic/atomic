@@ -82,6 +82,9 @@ if __name__ == '__main__':
                                     epilog="atomic install attempts to read the LABEL INSTALL field in the image, if it does not exist atomic will just pull the image on to your machine.  You could add a LABEL INSTALL command to your Dockerfile like: 'LABEL INSTALL %s'" % atomic.print_install() )
 
     installp.set_defaults(func=atomic.install)
+    installp.add_argument("--opt1", dest="opt1", help="additional arguments to be passed as ${OPT1} for install command.")
+    installp.add_argument("--opt2", dest="opt2", help="additional arguments to be passed as ${OPT2} for install command.")
+    installp.add_argument("--opt3", dest="opt3", help="additional arguments to be passed as ${OPT3} for install command.")
     installp.add_argument("-n", "--name", dest="name",
                       default=None,
                       help=_("name of container"))
@@ -125,6 +128,9 @@ if __name__ == '__main__':
                                 help=_("execute container image run method"),
                                 epilog="atomic run defaults to the following command, if image does not specify LABEL run\n'%s'" % atomic.print_run() )
     runp.set_defaults(func=atomic.run)
+    runp.add_argument("--opt1", dest="opt1", help="additional arguments to be passed as ${OPT1} for run command.")
+    runp.add_argument("--opt2", dest="opt2", help="additional arguments to be passed as ${OPT2} for run command.")
+    runp.add_argument("--opt3", dest="opt3", help="additional arguments to be passed as ${OPT3} for run command.")
     runp.add_argument("-n", "--name", dest="name",
                       default=None,
                       help=_("name of container"))
@@ -141,6 +147,9 @@ if __name__ == '__main__':
                                                                           epilog="atomic uninstall attempts to read the LABEL UNINSTALL field in the image, if it does not exist atomic will remove the image from your machine.  You could add a LABEL UNINSTALL command to your Dockerfile like: 'LABEL UNINSTALL %s'" % atomic.print_uninstall() )
 
     uninstallp.set_defaults(func=atomic.uninstall)
+    uninstallp.add_argument("--opt1", dest="opt1", help="additional arguments to be passed as ${OPT1} for uninstall command.")
+    uninstallp.add_argument("--opt2", dest="opt2", help="additional arguments to be passed as ${OPT2} for uninstall command.")
+    uninstallp.add_argument("--opt3", dest="opt3", help="additional arguments to be passed as ${OPT3} for uninstall command.")
     uninstallp.add_argument("-n", "--name", dest="name",
                             default=None,
                             help=_("name of container"))
