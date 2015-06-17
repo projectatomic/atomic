@@ -36,16 +36,16 @@ class Atomic(object):
                     "--ipc=host",
                     "--pid=host",
                     "-e", "HOST=/host",
-                    "-e", "NAME=NAME",
-                    "-e", "IMAGE=IMAGE",
-                    "-v", "${CONFDIR}:/etc/NAME",
-                    "-v", "${LOGDIR}:/var/log/NAME",
-                    "-v", "${DATADIR}:/var/lib/NAME",
+                    "-e", "NAME=${NAME}",
+                    "-e", "IMAGE=${IMAGE}",
+                    "-v", "${CONFDIR}:/etc/${NAME}",
+                    "-v", "${LOGDIR}:/var/log/${NAME}",
+                    "-v", "${DATADIR}:/var/lib/${NAME}",
                     "-e", "CONFDIR=${CONFDIR}",
                     "-e", "LOGDIR=${LOGDIR}",
                     "-e", "DATADIR=${DATADIR}",
-                    "--name", "NAME",
-                    "IMAGE"]
+                    "--name", "${NAME}",
+                    "${IMAGE}"]
 
     SPC_ARGS = ["/usr/bin/docker", "run",
                 "-t",
@@ -59,15 +59,15 @@ class Atomic(object):
                 "--ipc=host",
                 "--pid=host",
                 "-e", "HOST=/host",
-                "-e", "NAME=NAME",
-                "-e", "IMAGE=IMAGE",
-                "IMAGE" ]
+                "-e", "NAME=${NAME}",
+                "-e", "IMAGE=${IMAGE}",
+                "${IMAGE}" ]
 
     RUN_ARGS = ["/usr/bin/docker", "create",
                 "-t",
                 "-i",
-                "--name", "NAME",
-                "IMAGE" ]
+                "--name", "${NAME}",
+                "${IMAGE}" ]
 
     def __init__(self):
         self.d = docker.Client()
@@ -339,16 +339,12 @@ removes all containers based on an image.
             self.writeOut(cmd)
 
             if missing_RUN:
-                subprocess.check_call(cmd, env={
-                    "CONFDIR": "/etc/%s" % self.name,
-                    "LOGDIR": "/var/log/%s" % self.name,
-                    "DATADIR":"/var/lib/%s" % self.name}, shell=True, stderr=DEVNULL, stdout=DEVNULL)
+                subprocess.check_call(cmd, env=self.cmd_env,
+                                      shell=True, stderr=DEVNULL,
+                                      stdout=DEVNULL)
                 return self._start()
 
-        subprocess.check_call(cmd, env={
-            "CONFDIR": "/etc/%s" % self.name,
-            "LOGDIR": "/var/log/%s" % self.name,
-            "DATADIR":"/var/lib/%s" % self.name}, shell=True)
+        subprocess.check_call(cmd, env=self.cmd_env, shell=True)
 
 
     def stop(self):
@@ -363,10 +359,7 @@ removes all containers based on an image.
             cmd = self.gen_cmd(args)
             self.writeOut(cmd)
 
-            subprocess.check_call(cmd, env={
-                "CONFDIR": "/etc/%s" % self.name,
-                "LOGDIR": "/var/log/%s" % self.name,
-                "DATADIR":"/var/lib/%s" % self.name}, shell=True)
+            subprocess.check_call(cmd, env=self.cmd_env, shell=True)
 
 
         # Container exists
@@ -421,11 +414,15 @@ removes all containers based on an image.
         if args:
             cmd = self.gen_cmd(args + map(pipes.quote, self.args.args))
             self.writeOut(cmd)
-            subprocess.check_call(cmd, env={
+            subprocess.check_call(cmd, env=self.cmd_env, shell=True)
+        subprocess.check_call(["/usr/bin/docker", "rmi", self.image])
+
+    @property
+    def cmd_env(self):
+        return {'NAME': self.name, 'IMAGE': self.image,
                 "CONFDIR": "/etc/%s" % self.name,
                 "LOGDIR": "/var/log/%s" % self.name,
-                "DATADIR":"/var/lib/%s" % self.name}, shell=True)
-        subprocess.check_call(["/usr/bin/docker", "rmi", self.image])
+                "DATADIR":"/var/lib/%s" % self.name}
 
     def gen_cmd(self,cargs):
         args = []
@@ -472,10 +469,7 @@ removes all containers based on an image.
             cmd = self.gen_cmd(args + map(pipes.quote, self.args.args))
             self.writeOut(cmd)
 
-            return(subprocess.check_call(cmd, env={
-                "CONFDIR": "/etc/%s" % self.name,
-                "LOGDIR": "/var/log/%s" % self.name,
-                "DATADIR":"/var/lib/%s" % self.name}, shell=True))
+            return subprocess.check_call(cmd, env=self.cmd_env, shell=True)
 
     def help(self):
         if os.path.exists("/usr/bin/rpm-ostree"):

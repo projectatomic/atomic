@@ -16,11 +16,11 @@ IMAGE.
 
 If the container image has a `LABEL STOP` instruction like the following:
 
-```CLABEL STOP /usr/bin/docker kill -s HUP --name NAME IMAGE```
+```CLABEL STOP /usr/bin/docker kill -s HUP --name ${NAME} ${IMAGE}```
 
 atomic would execute this command before stoping the container.
 
-atomic will replace the NAME and IMAGE fields with the name and image specified via the command,  NAME will be replaced with IMAGE if it is not specified.
+atomic will replace the NAME and IMAGE fields with the name and image specified via the command,  NAME will be replaced with IMAGE if it is not specified.  Additionally, atomic will pass in NAME and IMAGE as environment variables as well (with NAME defaulting to IMAGE if not set).
 
 If this field does not exist, `atomic stop` will just stop the container, if
 the container is running.

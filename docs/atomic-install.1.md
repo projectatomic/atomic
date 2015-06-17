@@ -16,11 +16,11 @@ IMAGE, if this field does not exist, `atomic install` will install the IMAGE
 
 If the container image has a LABEL INSTALL instruction like the following:
 
-```LABEL INSTALL /usr/bin/docker run -t -i --rm --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=NAME -e IMAGE=IMAGE -e CONFDIR=${CONFDIR} -e LOGDIR=${LOGDIR} -e DATADIR=${DATADIR} --name NAME IMAGE /bin/install.sh```
+```LABEL INSTALL /usr/bin/docker run -t -i --rm --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=${NAME} -e IMAGE=${IMAGE} -e CONFDIR=${CONFDIR} -e LOGDIR=${LOGDIR} -e DATADIR=${DATADIR} --name ${NAME} ${IMAGE} /bin/install.sh```
 
 `atomic install` will replace the NAME and IMAGE fields with the name and
 image specified via the command,  NAME will be replaced with IMAGE if it is
-not specified. `atomic install` will also pass in the CONFDIR, LOGDIR and DATADIR environment variables to the container.  Any additional arguments will be
+not specified. `atomic install` will pass in the CONFDIR, LOGDIR, DATADIR, NAME, and IMAGE environment variables to the container (the NAME variable will be set to IMAGE if not specified).  Any additional arguments will be
 appended to the command.
 
 # OPTIONS:
