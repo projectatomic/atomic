@@ -25,7 +25,19 @@ If this field does not exist, `atomic run` defaults to the following:
 
 These defaults are suggested values for your container images.
 
-atomic will replace the NAME and IMAGE fields with the name and image specified via the command,  NAME will be replaced with IMAGE if it is not specified.  Additionally, atomic will pass in the LOGDIR, DATADIR, CONFDIR, NAME, and IMAGE environment variables (with NAME defaulting to IMAGE if not set).
+`atomic run` will set the following environment variables for use in the command:
+
+**NAME**
+  The name specified via the command.  NAME will be replaced with IMAGE if it is not specified.
+
+**IMAGE**
+  The name and image specified via the command.
+
+**SUDO_UID**
+  The `SUDO_UID` environment variable.  This is useful with the docker `-u` option for user space tools.  If the environment variable is not available, the value of `/proc/self/loginuid` is used.
+
+**SUDO_GID**
+  The `SUDO_GID` environment variable.  This is useful with the docker `-u` option for user space tools.  If the environment variable is not available, the default GID of the value for `SUDO_UID` is used.  If this value is not available, the value of `/proc/self/loginuid` is used.
 
 # OPTIONS:
 **--help**
