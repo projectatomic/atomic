@@ -23,7 +23,7 @@ docs: $(MANPAGES_MD:%.md=%)
 
 clean:
 	$(PYTHON) setup.py clean
-	-rm -rf build *~ \#* *pyc .#*
+	-rm -rf build *~ \#* *pyc .#* docs/*.1
 
 install: all 
 	$(PYTHON) setup.py install `test -n "$(DESTDIR)" && echo --root $(DESTDIR)`
