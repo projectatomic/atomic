@@ -26,9 +26,9 @@ docker build -t atomic_busybox .
 ./atomic version atomic_busybox
 cat > Dockerfile <<EOF
 FROM busybox
-LABEL RUN /usr/bin/docker run -ti --rm IMAGE /bin/echo RUN
-LABEL INSTALL /usr/bin/docker run -ti --rm IMAGE /bin/echo INSTALL
-LABEL UNINSTALL /usr/bin/docker run -ti --rm IMAGE /bin/echo UNINSTALL
+LABEL RUN /usr/bin/docker run -ti --rm \${IMAGE} /bin/echo RUN
+LABEL INSTALL /usr/bin/docker run -ti --rm \${IMAGE} /bin/echo INSTALL
+LABEL UNINSTALL /usr/bin/docker run -ti --rm \${IMAGE} /bin/echo UNINSTALL
 LABEL Name Atomic Busybox
 LABEL Version 1.0
 LABEL Release 1.0

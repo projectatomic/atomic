@@ -18,14 +18,14 @@ IMAGE.
 
 If the container image has a LABEL RUN instruction like the following:
 
-```LABEL RUN /usr/bin/docker run -t -i --rm --cap_add=SYS_ADMIN --net=host -v ${LOGDIR}:/var/log -v ${DATADIR}:/var/lib --name NAME IMAGE```
+```LABEL RUN /usr/bin/docker run -t -i --rm --cap_add=SYS_ADMIN --net=host -v ${LOGDIR}:/var/log -v ${DATADIR}:/var/lib --name ${NAME} ${IMAGE}```
 
 If this field does not exist, `atomic run` defaults to the following:
-```/usr/bin/docker run -t -i --rm -v ${LOGDIR}:/var/log -v ${DATADIR}:/var/lib --name NAME IMAGE```
+```/usr/bin/docker run -t -i --rm -v ${LOGDIR}:/var/log -v ${DATADIR}:/var/lib --name ${NAME} ${IMAGE}```
 
 These defaults are suggested values for your container images.
 
-atomic will replace the NAME and IMAGE fields with the name and image specified via the command,  NAME will be replaced with IMAGE if it is not specified.
+atomic will replace the NAME and IMAGE fields with the name and image specified via the command,  NAME will be replaced with IMAGE if it is not specified.  Additionally, atomic will pass in the LOGDIR, DATADIR, CONFDIR, NAME, and IMAGE environment variables (with NAME defaulting to IMAGE if not set).
 
 # OPTIONS:
 **--help**
@@ -40,7 +40,7 @@ NAME will default to the IMAGENAME if it is not specified.
 
   The image will run with the following command:
   
-```/usr/bin/docker run -t -i --rm --privileged -v /:/host -v /run:/run --net=host --ipc=host --pid=host -e HOST=/host -e NAME=NAME -e IMAGE=IMAGE --name NAME IMAGE```
+```/usr/bin/docker run -t -i --rm --privileged -v /:/host -v /run:/run --net=host --ipc=host --pid=host -e HOST=/host -e NAME=${NAME} -e IMAGE=${IMAGE} --name ${NAME} ${IMAGE}```
 
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)
