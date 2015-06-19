@@ -5,8 +5,10 @@ test_image() {
     ./atomic install ${IMAGE}
     ./atomic uninstall ${IMAGE}
     ./atomic info ${IMAGE}
+    ./atomic run --spc ${IMAGE}
     ./atomic run --spc ${IMAGE} /bin/ps
     ./atomic run ${IMAGE} /bin/ps
+    ./atomic run --name=atomic_test ${IMAGE}
     ./atomic run --name=atomic_test ${IMAGE} sleep 6000 &
     ./atomic run --name=atomic_test ${IMAGE} ps 
     ./atomic version ${IMAGE}
