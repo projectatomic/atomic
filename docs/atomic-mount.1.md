@@ -26,11 +26,11 @@ container from the given image. All temporary artifacts are cleaned upon
 **-o|--options** *OPTIONS*
 Specify options to be passed to *mount*. All options accepted by the 'mount'
 command are valid. The default mount options (if the **--live** flag is unset)
-are: 'ro,nodev,nosuid'. These flags must be overridden explicitly using 'rw',
-'dev', and 'suid', respectively. Use of the 'rw' flag is discouraged, as writes
-into the atomic temporary containers are never preserved. Use of this option
-conflicts with **--live**, as live containers have predetermined, immutable
-mount options.
+are: 'ro,nodev,nosuid'. If the **-o** flag is specified, then no default
+options are assumed. Use of the 'rw' flag is discouraged, as writes into the
+atomic temporary containers are never preserved. Use of this option conflicts
+with **--live**, as live containers have predetermined, immutable mount
+options.
 
 **--live**
 Mount a container live, writable, and synchronized. This option allows the user

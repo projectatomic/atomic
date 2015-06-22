@@ -246,7 +246,7 @@ class DockerMount(Mount):
         # TODO: Deprecated
         desc_file = os.path.join('/var/lib/docker/devicemapper/metadata', cid)
         desc = json.loads(open(desc_file).read())
-        return desc['size'], desc['device_id']
+        return desc['device_id'], desc['size']
 
     def mount(self, identifier, options=[]):
         """
@@ -270,31 +270,13 @@ class DockerMount(Mount):
         context.
         """
         if not options:
-            options=default_options
-        # Uses a try/except/finally block to merge default options
-        # with user options. By default, mounts are 'ro,nosuid,nodev'
-        # and default SELinux context. User can explicitly override.
-        try:
-            for o in options:
-                # User specified context. Exception inhibits default
-                # context.
-                if o.find('context=') != -1:
-                    raise StopIteration()
-            # Default container context
+            options = default_options
+        # Determines default context.
+        if all([o.find('context=') == -1 for o in options]):
             options.append('context="' +
                            (default_con if default_con else
                             util.default_container_context()) + '"')
-        except StopIteration:
-            pass
-        finally:
-            for o in options:
-                if o == 'ro' or o == 'rw':
-                    default_options.remove('ro')
-                elif o == 'nosuid' or o == 'suid':
-                    default_options.remove('nosuid')
-                elif o == 'nodev' or o == 'dev':
-                    default_options.remove('nodev')
-            return options + default_options
+        return options
 
     def _mount_devicemapper(self, identifier, options):
         """
@@ -329,7 +311,7 @@ class DockerMount(Mount):
             dm_dev_size = cinfo['GraphDriver']['Data']['DeviceSize']
         else:
             # TODO: deprecated when GraphDriver patch makes it upstream
-            dm_dev_id, dm_dev_size = _no_gd_api(cid)
+            dm_dev_id, dm_dev_size = DockerMount._no_gd_api(cid)
             dm_dev_name = dm_pool.replace('pool', cid)
 
         dm_dev_path = os.path.join('/dev/mapper', dm_dev_name)
