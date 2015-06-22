@@ -10,9 +10,11 @@ import pipes
 import pwd
 import time
 import math
-
 import Atomic.mount as mount
 import Atomic.util as util
+import Atomic.satellite as satellite
+import Atomic.pulp as pulp
+
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -146,15 +148,59 @@ class Atomic(object):
 
     def upload(self):
         prevstatus = ""
+        # Priority order:
+        # If user passes in a password/username/url/ssl flag, use that
+        # If not, read from the config file
+        # If still nothing, ask again for registry user/pass
+        if self.args.pulp:
+            config = pulp.PulpConfig().config()
+
+        if self.args.satellite:
+            config = satellite.SatelliteConfig().config()
+
+        if (self.args.satellite | self.args.pulp):
+            if not self.args.username:
+                self.args.username = config["username"]
+            if not self.args.password:
+                self.args.password = config["password"]
+            if not self.args.url:
+                self.args.url = config["url"]
+            if self.args.verify_ssl is None:
+                self.args.verify_ssl = config["verify_ssl"]
+
+        if self.args.verify_ssl is None:
+            self.args.verify_ssl = False
+
         if not self.args.username:
             self.args.username = util.input("Registry Username: ")
+
         if not self.args.password:
             self.args.password = getpass.getpass("Registry Password: ")
 
         if self.args.pulp:
-            return push_image_to_pulp(self.image, self.args.url,
-                                      self.args.username, self.args.password,
-                                      self.args.verify_ssl, self.d)
+                    return pulp.push_image_to_pulp(self.image, self.args.url,
+                                                   self.args.username,
+                                                   self.args.password,
+                                                   self.args.verify_ssl,
+                                                   self.d)
+        if not self.args.activation_key:
+            if self.args.satellite:
+                self.args.activation_key = util.input("Activation Key: ")
+        if not self.args.repo_id:
+            if self.args.satellite:
+                self.args.repo_id = util.input("Repository ID: ")
+
+        if self.args.satellite:
+            return satellite.push_image_to_satellite(self.image,
+                                                     self.args.url,
+                                                     self.args.username,
+                                                     self.args.password,
+                                                     self.args.verify_ssl,
+                                                     self.d,
+                                                     self.args.activation_key,
+                                                     self.args.repo_id,
+                                                     self.args.debug)
+
         else:
             self.d.login(self.args.username, self.args.password)
             for line in self.d.push(self.image, stream=True):

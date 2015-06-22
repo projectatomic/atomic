@@ -306,6 +306,51 @@ _atomic_mount() {
 	return 0
 }
 
+_atomic_upload() {
+	local options_with_args="
+		--URL -U
+		--username -u
+		--password -p
+		--repo_id --repository_id
+		--activation_key -a
+	"
+	local all_options="$options_with_args
+		--help -h
+		--pulp
+		--satellite
+		--verify_ssl
+		--debug
+	"
+
+	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
+
+	case "$prev" in
+		$options_with_args_glob )
+			return 0
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "$options_with_args" -- "$cur" ) )
+			;;
+		*)
+
+			local counter=$( __atomic_pos_first_nonflag $( __atomic_to_alternatives "$options_with_args" ) )
+
+			if [ $cword -eq $counter ]; then
+				__atomic_containers_and_images
+				return 0
+			fi
+
+			COMPREPLY=( $( compgen -d "$cur" ) )
+			return 0
+			;;
+	esac
+	return 0
+}
+
+
 _atomic_unmount() {
 	case "$prev" in
 		"unmount")
@@ -407,6 +452,7 @@ _atomic() {
 		uninstall
 		unmount
 		update
+		upload
 	)
 
 	local main_options_with_args="
