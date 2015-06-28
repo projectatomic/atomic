@@ -10,6 +10,7 @@ import pipes
 import mount
 import selinux
 import util
+import pwd
 try:
     from subprocess import DEVNULL # pylint: disable=no-name-in-module
 except ImportError:
@@ -411,10 +412,29 @@ removes all containers based on an image.
 
     @property
     def cmd_env(self):
-        return {'NAME': self.name, 'IMAGE': self.image,
-                "CONFDIR": "/etc/%s" % self.name,
-                "LOGDIR": "/var/log/%s" % self.name,
-                "DATADIR":"/var/lib/%s" % self.name}
+        env = {'NAME': self.name,
+               'IMAGE': self.image,
+               'CONFDIR': "/etc/%s" % self.name,
+               'LOGDIR': "/var/log/%s" % self.name,
+               'DATADIR':"/var/lib/%s" % self.name}
+
+        with open("/proc/self/loginuid") as f:
+            default_uid = f.readline()
+
+        if "SUDO_UID" in os.environ:
+            env["SUDO_UID"] = os.environ["SUDO_UID"]
+        else:
+            env["SUDO_UID"] = default_uid
+
+        if 'SUDO_GID' in os.environ:
+            env['SUDO_GID'] = os.environ['SUDO_GID']
+        else:
+            try:
+                env['SUDO_GID'] = pwd.getpwuid(int(env["SUDO_UID"]))[3]
+            except:
+                env["SUDO_GID"] = self.default_uid
+
+        return env
 
     def gen_cmd(self,cargs):
         args = []

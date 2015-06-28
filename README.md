@@ -77,6 +77,14 @@ directories if necessary.
 In my example the INSTALL method will execute the install.sh which we add to
 the image.  The root sub directory contains the following scripts:
 
+The `atomic install` will set the following environment variables for use in the command:
+
+**SUDO_UID**
+  The `SUDO_UID` environment variable.  This is useful with the docker `-u` option for user space tools.  If the environment variable is not available, the value of `/proc/self/loginuid` is used.
+
+**SUDO_GID**
+  The `SUDO_GID` environment variable.  This is useful with the docker `-u` option for user space tools.  If the environment variable is not available, the default GID of the value for `SUDO_UID` is used.  If this value is not available, the value of `/proc/self/loginuid` is used.
+
 cat root/usr/bin/install.sh
 ```
 #!/bin/sh
