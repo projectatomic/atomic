@@ -418,6 +418,15 @@ removes all containers based on an image.
                'LOGDIR': "/var/log/%s" % self.name,
                'DATADIR':"/var/lib/%s" % self.name}
 
+        if self.args.opt1:
+            env['OPT1'] = self.args.opt1
+
+        if self.args.opt2:
+            env['OPT2'] = self.args.opt2
+
+        if self.args.opt3:
+            env['OPT3'] = self.args.opt3
+
         with open("/proc/self/loginuid") as f:
             default_uid = f.readline()
 
@@ -430,7 +439,7 @@ removes all containers based on an image.
             env['SUDO_GID'] = os.environ['SUDO_GID']
         else:
             try:
-                env['SUDO_GID'] = pwd.getpwuid(int(env["SUDO_UID"]))[3]
+                env['SUDO_GID'] = str(pwd.getpwuid(int(env["SUDO_UID"]))[3])
             except:
                 env["SUDO_GID"] = self.default_uid
 

@@ -18,7 +18,7 @@ IMAGE.
 
 If the container image has a LABEL RUN instruction like the following:
 
-```LABEL RUN /usr/bin/docker run -t -i --rm --cap_add=SYS_ADMIN --net=host -v ${LOGDIR}:/var/log -v ${DATADIR}:/var/lib --name ${NAME} ${IMAGE}```
+```LABEL RUN /usr/bin/docker run -t -i --rm \${OPT1} --cap_add=SYS_ADMIN --net=host -v ${LOGDIR}:/var/log -v ${DATADIR}:/var/lib --name ${NAME} ${IMAGE} \${OPT2} run.sh \${OPT3}```
 
 If this field does not exist, `atomic run` defaults to the following:
 ```/usr/bin/docker run -t -i --rm -v ${LOGDIR}:/var/log -v ${DATADIR}:/var/lib --name ${NAME} ${IMAGE}```
@@ -32,6 +32,9 @@ These defaults are suggested values for your container images.
 
 **IMAGE**
   The name and image specified via the command.
+
+**OPT1, OPT2, OPT3**
+  Additional options which can be specified via the command.
 
 **SUDO_UID**
   The `SUDO_UID` environment variable.  This is useful with the docker `-u` option for user space tools.  If the environment variable is not available, the value of `/proc/self/loginuid` is used.
