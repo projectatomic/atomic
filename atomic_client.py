@@ -28,6 +28,6 @@ if __name__ == "__main__":
         resp = dbus_proxy.version(sys.argv[1:], True)
         for r in resp:
             for v in r["Version"]:
-                print v["Id"], v["Version"], v["Tag"]
+                print(v["Id"], v["Version"], v["Tag"])
     except dbus.DBusException as e:
         print (e)

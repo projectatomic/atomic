@@ -7,10 +7,12 @@ import subprocess
 import getpass
 import requests
 import pipes
-import mount
 import selinux
-import util
 import pwd
+
+from Atomic import mount
+from Atomic import util
+
 try:
     from subprocess import DEVNULL # pylint: disable=no-name-in-module
 except ImportError:
@@ -132,7 +134,7 @@ class Atomic(object):
     def upload(self):
         prevstatus = ""
         if not self.args.username:
-            self.args.username = raw_input("Registry Username: ")
+            self.args.username = util.input("Registry Username: ")
         if not self.args.password:
             self.args.password = getpass.getpass("Registry Password: ")
 
@@ -405,7 +407,7 @@ removes all containers based on an image.
 
         args = self._get_args("UNINSTALL")
         if args:
-            cmd = self.gen_cmd(args + map(pipes.quote, self.args.args))
+            cmd = self.gen_cmd(args + list(map(pipes.quote, self.args.args)))
             self.writeOut(cmd)
             subprocess.check_call(cmd, env=self.cmd_env, shell=True)
         subprocess.check_call(["/usr/bin/docker", "rmi", self.image])
@@ -487,7 +489,7 @@ removes all containers based on an image.
 
         args = self._get_args("INSTALL")
         if args:
-            cmd = self.gen_cmd(args + map(pipes.quote, self.args.args))
+            cmd = self.gen_cmd(args + list(map(pipes.quote, self.args.args)))
             self.writeOut(cmd)
 
             return subprocess.check_call(cmd, env=self.cmd_env, shell=True)

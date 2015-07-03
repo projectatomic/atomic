@@ -25,7 +25,7 @@ import os
 import docker
 import json
 
-import util
+from Atomic import util
 
 from fnmatch import fnmatch as matches
 
