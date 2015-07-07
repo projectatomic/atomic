@@ -12,7 +12,7 @@ else:
     try:
         import urllib3
         have_urllib3 = True
-    except ImportError, e:
+    except ImportError as e:
         pass
     if have_urllib3:
         # Except only call disable-warnings if it exists

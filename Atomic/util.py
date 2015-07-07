@@ -2,6 +2,7 @@ import collections
 import docker
 import selinux
 import subprocess
+import sys
 
 from fnmatch import fnmatch as matches
 
@@ -9,6 +10,11 @@ from fnmatch import fnmatch as matches
 
 ReturnTuple = collections.namedtuple('ReturnTuple',
                                      ['return_code', 'stdout', 'stderr'])
+
+if sys.version_info[0] < 3:
+    input = raw_input
+else:
+    input = input
 
 
 def image_by_name(img_name):

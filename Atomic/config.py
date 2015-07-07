@@ -1,5 +1,8 @@
 import os
-import ConfigParser
+try:
+    import ConfigParser as configparser
+except ImportError:  # py3 compat
+    import configparser
 
 class PulpConfig(object):
     """
@@ -16,7 +19,7 @@ class PulpConfig(object):
     password: <pass>
     """
     def __init__(self):
-        self.c = ConfigParser.ConfigParser()
+        self.c = configparser.ConfigParser()
         self.config_file = os.path.expanduser("~/.pulp/admin.conf")
         self.c.read(self.config_file)
         self.url = self._get("server", "host")
@@ -27,7 +30,7 @@ class PulpConfig(object):
     def _get(self, section, val):
         try:
             return self.c.get(section, val)
-        except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+        except (configparser.NoSectionError, configparser.NoOptionError):
             return None
         except ValueError as e:
             raise ValueError("Bad Value for %s in %s. %s" % (val, self.config_file, e ))
@@ -35,7 +38,7 @@ class PulpConfig(object):
     def _getboolean(self, section, val):
         try:
             return self.c.getboolean(section, val)
-        except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+        except (configparser.NoSectionError, configparser.NoOptionError):
             return True
         except ValueError as e:
             raise ValueError("Bad Value for %s in %s. %s" % (val, self.config_file, e ))
@@ -45,4 +48,4 @@ class PulpConfig(object):
 
 if __name__ == '__main__':
     c = PulpConfig()
-    print c.config()
+    print(c.config())
