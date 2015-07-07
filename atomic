@@ -71,6 +71,11 @@ if __name__ == '__main__':
                               action="store_true",
                               help=_("if an upgrade is available, reboot after deployment is complete"))
 
+        rebasep = host_subparser.add_parser("rebase", help=_("Download and deploy a new origin refspec"))
+        rebasep.set_defaults(func=atomic.host_rebase)
+        rebasep.add_argument("refspec",
+                             help=_("Origin refspec for new deployment"))
+
     infop = subparser.add_parser("info",
                                  help=_("display label information about an image"),
                                  epilog="atomic info attempts to read and display the LABEL information about an image")

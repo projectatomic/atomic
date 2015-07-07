@@ -380,6 +380,10 @@ removes all containers based on an image.
             argv.append("--reboot")
         self._rpmostree(*argv)
 
+    def host_rebase(self):
+        argv = ["rebase", self.args.refspec]
+        self._rpmostree(*argv)
+
     def uninstall(self):
         self.inspect = self._inspect_container()
         if self.inspect and self.force:
