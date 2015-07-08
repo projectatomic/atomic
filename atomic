@@ -45,8 +45,8 @@ except IOError:
 
 class HelpByDefaultArgumentParser(argparse.ArgumentParser):
     def error(self, message):
-        self.print_help()
-        sys.stderr.write('\nerror: %s\n' % message)
+        sys.stderr.write('%s: %s\n' % (sys.argv[0], message))
+        sys.stderr.write("Try '%s --help' for more information.\n" % self.prog)
         sys.exit(2)
 
 if __name__ == '__main__':
