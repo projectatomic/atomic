@@ -288,7 +288,7 @@ removes all containers based on an image.
     def container_run_command(self):
         command = "%s run " % sys.argv[0]
         if self.spc:
-            command += "--SPC "
+            command += "--spc "
 
         if self.name != self.image:
             command += "--name %s " % self.name
