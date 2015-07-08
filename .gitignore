@@ -1,2 +1,9 @@
+*.swp
+*.swo
 *.pyc
 build
+*.log
+htmlcov
+.coverage
+
+tests/test-images/Dockerfile.secret

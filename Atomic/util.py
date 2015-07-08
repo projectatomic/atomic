@@ -52,7 +52,7 @@ def image_by_name(img_name):
     return valid_images
 
 
-def subp(cmd):
+def subp(cmd): # pragma: no cover
     """
     Run a command as a subprocess.
     Return a triple of return code, standard out, standard err.
@@ -63,7 +63,7 @@ def subp(cmd):
     return ReturnTuple(proc.returncode, stdout=out, stderr=err)
 
 
-def default_container_context():
+def default_container_context(): # pragma: no cover
     if selinux.is_selinux_enabled() != 0:
         fd = open(selinux.selinux_lxc_contexts_path())
         for i in fd.readlines():
