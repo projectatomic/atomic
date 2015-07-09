@@ -126,6 +126,7 @@ cat root/etc/systemd/system/httpd_template.service
 [Unit]
 Description=The Apache HTTP Server for TEMPLATE
 After=docker.service
+BindTo=docker.service
 
 [Service]
 ExecStart=/usr/bin/docker start TEMPLATE
