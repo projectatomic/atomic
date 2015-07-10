@@ -7,7 +7,6 @@ atomic-mount - Mount Images/Containers to Filesystem
 # SYNOPSIS
 **atomic mount**
 [**--live** | [**-o**|**--options** *OPTIONS*]]
-[**--no-bind**]
 [REGISTRY/]REPO[:TAG]|UUID|NAME
 DIRECTORY
 
@@ -37,10 +36,6 @@ Mount a container live, writable, and synchronized. This option allows the user
 to modify the container's contents as it runs or update the container's
 software without rebuilding the container. If live mode is used, no mount
 options may be provided.
-
-**--no-bind**
-By default, atomic mount binds '/rootfs' to '/' within the container. This
-option disables that behavior.
 
 # HISTORY
 June 2015, Originally compiled by William Temple (wtemple at redhat dot com)

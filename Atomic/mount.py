@@ -259,7 +259,7 @@ class DockerMount(Mount):
 
         driver_mount_fn(identifier, options)
 
-    def _unsupported_backend(self, identifier, options):
+    def _unsupported_backend(self, identifier='', options=[]):
         raise MountError('Atomic mount is not supported on the {} docker '
                          'storage backend.'
                          ''.format(self.client.info()['Driver']))

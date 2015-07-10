@@ -591,7 +591,8 @@ removes all containers based on an image.
             mount.DockerMount(self.args.mountpoint,
                               self.args.live).mount(self.args.image, options)
 
-            if not self.args.no_bind:
+            # only need to bind-mount on the devicemapper driver
+            if self.d.info()['Driver'] == 'devicemapper':
                 mount.Mount.mount_path(os.path.join(self.args.mountpoint,
                                                     "rootfs"),
                                        self.args.mountpoint, bind=True)
@@ -606,7 +607,8 @@ removes all containers based on an image.
             dev = mount.Mount.get_dev_at_mountpoint(self.args.mountpoint)
 
             # If there's a bind-mount over the directory, unbind it.
-            if dev.rsplit('[', 1)[-1].strip(']') == '/rootfs':
+            if dev.rsplit('[', 1)[-1].strip(']') == '/rootfs' \
+                    and self.d.info()['Driver'] == 'devicemapper':
                 mount.Mount.unmount_path(self.args.mountpoint)
 
             return mount.DockerMount(self.args.mountpoint).unmount()
