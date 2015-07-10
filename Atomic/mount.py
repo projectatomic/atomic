@@ -242,11 +242,20 @@ class DockerMount(Mount):
                          ''.format(identifier))
 
     @staticmethod
-    def _no_gd_api(cid):
+    def _no_gd_api_dm(cid):
         # TODO: Deprecated
         desc_file = os.path.join('/var/lib/docker/devicemapper/metadata', cid)
         desc = json.loads(open(desc_file).read())
         return desc['device_id'], desc['size']
+
+    @staticmethod
+    def _no_gd_api_overlay(cid):
+        # TODO: Deprecated
+        prefix = os.path.join('/var/lib/docker/overlay/', cid)
+        ld_metafile = open(os.path.join(prefix, 'lower-id'))
+        ld_loc = os.path.join('/var/lib/docker/overlay/', ld_metafile.read())
+        return (os.path.join(ld_loc, 'root'), os.path.join(prefix, 'upper'),
+                os.path.join(prefix, 'work'))
 
     def mount(self, identifier, options=[]):
         """
@@ -305,13 +314,13 @@ class DockerMount(Mount):
         dm_dev_name, dm_dev_id, dm_dev_size = '', '', ''
         dm_pool = info['DriverStatus'][0][1]
 
-        if 'GraphDriver' in cinfo:
+        try:
             dm_dev_name = cinfo['GraphDriver']['Data']['DeviceName']
             dm_dev_id = cinfo['GraphDriver']['Data']['DeviceId']
             dm_dev_size = cinfo['GraphDriver']['Data']['DeviceSize']
-        else:
+        except:
             # TODO: deprecated when GraphDriver patch makes it upstream
-            dm_dev_id, dm_dev_size = DockerMount._no_gd_api(cid)
+            dm_dev_id, dm_dev_size = DockerMount._no_gd_api_dm(cid)
             dm_dev_name = dm_pool.replace('pool', cid)
 
         dm_dev_path = os.path.join('/dev/mapper', dm_dev_name)
@@ -337,6 +346,42 @@ class DockerMount(Mount):
                 Mount._remove_thin_device(dm_dev_name)
             self._cleanup_container(cinfo)
             raise de
+
+    def _mount_overlay(self, identifier, options):
+        """
+        OverlayFS mount backend.
+        """
+        if os.geteuid() != 0:
+            raise MountError('Insufficient privileges to mount device.')
+
+        if self.live:
+            raise MountError('The OverlayFS backend does not support live '
+                             'mounts.')
+        elif 'rw' in options:
+            raise MountError('The OverlayFS backend does not support '
+                             'writeable mounts.')
+
+        cid = self._identifier_as_cid(identifier)
+        cinfo = self.client.inspect_container(cid)
+
+        ld, ud, wd = '', '', ''
+        try:
+            ld = cinfo['GraphDriver']['Data']['lowerDir']
+            ud = cinfo['GraphDriver']['Data']['upperDir']
+            wd = cinfo['GraphDriver']['Data']['workDir']
+        except:
+            ld, ud, wd = DockerMount._no_gd_api_overlay(cid)
+
+        options += ['ro', 'lowerdir=' + ld, 'upperdir=' + ud, 'workdir=' + wd]
+        optstring = ','.join(options)
+        cmd = ['mount', '-t', 'overlay', '-o', optstring, 'overlay',
+               self.mountpoint]
+        status = util.subp(cmd)
+
+        if status.return_code != 0:
+            self._cleanup_container(cinfo)
+            raise MountError('Failed to mount OverlayFS device.\n' +
+                             status.stderr)
 
     def _cleanup_container(self, cinfo):
         """
@@ -398,3 +443,30 @@ class DockerMount(Mount):
 
         Mount._remove_thin_device(dev_name)
         self._cleanup_container(cinfo)
+
+    def _get_overlay_mount_cid(self):
+        """
+        Returns the cid of the container mounted at mountpoint.
+        """
+        cmd = ['findmnt', '-o', 'OPTIONS', '-n', self.mountpoint]
+        r = util.subp(cmd)
+        if r.return_code != 0:
+            raise MountError('No devices mounted at that location.')
+        optstring = r.stdout.strip().split('\n')[-1]
+        upperdir = [o.replace('upperdir=', '') for o in optstring.split(',')
+                    if o.startswith('upperdir=')][0]
+        cdir = upperdir.rsplit('/', 1)[0]
+        if not cdir.startswith('/var/lib/docker/overlay/'):
+            raise MountError('The device mounted at that location is not a '
+                             'docker container.')
+        return cdir.replace('/var/lib/docker/overlay/', '')
+
+    def _unmount_overlay(self):
+        """
+        OverlayFS unmount backend.
+        """
+        if Mount.get_dev_at_mountpoint(self.mountpoint) != 'overlay':
+            raise MountError('Device mounted at {} is not an atomic mount.')
+        cid = self._get_overlay_mount_cid()
+        Mount.unmount_path(self.mountpoint)
+        self._cleanup_container(self.client.inspect_container(cid))
