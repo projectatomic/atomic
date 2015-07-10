@@ -86,6 +86,12 @@ if __name__ == '__main__':
                                     help=_("execute container image install method"),
                                     epilog="atomic install attempts to read the LABEL INSTALL field in the image, if it does not exist atomic will just pull the image on to your machine.  You could add a LABEL INSTALL command to your Dockerfile like: 'LABEL INSTALL %s'" % atomic.print_install() )
 
+    imagesp = subparser.add_parser("images",
+                                   help=_("list container images on your system"), 
+                                   epilog="atomic images by default will list all installed container images on your system.  Using the --prune option, will free up disk space deleting unused 'dangling' images")
+    imagesp.set_defaults(func=atomic.images)
+    imagesp.add_argument("--prune", action="store_true", help="prune dangling images")
+
     installp.set_defaults(func=atomic.install)
     installp.add_argument("--opt1", dest="opt1", help="additional arguments to be passed as ${OPT1} for install command.")
     installp.add_argument("--opt2", dest="opt2", help="additional arguments to be passed as ${OPT2} for install command.")

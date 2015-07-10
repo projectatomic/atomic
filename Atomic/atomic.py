@@ -9,9 +9,21 @@ import requests
 import pipes
 import selinux
 import pwd
+import time
+import math
 
 from Atomic import mount
 from Atomic import util
+
+def convertSize(size):
+    if size > 0:
+           size_name = ("KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+           i = int(math.floor(math.log(size,1000)))
+           p = math.pow(1000,i)
+           s = round(size/p,2)
+           if (s > 0):
+               return '%s %s' % (s,size_name[i])
+    return '0B'
 
 try:
     from subprocess import DEVNULL # pylint: disable=no-name-in-module
@@ -80,7 +92,7 @@ class Atomic(object):
         self.spc = False
         self.inspect = None
         self.force = False
-        self.images = []
+        self._images = []
 
     def writeOut(self, output, lf="\n"):
         sys.stdout.flush()
@@ -485,6 +497,25 @@ removes all containers based on an image.
             raise ValueError("No label information for that "
                     "image.")
 
+    def dangling(self, image):
+        if image == "<none>":
+            return "*"
+        return " "
+    
+    def images(self):
+        if self.args.prune:
+            cmd = "/usr/bin/docker images --filter dangling=true -q".split()
+            for i in subprocess.check_output(cmd, stderr=DEVNULL).split():
+                self.d.remove_image(i, force=True)
+            return
+
+        self.writeOut(" %-25s %-19s %.12s            %-19s %-10s" % ("REPOSITORY","TAG","IMAGE ID", "CREATED", "VIRTUAL SIZE"))
+
+        for image in self.d.images():
+            repo, tag = image["RepoTags"][0].split(":")
+            
+            self.writeOut("%s%-25s %-19s %.12s        %-19s %-12s" % (self.dangling(repo),repo, tag, image["Id"], time.strftime("%F %H:%M", time.localtime(image["Created"])), convertSize(image["VirtualSize"])))
+
     def install(self):
         self.inspect = self._inspect_image()
         if not self.inspect:
@@ -541,14 +572,14 @@ removes all containers based on an image.
         return { "Id": image['Id'], "Name": get_label("Name"), "Version" : ("%s-%s-%s" % (get_label("Name"),get_label("Version"),get_label("Release"))).strip(":"), "Tag": image["RepoTags"][0]}
 
     def get_images(self):
-        if len(self.images) > 0:
-            return self.images
+        if len(self._images) > 0:
+            return self._images
 
         images = self.d.images()
         for image in images:
-            self.images.append(self._get_image(image))
+            self._images.append(self._get_image(image))
 
-        return self.images
+        return self._images
 
     def verify(self):
         def get_label(label):
