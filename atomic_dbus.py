@@ -3,13 +3,13 @@
 import dbus
 import dbus.service
 import dbus.mainloop.glib
-import gobject
+from gi.repository import GObject, GLib
 import slip.dbus.service
 from slip.dbus import polkit
 import os
 import Atomic
 
-class atomic_server(slip.dbus.service.Object):
+class atomic_dbus(slip.dbus.service.Object):
     default_polkit_auth_required = "org.atomic.readwrite"
     class Args():
         def __init__(self, image):
@@ -17,7 +17,7 @@ class atomic_server(slip.dbus.service.Object):
             self.recurse=False
 
     def __init__ (self, *p, **k):
-        super(atomic_server, self).__init__(*p, **k)
+        super(atomic_dbus, self).__init__(*p, **k)
         self.atomic=Atomic.Atomic()
 
     #
@@ -48,10 +48,10 @@ class atomic_server(slip.dbus.service.Object):
         return verifications
 
 if __name__ == "__main__":
-        mainloop = gobject.MainLoop()
+        mainloop = GLib.MainLoop()
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         system_bus = dbus.SystemBus()
         name = dbus.service.BusName("org.atomic", system_bus)
-        object = atomic_server(system_bus, "/org/atomic/object")
+        object = atomic_dbus(system_bus, "/org/atomic/object")
         slip.dbus.service.set_mainloop(mainloop)
         mainloop.run()

@@ -3,7 +3,6 @@ PREFIX ?= $(DESTDIR)/usr
 SYSCONFDIR ?= $(DESTDIR)/etc/sysconfig
 PROFILEDIR ?= $(DESTDIR)/etc/profile.d
 PYTHON ?= /usr/bin/python
-BASHCOMPLETIONDIR ?= $(PREFIX)/share/bash-completion/completions/
 
 all: python-build docs
 
@@ -26,7 +25,11 @@ clean:
 	-rm -rf build *~ \#* *pyc .#* docs/*.1
 
 install: all 
-	$(PYTHON) setup.py install `test -n "$(DESTDIR)" && echo --root $(DESTDIR)`
+	$(PYTHON) setup.py install --install-scripts /usr/share/atomic `test -n "$(DESTDIR)" && echo --root $(DESTDIR)`
+
+	install -d -m 0755 $(DESTDIR)/usr/bin
+	ln -fs ../share/atomic/atomic $(DESTDIR)/usr/bin/atomic
+
 	[ -d $(SYSCONFDIR) ] || mkdir -p $(SYSCONFDIR)
 	install -m 644 atomic.sysconfig $(SYSCONFDIR)/atomic
 
@@ -35,15 +38,4 @@ install: all
 
 	install -d $(PREFIX)/share/man/man1
 	install -m 644 $(basename $(MANPAGES_MD)) $(PREFIX)/share/man/man1
-	-mkdir -p $(BASHCOMPLETIONDIR)
-	install -m 644 bash/atomic $(BASHCOMPLETIONDIR)
 
-	-mkdir -p $(DESTDIR)/etc/dbus-1/system.d/
-	install -m 644 org.atomic.conf $(DESTDIR)/etc/dbus-1/system.d/
-	-mkdir -p $(DESTDIR)/usr/share/dbus-1/system-services
-	install -m 644 org.atomic.service $(DESTDIR)/usr/share/dbus-1/system-services
-	-mkdir -p $(DESTDIR)/usr/share/polkit-1/actions/
-	install -m 644 org.atomic.policy $(DESTDIR)/usr/share/polkit-1/actions/
-
-	-mkdir -p $(DESTDIR)/usr/share/atomic
-	install -m 755 atomic_server.py $(DESTDIR)/usr/share/atomic
