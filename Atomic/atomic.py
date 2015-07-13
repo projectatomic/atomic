@@ -1,4 +1,5 @@
-import sys, os
+import sys
+import os
 import argparse
 import gettext
 import docker
@@ -12,34 +13,37 @@ import pwd
 import time
 import math
 
-from Atomic import mount
-from Atomic import util
-
-def convertSize(size):
-    if size > 0:
-           size_name = ("KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
-           i = int(math.floor(math.log(size,1000)))
-           p = math.pow(1000,i)
-           s = round(size/p,2)
-           if (s > 0):
-               return '%s %s' % (s,size_name[i])
-    return '0B'
+import Atomic.mount as mount
+import Atomic.util as util
 
 try:
-    from subprocess import DEVNULL # pylint: disable=no-name-in-module
+    from subprocess import DEVNULL  # pylint: disable=no-name-in-module
 except ImportError:
-    import os
     DEVNULL = open(os.devnull, 'wb')
 
-images=[]
-def findRepoTag(d, id):
-    global images
-    if len(images) == 0:
-        images = d.images()
-    for image in images:
+IMAGES = []
+
+
+def convert_size(size):
+    if size > 0:
+        size_name = ("KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+        i = int(math.floor(math.log(size, 1000)))
+        p = math.pow(1000, i)
+        s = round(size/p, 2)
+        if s > 0:
+            return '%s %s' % (s, size_name[i])
+    return '0B'
+
+
+def find_repo_tag(d, id):
+    global IMAGES
+    if len(IMAGES) == 0:
+        IMAGES = d.images()
+    for image in IMAGES:
         if id == image["Id"]:
             return image["RepoTags"][0]
     return ""
+
 
 class Atomic(object):
     INSTALL_ARGS = ["/usr/bin/docker", "run",
@@ -77,13 +81,13 @@ class Atomic(object):
                 "-e", "HOST=/host",
                 "-e", "NAME=${NAME}",
                 "-e", "IMAGE=${IMAGE}",
-                "${IMAGE}" ]
+                "${IMAGE}"]
 
     RUN_ARGS = ["/usr/bin/docker", "create",
                 "-t",
                 "-i",
                 "--name", "${NAME}",
-                "${IMAGE}" ]
+                "${IMAGE}"]
 
     def __init__(self):
         self.d = docker.Client()
@@ -151,7 +155,9 @@ class Atomic(object):
             self.args.password = getpass.getpass("Registry Password: ")
 
         if self.args.pulp:
-            return push_image_to_pulp(self.image, self.args.url, self.args.username, self.args.password, self.args.verify_ssl, self.d)
+            return push_image_to_pulp(self.image, self.args.url,
+                                      self.args.username, self.args.password,
+                                      self.args.verify_ssl, self.d)
         else:
             self.d.login(self.args.username, self.args.password)
             for line in self.d.push(self.image, stream=True):
@@ -171,7 +177,7 @@ class Atomic(object):
                 prevstatus = status
 
     def set_args(self, args):
-        self.args=args
+        self.args = args
         try:
             self.image = args.image
         except:
@@ -212,7 +218,7 @@ class Atomic(object):
         return val
 
     def _get_cmd(self):
-        return self._getconfig("Cmd", [ "/bin/sh" ])
+        return self._getconfig("Cmd", ["/bin/sh"])
 
     def _get_labels(self):
         return self._getconfig("Labels", [])
@@ -230,16 +236,18 @@ class Atomic(object):
             else:
                 cmd += self._get_cmd()
             if self.args.display:
-              return self.display(cmd)
+                return self.display(cmd)
             else:
                 return subprocess.check_call(cmd, stderr=DEVNULL)
         else:
             if self.command:
                 if self.args.display:
-                    return self.writeOut("/usr/bin/docker exec -t -i %s %s" % (self.name, self.command))
+                    return self.writeOut("/usr/bin/docker exec -t -i %s %s" %
+                                         (self.name, self.command))
                 else:
-                    return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command,
-                                                 stderr=DEVNULL)
+                    return subprocess.check_call(
+                        ["/usr/bin/docker", "exec", "-t", "-i", self.name] +
+                        self.command, stderr=DEVNULL)
             else:
                 if not self.args.display:
                     self.writeOut("Container is running")
@@ -247,16 +255,28 @@ class Atomic(object):
     def _start(self):
         if self._interactive():
             if self.command:
-                subprocess.check_call(["/usr/bin/docker", "start", self.name], stderr=DEVNULL)
-                return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command)
+                subprocess.check_call(
+                    ["/usr/bin/docker", "start", self.name],
+                    stderr=DEVNULL)
+                return subprocess.check_call(
+                    ["/usr/bin/docker", "exec", "-t", "-i", self.name] +
+                    self.command)
             else:
-                return subprocess.check_call(["/usr/bin/docker", "start", "-i", "-a", self.name], stderr=DEVNULL)
+                return subprocess.check_call(
+                    ["/usr/bin/docker", "start", "-i", "-a", self.name],
+                    stderr=DEVNULL)
         else:
             if self.command:
-                subprocess.check_call(["/usr/bin/docker", "start", self.name], stderr=DEVNULL)
-                return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command)
+                subprocess.check_call(
+                    ["/usr/bin/docker", "start", self.name],
+                    stderr=DEVNULL)
+                return subprocess.check_call(
+                    ["/usr/bin/docker", "exec", "-t", "-i", self.name] +
+                    self.command)
             else:
-                return subprocess.check_call(["/usr/bin/docker", "start", self.name], stderr=DEVNULL)
+                return subprocess.check_call(
+                    ["/usr/bin/docker", "start", self.name],
+                    stderr=DEVNULL)
 
     def _inspect_image(self, image=None):
         try:
@@ -266,7 +286,8 @@ class Atomic(object):
         except docker.errors.APIError:
             pass
         except requests.exceptions.ConnectionError as e:
-            raise IOError("Unable to communicate with docker daemon: %s\n" % str(e))
+            raise IOError("Unable to communicate with docker daemon: %s\n" %
+                          str(e))
         return None
 
     def _inspect_container(self):
@@ -275,7 +296,8 @@ class Atomic(object):
         except docker.errors.APIError:
             pass
         except requests.exceptions.ConnectionError as e:
-            raise IOError("Unable to communicate with docker daemon: %s\n" % str(e))
+            raise IOError("Unable to communicate with docker daemon: %s\n" %
+                          str(e))
         return None
 
     def _get_args(self, label):
@@ -289,20 +311,15 @@ class Atomic(object):
         inspect = self._inspect_image()
         if inspect and inspect["Id"] != self.inspect["Image"]:
             response = ""
-            sys.stdout.write("""The '%(name)s' container is using an older version of the installed
-'%(image)s' container image. If you wish to use the newer image,
-you must either create a new container with a new name or
-uninstall the '%(name)s' container.
-
-# atomic uninstall --name %(name)s %(image)s
-
-and create new container on the '%(image)s' image.
-
-atomic update --force %(image)s
-
-removes all containers based on an image.
-
-""" % { "name" : self.name, "image" : self.image} )
+            sys.stdout.write(
+                "The '%(name)s' container is using an older version of the "
+                "installed\n'%(image)s' container image. If you wish to use "
+                "the newer image,\nyou must either create a new container "
+                "with a new name or\nuninstall the '%(name)s' container."
+                "\n\n# atomic uninstall --name %(name)s %(image)s\n\nand "
+                "create new container on the '%(image)s' image.\n\n# atomic "
+                "update --force %(image)s\n\n removes all containers based on "
+                "an image." % {"name": self.name, "image": self.image})
 
     def container_run_command(self):
         command = "%s run " % sys.argv[0]
@@ -326,7 +343,10 @@ removes all containers based on an image.
                 return self._start()
         else:
             if self.command and not self.args.display:
-                raise ValueError("Container '%s' must be running before executing a command into it.\nExecute the following to create the container:\n%s" % (self.name, self.container_run_command()))
+                raise ValueError("Container '%s' must be running before "
+                                 "executing a command into it.\nExecute the "
+                                 "following to create the container:\n%s" %
+                                 (self.name, self.container_run_command()))
 
         # Container does not exist
         self.inspect = self._inspect_image()
@@ -341,7 +361,7 @@ removes all containers based on an image.
             if self.command:
                 args = self.SPC_ARGS + self.command
             else:
-                args = self.SPC_ARGS +  self._get_cmd()
+                args = self.SPC_ARGS + self._get_cmd()
 
             cmd = self.gen_cmd(args)
             self.display(cmd)
@@ -367,20 +387,19 @@ removes all containers based on an image.
         if not self.args.display:
             subprocess.check_call(cmd, env=self.cmd_env, shell=True)
 
-
     def stop(self):
         self.inspect = self._inspect_container()
         if self.inspect is None:
             self.inspect = self._inspect_image()
             if self.inspect is None:
-                raise ValueError("Container/Image '%s' does not exist" % self.name)
+                raise ValueError("Container/Image '%s' does not exists" %
+                                 self.name)
 
         args = self._get_args("STOP")
         if args:
             cmd = self.gen_cmd(args)
             self.display(cmd)
             subprocess.check_call(cmd, env=self.cmd_env, shell=True)
-
 
         # Container exists
         try:
@@ -448,7 +467,7 @@ removes all containers based on an image.
                'IMAGE': self.image,
                'CONFDIR': "/etc/%s" % self.name,
                'LOGDIR': "/var/log/%s" % self.name,
-               'DATADIR':"/var/lib/%s" % self.name}
+               'DATADIR': "/var/lib/%s" % self.name}
 
         if self.args.opt1:
             env['OPT1'] = self.args.opt1
@@ -477,7 +496,7 @@ removes all containers based on an image.
 
         return env
 
-    def gen_cmd(self,cargs):
+    def gen_cmd(self, cargs):
         args = []
         for c in cargs:
             if c == "IMAGE":
@@ -516,7 +535,7 @@ removes all containers based on an image.
             except docker.errors.APIError:
                 # image does not exist on any configured registry
                 _no_such_image()
-            except TypeError: # pragma: no cover
+            except TypeError:  # pragma: no cover
                 # If a user doesn't have remote-inspection, setting remote=True
                 # above will raise TypeError.
                 # TODO: remove if remote inspection is accepted into docker
@@ -529,7 +548,7 @@ removes all containers based on an image.
         # By this point, inspection cannot be "None"
         try:
             labels = inspection['Config']['Labels']
-        except TypeError: # pragma: no cover
+        except TypeError:  # pragma: no cover
             # Some images may not have a 'Labels' key.
             raise ValueError('{} has no label information.'
                              ''.format(self.args.image))
@@ -540,7 +559,7 @@ removes all containers based on an image.
         if image == "<none>":
             return "*"
         return " "
-    
+
     def images(self):
         if self.args.prune:
             cmd = "/usr/bin/docker images --filter dangling=true -q".split()
@@ -548,12 +567,18 @@ removes all containers based on an image.
                 self.d.remove_image(i, force=True)
             return
 
-        self.writeOut(" %-25s %-19s %.12s            %-19s %-10s" % ("REPOSITORY","TAG","IMAGE ID", "CREATED", "VIRTUAL SIZE"))
+        self.writeOut(" %-25s %-19s %.12s            %-19s %-10s" %
+                      ("REPOSITORY", "TAG", "IMAGE ID", "CREATED",
+                       "VIRTUAL SIZE"))
 
         for image in self.d.images():
             repo, tag = image["RepoTags"][0].split(":")
-            
-            self.writeOut("%s%-25s %-19s %.12s        %-19s %-12s" % (self.dangling(repo),repo, tag, image["Id"], time.strftime("%F %H:%M", time.localtime(image["Created"])), convertSize(image["VirtualSize"])))
+            self.writeOut(
+                "%s%-25s %-19s %.12s        %-19s %-12s" %
+                (self.dangling(repo), repo, tag, image["Id"],
+                 time.strftime("%F %H:%M",
+                               time.localtime(image["Created"])),
+                 convert_size(image["VirtualSize"])))
 
     def install(self):
         self.inspect = self._inspect_image()
@@ -596,8 +621,11 @@ removes all containers based on an image.
         image = self._inspect_image(image)
         if not image:
             raise ValueError("Image '%s' does not exist" % self.image)
-        version = ("%s-%s-%s" % (get_label("Name"),get_label("Version"), get_label("Release"))).strip("-")
-        return({ "Id": image['Id'], "Name": get_label("Name"), "Version" : version,  "Tag": findRepoTag(self.d, image['Id']), "Parent": image['Parent']})
+        version = ("%s-%s-%s" % (get_label("Name"), get_label("Version"),
+                                 get_label("Release"))).strip("-")
+        return({"Id": image['Id'], "Name": get_label("Name"),
+                "Version": version, "Tag": find_repo_tag(self.d, image['Id']),
+                "Parent": image['Parent']})
 
     def get_layers(self):
         layers = []
@@ -612,7 +640,11 @@ removes all containers based on an image.
         def get_label(label):
             return self.get_label(label, image["Id"])
 
-        return { "Id": image['Id'], "Name": get_label("Name"), "Version" : ("%s-%s-%s" % (get_label("Name"),get_label("Version"),get_label("Release"))).strip(":"), "Tag": image["RepoTags"][0]}
+        return {"Id": image['Id'], "Name": get_label("Name"),
+                "Version": ("%s-%s-%s" % (get_label("Name"),
+                                          get_label("Version"),
+                                          get_label("Release"))).strip(":"),
+                "Tag": image["RepoTags"][0]}
 
     def get_images(self):
         if len(self._images) > 0:
@@ -636,7 +668,8 @@ removes all containers based on an image.
         current_name = get_label("Name")
         version = ""
         if current_name:
-            version = "%s-%s-%s" % (current_name,get_label("Version"),get_label("Release"))
+            version = "%s-%s-%s" % (current_name, get_label("Version"),
+                                    get_label("Release"))
 
         prev = ""
         name = None
@@ -645,12 +678,18 @@ removes all containers based on an image.
             if name == layer["Name"]:
                 continue
             name = layer["Name"]
-            if len(name)>0:
+            if len(name) > 0:
                 for i in self.get_images():
                     if i["Name"] == name:
                         if i["Version"] > layer["Version"]:
-                            buf = ("Image '%s' contains a layer '%s' that is out of date.\nImage version '%s' is available, current version could container vulnerabilities." % (self.image, layer["Version"], i["Version"]))
-                            buf += ("You should rebuild the '%s' image using docker build." % (self.image))
+                            buf = ("Image '%s' contains a layer '%s' that is "
+                                   "out of date.\nImage version '%s' is "
+                                   "available, current version could contain "
+                                   "vulnerabilities." % (self.image,
+                                                         layer["Version"],
+                                                         i["Version"]))
+                            buf += ("You should rebuild the '%s' image using "
+                                    "docker build." % (self.image))
                             break
         return buf
 
@@ -706,17 +745,19 @@ removes all containers based on an image.
         if self.args.recurse:
             return self.get_layers()
         else:
-            return [ self._get_layer(self.image) ]
+            return [self._get_layer(self.image)]
 
     def print_version(self):
         for layer in self.version():
             version = layer["Version"]
             if layer["Version"] == '':
-                version="None"
-            self.writeOut("%s %s %s" % (layer["Id"],version,layer["Tag"]))
+                version = "None"
+            self.writeOut("%s %s %s" % (layer["Id"], version, layer["Tag"]))
 
     def display(self, cmd):
-        subprocess.check_call("/usr/bin/echo \"" + cmd  + "\"", env=self.cmd_env, shell=True)
+        subprocess.check_call(
+            "/usr/bin/echo \"" + cmd + "\"", env=self.cmd_env, shell=True)
+
 
 def SetFunc(function):
     class customAction(argparse.Action):
