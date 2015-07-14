@@ -254,14 +254,26 @@ _atomic_install() {
 	esac
 }
 
+_atomic_images() {
+	local all_options="
+		--prune
+		--help -h
+	"
+
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+			;;
+	esac
+}
+
 _atomic_mount() {
 	local options_with_args="
 		--options -o
 	"
 	local all_options="$options_with_args
-		--help
+		--help -h
 		--live
-		--no-bind
 	"
 
 	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
@@ -381,9 +393,10 @@ _atomic() {
 	shopt -s extglob
 
 	local commands=(
-	        host
+		host
 		info
 		install
+		images
 		mount
 		stop
 		run
