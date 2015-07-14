@@ -32,6 +32,7 @@ PROGNAME="atomic"
 gettext.bindtextdomain(PROGNAME, "/usr/share/locale")
 gettext.textdomain(PROGNAME)
 try:
+    #pylint: disable=unexpected-keyword-arg
     gettext.install(PROGNAME,
                     unicode=True,
                     codeset = 'utf-8')
