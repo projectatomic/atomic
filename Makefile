@@ -3,6 +3,7 @@ PREFIX ?= $(DESTDIR)/usr
 SYSCONFDIR ?= $(DESTDIR)/etc/sysconfig
 PROFILEDIR ?= $(DESTDIR)/etc/profile.d
 PYTHON ?= /usr/bin/python
+PYLINT ?= /usr/bin/pylint
 
 all: python-build docs
 
@@ -11,7 +12,7 @@ test:
 
 python-build: atomic
 	$(PYTHON) setup.py build
-	pylint -E --additional-builtins _ atomic
+	$(PYLINT) -E --additional-builtins _ atomic
 
 MANPAGES_MD = $(wildcard docs/*.md)
 
