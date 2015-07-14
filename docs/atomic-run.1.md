@@ -7,6 +7,7 @@ atomic-run - Execute container image run method
 # SYNOPSIS
 **atomic run**
 [**-h**]
+[**--display**]
 [**--name**[=*NAME*]]
 [**--opt1**[=*OPT*]]
 [**--opt2**[=*OPT*]]
@@ -21,7 +22,7 @@ IMAGE.
 
 If the container image has a LABEL RUN instruction like the following:
 
-```LABEL RUN /usr/bin/docker run -t -i --rm \${OPT1} --cap_add=SYS_ADMIN --net=host -v ${LOGDIR}:/var/log -v ${DATADIR}:/var/lib --name ${NAME} ${IMAGE} \${OPT2} run.sh \${OPT3}```
+```LABEL RUN /usr/bin/docker run -t -i --rm \${OPT1} --cap-add=SYS_ADMIN --net=host -v \${LOGDIR}:/var/log -v \${DATADIR}:/var/lib --name \${NAME} \${IMAGE} \${OPT2} run.sh \${OPT3}```
 
 If this field does not exist, `atomic run` defaults to the following:
 ```/usr/bin/docker run -t -i --rm -v ${LOGDIR}:/var/log -v ${DATADIR}:/var/lib --name ${NAME} ${IMAGE}```
@@ -49,6 +50,11 @@ These defaults are suggested values for your container images.
 **--help**
   Print usage statement
 
+**--display**
+  Display the image's run options and environment variables populated into the run command.
+The run command will not execute if --display is specified.
+If --display is not specified the run command will execute.
+
 **--name**=""
    Use this name for creating run content for the container.
 NAME will default to the IMAGENAME if it is not specified.
@@ -74,3 +80,4 @@ in the LABEL.
 
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)
+July 2015, edited by Sally O'Malley (somalley at redhat dot com)

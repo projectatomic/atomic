@@ -103,6 +103,10 @@ if __name__ == '__main__':
     installp.add_argument("-n", "--name", dest="name",
                       default=None,
                       help=_("name of container"))
+    installp.add_argument("--display",
+                      default=False,
+                      action="store_true",
+                      help=_("preview the command that %s would execute") % sys.argv[0]) 
     installp.add_argument("image", help=_("container image"))
     installp.add_argument("args", nargs=argparse.REMAINDER,
                           help=_("Additional arguments appended to the image uninstall method"))
@@ -152,6 +156,10 @@ if __name__ == '__main__':
     runp.add_argument("image", help=_("container image"))
     runp.add_argument("command", nargs=argparse.REMAINDER,
                       help=_("command to execute within the container"))
+    runp.add_argument("--display",
+                      default=False,
+                      action="store_true",
+                      help=_("preview the command that %s would execute") % sys.argv[0]) 
 
     uninstallp = subparser.add_parser("uninstall",
                                       help=_("execute container image uninstall method"),

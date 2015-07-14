@@ -197,11 +197,12 @@ _atomic_uninstall() {
 _atomic_run() {
 	local options_with_args="
 		--name -n
-		--spc
 	"
 
 	local all_options="$options_with_args
 		--help
+		--spc
+               --display
 	"
 
 	[ "$command" = "run" ] && all_options="$all_options"
@@ -234,6 +235,7 @@ _atomic_install() {
 	"
 	local all_options="$options_with_args
 		--help
+               --display
 	"
 
 	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
@@ -246,7 +248,7 @@ _atomic_install() {
 
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "--name -n" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
 			;;
 		*)
 		    __atomic_image_repos_and_tags_and_ids

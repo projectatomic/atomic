@@ -7,6 +7,7 @@ atomic-install - Execute Image Install Method
 # SYNOPSIS
 **atomic install**
 [**-h**]
+[**--display**]
 [**--name**[=*NAME*]]
 [**--opt1**[=*OPT*]]
 [**--opt2**[=*OPT*]]
@@ -19,7 +20,7 @@ IMAGE, if this field does not exist, `atomic install` will install the IMAGE
 
 If the container image has a LABEL INSTALL instruction like the following:
 
-```LABEL INSTALL /usr/bin/docker run -t -i --rm \${OPT1} --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=${NAME} -e IMAGE=${IMAGE} -e CONFDIR=${CONFDIR} -e LOGDIR=${LOGDIR} -e DATADIR=${DATADIR} --name ${NAME} ${IMAGE} \${OPT2} /bin/install.sh \${OPT3}```
+```LABEL INSTALL /usr/bin/docker run -t -i --rm \${OPT1} --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=\${NAME} -e IMAGE=\${IMAGE} -e CONFDIR=\${CONFDIR} -e LOGDIR=\${LOGDIR} -e DATADIR=\${DATADIR} --name \${NAME} \${IMAGE} \${OPT2} /bin/install.sh \${OPT3}```
 
 `atomic install` will set the following environment variables for use in the command:
 
@@ -44,6 +45,11 @@ If the container image has a LABEL INSTALL instruction like the following:
 **--help**
   Print usage statement
 
+**--display**
+  Display the image's install options and environment variables populated into the install command.
+The install command will not execute if --display is specified.
+If --display is not specified the install command will execute.
+
 **--name**=""
    Use this name for creating installed content for the container.
 NAME will default to the IMAGENAME if it is not specified.
@@ -62,3 +68,4 @@ in the LABEL.
 
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)
+July 2015, edited by Sally O'Malley (somalley at redhat dot com)
