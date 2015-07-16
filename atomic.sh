@@ -19,7 +19,7 @@ command_not_found_handle () {
 
 	# run the command, or just print a warning
 	if [ $runcnf -eq 1 ]; then
-		atomic run --spc ${TOOLSIMG} "$@"
+		atomic run ${TOOLSIMG} "$@"
 		retval=$?
 	else
 		echo "bash: $1: command not found"
