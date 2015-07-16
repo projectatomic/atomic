@@ -459,7 +459,7 @@ removes all containers based on an image.
             try:
                 env['SUDO_GID'] = str(pwd.getpwuid(int(env["SUDO_UID"]))[3])
             except:
-                env["SUDO_GID"] = self.default_uid
+                env["SUDO_GID"] = default_uid
 
         return env
 
