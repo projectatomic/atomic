@@ -19,6 +19,7 @@ command_not_found_handle () {
 
 	# run the command, or just print a warning
 	if [ $runcnf -eq 1 ]; then
+		echo "Redirecting to container ${TOOLSNAME}..."
 		atomic run ${TOOLSIMG} "$@"
 		retval=$?
 	else
