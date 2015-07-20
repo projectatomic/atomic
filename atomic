@@ -81,6 +81,9 @@ if __name__ == '__main__':
                                  help=_("display label information about an image"),
                                  epilog="atomic info attempts to read and display the LABEL information about an image")
     infop.set_defaults(func=atomic.info)
+    infop.add_argument("--remote", dest="force_remote_info",
+                       action='store_true', default=False,
+                       help=_('ignore local images and only scan registries'))
     infop.add_argument("image", help=_("container image"))
 
     installp = subparser.add_parser("install",

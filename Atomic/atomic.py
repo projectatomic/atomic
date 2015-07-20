@@ -482,20 +482,45 @@ removes all containers based on an image.
         return " ".join(args)
 
     def info(self):
-        self.inspect = self._inspect_image()
-        if not self.inspect:
-            self.update()
-            self.inspect = self._inspect_image()
+        """
+        Retrieve and print all LABEL information for a given image.
+        """
+        def _no_such_image():
+            raise ValueError('Could not find any image matching "{}".'
+                             ''.format(self.args.image))
 
-        labels = self._get_labels()
-        buf = ""
+        inspection = None
+        if not self.args.force_remote_info:
+            try:
+                inspection = self.d.inspect_image(self.args.image)
+            except docker.errors.APIError:
+                # No such image locally, but fall back to remote
+                pass
+        if inspection is None:
+            try:
+                inspection = self.d.inspect_image(self.args.image, remote=True)
+            except docker.errors.APIError:
+                # image does not exist on any configured registry
+                _no_such_image()
+            except TypeError: # pragma: no cover
+                # If a user doesn't have remote-inspection, setting remote=True
+                # above will raise TypeError.
+                # TODO: remove if remote inspection is accepted into docker
+                # But we should error if the user specifically requested remote
+                if self.args.force_remote_info:
+                    raise ValueError('Your docker daemon does not support '
+                                     'remote inspection.')
+                else:
+                    _no_such_image()
+        # By this point, inspection cannot be "None"
+        try:
+            labels = inspection['Config']['Labels']
+        except TypeError: # pragma: no cover
+            # Some images may not have a 'Labels' key.
+            raise ValueError('{} has no label information.'
+                             ''.format(self.args.image))
         for label in labels:
-            buf +=("%-13s: %s\n" % (label, labels[label]))
-        if buf:
-            self.writeOut(buf.strip())
-        else:
-            raise ValueError("No label information for that "
-                    "image.")
+            self.writeOut('{0}: {1}'.format(label, labels[label]))
 
     def dangling(self, image):
         if image == "<none>":

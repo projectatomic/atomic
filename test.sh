@@ -68,28 +68,31 @@ make_docker_images
 # Python unit tests.
 echo "UNIT TESTS:"
 
-COVERAGE="/usr/bin/coverage"
-if [[ ! -x "${COVERAGE}" ]]; then
+COVERAGE_BIN="/usr/bin/coverage"
+if [[ ! -x "${COVERAGE_BIN}" ]]; then
     # The executable is "coverage2" on systems with default python3 and no
     # python3 install.
-    COVERAGE="/usr/bin/coverage2"
+    COVERAGE_BIN="/usr/bin/coverage2"
 fi
 
 set +e
+COVERAGE="${COVERAGE_BIN}
+run
+--source=./Atomic/
+--branch"
 
-${COVERAGE} run --source=./Atomic/ --branch  -m unittest discover \
-	./tests/unit | tee -a ${LOG}
+${COVERAGE} -m unittest discover ./tests/unit/ | tee -a ${LOG}
 _UNIT_FAIL="$?"
+
 set -e
 
-echo "Coverage report:" | tee -a ${LOG}
-
-${COVERAGE} report | tee -a ${LOG}
-
 # CLI integration tests.
-# TODO: I would like to be able to include CLI tests in the coverage report.
 let failures=0 || true
 printf "\nINTEGRATION TESTS:\n" | tee -a ${LOG}
+
+export ATOMIC="${COVERAGE}
+--append
+atomic"
 
 for tf in `find ./tests/integration/ -name test_*.sh`; do
     printf "Running test $(basename ${tf})...\t\t"
@@ -101,6 +104,10 @@ for tf in `find ./tests/integration/ -name test_*.sh`; do
         let "failures += 1"
     fi
 done
+
+echo "Coverage report:" | tee -a ${LOG}
+
+${COVERAGE_BIN} report | tee -a ${LOG}
 
 if [[ "${failures}" -eq "0" ]]; then
     if [[ $_UNIT_FAIL -eq 0 ]]; then
