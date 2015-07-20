@@ -36,24 +36,24 @@ cleanup_container () {
 }
 trap cleanup_container EXIT
 
-./atomic mount ${id} ${MNT_WORK}/container
-./atomic mount ${INAME} ${MNT_WORK}/image
+${ATOMIC} mount ${id} ${MNT_WORK}/container
+${ATOMIC} mount ${INAME} ${MNT_WORK}/image
 
 # Expect failure
 set +e
-./atomic mount ${id} --live ${MNT_WORK}/container
+${ATOMIC} mount ${id} --live ${MNT_WORK}/container
 if [ "$?" -eq "0" ]; then
     exit 1
 fi
-./atomic mount ${INAME} --live ${MNT_WORK}/image
+${ATOMIC} mount ${INAME} --live ${MNT_WORK}/image
 if [ "$?" -eq "0" ]; then
     exit 1
 fi
 set -e
 
 cleanup_mount () {
-    ./atomic unmount ${MNT_WORK}/container
-    ./atomic unmount ${MNT_WORK}/image
+    ${ATOMIC} unmount ${MNT_WORK}/container
+    ${ATOMIC} unmount ${MNT_WORK}/image
     cleanup_container
 }
 trap cleanup_mount EXIT

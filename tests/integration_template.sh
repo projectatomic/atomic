@@ -8,8 +8,8 @@ IFS = $'\n\t'
 # testing: PYTHONPATH (python module import path
 #          WORK_DIR   (a directory that is safe to modify)
 #          DOCKER     (the docker executable location)
-#          SECRET     (a generated sha256 hash inserted into test
-#                      containers)
+#          ATOMIC     (an invocation of 'atomic' which measures code coverage)
+#          SECRET     (a generated sha256 hash inserted into test containers)
 
 # In addition, the test harness creates some images for use in testing.
 #   See tests/test-images/
