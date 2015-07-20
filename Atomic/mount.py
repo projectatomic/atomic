@@ -174,8 +174,7 @@ class DockerMount(Mount):
             return self.client.create_container(
                                  image=iid, command='/bin/true',
                                  environment=['_ATOMIC_TEMP_CONTAINER'],
-                                 detach=True, mem_limit='4m',
-                                 network_disabled=True)['Id']
+                                 detach=True, network_disabled=True)['Id']
         except docker.errors.APIError as ex:
             raise MountError('Error creating temporary container:\n' + str(ex))
 
