@@ -1,5 +1,5 @@
 # Specify the tools package to be used for missing commands
 # A missing command on an atomic host platform will execute
-# atomic run --spc ${TOOLSIMG} COMMAND
+# atomic run ${TOOLSIMG} COMMAND
 # If the TOOLSIMG is defined
-# export TOOLSIMG=rhel7/rhel-tools
+# export TOOLSIMG=
