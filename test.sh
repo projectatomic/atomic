@@ -27,6 +27,17 @@ cleanup () {
 }
 trap cleanup EXIT
 
+_checksum () {
+    if [[ -d "${1}" ]]; then
+        CHK=`find "${1}" -type f -exec sha256sum {} \; | sha256sum`
+        echo "${CHK}"
+        return 0
+    fi
+    if [[ -e "${1}" ]]; then
+        echo "$(sha256sum ${1})"
+    fi
+}
+
 # Ensure the test-environment has a standard set of images.
 # This function will not rebuild images if the dockerfile
 # is the same as its last build.
@@ -34,17 +45,27 @@ make_docker_images () {
     echo "${SECRET}" > ${WORK_DIR}/secret
     echo "Pulling standard images from Docker Hub..." | tee -a ${LOG}
     ${DOCKER} pull busybox >> ${LOG}
-    # TODO: Was using RHEL, but suddenly can't pull rhel7:latest
-    ${DOCKER} pull centos >> ${LOG}
+    ${DOCKER} pull rhel7 >> ${LOG}
     echo "Building images from tests/test-images..." | tee -a ${LOG}
     for df in `find ./tests/test-images/ -name Dockerfile.*`; do
-        chksum=$(sha256sum ${df})
-        IFS=$'.' read -a split <<< "$(basename ${df})"
+        # Don't include directories for dockerfile data
+        if [[ -d "${df}" ]]; then
+            continue
+        fi
+
+        BASE_NAME="$(basename ${df})"
+
+        chksum=$(_checksum ${df})
+        IFS=$'.' read -a split <<< "${BASE_NAME}"
         iname="atomic-test-${split[1]}"
+
+        # If there is a matching Dockerfile.X.d, then include its contents
+        # in the checksum data.
+        chksum="${chksum}$(_checksum ${df}.d)"
 
         set +e
         i_chksum=`${DOCKER} inspect -f '{{ .Config.Labels.Checksum }}' \
-            ${iname}`
+            ${iname} 2> /dev/null`
         if [[ ${i_chksum} = "<no-value>" ]] || \
             [[ "${i_chksum}" = "${chksum}" ]]; then
             printf "\tSkipped : ${iname}\n"
@@ -52,13 +73,29 @@ make_docker_images () {
         fi
         set -e
 
-        df_cp=${WORK_DIR}/$(basename ${df})
+        # Copy the dockerfile into the build directory, then label the image
+        # with the original Dockerfile's checksum. This allows us to prevent
+        # rebuilding images
+        df_cp=${WORK_DIR}/${BASE_NAME}
         cp ${df} ${df_cp}
         printf "\nLABEL \"Checksum\"=\"${chksum}" >> ${df_cp}
+
+        # Remove the old image... Though there may not be one.
         set +e
         ${DOCKER} rmi ${iname} &>> ${LOG}
         set -e
+
+        if [[ -d "${df}.d" ]]; then
+            cp -r "${df}.d" "${WORK_DIR}/${BASE_NAME}.d"
+        fi
+
         ${DOCKER} build -t ${iname} -f ${df_cp} ${WORK_DIR} >> ${LOG}
+
+        # Clean up build files.
+        rm "${df_cp}"
+        if [[ -d "${WORK_DIR}/${BASE_NAME}.d" ]]; then
+            rm -r "${WORK_DIR}/${BASE_NAME}.d"
+        fi
         printf "\tBuilt   : ${iname}\n"
     done
 }
