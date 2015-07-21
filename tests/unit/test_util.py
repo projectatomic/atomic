@@ -18,7 +18,7 @@ class TestAtomicUtil(unittest.TestCase):
                              for m in matches]))
 
     def test_image_by_name_tag_glob(self):
-        matches = util.image_by_name('busybox:*atest*')
+        matches = util.image_by_name('/busybox:*atest*')
         self.assertTrue(len(matches) == 1)
 
     def test_image_by_name_registry_match(self):

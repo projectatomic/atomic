@@ -6,7 +6,7 @@ EXPECTED_T1="Checksum: $(sha256sum ./tests/test-images/Dockerfile.1)"
 
 validTest1 () {
     for e in ${TEST_1}; do
-        [ "$e" = "${EXPECTED_T1}" ] && return 0;
+        [[ $e = ${EXPECTED_T1}* ]] && return 0;
     done
     return 1
 }
