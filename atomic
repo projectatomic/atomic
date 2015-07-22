@@ -171,7 +171,7 @@ if __name__ == '__main__':
                             help=_("remove all containers based on this image"))
     uninstallp.add_argument("image", help=_("container image"))
     uninstallp.add_argument("args", nargs=argparse.REMAINDER,
-                          help=_("Additional arguments appended to the image install method"))
+                          help=_("Additional arguments appended to the image uninstall method"))
 
     unmountp = subparser.add_parser("unmount",
                                    help=_("unmount container image"),
