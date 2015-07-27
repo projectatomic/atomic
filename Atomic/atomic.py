@@ -229,13 +229,20 @@ class Atomic(object):
                 cmd += self.command
             else:
                 cmd += self._get_cmd()
-            return subprocess.check_call(cmd, stderr=DEVNULL)
+            if self.args.display:
+              return self.display(cmd)
+            else:
+                return subprocess.check_call(cmd, stderr=DEVNULL)
         else:
             if self.command:
-                return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command,
-                                             stderr=DEVNULL)
+                if self.args.display:
+                    return self.writeOut("/usr/bin/docker exec -t -i %s %s" % (self.name, self.command))
+                else:
+                    return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command,
+                                                 stderr=DEVNULL)
             else:
-                self.writeOut("Container is running")
+                if not self.args.display:
+                    self.writeOut("Container is running")
 
     def _start(self):
         if self._interactive():
@@ -315,17 +322,20 @@ removes all containers based on an image.
             # Container exists
             if self.inspect["State"]["Running"]:
                 return self._running()
-            else:
+            elif not self.args.display:
                 return self._start()
         else:
-            if self.command:
+            if self.command and not self.args.display:
                 raise ValueError("Container '%s' must be running before executing a command into it.\nExecute the following to create the container:\n%s" % (self.name, self.container_run_command()))
 
         # Container does not exist
         self.inspect = self._inspect_image()
         if not self.inspect:
-            self.update()
-            self.inspect = self._inspect_image()
+            cmd = "/usr/bin/docker pull %s" % self.image
+            self.display(cmd)
+            if not self.args.display:
+                self.update()
+                self.inspect = self._inspect_image()
 
         if self.spc:
             if self.command:
@@ -334,24 +344,28 @@ removes all containers based on an image.
                 args = self.SPC_ARGS +  self._get_cmd()
 
             cmd = self.gen_cmd(args)
-            self.writeOut(cmd)
+            self.display(cmd)
         else:
             missing_RUN = False
-            args = self._get_args("RUN")
+            if self.args.display and not self.inspect:
+                args = self.RUN_ARGS
+            else:
+                args = self._get_args("RUN")
             if not args:
                 missing_RUN = True
                 args = self.RUN_ARGS + self._get_cmd()
 
             cmd = self.gen_cmd(args)
-            self.writeOut(cmd)
+            self.display(cmd)
 
-            if missing_RUN:
+            if missing_RUN and not self.args.display:
                 subprocess.check_call(cmd, env=self.cmd_env,
                                       shell=True, stderr=DEVNULL,
                                       stdout=DEVNULL)
                 return self._start()
 
-        subprocess.check_call(cmd, env=self.cmd_env, shell=True)
+        if not self.args.display:
+            subprocess.check_call(cmd, env=self.cmd_env, shell=True)
 
 
     def stop(self):
@@ -359,13 +373,12 @@ removes all containers based on an image.
         if self.inspect is None:
             self.inspect = self._inspect_image()
             if self.inspect is None:
-                raise ValueError("Container/Image '%s' does not exists" % self.name)
+                raise ValueError("Container/Image '%s' does not exist" % self.name)
 
         args = self._get_args("STOP")
         if args:
             cmd = self.gen_cmd(args)
-            self.writeOut(cmd)
-
+            self.display(cmd)
             subprocess.check_call(cmd, env=self.cmd_env, shell=True)
 
 
@@ -424,8 +437,9 @@ removes all containers based on an image.
         args = self._get_args("UNINSTALL")
         if args:
             cmd = self.gen_cmd(args + list(map(pipes.quote, self.args.args)))
-            self.writeOut(cmd)
+            self.display(cmd)
             subprocess.check_call(cmd, env=self.cmd_env, shell=True)
+        self.writeOut("/usr/bin/docker rmi %s" % self.image)
         subprocess.check_call(["/usr/bin/docker", "rmi", self.image])
 
     @property
@@ -544,15 +558,19 @@ removes all containers based on an image.
     def install(self):
         self.inspect = self._inspect_image()
         if not self.inspect:
-            self.update()
-            self.inspect = self._inspect_image()
-
-        args = self._get_args("INSTALL")
+            cmd = "/usr/bin/docker pull %s" % self.image
+            self.display(cmd)
+            args = self.INSTALL_ARGS
+            if not self.args.display:
+                self.update()
+                self.inspect = self._inspect_image()
+        else:
+            args = self._get_args("INSTALL")
         if args:
             cmd = self.gen_cmd(args + list(map(pipes.quote, self.args.args)))
-            self.writeOut(cmd)
-
-            return subprocess.check_call(cmd, env=self.cmd_env, shell=True)
+            self.display(cmd)
+            if not self.args.display:
+                return subprocess.check_call(cmd, env=self.cmd_env, shell=True)
 
     def help(self):
         if os.path.exists("/usr/bin/rpm-ostree"):
@@ -696,6 +714,9 @@ removes all containers based on an image.
             if layer["Version"] == '':
                 version="None"
             self.writeOut("%s %s %s" % (layer["Id"],version,layer["Tag"]))
+
+    def display(self, cmd):
+        subprocess.check_call("/usr/bin/echo \"" + cmd  + "\"", env=self.cmd_env, shell=True)
 
 def SetFunc(function):
     class customAction(argparse.Action):
