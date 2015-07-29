@@ -54,6 +54,7 @@ class HelpByDefaultArgumentParser(argparse.ArgumentParser):
 if __name__ == '__main__':
     atomic = Atomic.Atomic()
     parser = HelpByDefaultArgumentParser(description=atomic.help())
+    parser.add_argument('-v', '--version', action='version', version=Atomic.__version__)
     subparser = parser.add_subparsers(help=_("commands"))
 
     if os.path.exists("/usr/bin/rpm-ostree"):
