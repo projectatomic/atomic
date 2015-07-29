@@ -15,7 +15,7 @@ DIRECTORY
 image into the host filesystem. Accepts one of image UUID, container UUID,
 container NAME, or image REPO (optionally with registry and tag information).
 If the given UUID or NAME is a container, and **--live** is not set, then
-*atomic mount* will create a snapshot of the container by commiting it to a
+*atomic mount* will create a snapshot of the container by committing it to a
 temporary image and spawning a temporary container from that image. If UUID or
 REPO refers to an image, then *atomic mount* will simply create a temporary
 container from the given image. All temporary artifacts are cleaned upon
