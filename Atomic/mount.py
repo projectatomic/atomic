@@ -418,7 +418,7 @@ class DockerMount(Mount):
         dev = Mount.get_dev_at_mountpoint(self.mountpoint)
 
         dev_name = dev.replace('/dev/mapper/', '')
-        if not dev_name.startswith('docker-'):
+        if not dev_name.startswith(pool.rsplit('-', 1)[0]):
             raise MountError('Device mounted at {} is not a docker container.'
                              ''.format(self.mountpoint))
 
