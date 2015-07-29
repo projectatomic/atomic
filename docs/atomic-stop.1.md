@@ -18,7 +18,7 @@ If the container image has a `LABEL STOP` instruction like the following:
 
 ```CLABEL STOP /usr/bin/docker kill -s HUP --name ${NAME} ${IMAGE}```
 
-atomic would execute this command before stoping the container.
+atomic would execute this command before stopping the container.
 
 `atomic stop` will set the following environment variables for use in the command:
 
@@ -42,7 +42,7 @@ the container is running.
   Print usage statement
 
 **--name**=""
-   If name is specified `Catomic stop` will stop the named container from the
+   If name is specified `atomic stop` will stop the named container from the
    system, otherwise it will stop the container with a name that matches the
    image.
 

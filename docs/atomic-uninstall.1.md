@@ -15,7 +15,7 @@ IMAGE [ARG...]
 
 # DESCRIPTION
 **atomic uninstall** attempts to read the `LABEL UNINSTALL` field in the
-container IMAGE, if this field does not exists **atom uninstall** will just
+container IMAGE, if this field does not exists **atomic uninstall** will just
 uninstall the image.
 
 If the container image has a LABEL UNINSTALL instruction like the following:
