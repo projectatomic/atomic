@@ -12,8 +12,8 @@ validTest1 () {
 }
 
 TEST_1=`${ATOMIC} info atomic-test-1`
-TEST_RHEL_REMOTE=`${ATOMIC} info --remote rhel7:7.1-9`
-TEST_RHEL=`${ATOMIC} info rhel7:7.1-9`
+TEST_CENTOS_REMOTE=`${ATOMIC} info --remote centos:latest`
+TEST_CENTOS=`${ATOMIC} info centos:latest`
 
 set +e
 
@@ -23,7 +23,7 @@ set -e
 
 echo $TEST_1
 
-if [[ "${TEST_RHEL_REMOTE}" != "${TEST_RHEL}" ]]; then
+if [[ "${TEST_CENTOS_REMOTE}" != "${TEST_CENTOS}" ]]; then
     exit 1
 fi
 
