@@ -21,28 +21,28 @@
 #    02110-1301 USA.
 #
 #
-import sys, os
+import sys
+import os
 import argparse
 import gettext
 import docker
 import subprocess
+
 import Atomic
 
-PROGNAME="atomic"
+PROGNAME = "atomic"
 gettext.bindtextdomain(PROGNAME, "/usr/share/locale")
 gettext.textdomain(PROGNAME)
 try:
-    #pylint: disable=unexpected-keyword-arg
-    gettext.install(PROGNAME,
-                    unicode=True,
-                    codeset = 'utf-8')
+    # pylint: disable=unexpected-keyword-arg
+    gettext.install(PROGNAME, unicode=True, codeset='utf-8')
 except TypeError:
     # Failover to python3 install
-    gettext.install(PROGNAME,
-                    codeset = 'utf-8')
+    gettext.install(PROGNAME, codeset='utf-8')
 except IOError:
     import builtins
     builtins.__dict__['_'] = str
+
 
 class HelpByDefaultArgumentParser(argparse.ArgumentParser):
     def error(self, message):
@@ -50,109 +50,147 @@ class HelpByDefaultArgumentParser(argparse.ArgumentParser):
         sys.stderr.write("Try '%s --help' for more information.\n" % self.prog)
         sys.exit(2)
 
+
 if __name__ == '__main__':
-    atomic=Atomic.Atomic()
+    atomic = Atomic.Atomic()
     parser = HelpByDefaultArgumentParser(description=atomic.help())
     subparser = parser.add_subparsers(help=_("commands"))
 
     if os.path.exists("/usr/bin/rpm-ostree"):
-        hostp = subparser.add_parser("host",help=_("execute Atomic host commands"))
+        # atomic host
+        hostp = subparser.add_parser("host", help=_("execute Atomic host "
+                                                    "commands"))
         host_subparser = hostp.add_subparsers(help=_("host commands"))
-        rollbackp = host_subparser.add_parser("rollback", help=_("switch to alternate tree at boot"))
+
+        # atomic host rollback
+        rollbackp = host_subparser.add_parser(
+                "rollback", help=_("switch to alternate tree at boot"))
         rollbackp.set_defaults(func=atomic.host_rollback)
         rollbackp.add_argument("-r", "--reboot", dest="reboot",
                                action="store_true",
-                               help=_("initiate a reboot after rollback is prepared"))
+                               help=_("initiate a reboot after rollback is "
+                                      "prepared"))
 
-        statusp = host_subparser.add_parser("status", help=_("list information about all deployments"))
+        # atomic host status
+        statusp = host_subparser.add_parser(
+                "status", help=_("list information about all deployments"))
         statusp.set_defaults(func=atomic.host_status)
-        upgradep = host_subparser.add_parser("upgrade", help=_("upgrade to the latest Atomic tree if one is available"))
+
+        # atomic host upgrade
+        upgradep = host_subparser.add_parser(
+                "upgrade", help=_("upgrade to the latest Atomic tree if one "
+                                  "is available"))
         upgradep.set_defaults(func=atomic.host_upgrade)
         upgradep.add_argument("-r", "--reboot", dest="reboot",
                               action="store_true",
-                              help=_("if an upgrade is available, reboot after deployment is complete"))
+                              help=_("if an upgrade is available, reboot "
+                                     "after deployment is complete"))
 
-        rebasep = host_subparser.add_parser("rebase", help=_("Download and deploy a new origin refspec"))
+        # atomic host rebase
+        rebasep = host_subparser.add_parser(
+                "rebase", help=_("Download and deploy a new origin refspec"))
         rebasep.set_defaults(func=atomic.host_rebase)
         rebasep.add_argument("refspec",
                              help=_("Origin refspec for new deployment"))
 
-    infop = subparser.add_parser("info",
-                                 help=_("display label information about an image"),
-                                 epilog="atomic info attempts to read and display the LABEL information about an image")
+    # atomic info
+    infop = subparser.add_parser(
+            "info", help=_("display label information about an image"),
+            epilog="atomic info attempts to read and display the LABEL "
+                   "information about an image")
     infop.set_defaults(func=atomic.info)
     infop.add_argument("--remote", dest="force_remote_info",
                        action='store_true', default=False,
                        help=_('ignore local images and only scan registries'))
     infop.add_argument("image", help=_("container image"))
 
-    installp = subparser.add_parser("install",
-                                    help=_("execute container image install method"),
-                                    epilog="atomic install attempts to read the LABEL INSTALL field in the image, if it does not exist atomic will just pull the image on to your machine.  You could add a LABEL INSTALL command to your Dockerfile like: 'LABEL INSTALL %s'" % atomic.print_install() )
-
-    imagesp = subparser.add_parser("images",
-                                   help=_("list container images on your system"), 
-                                   epilog="atomic images by default will list all installed container images on your system.  Using the --prune option, will free up disk space deleting unused 'dangling' images")
-    imagesp.set_defaults(func=atomic.images)
-    imagesp.add_argument("--prune", action="store_true", help="prune dangling images")
-
+    # atomic install
+    installp = subparser.add_parser(
+            "install", help=_("execute container image install method"),
+            epilog="atomic install attempts to read the LABEL INSTALL field "
+                   "in the image, if it does not exist atomic will just pull "
+                   "the image on to your machine.  You could add a LABEL "
+                   "INSTALL command to your Dockerfile like: 'LABEL INSTALL "
+                   "%s'" % atomic.print_install())
     installp.set_defaults(func=atomic.install)
-    installp.add_argument("--opt1", dest="opt1", help="additional arguments to be passed as ${OPT1} for install command.")
-    installp.add_argument("--opt2", dest="opt2", help="additional arguments to be passed as ${OPT2} for install command.")
-    installp.add_argument("--opt3", dest="opt3", help="additional arguments to be passed as ${OPT3} for install command.")
-    installp.add_argument("-n", "--name", dest="name",
-                      default=None,
-                      help=_("name of container"))
+    installp.add_argument("--opt1", dest="opt1",
+                          help="additional arguments to be passed as ${OPT1} "
+                               "for install command.")
+    installp.add_argument("--opt2", dest="opt2",
+                          help="additional arguments to be passed as ${OPT2} "
+                               "for install command.")
+    installp.add_argument("--opt3", dest="opt3",
+                          help="additional arguments to be passed as ${OPT3} "
+                               "for install command.")
+    installp.add_argument("-n", "--name", dest="name", default=None,
+                          help=_("name of container"))
     installp.add_argument("--display",
                       default=False,
                       action="store_true",
                       help=_("preview the command that %s would execute") % sys.argv[0]) 
     installp.add_argument("image", help=_("container image"))
     installp.add_argument("args", nargs=argparse.REMAINDER,
-                          help=_("Additional arguments appended to the image uninstall method"))
+                          help=_("Additional arguments appended to the image "
+                                 "uninstall method"))
 
-    mountp = subparser.add_parser("mount",
-                                  help=_("mount container image to a specified "
-                                    "directory"),
-                                  epilog="atomic mount attempts to mount a "
-                                    "container image to a specified directory so "
-                                    "that its contents may be inspected.")
+    # atomic images
+    imagesp = subparser.add_parser(
+            "images", help=_("list container images on your system"),
+            epilog="atomic images by default will list all installed "
+                   "container images on your system.  Using the --prune "
+                   "option, will free up disk space deleting unused "
+                   "'dangling' images")
+    imagesp.set_defaults(func=atomic.images)
+    imagesp.add_argument("--prune", action="store_true",
+                         help=_("prune dangling images"))
+
+    # atomic mount
+    mountp = subparser.add_parser(
+            "mount", help=_("mount container image to a specified directory"),
+            epilog="atomic mount attempts to mount a container image to a "
+                   "specified directory so that its contents may be "
+                   "inspected.")
     mountp.set_defaults(func=atomic.mount)
-    mountp.add_argument("-o", "--options", dest="options",
-                      default="",
-                      help=_("comma-separated list of mount options, "
-                          "defaults are 'ro,nodev,nosuid'"))
-    mountp.add_argument("--live", dest="live",
-                      action="store_true",
-                      help=_("mount a running container 'live', allowing "
-                          "modification of the contents."))
+    mountp.add_argument("-o", "--options", dest="options", default="",
+                        help=_("comma-separated list of mount options, "
+                               "defaults are 'ro,nodev,nosuid'"))
+    mountp.add_argument("--live", dest="live", action="store_true",
+                        help=_("mount a running container 'live', allowing "
+                               "modification of the contents."))
     mountp.add_argument("image", help=_("image/container id"))
     mountp.add_argument("mountpoint", help=_("filesystem location to mount "
-                          "the image/container"))
+                                             "the image/container"))
 
-    stopp = subparser.add_parser("stop",
-                                help=_("execute container image stop method"),
-                                 epilog="atomic will just stop the container if it is running, if image does not specify LABEL STOP\n")
+    # atomic stop
+    stopp = subparser.add_parser(
+            "stop", help=_("execute container image stop method"),
+            epilog="atomic will just stop the container if it is running, if "
+                   "image does not specify LABEL STOP")
     stopp.set_defaults(func=atomic.stop)
-    stopp.add_argument("-n", "--name", dest="name",
-                      default=None,
-                      help=_("name of container"))
+    stopp.add_argument("-n", "--name", dest="name", default=None,
+                       help=_("name of container"))
     stopp.add_argument("image", help=_("container image"))
 
-    runp = subparser.add_parser("run",
-                                help=_("execute container image run method"),
-                                epilog="atomic run defaults to the following command, if image does not specify LABEL run\n'%s'" % atomic.print_run() )
+    # atomic run
+    runp = subparser.add_parser(
+            "run", help=_("execute container image run method"),
+            epilog="atomic run defaults to the following command, if image "
+                   "does not specify LABEL run\n'%s'" % atomic.print_run())
     runp.set_defaults(func=atomic.run)
-    runp.add_argument("--opt1", dest="opt1", help="additional arguments to be passed as ${OPT1} for run command.")
-    runp.add_argument("--opt2", dest="opt2", help="additional arguments to be passed as ${OPT2} for run command.")
-    runp.add_argument("--opt3", dest="opt3", help="additional arguments to be passed as ${OPT3} for run command.")
-    runp.add_argument("-n", "--name", dest="name",
-                      default=None,
+    runp.add_argument("--opt1", dest="opt1",
+                      help="additional arguments to be passed as ${OPT1} for "
+                      "run command.")
+    runp.add_argument("--opt2", dest="opt2",
+                      help="additional arguments to be passed as ${OPT2} for "
+                           "run command.")
+    runp.add_argument("--opt3", dest="opt3",
+                      help="additional arguments to be passed as ${OPT3} for "
+                           "run command.")
+    runp.add_argument("-n", "--name", dest="name", default=None,
                       help=_("name of container"))
-    runp.add_argument("--spc",
-                      default=False,
-                      action="store_true",
-                      help=_("use super privileged container mode: '%s'") % atomic.print_spc() )
+    runp.add_argument("--spc", default=False, action="store_true",
+                      help=_("use super privileged container mode: '%s'" %
+                             atomic.print_spc()))
     runp.add_argument("image", help=_("container image"))
     runp.add_argument("command", nargs=argparse.REMAINDER,
                       help=_("command to execute within the container"))
@@ -161,46 +199,62 @@ if __name__ == '__main__':
                       action="store_true",
                       help=_("preview the command that %s would execute") % sys.argv[0]) 
 
-    uninstallp = subparser.add_parser("uninstall",
-                                      help=_("execute container image uninstall method"),
-                                                                          epilog="atomic uninstall attempts to read the LABEL UNINSTALL field in the image, if it does not exist atomic will remove the image from your machine.  You could add a LABEL UNINSTALL command to your Dockerfile like: 'LABEL UNINSTALL %s'" % atomic.print_uninstall() )
-
+    # atomic uninstall
+    uninstallp = subparser.add_parser(
+            "uninstall", help=_("execute container image uninstall method"),
+            epilog="atomic uninstall attempts to read the LABEL UNINSTALL "
+                   "field in the image, if it does not exist atomic will "
+                   "remove the image from your machine.  You could add a "
+                   "LABEL UNINSTALL command to your Dockerfile like: 'LABEL "
+                   "UNINSTALL %s'" % atomic.print_uninstall())
     uninstallp.set_defaults(func=atomic.uninstall)
-    uninstallp.add_argument("--opt1", dest="opt1", help="additional arguments to be passed as ${OPT1} for uninstall command.")
-    uninstallp.add_argument("--opt2", dest="opt2", help="additional arguments to be passed as ${OPT2} for uninstall command.")
-    uninstallp.add_argument("--opt3", dest="opt3", help="additional arguments to be passed as ${OPT3} for uninstall command.")
-    uninstallp.add_argument("-n", "--name", dest="name",
-                            default=None,
+    uninstallp.add_argument("--opt1", dest="opt1",
+                            help="additional arguments to be passed as "
+                                 "${OPT1} for uninstall command.")
+    uninstallp.add_argument("--opt2", dest="opt2",
+                            help="additional arguments to be passed as "
+                                 "${OPT2} for uninstall command.")
+    uninstallp.add_argument("--opt3", dest="opt3",
+                            help="additional arguments to be passed as "
+                                 "${OPT3} for uninstall command.")
+    uninstallp.add_argument("-n", "--name", dest="name", default=None,
                             help=_("name of container"))
-    uninstallp.add_argument("-f", "--force",
-                            default=False,
-                            dest="force",
+    uninstallp.add_argument("-f", "--force", default=False, dest="force",
                             action="store_true",
-                            help=_("remove all containers based on this image"))
+                            help=_("remove all containers based on this "
+                                   "image"))
     uninstallp.add_argument("image", help=_("container image"))
     uninstallp.add_argument("args", nargs=argparse.REMAINDER,
-                          help=_("Additional arguments appended to the image uninstall method"))
+                            help=_("Additional arguments appended to the "
+                                   "image uninstall method"))
 
-    unmountp = subparser.add_parser("unmount",
-                                   help=_("unmount container image"),
-                                   epilog="atomic unmount will unmount a "
-                                   "container image previously mounted with "
-                                   "atomic mount")
+    # atomic unmount
+    unmountp = subparser.add_parser(
+            "unmount", help=_("unmount container image"),
+            epilog="atomic unmount will unmount a container image previously "
+                   "mounted with atomic mount")
     unmountp.set_defaults(func=atomic.unmount)
-    unmountp.add_argument("mountpoint", help=_("filesystem location of image/container to be unmounted"))
+    unmountp.add_argument("mountpoint",
+                          help=_("filesystem location of image/container to "
+                                 "be unmounted"))
 
-    updatep = subparser.add_parser("update",help=_("pull latest container image from repository"), epilog="atomic update downloads the latest container image. If a previously container based on this image exists, the container will continue to use the old image.  Use --force to remove the container.")
-
+    # atomic update
+    updatep = subparser.add_parser(
+            "update", help=_("pull latest container image from repository"),
+            epilog="atomic update downloads the latest container image. If a "
+                   "previously created  container based on this image exists, "
+                   "the container will continue to use the old image.  Use "
+                   "--force to remove the outdated container.")
     updatep.set_defaults(func=atomic.update)
-    updatep.add_argument("-f", "--force",
-                         default=False,
-                         dest="force",
+    updatep.add_argument("-f", "--force", default=False, dest="force",
                          action="store_true",
                          help=_("remove all containers based on this image"))
     updatep.add_argument("image", help=_("container image"))
 
-    uploadp = subparser.add_parser("upload",help=_("upload latest image to repository"), epilog="atomic upload uploads the latest specified image.")
-
+    # atomic upload
+    uploadp = subparser.add_parser(
+            "upload", help=_("upload latest image to repository"),
+            epilog="atomic upload uploads the latest specified image.")
     uploadp.set_defaults(func=atomic.upload)
     uploadp.add_argument("--pulp",
                          default=False,
@@ -225,20 +279,23 @@ if __name__ == '__main__':
                          help=_("Password for remote registry"))
     uploadp.add_argument("image", help=_("container image"))
 
-    versionp = subparser.add_parser("version",
-                                    help=_("display image 'Name Version Release' label"),
-                                    epilog="atomic version displays the image version information, if it is provided")
-    versionp.add_argument("-r", "--recurse",
-                         default=False,
-                         dest="recurse",
-                         action="store_true",
-                         help=_("recurse through all layers"))
+    # atomic version
+    versionp = subparser.add_parser(
+            "version", help=_("display image 'Name Version Release' label"),
+            epilog="atomic version displays the image version information, if "
+                   "it is provided")
+    versionp.add_argument("-r", "--recurse", default=False, dest="recurse",
+                          action="store_true",
+                          help=_("recurse through all layers"))
     versionp.set_defaults(func=atomic.print_version)
     versionp.add_argument("image", help=_("container image"))
 
-    verifyp = subparser.add_parser("verify",
-                                    help=_("verify image is fully updated"),
-                                    epilog="atomic verify checks whether there is a newer image available and scans through all layers to see if any of the sublayers have a new version available")
+    # atomic verify
+    verifyp = subparser.add_parser(
+            "verify", help=_("verify image is fully updated"),
+            epilog="atomic verify checks whether there is a newer image "
+                   "available and scans through all layers to see if any of "
+                   "the sublayers have a new version available")
     verifyp.set_defaults(func=atomic.print_verify)
     verifyp.add_argument("image", help=_("container image"))
 

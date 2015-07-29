@@ -2,10 +2,11 @@ import unittest
 
 from Atomic import mount
 
+
 class TestAtomicMount(unittest.TestCase):
     def test_mount_excepts_unknown_backend(self):
         def mock_info():
-            return { 'Driver': 'foobardriver' }
+            return {'Driver': 'foobardriver'}
         m = mount.DockerMount('foobar')
         m.client.info = mock_info
         exp = 'Atomic mount is not supported on the foobardriver docker ' \
@@ -36,7 +37,6 @@ class TestAtomicMount(unittest.TestCase):
         m = mount.Mount('foobar')
         self.assertRaises(NotImplementedError, m.mount, '')
         self.assertRaises(NotImplementedError, m.unmount)
-
 
 
 if __name__ == '__main__':
