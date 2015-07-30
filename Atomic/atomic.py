@@ -26,7 +26,7 @@ IMAGES = []
 
 def convert_size(size):
     if size > 0:
-        size_name = ("KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+        size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
         i = int(math.floor(math.log(size, 1000)))
         p = math.pow(1000, i)
         s = round(size/p, 2)
@@ -567,14 +567,14 @@ class Atomic(object):
                 self.d.remove_image(i, force=True)
             return
 
-        self.writeOut(" %-25s %-19s %.12s            %-19s %-10s" %
+        self.writeOut(" %-35s %-19s %.12s            %-19s %-10s" %
                       ("REPOSITORY", "TAG", "IMAGE ID", "CREATED",
                        "VIRTUAL SIZE"))
 
         for image in self.d.images():
             repo, tag = image["RepoTags"][0].split(":")
             self.writeOut(
-                "%s%-25s %-19s %.12s        %-19s %-12s" %
+                "%s%-35s %-19s %.12s        %-19s %-12s" %
                 (self.dangling(repo), repo, tag, image["Id"],
                  time.strftime("%F %H:%M",
                                time.localtime(image["Created"])),
