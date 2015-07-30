@@ -7,13 +7,18 @@ atomic \- Atomic Management Tool
 # SYNOPSIS
 **atomic** [OPTIONS] COMMAND [arg...]
   {defaults,host,info,install,run,uninstall,update}
+[**-h**][**-help**]
+[**-v**][**--version**]
 
 # DESCRIPTION
 Atomic Management Tool
 
 # OPTIONS
-**--help**
+**-h** **--help**
   Print usage statement
+
+**-v** **--version**
+  Print atomic version
 
 # COMMANDS
 **atomic-defaults(1)**
