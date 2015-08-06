@@ -591,10 +591,13 @@ class Atomic(object):
                 self.inspect = self._inspect_image()
         else:
             args = self._get_args("INSTALL")
-        if args:
-            cmd = self.gen_cmd(args + list(map(pipes.quote, self.args.args)))
-            self.display(cmd)
-            if not self.args.display:
+            if not args:
+                args = self.INSTALL_ARGS + self._get_cmd()
+                cmd = self.gen_cmd(args)
+
+            if self.args.display:
+                self.display(cmd)
+            else:
                 return subprocess.check_call(cmd, env=self.cmd_env, shell=True)
 
     def help(self):
