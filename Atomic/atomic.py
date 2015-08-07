@@ -583,22 +583,21 @@ class Atomic(object):
     def install(self):
         self.inspect = self._inspect_image()
         if not self.inspect:
-            cmd = "/usr/bin/docker pull %s" % self.image
-            self.display(cmd)
-            args = self.INSTALL_ARGS
-            if not self.args.display:
-                self.update()
-                self.inspect = self._inspect_image()
-        else:
-            args = self._get_args("INSTALL")
-            if not args:
-                args = self.INSTALL_ARGS + self._get_cmd()
-                cmd = self.gen_cmd(args)
-
             if self.args.display:
-                self.display(cmd)
-            else:
-                return subprocess.check_call(cmd, env=self.cmd_env, shell=True)
+                self.display("Need to pull %s" % self.image)
+                return
+            self.update()
+            self.inspect = self._inspect_image()
+
+        args = self._get_args("INSTALL")
+        if not args:
+            args = self.INSTALL_ARGS
+
+        cmd = self.gen_cmd(args + list(map(pipes.quote, self.args.args)))
+
+        self.display(cmd)
+        if not self.args.display:
+            return subprocess.check_call(cmd, env=self.cmd_env, shell=True)
 
     def help(self):
         if os.path.exists("/usr/bin/rpm-ostree"):
