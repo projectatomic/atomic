@@ -332,6 +332,7 @@ class Atomic(object):
         return command
 
     def run(self):
+        missing_RUN = False
         self.inspect = self._inspect_container()
 
         if self.inspect:
@@ -341,21 +342,15 @@ class Atomic(object):
                 return self._running()
             elif not self.args.display:
                 return self._start()
-        else:
-            if self.command and not self.args.display:
-                raise ValueError("Container '%s' must be running before "
-                                 "executing a command into it.\nExecute the "
-                                 "following to create the container:\n%s" %
-                                 (self.name, self.container_run_command()))
 
         # Container does not exist
         self.inspect = self._inspect_image()
         if not self.inspect:
-            cmd = "/usr/bin/docker pull %s" % self.image
-            self.display(cmd)
-            if not self.args.display:
-                self.update()
-                self.inspect = self._inspect_image()
+            if self.args.display:
+                return self.display("Need to pull %s" % self.image)
+
+            self.update()
+            self.inspect = self._inspect_image()
 
         if self.spc:
             if self.command:
@@ -364,26 +359,29 @@ class Atomic(object):
                 args = self.SPC_ARGS + self._get_cmd()
 
             cmd = self.gen_cmd(args)
-            self.display(cmd)
         else:
-            missing_RUN = False
-            if self.args.display and not self.inspect:
-                args = self.RUN_ARGS
+            args = self._get_args("RUN")
+            if args:
+                args += self.command
             else:
-                args = self._get_args("RUN")
-            if not args:
                 missing_RUN = True
-                args = self.RUN_ARGS + self._get_cmd()
+                if self.command:
+                    args = self.RUN_ARGS + self.command
+                else:
+                    args = self.RUN_ARGS + self._get_cmd()
 
             cmd = self.gen_cmd(args)
             self.display(cmd)
+            if self.args.display:
+                return
 
-            if missing_RUN and not self.args.display:
+            if missing_RUN:
                 subprocess.check_call(cmd, env=self.cmd_env,
                                       shell=True, stderr=DEVNULL,
                                       stdout=DEVNULL)
                 return self._start()
 
+        self.display(cmd)
         if not self.args.display:
             subprocess.check_call(cmd, env=self.cmd_env, shell=True)
 
