@@ -46,6 +46,6 @@ if [[ ${OUTPUT} != "I am the run label." ]]; then
 fi
 
 OUTPUT=`${ATOMIC} install --display -n TEST5 centos`
-if [[ ${OUTPUT} != "" ]]; then
+if [[ ${OUTPUT} != "/usr/bin/docker run -t -i --rm --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=TEST5 -e IMAGE=centos -v /etc/TEST5:/etc/TEST5 -v /var/log/TEST5:/var/log/TEST5 -v /var/lib/TEST5:/var/lib/TEST5 -e CONFDIR=/etc/TEST5 -e LOGDIR=/var/log/TEST5 -e DATADIR=/var/lib/TEST5 --name TEST5 centos" ]]; then
     exit 1
 fi
