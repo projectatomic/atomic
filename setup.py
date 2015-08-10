@@ -3,7 +3,9 @@
 # Author: Dan Walsh <dwalsh@redhat.com>
 import os
 from distutils.core import setup
-from Atomic import __version__
+import pkg_resources
+
+__version__ = pkg_resources.require('Atomic')[0].version
 
 setup(
     name = "atomic", scripts=["atomic", "atomic_dbus.py"], version=__version__,
