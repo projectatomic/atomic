@@ -2,7 +2,7 @@
 
 # Author: Dan Walsh <dwalsh@redhat.com>
 import os
-from distutils.core import setup
+from setuptools import setup
 import pkg_resources
 
 __version__ = pkg_resources.require('Atomic')[0].version
