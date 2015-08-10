@@ -1,0 +1,5 @@
+requests
+setuptools
+docker-py
+websocket-client>=0.11.0
+six>=1.3.0
