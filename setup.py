@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 
 # Author: Dan Walsh <dwalsh@redhat.com>
-import os
 from setuptools import setup
 import pkg_resources
 
 __version__ = pkg_resources.require('Atomic')[0].version
 
 setup(
-    name = "atomic", scripts=["atomic", "atomic_dbus.py"], version=__version__,
+    name="atomic", scripts=["atomic", "atomic_dbus.py"], version=__version__,
     description="Atomic Management Tool",
     author="Daniel Walsh", author_email="dwalsh@redhat.com",
     packages=["Atomic"],
