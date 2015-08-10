@@ -194,7 +194,10 @@ if __name__ == '__main__':
                              atomic.print_spc()))
     runp.add_argument("image", help=_("container image"))
     runp.add_argument("command", nargs=argparse.REMAINDER,
-                      help=_("command to execute within the container"))
+                      help=_("command to execute within the container. "
+                             "If container is not running, command is appended"
+                             "to the image run method"))
+
     runp.add_argument("--display",
                       default=False,
                       action="store_true",
