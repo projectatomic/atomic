@@ -21,7 +21,9 @@ else:
 
 
 class PulpServer(object):
+
     """Interact with Pulp API"""
+
     def __init__(self, server_url, username, password, verify_ssl,
                  docker_client):
         self._server_url = server_url
@@ -134,8 +136,8 @@ class PulpServer(object):
                 'distributor_config': {
                     'redirect-url': redirect_url,
                     'repo-registry-id': image}
-                }
-                ]
+            }
+            ]
         }
         url = '{0}/pulp/api/v2/repositories/'.format(self._server_url)
         # print('Verifying pulp repository "{0}"'.format(repo_id))
@@ -193,11 +195,11 @@ class PulpServer(object):
         url = '{0}/pulp/api/v2/repositories/{1}/actions/import_upload/' \
               ''.format(self._server_url, repo_id)
         payload = {
-          'upload_id': upload_id,
-          'unit_type_id': self._unit_type_id,
-          'unit_key': None,
-          'unit_metadata': None,
-          'override_config': None
+            'upload_id': upload_id,
+            'unit_type_id': self._unit_type_id,
+            'unit_key': None,
+            'unit_metadata': None,
+            'override_config': None
         }
         r_json = self._call_pulp(url, "post", payload)
         if 'error_message' in r_json:
@@ -209,8 +211,8 @@ class PulpServer(object):
         url = '{0}/pulp/api/v2/repositories/{1}/actions/publish/' \
               ''.format(self._server_url, repo_id)
         payload = {
-          "id": self._web_distributor,
-          "override_config": {}
+            "id": self._web_distributor,
+            "override_config": {}
         }
         # print('Publishing pulp repository "{0}"'.format(repo_id))
         r_json = self._call_pulp(url, "post", payload)

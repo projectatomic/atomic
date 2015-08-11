@@ -1,14 +1,12 @@
 import sys
 import os
 import argparse
-import gettext
 import docker
 import json
 import subprocess
 import getpass
 import requests
 import pipes
-import selinux
 import pwd
 import time
 import math
@@ -127,7 +125,6 @@ class Atomic(object):
 
     def pull(self):
         prevstatus = ""
-        prev = ""
         for line in self.d.pull(self.image, stream=True):
             bar = json.loads(line)
             status = bar['status']
@@ -310,7 +307,6 @@ class Atomic(object):
     def _check_latest(self):
         inspect = self._inspect_image()
         if inspect and inspect["Id"] != self.inspect["Image"]:
-            response = ""
             sys.stdout.write(
                 "The '%(name)s' container is using an older version of the "
                 "installed\n'%(image)s' container image. If you wish to use "
@@ -671,7 +667,6 @@ class Atomic(object):
             version = "%s-%s-%s" % (current_name, get_label("Version"),
                                     get_label("Release"))
 
-        prev = ""
         name = None
         buf = ""
         for layer in self.get_layers():

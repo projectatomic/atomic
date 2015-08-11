@@ -33,7 +33,9 @@ from fnmatch import fnmatch as matches
 
 
 class MountError(Exception):
+
     """Generic error mounting a candidate container."""
+
     def __init__(self, val):
         self.val = val
 
@@ -42,17 +44,21 @@ class MountError(Exception):
 
 
 class SelectionMatchError(MountError):
+
     """Input identifier matched multiple mount candidates."""
+
     def __init__(self, i, matches):
         self.val = ('"{0}" matched multiple items. Try one of the following:\n'
                     '{1}'.format(i, '\n'.join(['\t' + m for m in matches])))
 
 
 class Mount:
+
     """
     A class which contains backend-independent methods useful for mounting and
     unmounting containers.
     """
+
     def __init__(self, mountpoint, live=False):
         """
         Constructs the Mount class with a mountpoint.
@@ -76,7 +82,7 @@ class Mount:
         Provisions an LVM device-mapper thin device reflecting,
         DM device id 'dm_id' in the docker pool.
         """
-        table = '0 {0} thin /dev/mapper/{1} {2}'.format(int(size)/512,
+        table = '0 {0} thin /dev/mapper/{1} {2}'.format(int(size) / 512,
                                                         pool, dm_id)
         cmd = ['dmsetup', 'create', name, '--table', table]
         r = util.subp(cmd)
@@ -155,10 +161,12 @@ class Mount:
 
 
 class DockerMount(Mount):
+
     """
     A class which can be used to mount and unmount docker containers and
     images on a filesystem location.
     """
+
     def __init__(self, mountpoint, live=False):
         Mount.__init__(self, mountpoint, live)
         self.client = docker.Client()
@@ -172,9 +180,9 @@ class DockerMount(Mount):
         """
         try:
             return self.client.create_container(
-                                 image=iid, command='/bin/true',
-                                 environment=['_ATOMIC_TEMP_CONTAINER'],
-                                 detach=True, network_disabled=True)['Id']
+                image=iid, command='/bin/true',
+                environment=['_ATOMIC_TEMP_CONTAINER'],
+                detach=True, network_disabled=True)['Id']
         except docker.errors.APIError as ex:
             raise MountError('Error creating temporary container:\n' + str(ex))
 
@@ -187,13 +195,13 @@ class DockerMount(Mount):
         """
         try:
             iid = self.client.commit(
-                    container=cid,
-                    conf={
-                            'Labels': {
-                                'io.projectatomic.Temporary': 'true'
-                            }
-                        }
-                    )['Id']
+                container=cid,
+                conf={
+                    'Labels': {
+                        'io.projectatomic.Temporary': 'true'
+                    }
+                }
+            )['Id']
         except docker.errors.APIError as ex:
             raise MountError(str(ex))
         return self._create_temp_container(iid)
@@ -303,12 +311,12 @@ class DockerMount(Mount):
         cinfo = self.client.inspect_container(cid)
 
         if self.live and not cinfo['State']['Running']:
-                self._cleanup_container(cinfo)
-                raise MountError('Cannot live mount non-running container.')
+            self._cleanup_container(cinfo)
+            raise MountError('Cannot live mount non-running container.')
 
         options = self._default_options(
-                options, default_con=cinfo['MountLabel'],
-                default_options=[] if self.live else ['ro', 'nosuid', 'nodev'])
+            options, default_con=cinfo['MountLabel'],
+            default_options=[] if self.live else ['ro', 'nosuid', 'nodev'])
 
         dm_dev_name, dm_dev_id, dm_dev_size = '', '', ''
         dm_pool = info['DriverStatus'][0][1]

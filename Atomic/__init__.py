@@ -1,10 +1,10 @@
 import sys
-import os
 from .pulp import PulpServer
 from .config import PulpConfig
 from .atomic import Atomic
 
 __version__ = "1.1"
+
 
 def writeOut(output, lf="\n"):
     sys.stdout.flush()
