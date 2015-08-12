@@ -3,10 +3,9 @@
 import dbus
 import dbus.service
 import dbus.mainloop.glib
-from gi.repository import GObject, GLib
+from gi.repository import GLib
 import slip.dbus.service
 from slip.dbus import polkit
-import os
 import Atomic
 
 
