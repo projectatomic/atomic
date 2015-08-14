@@ -4,7 +4,6 @@
 import sys
 import os
 from setuptools import setup
-import pkg_resources
 
 sys.path.insert(0, os.path.abspath(os.getcwd()))
 from Atomic import __version__
