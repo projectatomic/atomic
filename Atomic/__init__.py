@@ -3,7 +3,7 @@ from .pulp import PulpServer
 from .config import PulpConfig
 from .atomic import Atomic
 
-__version__ = "1.1"
+__version__ = "1.2"
 
 
 def writeOut(output, lf="\n"):
