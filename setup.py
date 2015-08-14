@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 
 # Author: Dan Walsh <dwalsh@redhat.com>
+import sys
+import os
 from setuptools import setup
 import pkg_resources
 
-__version__ = pkg_resources.require('Atomic')[0].version
+sys.path.insert(0, os.path.abspath(os.getcwd()))
+from Atomic import __version__
 
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
