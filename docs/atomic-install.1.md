@@ -20,7 +20,7 @@ IMAGE, if this field does not exist, `atomic install` will install the IMAGE
 
 If the container image has a LABEL INSTALL instruction like the following:
 
-```LABEL INSTALL /usr/bin/docker run -t -i --rm \${OPT1} --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=\${NAME} -e IMAGE=\${IMAGE} -e CONFDIR=\${CONFDIR} -e LOGDIR=\${LOGDIR} -e DATADIR=\${DATADIR} --name \${NAME} \${IMAGE} \${OPT2} /bin/install.sh \${OPT3}```
+```LABEL INSTALL /usr/bin/docker run -t -i --rm \${OPT1} --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=\${NAME} -e IMAGE=\${IMAGE} -e CONFDIR=\${CONFDIR} -e LOGDIR=\${LOGDIR} -e DATADIR=\${DATADIR} \${IMAGE} \${OPT2} /bin/install.sh \${OPT3}```
 
 `atomic install` will set the following environment variables for use in the command:
 
