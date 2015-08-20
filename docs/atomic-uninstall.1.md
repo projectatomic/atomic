@@ -20,7 +20,7 @@ uninstall the image.
 
 If the container image has a LABEL UNINSTALL instruction like the following:
 
-```LABEL UNINSTALL /usr/bin/docker run -t -i --rm \${OPT1} --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=${NAME} -e IMAGE=${IMAGE} -e CONFDIR=${CONFDIR} -e LOGDIR=${LOGDIR} -e DATADIR=${DATADIR} --name ${NAME} ${IMAGE} \${OPT2} /bin/uninstall.sh \${OPT3}```
+```LABEL UNINSTALL /usr/bin/docker run -t -i --rm \${OPT1} --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=${NAME} -e IMAGE=${IMAGE} -e CONFDIR=${CONFDIR} -e LOGDIR=${LOGDIR} -e DATADIR=${DATADIR} ${IMAGE} \${OPT2} /bin/uninstall.sh \${OPT3}```
 
 `atomic uninstall` will set the following environment variables for use in the command:
 
