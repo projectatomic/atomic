@@ -263,29 +263,68 @@ if __name__ == '__main__':
         "upload", help=_("upload latest image to repository"),
         epilog="atomic upload uploads the latest specified image.")
     uploadp.set_defaults(func=atomic.upload)
-    uploadp.add_argument("--pulp",
+
+    # making it so we cannot call both the --pulp and --satellite commands
+    # at the same time (mutually exclusive)
+    upgroup = uploadp.add_mutually_exclusive_group()
+    upgroup.add_argument("--pulp",
                          default=False,
                          action="store_true",
                          help=_("upload image using pulp"))
-    config = Atomic.PulpConfig().config()
-    uploadp.add_argument("--verify_ssl",
-                         default=config["verify_ssl"],
+    upgroup.add_argument("--satellite",
+                         default=False,
                          action="store_true",
-                         help=_("verify ssl of registry"))
+                         help=_("upload image using Satellite"))
+
+    uploadp.add_argument("--verify_ssl",
+                         default=None,
+                         action="store_true",
+                         help=_("flag to verify ssl of registry"))
+    uploadp.add_argument("--debug",
+                         default=None,
+                         action="store_true",
+                         help=_("debug mode"))
     uploadp.add_argument("-U", "--url",
                          dest="url",
-                         default=config["url"],
-                         help=_("Url for remote registry"))
+                         default=None,
+                         help=_("URL for remote registry"))
     uploadp.add_argument("-u", "--username",
-                         default=config["username"],
+                         default=None,
                          dest="username",
                          help=_("Username for remote registry"))
     uploadp.add_argument("-p", "--password",
-                         default=config["password"],
+                         default=None,
                          dest="password",
                          help=_("Password for remote registry"))
     uploadp.add_argument("image", help=_("container image"))
-
+    uploadp.add_argument("-a", "--activation_key",
+                         default=None,
+                         dest="activation_key",
+                         help=_("Activation Key"))
+    uploadp.add_argument("--repo_id", "--repository_id",
+                         default=None,
+                         dest="repo_id",
+                         help=_("Repository ID"))
+    # uploadp.add_argument("--activation_key_name",
+    #                      default=None,
+    #                      dest="activation_key_name",
+    #                      help=_("Activation Key Name"))
+    # uploadp.add_argument("--repo_name", "--repository_name",
+    #                      default=None,
+    #                      dest="repo_name",
+    #                      help=_("Repository Name"))
+    # uploadp.add_argument("--org_name", "--organization_name",
+    #                      default=None,
+    #                      dest="org_name",
+    #                      help=_("Organization Name"))
+    versionp = subparser.add_parser("version",
+                                    help=_("display image 'Name Version Release' label"),
+                                    epilog="atomic version displays the image version information, if it is provided")
+    versionp.add_argument("-r", "--recurse",
+                         default=False,
+                         dest="recurse",
+                         action="store_true",
+                         help=_("recurse through all layers"))
     # atomic version
     versionp = subparser.add_parser(
         "version", help=_("display image 'Name Version Release' label"),

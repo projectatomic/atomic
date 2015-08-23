@@ -3,7 +3,6 @@ import docker
 import selinux
 import subprocess
 import sys
-
 from fnmatch import fnmatch as matches
 
 """Atomic Utility Module"""
@@ -71,3 +70,8 @@ def default_container_context():
             if name.strip() == "file":
                 return context.strip("\n\" ")
     return ""
+
+
+def writeOut(output, lf="\n"):
+    sys.stdout.flush()
+    sys.stdout.write(str(output) + lf)

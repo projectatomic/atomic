@@ -1,6 +1,13 @@
 import sys
 import requests
 import json
+import os
+from Atomic import util
+try:
+    import ConfigParser as configparser
+except ImportError:  # py3 compat
+    import configparser
+
 
 # On latest Fedora, this is a symlink
 if hasattr(requests, 'packages'):
@@ -18,6 +25,48 @@ else:
         # Except only call disable-warnings if it exists
         if hasattr(urllib3, 'disable_warnings'):
             urllib3.disable_warnings()
+
+
+def push_image_to_pulp(image, server_url, username, password,
+                       verify_ssl, docker_client):
+    if not image:
+        raise ValueError("Image required")
+    parts = image.split("/")
+    if parts > 1:
+        if parts[0].find(".") != -1:
+            server_url = parts[0]
+            image = ("/").join(parts[1:])
+
+    repo = image.replace("/", "-")
+    if not server_url:
+        raise ValueError("Pulp server url required")
+
+    if not server_url.startswith("http"):
+        server_url = "https://" + server_url
+
+    try:
+        pulp = PulpServer(server_url=server_url, username=username,
+                          password=password, verify_ssl=verify_ssl,
+                          docker_client=docker_client)
+    except Exception as e:
+        raise IOError('Failed to initialize Pulp: {0}'.format(e))
+
+    try:
+        if not pulp.is_repo(repo):
+            pulp.create_repo(image, repo)
+    except Exception as e:
+        raise IOError('Failed to create repository: {0}'.format(e))
+
+    try:
+        util.writeOut('Uploading image "{0}" to server "{1}"'.format(
+            image, server_url))
+        pulp.upload_docker_image(image, repo)
+        util.writeOut("")
+    except Exception as e:
+        raise IOError('Failed to upload image: {0}'.format(e))
+
+    pulp.publish_repo(repo)
+    pulp.export_repo(repo)
 
 
 class PulpServer(object):
@@ -239,3 +288,49 @@ class PulpServer(object):
         r_json = self._call_pulp(url, "post", payload)
         if 'error_message' in r_json:
             raise Exception('Unable to export pulp repo "{0}"'.format(repo_id))
+
+
+class PulpConfig(object):
+    """
+    pulp configuration:
+    1. look in ~/.pulp/admin.conf
+    configuration contents:
+    [server]
+    host = <pulp-server-hostname.example.com>
+    verify_ssl = false
+
+    # optional auth section
+    [auth]
+    username: <user>
+    password: <pass>
+    """
+    def __init__(self):
+        self.c = configparser.ConfigParser()
+        self.config_file = os.path.expanduser("~/.pulp/admin.conf")
+        self.c.read(self.config_file)
+        self.url = self._get("server", "host")
+        self.username = self._get("auth", "username")
+        self.password = self._get("auth", "password")
+        self.verify_ssl = self._getboolean("server", "verify_ssl")
+
+    def _get(self, section, val):
+        try:
+            return self.c.get(section, val)
+        except (configparser.NoSectionError, configparser.NoOptionError):
+            return None
+        except ValueError as e:
+            raise ValueError("Bad Value for %s in %s. %s" %
+                             (val, self.config_file, e))
+
+    def _getboolean(self, section, val):
+        try:
+            return self.c.getboolean(section, val)
+        except (configparser.NoSectionError, configparser.NoOptionError):
+            return True
+        except ValueError as e:
+            raise ValueError("Bad Value for %s in %s. %s" %
+                             (val, self.config_file, e))
+
+    def config(self):
+        return {"url": self.url, "verify_ssl": self.verify_ssl,
+                "username": self.username, "password": self.password}
