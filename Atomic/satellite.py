@@ -234,9 +234,8 @@ class SatelliteServer(object):
             content = image_stream.read(self._chunk_size)
             if not content:
                 break
-            url = """{0}/katello/api/repositories/{1}/content_uploads/
-                {2}""".format(self._server_url, repo_id,
-                              upload_id).replace('\n', '')
+            url = "{0}/katello/api/repositories/{1}/content_uploads/{2}".format(self._server_url, repo_id,
+                              upload_id)
             sys.stdout.flush()
             sys.stdout.write(".")
             payload = {
@@ -255,9 +254,7 @@ class SatelliteServer(object):
 
     def _delete_upload_id(self, upload_id, repo_id):
         """Delete upload request ID"""
-        delete_url = """{0}/katello/api/repositories/{1}/content_uploads/
-            {2}""".format(self._server_url, repo_id,
-                          upload_id).replace('\n', '')
+        delete_url = "{0}/katello/api/repositories/{1}/content_uploads/{2}".format(self._server_url, repo_id, upload_id)
         self._call_satellite(delete_url, "delete")
         if self._debug:
             print("Successful Deletion")
@@ -283,7 +280,7 @@ class SatelliteServer(object):
         """Publish satellite repository to satellite web server"""
         url = '{0}/katello/api/content_views/{1}/publish/'.format(
             self._server_url, content_id)
-        r_json = self._call_satellite(url, "post")
+        r_json = self._call_satellite(url, "post-nodata")
         if (r_json is not None):
             if ('errors' in r_json):
                 raise Exception('Unable to publish satellite repo "{0}"'
