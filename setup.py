@@ -5,14 +5,12 @@ import sys
 import os
 from setuptools import setup
 
-sys.path.insert(0, os.path.abspath(os.getcwd()))
-from Atomic import __version__
-
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
 
 setup(
-    name="atomic", scripts=["atomic", "atomic_dbus.py"], version=__version__,
+    name="atomic", scripts=["atomic", "atomic_dbus.py"],
+    version='1.2',
     description="Atomic Management Tool",
     author="Daniel Walsh", author_email="dwalsh@redhat.com",
     packages=["Atomic"],
