@@ -8,7 +8,7 @@ atomic-upload - upload Image to repository
 **atomic upload**
 [**--pulp**]
 [**--satellite**]
-[**-h**]
+[**-h**|**--help**]
 IMAGE
 
 # DESCRIPTION
@@ -21,7 +21,7 @@ IMAGE
 **--satellite**
   Upload using the satellite protocol; defaults to using docker push  
 
-**--help**
+**-h** **--help**
   Print usage statement
 
 # HISTORY

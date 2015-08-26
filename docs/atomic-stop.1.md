@@ -6,7 +6,7 @@ atomic-stop - Execute container image stop method
 
 # SYNOPSIS
 **atomic stop**
-[**-h**]
+[**-h**|**--help**]
 [**--name**[=*NAME*]]
 IMAGE
 
@@ -16,7 +16,7 @@ IMAGE.
 
 If the container image has a `LABEL STOP` instruction like the following:
 
-```LABEL STOP /usr/bin/docker kill -s HUP --name ${NAME} ${IMAGE}```
+`LABEL STOP /usr/bin/docker kill -s HUP --name ${NAME} ${IMAGE}`
 
 atomic would execute this command before stopping the container.
 
@@ -38,7 +38,7 @@ If this field does not exist, `atomic stop` will just stop the container, if
 the container is running.
 
 # OPTIONS:
-**--help**
+**-h** **--help**
   Print usage statement
 
 **--name**=""

@@ -6,16 +6,18 @@ atomic-version - Display image 'Name Version Release' label
 
 # SYNOPSIS
 **atomic version**
-[**-h**]
-[**-r**], [**--recurse**]
+[**-h**|**--help**]
+[**-r**|**--recurse**]
 IMAGE
 
 # DESCRIPTION
 **atomic version** display image 'Id Name:Version:Release RepoTag' label
 
 # OPTIONS:
-**-r**, **--recurse**   Recurse through all layers of the specified image.
-**--help**
+**-r** **--recurse**
+  Recurse through all layers of the specified image.
+
+**-h** **--help**
   Print usage statement
 
 # HISTORY

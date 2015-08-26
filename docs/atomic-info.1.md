@@ -6,7 +6,7 @@ atomic-info - Display LABEL information about an image
 
 # SYNOPSIS
 **atomic info**
-[**-h**]
+[**-h**|**--help**]
 [**--remote**]
 IMAGE
 
@@ -15,7 +15,7 @@ IMAGE
 will check first for a local image and then all configured registries.
 
 # OPTIONS:
-**--help**
+**-h** **--help**
   Print usage statement
 
 **--remote**

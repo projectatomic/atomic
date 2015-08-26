@@ -6,16 +6,16 @@ atomic-verify - Verify image is fully updated
 
 # SYNOPSIS
 **atomic verify**
-[**-h**]
+[**-h**|**--help**]
 IMAGE
 
 # DESCRIPTION
 **atomic verify** checks whether there is a newer image available and scans
 through all layers to see if any of the sublayers have a new version available.
-If the tool finds a out of date image it will tell user to update the image.
+If the tool finds an out of date image it will tell user to update the image.
 
 # OPTIONS:
-**--help**
+**-h** **--help**
   Print usage statement
 
 # HISTORY
