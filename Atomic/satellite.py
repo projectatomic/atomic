@@ -234,8 +234,7 @@ class SatelliteServer(object):
             content = image_stream.read(self._chunk_size)
             if not content:
                 break
-            url = "{0}/katello/api/repositories/{1}/content_uploads/{2}".format(self._server_url, repo_id,
-                              upload_id)
+            url = "{0}/katello/api/repositories/{1}/content_uploads/{2}".format(self._server_url, repo_id, upload_id)
             sys.stdout.flush()
             sys.stdout.write(".")
             payload = {
