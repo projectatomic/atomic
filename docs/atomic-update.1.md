@@ -7,7 +7,7 @@ atomic-update - Pull latest Image from repository
 # SYNOPSIS
 **atomic update**
 [**-f**|**--force**]
-[**-h**|**-h**]
+[**-h**|**--help**]
 IMAGE
 
 # DESCRIPTION
