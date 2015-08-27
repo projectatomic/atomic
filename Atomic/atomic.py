@@ -177,20 +177,22 @@ class Atomic(object):
         if not self.args.password:
             self.args.password = getpass.getpass("Registry Password: ")
 
+        if (self.args.satellite | self.args.pulp):
+            if not self.args.url:
+                self.args.url = util.input("URL: ")
+
         if self.args.pulp:
                     return pulp.push_image_to_pulp(self.image, self.args.url,
                                                    self.args.username,
                                                    self.args.password,
                                                    self.args.verify_ssl,
                                                    self.d)
-        if not self.args.activation_key:
-            if self.args.satellite:
-                self.args.activation_key = util.input("Activation Key: ")
-        if not self.args.repo_id:
-            if self.args.satellite:
-                self.args.repo_id = util.input("Repository ID: ")
 
         if self.args.satellite:
+            if not self.args.activation_key:
+                self.args.activation_key = util.input("Activation Key: ")
+            if not self.args.repo_id:
+                self.args.repo_id = util.input("Repository ID: ")
             return satellite.push_image_to_satellite(self.image,
                                                      self.args.url,
                                                      self.args.username,

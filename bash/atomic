@@ -332,7 +332,7 @@ _atomic_upload() {
 
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "$options_with_args" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
 			;;
 		*)
 
