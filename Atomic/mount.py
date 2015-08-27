@@ -21,6 +21,7 @@
 #
 
 import os
+import sys
 
 import docker
 import json
@@ -388,7 +389,7 @@ class DockerMount(Mount):
         if status.return_code != 0:
             self._cleanup_container(cinfo)
             raise MountError('Failed to mount OverlayFS device.\n' +
-                             status.stderr)
+                             status.stderr.decode(sys.getdefaultencoding()))
 
     def _cleanup_container(self, cinfo):
         """
