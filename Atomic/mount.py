@@ -215,7 +215,7 @@ class DockerMount(Mount):
         container and return its uuid.
         """
         def __cname_matches(container, identifier):
-            return any([n for n in container['Names']
+            return any([n for n in (container['Names'] or [])
                         if matches(n, '/' + identifier)])
 
         # Determine if identifier is a container
