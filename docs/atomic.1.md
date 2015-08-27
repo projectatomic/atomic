@@ -6,9 +6,8 @@ atomic \- Atomic Management Tool
 
 # SYNOPSIS
 **atomic** [OPTIONS] COMMAND [arg...]
-  {defaults,host,info,install,run,uninstall,update}
-[**-h**][**-help**]
-[**-v**][**--version**]
+  {host,images,info,install,mount,run,stop,uninstall,unmount,update,upload,verify,version}
+[**-h**|**-help**]
 
 # DESCRIPTION
 Atomic Management Tool
@@ -17,15 +16,12 @@ Atomic Management Tool
 **-h** **--help**
   Print usage statement
 
-**-v** **--version**
-  Print atomic version
-
 # COMMANDS
-**atomic-defaults(1)**
-list Default RUN/INSTALL/UNINSTALL Values
-
 **atomic-host(1)**
 execute Atomic commands
+
+**atomic-images(1)**
+list locally installed container images
 
 **atomic-info(1)**
 execute Atomic commands
@@ -39,14 +35,26 @@ mount image or container to filesystem
 **atomic-run(1)**
 execute image run method (default)
 
+**atomic-stop(1)**
+execute container image stop method
+
 **atomic-uninstall(1)**
 uninstall container from system
 
 **atomic-unmount(1)**
 unmount previously mounted image or container
 
+**atomic-update(1)**
+pull latest image from repository
+
 **atomic-upload(1)**
 upload container image to the repository
+
+**atomic-verify(1)**
+verify image is fully updated
+
+**atomic-version(1)**
+display image 'Name Version Release' label
 
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)

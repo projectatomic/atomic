@@ -6,7 +6,7 @@ atomic-run - Execute container image run method
 
 # SYNOPSIS
 **atomic run**
-[**-h**]
+[**-h**|**--help**]
 [**--display**]
 [**--name**[=*NAME*]]
 [**--opt1**[=*OPT*]]
@@ -22,10 +22,15 @@ IMAGE.
 
 If the container image has a LABEL RUN instruction like the following:
 
-```LABEL RUN /usr/bin/docker run -t -i --rm \${OPT1} --cap-add=SYS_ADMIN --net=host -v \${LOGDIR}:/var/log -v \${DATADIR}:/var/lib --name \${NAME} \${IMAGE} \${OPT2} run.sh \${OPT3}```
+`LABEL RUN /usr/bin/docker run -t -i --rm \${OPT1} --cap-add=SYS_ADMIN --net=host -v \${LOGDIR}:/var/log -v \${DATADIR}:/var/lib --name \${NAME} \${IMAGE} \${OPT2} run.sh \${OPT3}`
+
+`atomic run` will run the following:
+
+`/usr/bin/docker run -t -i --rm --cap-add=SYS_ADMIN --net=host -v ${LOGDIR}:/var/log -v ${DATADIR}:/var/lib --name ${NAME} ${IMAGE} run.sh`
 
 If this field does not exist, `atomic run` defaults to the following:
-```/usr/bin/docker run -t -i --rm -v ${LOGDIR}:/var/log -v ${DATADIR}:/var/lib --name ${NAME} ${IMAGE}```
+
+`/usr/bin/docker run -t -i --rm -v ${LOGDIR}:/var/log -v ${DATADIR}:/var/lib --name ${NAME} ${IMAGE}`
 
 These defaults are suggested values for your container images.
 
@@ -47,7 +52,7 @@ These defaults are suggested values for your container images.
   The `SUDO_GID` environment variable.  This is useful with the docker `-u` option for user space tools.  If the environment variable is not available, the default GID of the value for `SUDO_UID` is used.  If this value is not available, the value of `/proc/self/loginuid` is used.
 
 # OPTIONS:
-**--help**
+**-h** **--help**
   Print usage statement
 
 **--display**
@@ -72,11 +77,9 @@ in the LABEL.
 in the LABEL.
 
 **--spc**
-  Run container in super privileged container mode
+  Run container in super privileged container mode.  The image will run with the following command:
 
-  The image will run with the following command:
-  
-```/usr/bin/docker run -t -i --rm --privileged -v /:/host -v /run:/run --net=host --ipc=host --pid=host -e HOST=/host -e NAME=${NAME} -e IMAGE=${IMAGE} --name ${NAME} ${IMAGE}```
+`/usr/bin/docker run -t -i --rm --privileged -v /:/host -v /run:/run --net=host --ipc=host --pid=host -e HOST=/host -e NAME=${NAME} -e IMAGE=${IMAGE} --name ${NAME} ${IMAGE}`
 
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)

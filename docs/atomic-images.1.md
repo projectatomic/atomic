@@ -13,7 +13,7 @@ atomic-images - list locally installed container images
 **atomic images**, by default, will list all installed container images on your
 system.
 
-Using the ```--prune``` option will free wasted disk space by deleting unused
+Using the `--prune` option will free wasted disk space by deleting unused
 `dangling` images.
 
 `Dangling` images are those with no name/tag and which are not used by any 
@@ -24,7 +24,7 @@ also removing the older version of the image.
 A `*` in the first column indicates a dangling image.
 
 # OPTIONS:
-**--help**
+**-h** **--help**
   Print usage statement
 
 **--prune**

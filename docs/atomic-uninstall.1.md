@@ -7,7 +7,7 @@ atomic-uninstall - Remove/Uninstall container/container image from system
 # SYNOPSIS
 **atomic uninstall**
 [**-f**][**--force**]
-[**-h**]
+[**-h**|**--help**]
 [**--opt1**[=*OPT*]]
 [**--opt2**[=*OPT*]]
 [**--opt3**[=*OPT*]]
@@ -15,12 +15,12 @@ IMAGE [ARG...]
 
 # DESCRIPTION
 **atomic uninstall** attempts to read the `LABEL UNINSTALL` field in the
-container IMAGE, if this field does not exists **atomic uninstall** will just
+container IMAGE, if this field does not exist **atomic uninstall** will just
 uninstall the image.
 
 If the container image has a LABEL UNINSTALL instruction like the following:
 
-```LABEL UNINSTALL /usr/bin/docker run -t -i --rm \${OPT1} --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=${NAME} -e IMAGE=${IMAGE} -e CONFDIR=${CONFDIR} -e LOGDIR=${LOGDIR} -e DATADIR=${DATADIR} ${IMAGE} \${OPT2} /bin/uninstall.sh \${OPT3}```
+`LABEL UNINSTALL /usr/bin/docker run -t -i --rm \${OPT1} --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=${NAME} -e IMAGE=${IMAGE} -e CONFDIR=${CONFDIR} -e LOGDIR=${LOGDIR} -e DATADIR=${DATADIR} ${IMAGE} \${OPT2} /bin/uninstall.sh \${OPT3}`
 
 `atomic uninstall` will set the following environment variables for use in the command:
 
@@ -45,7 +45,7 @@ If the container image has a LABEL UNINSTALL instruction like the following:
 **-f** **--force**
   Remove all containers based on this image
 
-**--help**
+**-h** **--help**
   Print usage statement
 
 **--name**=""

@@ -5,7 +5,7 @@
 atomic-host - Manage Atomic Host Commands
 
 # SYNOPSIS
-atomic host status|upgrade|rollback
+**atomic host [OPTIONS] COMMAND**
 
 This command is a high-level wrapper for the underlying `rpm-ostree` tool which
 can perform upgrades, rollbacks, and system state inspection.  It is used
@@ -15,20 +15,22 @@ for implementations of the Project Atomic Host pattern.
 The `host` subcommand is only available when `rpm-ostree` is installed.
 
 # OPTIONS
-**--help**
+**-h** **-help**
   Print usage statement
 
-**status**
-Print information about the current deployments.
-**rollback**
-Set the previously booted tree as the default.
 **-r** **--reboot**
 Initiate a reboot after rollback is prepared.
+
+# COMMANDS
+**status**
+Print information about the current deployments.
+
+**rollback**
+Set the previously booted tree as the default.
+
 **upgrade**
 Perform an Atomic system upgrade.  This process will not modify your
 current system.
-**-r** **--reboot**
-If an upgrade is available, reboot after deployment is complete.
 
 # SEE ALSO
     man rpm-ostree 
