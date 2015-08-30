@@ -8,7 +8,7 @@ atomic-install - Execute Image Install Method
 **atomic install**
 [**-h**|**--help**]
 [**--display**]
-[**--name**[=*NAME*]]
+[**-n**][**--name**[=*NAME*]]
 [**--opt1**[=*OPT*]]
 [**--opt2**[=*OPT*]]
 [**--opt3**[=*OPT*]]
@@ -50,7 +50,7 @@ If the container image has a LABEL INSTALL instruction like the following:
 The install command will not execute if --display is specified.
 If --display is not specified the install command will execute.
 
-**--name**=""
+**-n** **--name**=""
    Use this name for creating installed content for the container.
 NAME will default to the IMAGENAME if it is not specified.
 

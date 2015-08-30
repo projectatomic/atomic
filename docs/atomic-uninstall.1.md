@@ -8,6 +8,7 @@ atomic-uninstall - Remove/Uninstall container/container image from system
 **atomic uninstall**
 [**-f**][**--force**]
 [**-h**|**--help**]
+[**-n**][**--name**[=*NAME*]]
 [**--opt1**[=*OPT*]]
 [**--opt2**[=*OPT*]]
 [**--opt3**[=*OPT*]]
@@ -48,7 +49,7 @@ If the container image has a LABEL UNINSTALL instruction like the following:
 **-h** **--help**
   Print usage statement
 
-**--name**=""
+**-n** **--name**=""
    If name is specified `atomic uninstall` will uninstall the named container from the system, otherwise it will uninstall the container images.
 
 **--opt1**=""
