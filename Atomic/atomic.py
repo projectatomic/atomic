@@ -511,13 +511,13 @@ class Atomic(object):
                'LOGDIR': "/var/log/%s" % self.name,
                'DATADIR': "/var/lib/%s" % self.name}
 
-        if self.args.opt1:
+        if hasattr(self.args, 'opt1') and self.args.opt1:
             env['OPT1'] = self.args.opt1
 
-        if self.args.opt2:
+        if hasattr(self.args, 'opt2') and self.args.opt2:
             env['OPT2'] = self.args.opt2
 
-        if self.args.opt3:
+        if hasattr(self.args, 'opt3') and self.args.opt3:
             env['OPT3'] = self.args.opt3
 
         with open("/proc/self/loginuid") as f:
