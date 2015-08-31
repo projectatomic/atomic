@@ -799,7 +799,7 @@ class Atomic(object):
 
     def display(self, cmd):
         subprocess.check_call(
-            "/usr/bin/echo \"" + cmd + "\"", env=self.cmd_env, shell=True)
+            "/bin/echo \"" + cmd + "\"", env=self.cmd_env, shell=True)
 
 
 def SetFunc(function):
