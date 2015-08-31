@@ -7,7 +7,7 @@ atomic-stop - Execute container image stop method
 # SYNOPSIS
 **atomic stop**
 [**-h**|**--help**]
-[**--name**[=*NAME*]]
+[**-n**][**--name**[=*NAME*]]
 IMAGE
 
 # DESCRIPTION
@@ -41,7 +41,7 @@ the container is running.
 **-h** **--help**
   Print usage statement
 
-**--name**=""
+**-n** **--name**=""
    If name is specified `atomic stop` will stop the named container from the
    system, otherwise it will stop the container with a name that matches the
    image.

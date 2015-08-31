@@ -8,7 +8,7 @@ atomic-run - Execute container image run method
 **atomic run**
 [**-h**|**--help**]
 [**--display**]
-[**--name**[=*NAME*]]
+[**-n**][**--name**[=*NAME*]]
 [**--opt1**[=*OPT*]]
 [**--opt2**[=*OPT*]]
 [**--opt3**[=*OPT*]]
@@ -60,7 +60,7 @@ These defaults are suggested values for your container images.
 The run command will not execute if --display is specified.
 If --display is not specified the run command will execute.
 
-**--name**=""
+**--n** **--name**=""
    Use this name for creating run content for the container.
 NAME will default to the IMAGENAME if it is not specified.
 
