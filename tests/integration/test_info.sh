@@ -11,20 +11,24 @@ validTest1 () {
     return 1
 }
 
+
 TEST_1=`${ATOMIC} info atomic-test-1`
-TEST_CENTOS_REMOTE=`${ATOMIC} info --remote centos:latest`
 TEST_CENTOS=`${ATOMIC} info centos:latest`
 
 set +e
 
+TEST_CENTOS_REMOTE=`${ATOMIC} info --remote centos:latest`
+HAS_REMOTE=$?
 TEST_DOES_NOT_EXIST=`${ATOMIC} info this-is-not-a-real-image`
 
 set -e
 
 echo $TEST_1
 
-if [[ "${TEST_CENTOS_REMOTE}" != "${TEST_CENTOS}" ]]; then
-    exit 1
+if [[ "${HAS_REMOTE}" -eq 0 ]]; then
+    if [[ "${TEST_CENTOS_REMOTE}" != "${TEST_CENTOS}" ]]; then
+        exit 1
+    fi
 fi
 
 if [[ "${TEST_DOES_NOT_EXIST}" != "" ]]; then
