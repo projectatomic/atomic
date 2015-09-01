@@ -10,7 +10,7 @@ with open('requirements.txt') as f:
 
 setup(
     name="atomic", scripts=["atomic", "atomic_dbus.py"],
-    version='1.2',
+    version='1.3',
     description="Atomic Management Tool",
     author="Daniel Walsh", author_email="dwalsh@redhat.com",
     packages=["Atomic"],
