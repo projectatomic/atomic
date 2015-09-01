@@ -166,11 +166,16 @@ class DockerMount(Mount):
     """
     A class which can be used to mount and unmount docker containers and
     images on a filesystem location.
+
+    mnt_mkdir = Create temporary directories based on the cid at mountpoint
+                for mounting containers
     """
 
-    def __init__(self, mountpoint, live=False):
+    def __init__(self, mountpoint, live=False, mnt_mkdir=False):
         Mount.__init__(self, mountpoint, live)
         self.client = docker.Client()
+        self.mnt_mkdir = mnt_mkdir
+
 
     def _create_temp_container(self, iid):
         """
@@ -273,8 +278,10 @@ class DockerMount(Mount):
         driver = self.client.info()['Driver']
         driver_mount_fn = getattr(self, "_mount_" + driver,
                                   self._unsupported_backend)
-
         driver_mount_fn(identifier, options)
+
+        # Return mount path so it can be later unmounted by path
+        return self.mountpoint
 
     def _unsupported_backend(self, identifier='', options=[]):
         raise MountError('Atomic mount is not supported on the {} docker '
@@ -309,6 +316,17 @@ class DockerMount(Mount):
         info = self.client.info()
 
         cid = self._identifier_as_cid(identifier)
+
+        if self.mnt_mkdir:
+            # If the given mount_path is just a parent dir for where
+            # to mount things by cid, then the new mountpoint is the
+            # mount_path plus the first 20 chars of the cid
+            self.mountpoint = os.path.join(self.mountpoint, cid[:20])
+            try:
+                os.mkdir(self.mountpoint)
+            except Exception as e:
+                raise MountError(e)
+
         cinfo = self.client.inspect_container(cid)
 
         if self.live and not cinfo['State']['Running']:
@@ -345,7 +363,6 @@ class DockerMount(Mount):
         if fstype.upper() == 'XFS' and 'suid' not in options:
             if 'nosuid' not in options:
                 options.append('nosuid')
-
         try:
             Mount.mount_path(dm_dev_path, self.mountpoint,
                              optstring=(','.join(options)))
@@ -409,6 +426,15 @@ class DockerMount(Mount):
         if labels and 'io.projectatomic.Temporary' in labels:
             if labels['io.projectatomic.Temporary'] == 'true':
                 self.client.remove_image(iid)
+
+        # If we are creating temporary dirs for mount points
+        # based on the cid, then we should rmdir them while
+        # cleaning up.
+        if self.mnt_mkdir:
+            try:
+                os.rmdir(self.mountpoint)
+            except Exception as e:
+                raise MountError(e)
 
     def unmount(self):
         """
