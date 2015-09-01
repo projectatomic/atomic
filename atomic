@@ -317,14 +317,7 @@ if __name__ == '__main__':
     #                      default=None,
     #                      dest="org_name",
     #                      help=_("Organization Name"))
-    versionp = subparser.add_parser("version",
-                                    help=_("display image 'Name Version Release' label"),
-                                    epilog="atomic version displays the image version information, if it is provided")
-    versionp.add_argument("-r", "--recurse",
-                         default=False,
-                         dest="recurse",
-                         action="store_true",
-                         help=_("recurse through all layers"))
+
     # atomic version
     versionp = subparser.add_parser(
         "version", help=_("display image 'Name Version Release' label"),
