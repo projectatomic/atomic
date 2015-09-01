@@ -595,8 +595,9 @@ class Atomic(object):
             # Some images may not have a 'Labels' key.
             raise ValueError('{} has no label information.'
                              ''.format(self.args.image))
-        for label in labels:
-            self.writeOut('{0}: {1}'.format(label, labels[label]))
+        if labels is not None: 
+            for label in labels:
+                self.writeOut('{0}: {1}'.format(label, labels[label]))
 
     def dangling(self, image):
         if image == "<none>":

@@ -23,8 +23,10 @@ trap teardown EXIT
 
 setup
 
-OUTPUT=`${ATOMIC} run --display -n TEST1 atomic-test-1` 
-if [[ ${OUTPUT} != "/usr/bin/docker run -t --user 1000:1000  -v /var/log/TEST1:/var/log -v /var/lib/TEST1:/var/lib  --name TEST1 atomic-test-1  echo I am the run label." ]]; then
+# Remove the --user UID:GID
+OUTPUT=`${ATOMIC} run --display -n TEST1 atomic-test-1 | sed 's/ --user [0-9]*:[0-9]* //'`
+OUTPUT2="/usr/bin/docker run -t -v /var/log/TEST1:/var/log -v /var/lib/TEST1:/var/lib  --name TEST1 atomic-test-1  echo I am the run label."
+if [[ ${OUTPUT} != ${OUTPUT2} ]]; then
     exit 1
 fi
 
