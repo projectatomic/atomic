@@ -146,7 +146,7 @@ class Atomic(object):
             prevstatus = status
         self.writeOut("")
 
-    def upload(self):
+    def push(self):
         prevstatus = ""
         # Priority order:
         # If user passes in a password/username/url/ssl flag, use that
