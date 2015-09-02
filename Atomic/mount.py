@@ -176,7 +176,6 @@ class DockerMount(Mount):
         self.client = docker.Client()
         self.mnt_mkdir = mnt_mkdir
 
-
     def _create_temp_container(self, iid):
         """
         Create a temporary container from a given iid.
@@ -504,3 +503,7 @@ class DockerMount(Mount):
         cid = self._get_overlay_mount_cid()
         Mount.unmount_path(self.mountpoint)
         self._cleanup_container(self.client.inspect_container(cid))
+
+    def _clean_temp_container_by_path(self, path):
+        short_cid = os.path.basename(path)
+        self.client.remove_container(short_cid)

@@ -264,6 +264,21 @@ if __name__ == '__main__':
     #                      dest="org_name",
     #                      help=_("Organization Name"))
 
+    # atomic scan
+
+    scanp = subparser.add_parser(
+        "scan", help=_("scan an image or container for CVEs"),
+        epilog="atomic scan <input> scans a container or image for CVEs")
+    scanp.set_defaults(func=atomic.scan)
+    scan_group = scanp.add_mutually_exclusive_group()
+    scan_out = scanp.add_mutually_exclusive_group()
+    scan_out.add_argument("--json", default=False, action='store_true', help=_("output json"))
+    scan_out.add_argument("--detail", default=False, action='store_true', help=_("output more detail"))
+    scanp.add_argument("scan_targets", nargs='*', help=_("container image"))
+    scan_group.add_argument("--all", default=False, action='store_true', help=_("scan all images (excluding intermediate layers) and containers"))
+    scan_group.add_argument("--images", default=False, action='store_true', help=_("scan all images (excluding intermediate layers)"))
+    scan_group.add_argument("--containers", default=False, action='store_true', help=_("scan all containers"))
+
     # atomic stop
     stopp = subparser.add_parser(
         "stop", help=_("execute container image stop method"),

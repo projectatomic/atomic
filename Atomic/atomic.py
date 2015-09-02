@@ -14,7 +14,7 @@ import Atomic.mount as mount
 import Atomic.util as util
 import Atomic.satellite as satellite
 import Atomic.pulp as pulp
-
+import dbus
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -429,6 +429,45 @@ class Atomic(object):
         if not self.args.display:
             subprocess.check_call(cmd, env=self.cmd_env, shell=True)
 
+    def scan(self):
+        self.ping()
+        BUS_NAME = "org.OpenSCAP.daemon"
+        OBJECT_PATH = "/OpenSCAP/daemon"
+        if self.args.images:
+            scan_list = self._get_all_image_ids()
+        elif self.args.containers:
+            scan_list = self._get_all_container_ids()
+        elif self.args.all:
+            cids = self._get_all_container_ids()
+            iids = self._get_all_image_ids()
+            scan_list = cids + iids
+        else:
+            scan_list = self.args.scan_targets
+
+        util.writeOut("\nScanning...\n")
+        bus = dbus.SystemBus()
+        try:
+            oscap_d = bus.get_object(BUS_NAME, OBJECT_PATH)
+            oscap_i = dbus.Interface(oscap_d, "org.OpenSCAP.daemon.Interface")
+            scan_return = json.loads(oscap_i.scan_list(scan_list, 4))
+        except dbus.exceptions.DBusException:
+            error = "Unable to find the openscap-daemon dbus service."\
+                    "Either start the openscap-daemon service or pull and run"\
+                    " the openscap-daemon image"
+            sys.stderr.write("\n{0}\n\n".format(error))
+            sys.exit(1)
+
+        if self.args.json:
+            util.output_json(scan_return)
+
+        else:
+            if not self.args.detail:
+                clean = util.print_scan_summary(scan_return)
+            else:
+                clean = util.print_detail_scan_summary(scan_return)
+            if not clean:
+                sys.exit(1)
+
     def stop(self):
         self.inspect = self._inspect_container()
         if self.inspect is None:
@@ -595,7 +634,7 @@ class Atomic(object):
             # Some images may not have a 'Labels' key.
             raise ValueError('{} has no label information.'
                              ''.format(self.args.image))
-        if labels is not None: 
+        if labels is not None:
             for label in labels:
                 self.writeOut('{0}: {1}'.format(label, labels[label]))
 
@@ -681,6 +720,18 @@ class Atomic(object):
             layer = self._get_layer(layer["Parent"])
             layers.append(layer)
         return layers
+
+    def _get_all_image_ids(self):
+        iids = []
+        for image in self.d.images():
+            iids.append(image['Id'])
+        return iids
+
+    def _get_all_container_ids(self):
+        cids = []
+        for con in self.d.containers(all=True):
+            cids.append(con['Id'])
+        return cids
 
     def _get_image(self, image):
         def get_label(label):
@@ -802,6 +853,17 @@ class Atomic(object):
     def display(self, cmd):
         subprocess.check_call(
             "/bin/echo \"" + cmd + "\"", env=self.cmd_env, shell=True)
+
+    def ping(self):
+        '''
+        Check if the docker daemon is running; if not, exit with
+        message and return code 1
+        '''
+        try:
+            self.d.ping()
+        except requests.exceptions.ConnectionError:
+            sys.stderr.write("\nUnable to communicate with docker daemon\n")
+            sys.exit(1)
 
 
 def SetFunc(function):
