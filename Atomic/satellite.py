@@ -19,7 +19,7 @@ else:
     try:
         import urllib3
         have_urllib3 = True
-    except ImportError, e:
+    except ImportError as e:
         pass
     if have_urllib3:
         # Except only call disable-warnings if it exists
@@ -143,7 +143,7 @@ class SatelliteServer(object):
             raise ValueError('Invalid value of "req_type" parameter: {0}'
                              .format(req_type))
         if self._debug:
-            print r
+            print(r)
         try:
             r_json = r.json()
         except Exception as e:
