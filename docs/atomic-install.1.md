@@ -20,7 +20,7 @@ IMAGE, if this field does not exist, `atomic install` will install the IMAGE.
 
 If the container image has a LABEL INSTALL instruction like the following:
 
-`LABEL INSTALL /usr/bin/docker run -t -i --rm \${OPT1} --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=\${NAME} -e IMAGE=\${IMAGE} -e CONFDIR=\${CONFDIR} -e LOGDIR=\${LOGDIR} -e DATADIR=\${DATADIR} \${IMAGE} \${OPT2} /bin/install.sh \${OPT3}`
+`LABEL INSTALL /usr/bin/docker run -t -i --rm \${OPT1} --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=\${NAME} -e IMAGE=\${IMAGE} -e CONFDIR=\/etc/${NAME} -e LOGDIR=/var/log/\${NAME} -e DATADIR=/var/lib/\${NAME} \${IMAGE} \${OPT2} /bin/install.sh \${OPT3}`
 
 `atomic install` will set the following environment variables for use in the command:
 
@@ -39,7 +39,7 @@ If the container image has a LABEL INSTALL instruction like the following:
 **SUDO_GID**
   The `SUDO_GID` environment variable.  This is useful with the docker `-u` option for user space tools.  If the environment variable is not available, the default GID of the value for `SUDO_UID` is used.  If this value is not available, the value of `/proc/self/loginuid` is used.
 
-`atomic install` will also pass in the CONFDIR, LOGDIR and DATADIR environment variables to the container.  Any additional arguments will be appended to the command.
+Any additional arguments will be appended to the command.
 
 # OPTIONS:
 **-h** **--help**

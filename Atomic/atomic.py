@@ -61,9 +61,9 @@ class Atomic(object):
                     "-v", "${CONFDIR}:/etc/${NAME}",
                     "-v", "${LOGDIR}:/var/log/${NAME}",
                     "-v", "${DATADIR}:/var/lib/${NAME}",
-                    "-e", "CONFDIR=${CONFDIR}",
-                    "-e", "LOGDIR=${LOGDIR}",
-                    "-e", "DATADIR=${DATADIR}",
+                    "-e", "CONFDIR=/etc/${NAME}",
+                    "-e", "LOGDIR=/var/log/${NAME}",
+                    "-e", "DATADIR=/var/lib/${NAME}",
                     "--name", "${NAME}",
                     "${IMAGE}"]
 
@@ -546,10 +546,7 @@ class Atomic(object):
     def cmd_env(self):
         env = dict(os.environ)
         env.update({'NAME': self.name,
-                    'IMAGE': self.image,
-                    'CONFDIR': "/etc/%s" % self.name,
-                    'LOGDIR': "/var/log/%s" % self.name,
-                    'DATADIR': "/var/lib/%s" % self.name})
+                    'IMAGE': self.image})
 
         if hasattr(self.args, 'opt1') and self.args.opt1:
             env['OPT1'] = self.args.opt1

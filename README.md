@@ -46,14 +46,14 @@ cat Dockerfile
 ```
 # Example Dockerfile for httpd application
 #
-FROM 		fedora
+FROM		fedora
 MAINTAINER	Dan Walsh
 ENV container docker
 RUN yum -y update; yum -y install httpd; yum clean all
 
 LABEL Vendor="Red Hat" License=GPLv2
 LABEL Version=1.0
-LABEL INSTALL="docker run --rm --privileged -v /:/host -e HOST=/host -e LOGDIR=${LOGDIR} -e CONFDIR=${CONFDIR} -e DATADIR=${DATADIR} -e IMAGE=${IMAGE} -e NAME=${NAME} ${IMAGE} /bin/install.sh"
+LABEL INSTALL="docker run --rm --privileged -v /:/host -e HOST=/host -e LOGDIR=/var/log/\${NAME} -e CONFDIR=/etc/\${NAME} -e DATADIR=/var/lib/\${NAME} -e IMAGE=\${IMAGE} -e NAME=\${NAME} \${IMAGE} /bin/install.sh"
 LABEL UNINSTALL="docker run --rm --privileged -v /:/host -e HOST=/host -e IMAGE=${IMAGE} -e NAME=${NAME} ${IMAGE} /bin/uninstall.sh"
 ADD root /
 
@@ -62,14 +62,9 @@ EXPOSE 80
 CMD [ "/usr/sbin/httpd", "-D", "FOREGROUND" ]
 ```
 
-`atomic install` will read the LABEL INSTALL line and substitute `NAME` with
+`atomic install` will read the LABEL INSTALL line and substitute `${NAME}` with
 the name specified with the name option, or use the image name, it will also
-replace`IMAGE` with the image name.  It will also create the following
-directories:
-
-* CONFDIR=/etc/NAME
-* LOGDIR=/var/log/NAME
-* DATADIR=/var/lib/NAME
+replace`${IMAGE}` with the image name.
 
 To be used by the application.  The install script could populate these
 directories if necessary.
@@ -111,7 +106,7 @@ install, and can be used to remove any host system configuration.
 
 Here is the example script we used.
 
-cat root/usr/bin/uninstall.sh 
+cat root/usr/bin/uninstall.sh
 ```
 #!/bin/sh
 chroot ${HOST} /usr/bin/systemctl disable /etc/systemd/system/httpd_${NAME}.service
@@ -120,9 +115,9 @@ rm -f ${HOST}/etc/systemd/system/httpd_${NAME}.service
 
 Finally here is the systemd unit file template I used:
 
-cat root/etc/systemd/system/httpd_template.service 
+cat root/etc/systemd/system/httpd_template.service
 ```
-# cat ./root/etc/systemd/system/httpd_template.service 
+# cat ./root/etc/systemd/system/httpd_template.service
 [Unit]
 Description=The Apache HTTP Server for TEMPLATE
 After=docker.service
