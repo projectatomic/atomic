@@ -505,11 +505,12 @@ class Atomic(object):
 
     @property
     def cmd_env(self):
-        env = {'NAME': self.name,
-               'IMAGE': self.image,
-               'CONFDIR': "/etc/%s" % self.name,
-               'LOGDIR': "/var/log/%s" % self.name,
-               'DATADIR': "/var/lib/%s" % self.name}
+        env = dict(os.environ)
+        env.update({'NAME': self.name,
+                    'IMAGE': self.image,
+                    'CONFDIR': "/etc/%s" % self.name,
+                    'LOGDIR': "/var/log/%s" % self.name,
+                    'DATADIR': "/var/lib/%s" % self.name})
 
         if hasattr(self.args, 'opt1') and self.args.opt1:
             env['OPT1'] = self.args.opt1
