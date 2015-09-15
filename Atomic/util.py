@@ -17,9 +17,11 @@ else:
     input = input
 
 
-def image_by_name(img_name):
+def image_by_name(img_name, images=None):
     """
-    Returns a list of image data for images which match img_name.
+    Returns a list of image data for images which match img_name. Will
+    optionally take a list of images from a docker.Client.images 
+    query to avoid multiple docker queries.
     """
     def _decompose(compound_name):
         """ '[reg/]repo[:tag]' -> (reg, repo, tag) """
@@ -30,8 +32,6 @@ def image_by_name(img_name):
             repo, tag = repo.rsplit(':', 1)
         return reg, repo, tag
 
-    c = docker.Client()
-
     i_reg, i_rep, i_tag = _decompose(img_name)
     # Correct for bash-style matching expressions.
     if not i_reg:
@@ -39,7 +39,11 @@ def image_by_name(img_name):
     if not i_tag:
         i_tag = '*'
 
-    images = c.images(all=False)
+    # If the images were not passed in, go get them.
+    if images is None:
+        c = docker.Client()
+        images = c.images(all=False)
+
     valid_images = []
     for i in images:
         for t in i['RepoTags']:
