@@ -520,21 +520,14 @@ class Atomic(object):
         self.inspect = self._inspect_container()
         if self.inspect and self.force:
             self.force_delete_containers()
-        if self.name != self.image:
-            try:
-                # Attempt to remove container, if it exists just return
-                self.d.stop(self.name)
-                self.d.remove_container(self.name)
-                return
-            except:
-                # On exception attempt to remove image
-                pass
-
         try:
-            self.d.stop(self.image)
-            self.d.remove_container(self.image)
-        except docker.errors.APIError:
+            # Attempt to remove container, if it exists just return
+            self.d.stop(self.name)
+            self.d.remove_container(self.name)
+        except:
+            # On exception attempt to remove image
             pass
+
         self.inspect = self._inspect_image()
         if not self.inspect:
             raise ValueError("Image '%s' is not installed" % self.image)
@@ -544,8 +537,10 @@ class Atomic(object):
             cmd = self.gen_cmd(args + list(map(pipes.quote, self.args.args)))
             self.display(cmd)
             subprocess.check_call(cmd, env=self.cmd_env, shell=True)
-        self.writeOut("/usr/bin/docker rmi %s" % self.image)
-        subprocess.check_call(["/usr/bin/docker", "rmi", self.image])
+
+        if self.name == self.image:
+            self.writeOut("/usr/bin/docker rmi %s" % self.image)
+            subprocess.check_call(["/usr/bin/docker", "rmi", self.image])
 
     @property
     def cmd_env(self):
