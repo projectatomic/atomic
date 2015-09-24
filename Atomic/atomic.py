@@ -58,12 +58,9 @@ class Atomic(object):
                     "-e", "HOST=/host",
                     "-e", "NAME=${NAME}",
                     "-e", "IMAGE=${IMAGE}",
-                    "-v", "${CONFDIR}:/etc/${NAME}",
-                    "-v", "${LOGDIR}:/var/log/${NAME}",
-                    "-v", "${DATADIR}:/var/lib/${NAME}",
-                    "-e", "CONFDIR=/etc/${NAME}",
-                    "-e", "LOGDIR=/var/log/${NAME}",
-                    "-e", "DATADIR=/var/lib/${NAME}",
+                    "-e", "CONFDIR=/host/etc/${NAME}",
+                    "-e", "LOGDIR=/host/var/log/${NAME}",
+                    "-e", "DATADIR=/host/var/lib/${NAME}",
                     "--name", "${NAME}",
                     "${IMAGE}"]
 
