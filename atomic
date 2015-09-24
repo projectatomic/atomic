@@ -62,7 +62,7 @@ class AliasedSubParsersAction(argparse._SubParsersAction):
             if aliases:
                 dest += ' (%s)' % ','.join(aliases)
             sup = super(AliasedSubParsersAction._AliasedPseudoAction, self)
-            sup.__init__(option_strings=[], dest=dest, help=help) 
+            sup.__init__(option_strings=[], dest=dest, help=help)
 
     def add_parser(self, name, **kwargs):
         if 'aliases' in kwargs:
@@ -83,7 +83,7 @@ class AliasedSubParsersAction(argparse._SubParsersAction):
             pseudo_action = self._AliasedPseudoAction(name, aliases, help)
             self._choices_actions.append(pseudo_action)
 
-        return parser        
+        return parser
 
 if __name__ == '__main__':
     atomic = Atomic.Atomic()

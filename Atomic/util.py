@@ -20,7 +20,7 @@ else:
 def image_by_name(img_name, images=None):
     """
     Returns a list of image data for images which match img_name. Will
-    optionally take a list of images from a docker.Client.images 
+    optionally take a list of images from a docker.Client.images
     query to avoid multiple docker queries.
     """
     def _decompose(compound_name):
