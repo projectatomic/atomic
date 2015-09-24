@@ -33,6 +33,7 @@ def image_by_name(img_name, images=None):
         return reg, repo, tag
 
     i_reg, i_rep, i_tag = _decompose(img_name)
+
     # Correct for bash-style matching expressions.
     if not i_reg:
         i_reg = '*'
@@ -51,6 +52,11 @@ def image_by_name(img_name, images=None):
             if matches(reg, i_reg) \
                     and matches(rep, i_rep) \
                     and matches(tag, i_tag):
+                valid_images.append(i)
+                break
+            # Some repo after decompose end up with the img_name
+            # at the end.  i.e. rhel7/rsyslog
+            if rep.endswith(img_name):
                 valid_images.append(i)
                 break
     return valid_images
@@ -87,23 +93,52 @@ def output_json(json_data):
     writeOut(json.dumps(json_data, indent=4, separators=(',', ': ')))
 
 
-def print_scan_summary(json_data):
+def print_scan_summary(json_data, names=None):
     '''
     Print a summary of the data returned from a
     CVE scan.
     '''
+    max_col_width = 50
+    min_width = 15
+
+    def _max_width(data):
+        max_name = 0
+        for name in data:
+            max_name = len(data[name]) if len(data[name]) > max_name \
+                else max_name
+        # If the max name length is less that max_width
+        if max_name < min_width:
+            max_name = min_width
+
+        # If the man name is greater than the max col leng
+        # we wish to use
+        if max_name > max_col_width:
+            max_name = max_col_width
+
+        return max_name
+
     clean = True
-    template = "{0:15}   {1:5} {2:5} {3:5} {4:5}"
+
+    if len(names) > 0:
+        max_width = _max_width(names)
+    template = "{0:" + str(max_width) + "}   {1:5} {2:5} {3:5} {4:5}"
     sevs = ['critical', 'important', 'moderate', 'low']
     writeOut(template.format("Container/Image", "Cri", "Imp", "Med", "Low"))
-    writeOut(template.format("---------------", "---", "---", "---", "---"))
+    writeOut(template.format("-" * max_width, "---", "---", "---", "---"))
     res_summary = json_data['results_summary']
     for image in res_summary.keys():
         image_res = res_summary[image]
         if 'msg' in image_res.keys():
             tmp_tuple = (image_res['msg'], "", "", "", "")
         else:
-            tmp_tuple = tuple([image[:12]] +
+            if len(names) < 1:
+                image_name = image[:max_width]
+            else:
+                image_name = names[image][-max_width:]
+                if len(image_name) == max_col_width:
+                    image_name = '...' + image_name[-(len(image_name)-3):]
+
+            tmp_tuple = tuple([image_name] +
                               [str(image_res[sev]) for sev in sevs])
             sev_results = [image_res[sev] for sev in
                            sevs if image_res[sev] > 0]
@@ -114,7 +149,7 @@ def print_scan_summary(json_data):
     return clean
 
 
-def print_detail_scan_summary(json_data):
+def print_detail_scan_summary(json_data, names=None):
     '''
     Print a detailed summary of the data returned from
     a CVE scan.
@@ -129,8 +164,9 @@ def print_detail_scan_summary(json_data):
         writeOut("")
         writeOut(image[:12])
         if not image_res['isRHEL']:
-            writeOut(image_template.format(
-                  "Result", "Not based on Red Hat Enterprise Linux"))
+            writeOut(image_template.format("Result",
+                                           "Not based on Red Hat"
+                                           "Enterprise Linux"))
             continue
         else:
             writeOut(image_template.format("OS", image_res['os'].rstrip()))
@@ -140,14 +176,14 @@ def print_detail_scan_summary(json_data):
             if sev in scan_results:
                 clean = False
                 writeOut(image_template.format(sev,
-                                            str(scan_results[sev]['num'])))
+                                               str(scan_results[sev]['num'])))
                 for cve in scan_results[sev]['cves']:
                         writeOut(cve_template.format("CVE", cve['cve_title']))
                         writeOut(cve_template.format("CVE URL",
-                                                  cve['cve_ref_url']))
+                                                     cve['cve_ref_url']))
                         writeOut(cve_template.format("RHSA ID",
-                                                  cve['rhsa_ref_id']))
+                                                     cve['rhsa_ref_id']))
                         writeOut(cve_template.format("RHSA URL",
-                                                  cve['rhsa_ref_url']))
+                                                     cve['rhsa_ref_url']))
                         writeOut("")
     return clean
