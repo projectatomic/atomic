@@ -97,6 +97,8 @@ class Atomic(object):
         self.inspect = None
         self.force = False
         self._images = []
+        self.containers = False
+        self.images = False
 
     def writeOut(self, output, lf="\n"):
         sys.stdout.flush()
@@ -116,7 +118,7 @@ class Atomic(object):
             image = self.image
             if self.image.find(":") == -1:
                 image += ":latest"
-            for c in self.d.containers(all=True):
+            for c in self.get_containers():
                 if c["Image"] == image:
                     self.d.remove_container(c["Id"], force=True)
 
@@ -433,6 +435,8 @@ class Atomic(object):
         self.ping()
         BUS_NAME = "org.OpenSCAP.daemon"
         OBJECT_PATH = "/OpenSCAP/daemon"
+        INTERFACE = "org.OpenSCAP.daemon.Interface"
+
         if self.args.images:
             scan_list = self._get_all_image_ids()
         elif self.args.containers:
@@ -442,13 +446,14 @@ class Atomic(object):
             iids = self._get_all_image_ids()
             scan_list = cids + iids
         else:
-            scan_list = self.args.scan_targets
-
+            scan_list = []
+            for scan_input in self.args.scan_targets:
+                scan_list.append(self.get_input_id(scan_input))
         util.writeOut("\nScanning...\n")
         bus = dbus.SystemBus()
         try:
             oscap_d = bus.get_object(BUS_NAME, OBJECT_PATH)
-            oscap_i = dbus.Interface(oscap_d, "org.OpenSCAP.daemon.Interface")
+            oscap_i = dbus.Interface(oscap_d, INTERFACE)
             scan_return = json.loads(oscap_i.scan_list(scan_list, 4))
         except dbus.exceptions.DBusException:
             error = "Unable to find the openscap-daemon dbus service."\
@@ -652,7 +657,7 @@ class Atomic(object):
                       ("REPOSITORY", "TAG", "IMAGE ID", "CREATED",
                        "VIRTUAL SIZE"))
 
-        for image in self.d.images():
+        for image in self.get_images():
             repo, tag = image["RepoTags"][0].split(":")
             self.writeOut(
                 "%s%-35s %-19s %.12s        %-19s %-12s" %
@@ -721,17 +726,17 @@ class Atomic(object):
 
     def _get_all_image_ids(self):
         iids = []
-        for image in self.d.images():
+        for image in self.get_images():
             iids.append(image['Id'])
         return iids
 
     def _get_all_container_ids(self):
         cids = []
-        for con in self.d.containers(all=True):
+        for con in self.get_containers():
             cids.append(con['Id'])
         return cids
 
-    def _get_image(self, image):
+    def _get_image_infos(self, image):
         def get_label(label):
             return self.get_label(label, image["Id"])
 
@@ -741,13 +746,13 @@ class Atomic(object):
                                           get_label("Release"))).strip(":"),
                 "Tag": image["RepoTags"][0]}
 
-    def get_images(self):
+    def get_image_infos(self):
         if len(self._images) > 0:
             return self._images
 
-        images = self.d.images()
+        images = self.get_images()
         for image in images:
-            self._images.append(self._get_image(image))
+            self._images.append(self._get_image_infos(image))
 
         return self._images
 
@@ -773,7 +778,7 @@ class Atomic(object):
                 continue
             name = layer["Name"]
             if len(name) > 0:
-                for i in self.get_images():
+                for i in self.get_image_infos():
                     if i["Name"] == name:
                         if i["Version"] > layer["Version"]:
                             buf = ("Image '%s' contains a layer '%s' that is "
@@ -862,6 +867,114 @@ class Atomic(object):
         except requests.exceptions.ConnectionError:
             sys.stderr.write("\nUnable to communicate with docker daemon\n")
             sys.exit(1)
+
+    def _is_container(self, identifier):
+        '''
+        Checks is the identifier is a container ID or container name.  If
+        it is, returns the full container ID. Else it will return an
+        AtomicError
+        '''
+        err_append = "Refine your search to narrow results."
+        cons = self.get_containers()
+        cids = [x['Id'] for x in cons]
+        con_index = [i for i, j in enumerate(cids) if j.startswith(identifier)]
+
+        if len(con_index) > 0:
+            if len(con_index) > 1:
+                CIDS = []
+                for index in con_index:
+                    CIDS.append(cids[index])
+                raise ValueError("Found multiple container IDs ({0}) that "
+                                 " might match '{1}'. {2}"
+                                 .format(" ".join(CIDS), identifier,
+                                         err_append))
+            return cids[con_index[0]]
+
+        for con in cons:
+            if "/{0}".format(identifier) in con['Names']:
+                return con['Id']
+
+        # No dice
+        raise AtomicError
+
+    def _is_image(self, identifier):
+        '''
+        Checks is the identifier is a image ID or a matches an image name.
+        If it finds a match, it returns the full image ID. Else it will
+        return an AtomicError.
+        '''
+        err_append = "Refine your search to narrow results."
+        image_info = self.get_images()
+        iids = [x['Id'] for x in image_info]
+        image_index = [i for i, j in enumerate(iids)
+                       if j.startswith(identifier)]
+
+        if len(image_index) > 0:
+            if len(image_index) > 1:
+                IDS = []
+                for index in image_index:
+                    IDS.append(iids[index])
+                raise ValueError("Found multiple image IDs ({0}) that might "
+                                 "match '{1}'. {2}".format(" ".join(IDS),
+                                                           identifier,
+                                                           err_append))
+            return iids[image_index[0]]
+
+        name_search = util.image_by_name(identifier, images=image_info)
+        if len(name_search) > 0:
+            if len(name_search) > 1:
+                tmp_image = dict((x['Id'], x['RepoTags']) for x in image_info)
+                repo_tags = []
+                for name in name_search:
+                    for repo_tag in tmp_image.get(name['Id']):
+                        if repo_tag.find(identifier) > -1:
+                            repo_tags.append(repo_tag)
+                raise ValueError("Found more than one image possibly "
+                                 "matching '{0}'. They are:\n    {1} \n{2}"
+                                 .format(identifier, "\n    ".join(repo_tags),
+                                         err_append))
+            return name_search[0]['Id']
+
+        # No dice
+        raise AtomicError
+
+    def get_input_id(self, identifier):
+        '''
+        Determine if the input "identifier" is valid.  Return the container or
+        image ID when true and raise a ValueError when not
+        '''
+        try:
+            return self._is_image(identifier)
+        except AtomicError:
+            pass
+        try:
+            return self._is_container(identifier)
+        except AtomicError:
+            pass
+        raise ValueError("Unable to associate '{0}' with a container or image."
+                         .format(identifier))
+
+    def get_images(self):
+        '''
+        Wrapper function that should be used instead of querying docker
+        multiple times for a list of images.
+        '''
+        if not self.images:
+            self.images = self.d.images()
+        return self.images
+
+    def get_containers(self):
+        '''
+        Wrapper function that should be used instead of querying docker
+        multiple times for a list of containers
+        '''
+        if not self.containers:
+            self.containers = self.d.containers(all=True)
+        return self.containers
+
+
+class AtomicError(Exception):
+    pass
 
 
 def SetFunc(function):
