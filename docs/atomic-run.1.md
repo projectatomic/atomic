@@ -9,9 +9,6 @@ atomic-run - Execute container image run method
 [**-h**|**--help**]
 [**--display**]
 [**-n**][**--name**[=*NAME*]]
-[**--opt1**[=*OPT*]]
-[**--opt2**[=*OPT*]]
-[**--opt3**[=*OPT*]]
 [**--spc**]
 IMAGE [COMMAND] [ARG...]
 
@@ -63,18 +60,6 @@ If --display is not specified the run command will execute.
 **--n** **--name**=""
    Use this name for creating run content for the container.
 NAME will default to the IMAGENAME if it is not specified.
-
-**--opt1**=""
-   Substitute options specified as opt1 for all instances of ${OPT1} specified
-in the LABEL.
-
-**--opt2**=""
-   Substitute options specified as opt2 for all instances of ${OPT2} specified
-in the LABEL.
-
-**--opt3**=""
-   Substitute options specified as opt3 for all instances of ${OPT3} specified
-in the LABEL.
 
 **--spc**
   Run container in super privileged container mode.  The image will run with the following command:

@@ -9,9 +9,6 @@ atomic-uninstall - Remove/Uninstall container/container image from system
 [**-f**][**--force**]
 [**-h**|**--help**]
 [**-n**][**--name**[=*NAME*]]
-[**--opt1**[=*OPT*]]
-[**--opt2**[=*OPT*]]
-[**--opt3**[=*OPT*]]
 IMAGE [ARG...]
 
 # DESCRIPTION
@@ -51,18 +48,6 @@ Any additional arguments will be appended to the command.
 
 **-n** **--name**=""
    If name is specified `atomic uninstall` will uninstall the named container from the system, otherwise it will uninstall the container images.
-
-**--opt1**=""
-   Substitute options specified as opt1 for all instances of ${OPT1} specified
-in the LABEL.
-
-**--opt2**=""
-   Substitute options specified as opt2 for all instances of ${OPT2} specified
-in the LABEL.
-
-**--opt3**=""
-   Substitute options specified as opt3 for all instances of ${OPT3} specified
-in the LABEL.
 
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)
