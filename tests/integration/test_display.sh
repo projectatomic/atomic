@@ -30,8 +30,9 @@ if [[ ${OUTPUT} != ${OUTPUT2} ]]; then
     exit 1
 fi
 
-OUTPUT=`${ATOMIC} install --display -n TEST2 atomic-test-1` 
-if [[ ${OUTPUT} != "docker  run -v /etc/TEST2:/etc/ -v /var/log/TEST2:/var/log/ -v /var/lib/TEST2:/var/lib/  --name TEST2 atomic-test-1  echo I am the install label." ]]; then
+OUTPUT=`${ATOMIC} install --display -n TEST2 atomic-test-1`
+OUTPUT2="/usr/bin/docker  run -v /etc/TEST2:/etc -v /var/log/TEST2:/var/log -v /var/lib/TEST2:/var/lib  --name TEST2 atomic-test-1  echo I am the install label."
+if [[ ${OUTPUT} != ${OUTPUT2} ]]; then
     exit 1
 fi
 
@@ -48,6 +49,7 @@ if [[ ${OUTPUT} != "I am the run label." ]]; then
 fi
 
 OUTPUT=`${ATOMIC} install --display -n TEST5 centos`
-if [[ ${OUTPUT} != "/usr/bin/docker run -t -i --rm --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=TEST5 -e IMAGE=centos -v /etc/TEST5:/etc/TEST5 -v /var/log/TEST5:/var/log/TEST5 -v /var/lib/TEST5:/var/lib/TEST5 -e CONFDIR=/etc/TEST5 -e LOGDIR=/var/log/TEST5 -e DATADIR=/var/lib/TEST5 --name TEST5 centos" ]]; then
+OUTPUT2='/usr/bin/docker run -t -i --rm --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=TEST5 -e IMAGE=centos -e CONFDIR=/host/etc/TEST5 -e LOGDIR=/host/var/log/TEST5 -e DATADIR=/host/var/lib/TEST5 --name TEST5 centos'
+if [[ ${OUTPUT} != ${OUTPUT2} ]]; then
     exit 1
 fi
