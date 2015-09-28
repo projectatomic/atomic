@@ -12,7 +12,7 @@ test:
 
 python-build: atomic
 	$(PYTHON) setup.py build
-	$(PYLINT) -E --additional-builtins _ atomic
+	$(PYLINT) -E --additional-builtins=_ *.py atomic Atomic tests/unit/*.py
 
 MANPAGES_MD = $(wildcard docs/*.md)
 

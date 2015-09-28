@@ -622,6 +622,9 @@ class Atomic(object):
                 pass
         if inspection is None:
             try:
+                # Shut up pylint in case we're on a machine with upstream
+                # docker-py, which lacks the remote keyword arg.
+                #pylint: disable=unexpected-keyword-arg
                 inspection = self.d.inspect_image(self.args.image, remote=True)
             except docker.errors.APIError:
                 # image does not exist on any configured registry
