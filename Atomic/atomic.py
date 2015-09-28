@@ -95,7 +95,7 @@ class Atomic(object):
         self.force = False
         self._images = []
         self.containers = False
-        self.images = False
+        self.images_cache = None
 
     def writeOut(self, output, lf="\n"):
         sys.stdout.flush()
@@ -965,9 +965,9 @@ class Atomic(object):
         Wrapper function that should be used instead of querying docker
         multiple times for a list of images.
         '''
-        if not self.images:
-            self.images = self.d.images()
-        return self.images
+        if not self.images_cache:
+            self.images_cache = self.d.images()
+        return self.images_cache
 
     def get_containers(self):
         '''
