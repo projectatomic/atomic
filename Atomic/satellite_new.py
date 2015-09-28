@@ -65,8 +65,7 @@ def push_image_to_satellite(image, server_url, username, password,
 typed the name correctly, or create the repository
 """.format(repo_name).replace('\n', ' '))
     try:
-        activation_key = sat.getActivationKey(activation_key_name,
-                                              organization_id)
+        activation_key = sat.getActivationKey(activation_key_name, org_id)
     except Exception as e:
         raise IOError("""Invalid Activation Key Name:
             {0}""".format(activation_key_name).replace('\n', ' '))
@@ -179,14 +178,14 @@ class SatelliteServer(object):
                                                       task['_href']))
         return r_json
 
-    def getOrgID(organization_name):
+    def getOrgID(self, organization_name):
         url = '{0}/katello/api/v2/organizations'.format(self._server_url)
         r_json = self._call_satellite(url)
         org_id = r_json.get(organization_name).get("id")
         return org_id
 
     # no idea if this works
-    def getActivationKey(activation_key_name, org_id):
+    def getActivationKey(self, activation_key_name, org_id):
         url = '{0}/katello/api/v2/organizations/{1}/activation_keys'.format(
             self._server_url, org_id)
         r_json = self._call_satellite(url)
@@ -194,9 +193,9 @@ class SatelliteServer(object):
         return org_id
 
     # no idea if this works
-    def getRepoId(repo_name, org_id):
-        url = '{0}/katello/api/v2/repositories'.format(self._server_url,
-                                                       org_id)
+    def getRepoId(self, repo_name, org_id):
+        url = '{0}/katello/api/v2/repositories/{1}'.format(self._server_url,
+                                                           org_id)
         payload = {"organization_id": org_id}
         r_json = self._call_satellite(url, payload)
         repo_id = r_json.get(repo_name).get('id')
