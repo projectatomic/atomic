@@ -106,10 +106,21 @@ if __name__ == '__main__':
                                action="store_true",
                                help=_("initiate a reboot after rollback is "
                                       "prepared"))
+        rollbackp.add_argument("args", nargs=argparse.REMAINDER,
+                               help=_("Additional arguments appended to the "
+                                      "rollback method.  Use `-- --OPTION=VAL` if you want to pass additional unsupported arguments to ostree."))
+
 
         # atomic host status
         statusp = host_subparser.add_parser(
             "status", help=_("list information about all deployments"))
+        statusp.add_argument("-p", "--pretty", dest="pretty",
+                              action="store_true",
+                              help=_("Display status in formatted rows"))
+        statusp.add_argument("args", nargs=argparse.REMAINDER,
+                             help=_("Additional arguments appended to the "
+                                    "status method.  Use `-- --OPTION=VAL` if you want to pass additional unsupported arguments to ostree."))
+
         statusp.set_defaults(func=atomic.host_status)
 
         # atomic host upgrade
@@ -121,13 +132,29 @@ if __name__ == '__main__':
                               action="store_true",
                               help=_("if an upgrade is available, reboot "
                                      "after deployment is complete"))
+        upgradep.add_argument("--allow-downgrade", dest="downgrade",
+                              action="store_true",
+                              help=_("Permit deployment of chronologically older trees"))
+        upgradep.add_argument("--os", dest="os",
+                              help=_("Operate on provided OSNAME"))
+        upgradep.add_argument("--check-diff", dest="diff",
+                              action="store_true",
+                              help=_("Check for upgrades and print package diff only"))
+        upgradep.add_argument("args", nargs=argparse.REMAINDER,
+                              help=_("Additional arguments appended to the "
+                                     "upgrade method.  Use `-- --OPTION=VAL` if you want to pass additional unsupported arguments to ostree."))
 
         # atomic host rebase
         rebasep = host_subparser.add_parser(
             "rebase", help=_("Download and deploy a new origin refspec"))
         rebasep.set_defaults(func=atomic.host_rebase)
+        rebasep.add_argument("--os", dest="os",
+                              help=_("Operate on provided OSNAME"))
         rebasep.add_argument("refspec",
                              help=_("Origin refspec for new deployment"))
+        rebasep.add_argument("args", nargs=argparse.REMAINDER,
+                             help=_("Additional arguments appended to the "
+                                    "rebase method.  Use `-- --OPTION=VAL` if you want to pass additional unsupported arguments to ostree."))
 
     # atomic info
     infop = subparser.add_parser(

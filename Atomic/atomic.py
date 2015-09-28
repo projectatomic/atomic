@@ -492,15 +492,27 @@ class Atomic(object):
             pass
 
     def _rpmostree(self, *args):
-        os.execl("/usr/bin/rpm-ostree", "rpm-ostree", *args)
+        aargs = self.args.args
+        if aargs == "--":
+            aargs = args[1:]
+        os.execl("/usr/bin/rpm-ostree", "rpm-ostree", *args + aargs)
 
     def host_status(self):
-        self._rpmostree("status")
+        argv = ["status"]
+        if self.args.pretty:
+            argv.append("--pretty")
+        self._rpmostree(*argv)
 
     def host_upgrade(self):
         argv = ["upgrade"]
         if self.args.reboot:
             argv.append("--reboot")
+        if self.args.os:
+            argv.append("--os=" % self.args.os )
+        if self.args.diff:
+            argv.append("--check-diff")
+        if self.args.downgrade:
+            argv.append("--allow-downgrade")
         self._rpmostree(*argv)
 
     def host_rollback(self):
@@ -511,6 +523,8 @@ class Atomic(object):
 
     def host_rebase(self):
         argv = ["rebase", self.args.refspec]
+        if self.args.os:
+            argv.append("--os=" % self.args.os )
         self._rpmostree(*argv)
 
     def uninstall(self):
