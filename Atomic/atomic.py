@@ -453,7 +453,7 @@ class Atomic(object):
             oscap_i = dbus.Interface(oscap_d, INTERFACE)
             scan_return = json.loads(oscap_i.scan_list(scan_list, 4))
         except dbus.exceptions.DBusException:
-            error = "Unable to find the openscap-daemon dbus service."\
+            error = "Unable to find the openscap-daemon dbus service. "\
                     "Either start the openscap-daemon service or pull and run"\
                     " the openscap-daemon image"
             sys.stderr.write("\n{0}\n\n".format(error))
