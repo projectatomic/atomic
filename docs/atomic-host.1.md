@@ -23,14 +23,13 @@ Initiate a reboot after rollback is prepared.
 
 # COMMANDS
 **status**
-Print information about the current deployments.
+List information about all deployments
 
 **rollback**
-Set the previously booted tree as the default.
+Switch to alternate installed tree at next boot
 
 **upgrade**
-Perform an Atomic system upgrade.  This process will not modify your
-current system.
+Upgrade to the latest Atomic tree if one is available
 
 # SEE ALSO
     man rpm-ostree 

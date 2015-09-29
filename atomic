@@ -100,7 +100,7 @@ if __name__ == '__main__':
 
         # atomic host rollback
         rollbackp = host_subparser.add_parser(
-            "rollback", help=_("switch to alternate tree at boot"))
+            "rollback", help=_("switch to alternate installed tree at next boot"))
         rollbackp.set_defaults(func=atomic.host_rollback)
         rollbackp.add_argument("-r", "--reboot", dest="reboot",
                                action="store_true",
