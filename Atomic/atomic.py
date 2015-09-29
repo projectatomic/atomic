@@ -491,17 +491,17 @@ class Atomic(object):
         except KeyError:
             pass
 
-    def _rpmostree(self, *args):
+    def _rpmostree(self, args):
         aargs = self.args.args
-        if aargs == "--":
-            aargs = args[1:]
-        os.execl("/usr/bin/rpm-ostree", "rpm-ostree", *args + aargs)
+        if len(aargs) > 0 and aargs[0] == "--":
+            aargs = aargs[1:]
+        os.execl("/usr/bin/rpm-ostree", "rpm-ostree", *(args + aargs))
 
     def host_status(self):
         argv = ["status"]
         if self.args.pretty:
             argv.append("--pretty")
-        self._rpmostree(*argv)
+        self._rpmostree(argv)
 
     def host_upgrade(self):
         argv = ["upgrade"]
@@ -513,19 +513,19 @@ class Atomic(object):
             argv.append("--check-diff")
         if self.args.downgrade:
             argv.append("--allow-downgrade")
-        self._rpmostree(*argv)
+        self._rpmostree(argv)
 
     def host_rollback(self):
         argv = ["rollback"]
         if self.args.reboot:
             argv.append("--reboot")
-        self._rpmostree(*argv)
+        self._rpmostree(argv)
 
     def host_rebase(self):
         argv = ["rebase", self.args.refspec]
         if self.args.os:
             argv.append("--os=" % self.args.os )
-        self._rpmostree(*argv)
+        self._rpmostree(argv)
 
     def uninstall(self):
         self.inspect = self._inspect_container()
