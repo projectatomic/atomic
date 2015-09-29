@@ -85,6 +85,11 @@ class AliasedSubParsersAction(argparse._SubParsersAction):
 
         return parser
 
+def add_opt(sub):
+    sub.add_argument("--opt1", dest="opt1",help=argparse.SUPPRESS)
+    sub.add_argument("--opt2", dest="opt2",help=argparse.SUPPRESS)
+    sub.add_argument("--opt3", dest="opt3",help=argparse.SUPPRESS)
+
 if __name__ == '__main__':
     atomic = Atomic.Atomic()
     parser = HelpByDefaultArgumentParser(description=atomic.help())
@@ -184,15 +189,7 @@ if __name__ == '__main__':
         "INSTALL command to your Dockerfile like: 'LABEL INSTALL "
         "%s'" % atomic.print_install())
     installp.set_defaults(func=atomic.install)
-    installp.add_argument("--opt1", dest="opt1",
-                          help="additional arguments to be passed as ${OPT1} "
-                               "for install command.")
-    installp.add_argument("--opt2", dest="opt2",
-                          help="additional arguments to be passed as ${OPT2} "
-                               "for install command.")
-    installp.add_argument("--opt3", dest="opt3",
-                          help="additional arguments to be passed as ${OPT3} "
-                               "for install command.")
+    add_opt(installp)
     installp.add_argument("-n", "--name", dest="name", default=None,
                           help=_("name of container"))
     installp.add_argument(
@@ -320,6 +317,7 @@ if __name__ == '__main__':
         epilog="atomic will just stop the container if it is running, if "
         "image does not specify LABEL STOP")
     stopp.set_defaults(func=atomic.stop)
+    add_opt(stopp)
     stopp.add_argument("-n", "--name", dest="name", default=None,
                        help=_("name of container"))
     stopp.add_argument("image", help=_("container image"))
@@ -330,15 +328,7 @@ if __name__ == '__main__':
         epilog="atomic run defaults to the following command, if image "
         "does not specify LABEL run\n'%s'" % atomic.print_run())
     runp.set_defaults(func=atomic.run)
-    runp.add_argument("--opt1", dest="opt1",
-                      help="additional arguments to be passed as ${OPT1} for "
-                      "run command.")
-    runp.add_argument("--opt2", dest="opt2",
-                      help="additional arguments to be passed as ${OPT2} for "
-                           "run command.")
-    runp.add_argument("--opt3", dest="opt3",
-                      help="additional arguments to be passed as ${OPT3} for "
-                           "run command.")
+    add_opt(runp)
     runp.add_argument("-n", "--name", dest="name", default=None,
                       help=_("name of container"))
     runp.add_argument("--spc", default=False, action="store_true",
@@ -365,15 +355,7 @@ if __name__ == '__main__':
         "LABEL UNINSTALL command to your Dockerfile like: 'LABEL "
         "UNINSTALL %s'" % atomic.print_uninstall())
     uninstallp.set_defaults(func=atomic.uninstall)
-    uninstallp.add_argument("--opt1", dest="opt1",
-                            help="additional arguments to be passed as "
-                                 "${OPT1} for uninstall command.")
-    uninstallp.add_argument("--opt2", dest="opt2",
-                            help="additional arguments to be passed as "
-                                 "${OPT2} for uninstall command.")
-    uninstallp.add_argument("--opt3", dest="opt3",
-                            help="additional arguments to be passed as "
-                                 "${OPT3} for uninstall command.")
+    add_opt(uninstallp)
     uninstallp.add_argument("-n", "--name", dest="name", default=None,
                             help=_("name of container"))
     uninstallp.add_argument("-f", "--force", default=False, dest="force",
