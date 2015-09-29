@@ -108,7 +108,9 @@ if __name__ == '__main__':
                                       "prepared"))
         rollbackp.add_argument("args", nargs=argparse.REMAINDER,
                                help=_("Additional arguments appended to the "
-                                      "rollback method.  Use `-- --OPTION=VAL` if you want to pass additional unsupported arguments to ostree."))
+                                      "rollback method.  Use `-- --OPTION=VAL` "
+                                      "if you want to pass additional "
+                                      "unsupported arguments to rpm-ostree."))
 
 
         # atomic host status
@@ -119,7 +121,9 @@ if __name__ == '__main__':
                               help=_("Display status in formatted rows"))
         statusp.add_argument("args", nargs=argparse.REMAINDER,
                              help=_("Additional arguments appended to the "
-                                    "status method.  Use `-- --OPTION=VAL` if you want to pass additional unsupported arguments to ostree."))
+                                    "status method.  Use `-- --OPTION=VAL` "
+                                    "if you want to pass additional "
+                                    "unsupported arguments to rpm-ostree."))
 
         statusp.set_defaults(func=atomic.host_status)
 
@@ -142,7 +146,9 @@ if __name__ == '__main__':
                               help=_("Check for upgrades and print package diff only"))
         upgradep.add_argument("args", nargs=argparse.REMAINDER,
                               help=_("Additional arguments appended to the "
-                                     "upgrade method.  Use `-- --OPTION=VAL` if you want to pass additional unsupported arguments to ostree."))
+                                     "upgrade method.  Use `-- --OPTION=VAL` "
+                                     "if you want to pass additional "
+                                     "unsupported arguments to rpm-ostree."))
 
         # atomic host rebase
         rebasep = host_subparser.add_parser(
@@ -154,7 +160,9 @@ if __name__ == '__main__':
                              help=_("Origin refspec for new deployment"))
         rebasep.add_argument("args", nargs=argparse.REMAINDER,
                              help=_("Additional arguments appended to the "
-                                    "rebase method.  Use `-- --OPTION=VAL` if you want to pass additional unsupported arguments to ostree."))
+                                    "rebase method.  Use `-- --OPTION=VAL` "
+                                    "if you want to pass additional "
+                                    "unsupported arguments to rpm-ostree."))
 
     # atomic info
     infop = subparser.add_parser(

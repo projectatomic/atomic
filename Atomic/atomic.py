@@ -95,7 +95,7 @@ class Atomic(object):
         self.force = False
         self._images = []
         self.containers = False
-        self.images = False
+        self.images_cache = None
 
     def writeOut(self, output, lf="\n"):
         sys.stdout.flush()
@@ -453,7 +453,7 @@ class Atomic(object):
             oscap_i = dbus.Interface(oscap_d, INTERFACE)
             scan_return = json.loads(oscap_i.scan_list(scan_list, 4))
         except dbus.exceptions.DBusException:
-            error = "Unable to find the openscap-daemon dbus service."\
+            error = "Unable to find the openscap-daemon dbus service. "\
                     "Either start the openscap-daemon service or pull and run"\
                     " the openscap-daemon image"
             sys.stderr.write("\n{0}\n\n".format(error))
@@ -491,17 +491,17 @@ class Atomic(object):
         except KeyError:
             pass
 
-    def _rpmostree(self, *args):
+    def _rpmostree(self, args):
         aargs = self.args.args
-        if aargs == "--":
-            aargs = args[1:]
-        os.execl("/usr/bin/rpm-ostree", "rpm-ostree", *args + aargs)
+        if len(aargs) > 0 and aargs[0] == "--":
+            aargs = aargs[1:]
+        os.execl("/usr/bin/rpm-ostree", "rpm-ostree", *(args + aargs))
 
     def host_status(self):
         argv = ["status"]
         if self.args.pretty:
             argv.append("--pretty")
-        self._rpmostree(*argv)
+        self._rpmostree(argv)
 
     def host_upgrade(self):
         argv = ["upgrade"]
@@ -513,19 +513,19 @@ class Atomic(object):
             argv.append("--check-diff")
         if self.args.downgrade:
             argv.append("--allow-downgrade")
-        self._rpmostree(*argv)
+        self._rpmostree(argv)
 
     def host_rollback(self):
         argv = ["rollback"]
         if self.args.reboot:
             argv.append("--reboot")
-        self._rpmostree(*argv)
+        self._rpmostree(argv)
 
     def host_rebase(self):
         argv = ["rebase", self.args.refspec]
         if self.args.os:
             argv.append("--os=" % self.args.os )
-        self._rpmostree(*argv)
+        self._rpmostree(argv)
 
     def uninstall(self):
         self.inspect = self._inspect_container()
@@ -622,6 +622,9 @@ class Atomic(object):
                 pass
         if inspection is None:
             try:
+                # Shut up pylint in case we're on a machine with upstream
+                # docker-py, which lacks the remote keyword arg.
+                #pylint: disable=unexpected-keyword-arg
                 inspection = self.d.inspect_image(self.args.image, remote=True)
             except docker.errors.APIError:
                 # image does not exist on any configured registry
@@ -965,9 +968,9 @@ class Atomic(object):
         Wrapper function that should be used instead of querying docker
         multiple times for a list of images.
         '''
-        if not self.images:
-            self.images = self.d.images()
-        return self.images
+        if not self.images_cache:
+            self.images_cache = self.d.images()
+        return self.images_cache
 
     def get_containers(self):
         '''

@@ -119,6 +119,7 @@ def print_detail_scan_summary(json_data):
     Print a detailed summary of the data returned from
     a CVE scan.
     '''
+    clean = True
     sevs = ['Critical', 'Important', 'Moderate', 'Low']
     cve_summary = json_data['host_results']
     image_template = "  {0:10}: {1}"
@@ -137,6 +138,7 @@ def print_detail_scan_summary(json_data):
 
         for sev in sevs:
             if sev in scan_results:
+                clean = False
                 writeOut(image_template.format(sev,
                                             str(scan_results[sev]['num'])))
                 for cve in scan_results[sev]['cves']:
@@ -148,3 +150,4 @@ def print_detail_scan_summary(json_data):
                         writeOut(cve_template.format("RHSA URL",
                                                   cve['rhsa_ref_url']))
                         writeOut("")
+    return clean
