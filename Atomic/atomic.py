@@ -674,7 +674,7 @@ class Atomic(object):
                        "VIRTUAL SIZE"))
 
         for image in self.get_images():
-            repo, tag = image["RepoTags"][0].split(":")
+            repo, tag = image["RepoTags"][0].rsplit(":", 1)
             self.writeOut(
                 "%s%-35s %-19s %.12s        %-19s %-12s" %
                 (self.dangling(repo), repo, tag, image["Id"],
