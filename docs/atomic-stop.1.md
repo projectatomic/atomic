@@ -16,23 +16,14 @@ IMAGE.
 
 If the container image has a `LABEL STOP` instruction like the following:
 
-`LABEL STOP /usr/bin/docker kill -s HUP --name ${NAME} ${IMAGE}`
+`LABEL STOP /usr/bin/docker kill -s HUP ${NAME}
 
 atomic would execute this command before stopping the container.
 
 `atomic stop` will set the following environment variables for use in the command:
 
 **NAME**
-  The name specified via the command.  NAME will be replaced with IMAGE if it is not specified.
-
-**IMAGE**
-  The name and image specified via the command.
-
-**SUDO_UID**
-  The `SUDO_UID` environment variable.  This is useful with the docker `-u` option for user space tools.  If the environment variable is not available, the value of `/proc/self/loginuid` is used.
-
-**SUDO_GID**
-  The `SUDO_GID` environment variable.  This is useful with the docker `-u` option for user space tools.  If the environment variable is not available, the default GID of the value for `SUDO_UID` is used.  If this value is not available, the value of `/proc/self/loginuid` is used.
+  The name specified via the command. NAME will be replaced with IMAGE if it is not specified.
 
 If this field does not exist, `atomic stop` will just stop the container, if
 the container is running.
