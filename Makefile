@@ -5,12 +5,15 @@ PROFILEDIR ?= $(DESTDIR)/etc/profile.d
 PYTHON ?= /usr/bin/python
 PYLINT ?= /usr/bin/pylint
 
+.PHONY: all
 all: python-build docs
 
+.PHONY: test
 test:
 	sh ./test.sh
 
-python-build: atomic
+.PHONY: python-build
+python-build:
 	$(PYTHON) setup.py build
 	$(PYLINT) -E --additional-builtins=_ *.py atomic Atomic tests/unit/*.py
 
@@ -19,12 +22,15 @@ MANPAGES_MD = $(wildcard docs/*.md)
 docs/%.1: docs/%.1.md
 	go-md2man -in $< -out $@.tmp && mv $@.tmp $@
 
+.PHONY: docs
 docs: $(MANPAGES_MD:%.md=%)
 
+.PHONY: clean
 clean:
 	$(PYTHON) setup.py clean
 	-rm -rf build *~ \#* *pyc .#* docs/*.1
 
+.PHONY: install
 install: all 
 	$(PYTHON) setup.py install --install-scripts /usr/share/atomic `test -n "$(DESTDIR)" && echo --root $(DESTDIR)`
 
