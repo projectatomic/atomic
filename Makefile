@@ -4,6 +4,7 @@ SYSCONFDIR ?= $(DESTDIR)/etc/sysconfig
 PROFILEDIR ?= $(DESTDIR)/etc/profile.d
 PYTHON ?= /usr/bin/python
 PYLINT ?= /usr/bin/pylint
+GO_MD2MAN ?= /usr/bin/go-md2man
 
 .PHONY: all
 all: python-build docs
@@ -20,7 +21,7 @@ python-build:
 MANPAGES_MD = $(wildcard docs/*.md)
 
 docs/%.1: docs/%.1.md
-	go-md2man -in $< -out $@.tmp && mv $@.tmp $@
+	$(GO_MD2MAN) -in $< -out $@.tmp && touch $@.tmp && mv $@.tmp $@
 
 .PHONY: docs
 docs: $(MANPAGES_MD:%.md=%)
