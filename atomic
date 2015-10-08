@@ -297,6 +297,9 @@ if __name__ == '__main__':
     #                      help=_("Organization Name"))
 
     # atomic scan
+    def bool_detect(myarg):
+        return True if myarg.lower() in \
+            ('yes', 'true', 't', 'y', '1') else False
 
     scanp = subparser.add_parser(
         "scan", help=_("scan an image or container for CVEs"),
@@ -307,6 +310,7 @@ if __name__ == '__main__':
     scan_out.add_argument("--json", default=False, action='store_true', help=_("output json"))
     scan_out.add_argument("--detail", default=False, action='store_true', help=_("output more detail"))
     scanp.add_argument("scan_targets", nargs='*', help=_("container image"))
+    scanp.add_argument("--fetch_cves", type=bool_detect, default=None,  help=_("override the behavior defined in /etc/oscapd/config.ini as to whether to download the most recent CVE data. Values can be True of False"))
     scan_group.add_argument("--all", default=False, action='store_true', help=_("scan all images (excluding intermediate layers) and containers"))
     scan_group.add_argument("--images", default=False, action='store_true', help=_("scan all images (excluding intermediate layers)"))
     scan_group.add_argument("--containers", default=False, action='store_true', help=_("scan all containers"))

@@ -437,7 +437,6 @@ class Atomic(object):
         OBJECT_PATH = "/OpenSCAP/daemon"
         INTERFACE = "org.OpenSCAP.daemon.Interface"
         input_resolve = {}
-
         if self.args.images:
             scan_list = self._get_all_image_ids()
         elif self.args.containers:
@@ -457,12 +456,25 @@ class Atomic(object):
         try:
             oscap_d = bus.get_object(BUS_NAME, OBJECT_PATH)
             oscap_i = dbus.Interface(oscap_d, INTERFACE)
-            scan_return = json.loads(oscap_i.scan_list(scan_list, 4))
-        except dbus.exceptions.DBusException:
-            error = "Unable to find the openscap-daemon dbus service. "\
-                    "Either start the openscap-daemon service or pull and run"\
-                    " the openscap-daemon image"
-            sys.stderr.write("\n{0}\n\n".format(error))
+            # Check if the user has asked to override the behaviour of fetching the
+            # latest CVE input data, as defined in the openscap-daemon conf file
+            # oscap-daemon a byte of 0 (False), 1 (True), and 2 (no change)
+
+            if self.args.fetch_cves is None:
+                fetch = 2
+            elif self.args.fetch_cves:
+                fetch = 1
+            else:
+                fetch = 0
+            scan_return = json.loads(oscap_i.scan_list(scan_list, 4, fetch, timeout=99999))
+
+        except dbus.exceptions.DBusException, e:
+            message = "The openscap-daemon returned: {0}".format(e.get_dbus_message())
+            if e.get_dbus_name() == 'org.freedesktop.DBus.Error.ServiceUnknown':
+                message = "Unable to find the openscap-daemon dbus service. "\
+                          "Either start the openscap-daemon service or pull " \
+                          "and run the openscap-daemon image"
+            sys.stderr.write("\n{0}\n\n".format(message))
             sys.exit(1)
 
         if self.args.json:

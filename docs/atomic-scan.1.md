@@ -6,7 +6,7 @@ atomic-scan - Scan for CVEs in a container or image
 # SYNOPSIS
 **atomic scan**
 [**-h**|**--help**]
-[**--json** | **--detail**] [**--all** | **--images** | **--containers** |
+[**--fetch-cves=True|False**][**--json** | **--detail**] [**--all** | **--images** | **--containers** |
 IMAGE or CONTAINER name ...]
 
 # DESCRIPTION
@@ -15,6 +15,9 @@ IMAGE or CONTAINER name ...]
 # OPTIONS
 **-h** **--help**
   Print usage statement
+
+**--fetch-cves=True|False**
+  Override the fetch-cve (fetch the latest CVE input data from Red Hat over the network) setting in /etc/oscapd/config.ini. Values can  be True or False.
 
 **--json**
   Output in the form of JSON.
@@ -35,6 +38,10 @@ IMAGE or CONTAINER name ...]
 Scan an image named 'foo1'.
 
     atomic scan foo1
+
+Scan an image named 'foo1' with only the files in the openscap-daemon.
+
+    atomic scan --only-cache foo1
 
 Scan images named 'foo1' and 'foo2' and produce a detailed report.
 
