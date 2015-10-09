@@ -200,7 +200,7 @@ if __name__ == '__main__':
     installp.add_argument("image", help=_("container image"))
     installp.add_argument("args", nargs=argparse.REMAINDER,
                           help=_("Additional arguments appended to the image "
-                                 "uninstall method"))
+                                 "install method"))
 
     # atomic images
     imagesp = subparser.add_parser(
