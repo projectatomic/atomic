@@ -149,7 +149,8 @@ class Mount:
         if results.return_code != 0:
             raise MountError('No device mounted at ' + mntpoint)
 
-        return results.stdout.replace('SOURCE\n', '').strip().split('\n')[-1]
+        stdout = results.stdout.decode(sys.getdefaultencoding())
+        return stdout.replace('SOURCE\n', '').strip().split('\n')[-1]
 
     @staticmethod
     def unmount_path(path):
@@ -485,7 +486,8 @@ class DockerMount(Mount):
         r = util.subp(cmd)
         if r.return_code != 0:
             raise MountError('No devices mounted at that location.')
-        optstring = r.stdout.strip().split('\n')[-1]
+        stdout = r.stdout.decode(sys.getdefaultencoding())
+        optstring = stdout.strip().split('\n')[-1]
         upperdir = [o.replace('upperdir=', '') for o in optstring.split(',')
                     if o.startswith('upperdir=')][0]
         cdir = upperdir.rsplit('/', 1)[0]
@@ -499,7 +501,7 @@ class DockerMount(Mount):
         OverlayFS unmount backend.
         """
         if Mount.get_dev_at_mountpoint(self.mountpoint) != 'overlay':
-            raise MountError('Device mounted at {} is not an atomic mount.')
+            raise MountError('Device mounted at {} is not an atomic mount.'.format(self.mountpoint))
         cid = self._get_overlay_mount_cid()
         Mount.unmount_path(self.mountpoint)
         self._cleanup_container(self.client.inspect_container(cid))

@@ -468,7 +468,7 @@ class Atomic(object):
                 fetch = 0
             scan_return = json.loads(oscap_i.scan_list(scan_list, 4, fetch, timeout=99999))
 
-        except dbus.exceptions.DBusException, e:
+        except dbus.exceptions.DBusException as e:
             message = "The openscap-daemon returned: {0}".format(e.get_dbus_message())
             if e.get_dbus_name() == 'org.freedesktop.DBus.Error.ServiceUnknown':
                 message = "Unable to find the openscap-daemon dbus service. "\
