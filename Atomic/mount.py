@@ -499,7 +499,7 @@ class DockerMount(Mount):
         OverlayFS unmount backend.
         """
         if Mount.get_dev_at_mountpoint(self.mountpoint) != 'overlay':
-            raise MountError('Device mounted at {} is not an atomic mount.')
+            raise MountError('Device mounted at {} is not an atomic mount.'.format(self.mountpoint))
         cid = self._get_overlay_mount_cid()
         Mount.unmount_path(self.mountpoint)
         self._cleanup_container(self.client.inspect_container(cid))
