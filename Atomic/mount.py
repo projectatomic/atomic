@@ -275,6 +275,19 @@ class DockerMount(Mount):
         Mounts a container or image referred to by identifier to
         the host filesystem.
         """
+        try:
+            # Check if a container/image is already mounted at the
+            # desired mount point.
+            dev = Mount.get_dev_at_mountpoint(self.mountpoint)
+            cid = (dev.split("-")[-1]).replace('[/rootfs]', '')
+            dev_name = dev.replace('/dev/mapper/', '')
+            if cid in self._get_all_cids():
+                raise MountError("Unable to mount a container or image over "
+                                 "another container or image at '{0}'"
+                                 .format(self.mountpoint))
+        except MountError:
+            pass
+
         driver = self.client.info()['Driver']
         driver_mount_fn = getattr(self, "_mount_" + driver,
                                   self._unsupported_backend)
@@ -419,10 +432,10 @@ class DockerMount(Mount):
 
         iid = cinfo['Image']
         self.client.remove_container(cinfo['Id'])
-        labels = self.client.inspect_image(iid)['Config']['Labels']
-        # TODO: Config.Labels should be {} and not None if no labels.
-        #       This prevents labels from being iterable if there are
-        #       none.
+        try:
+            labels = self.client.inspect_image(iid)['Config']['Labels']
+        except TypeError:
+            labels = {}
         if labels and 'io.projectatomic.Temporary' in labels:
             if labels['io.projectatomic.Temporary'] == 'true':
                 self.client.remove_image(iid)
@@ -445,25 +458,24 @@ class DockerMount(Mount):
                                     self._unsupported_backend)
         driver_unmount_fn()
 
+    def _get_all_cids(self):
+        '''
+        Simple function that returns a list of the container
+        IDs.
+        '''
+        return [x['Id'] for x in self.client.containers(all=True)]
+
     def _unmount_devicemapper(self):
         """
         Devicemapper unmount backend.
         """
-        pool = self.client.info()['DriverStatus'][0][1]
-        dev = Mount.get_dev_at_mountpoint(self.mountpoint)
 
+        dev = Mount.get_dev_at_mountpoint(self.mountpoint)
+        cid = dev.split("-")[-1]
         dev_name = dev.replace('/dev/mapper/', '')
-        if not dev_name.startswith(pool.rsplit('-', 1)[0]):
+        if cid not in self._get_all_cids():
             raise MountError('Device mounted at {} is not a docker container.'
                              ''.format(self.mountpoint))
-
-        cid = dev_name.replace(pool.replace('pool', ''), '')
-        try:
-            self.client.inspect_container(cid)
-        except docker.errors.APIError:
-            raise MountError('Failed to associate device {0} mounted at {1} '
-                             'with any container.'.format(dev_name,
-                                                          self.mountpoint))
 
         Mount.unmount_path(self.mountpoint)
         cinfo = self.client.inspect_container(cid)
