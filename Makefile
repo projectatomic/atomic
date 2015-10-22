@@ -33,6 +33,7 @@ docs: $(MANPAGES_MD:%.md=%)
 clean:
 	$(PYTHON) setup.py clean
 	-rm -rf build *~ \#* *pyc .#* docs/*.1
+	rm -rf dist
 
 .PHONY: install-only
 install-only:
@@ -40,6 +41,9 @@ install-only:
 
 	install -d -m 0755 $(DESTDIR)/usr/bin
 	ln -fs ../share/atomic/atomic $(DESTDIR)/usr/bin/atomic
+
+	mkdir -p $(DESTDIR)/usr/libexec/dockermigrate
+	install containers-migrate.sh gotar $(DESTDIR)/usr/libexec/dockermigrate
 
 	[ -d $(SYSCONFDIR) ] || mkdir -p $(SYSCONFDIR)
 	install -m 644 atomic.sysconfig $(SYSCONFDIR)/atomic

@@ -232,6 +232,37 @@ if __name__ == '__main__':
     imagesp.add_argument("--prune", action="store_true",
                          help=_("prune dangling images"))
 
+    # atomic migrate
+    migratep = subparser.add_parser("migrate", help=_("migrate docker from one backend storage "
+                                                    "to another"))
+    migrate_subparser = migratep.add_subparsers(help=_("migrate commands"))
+
+   # atomic export
+    exportp = migrate_subparser.add_parser(
+        "export", help=_("export a docker instance into a filesystem directory"),
+        epilog="export a docker instance. "
+        "The export command would export docker images, "
+        "containers and volumes into a filesystem directory.")
+    exportp.set_defaults(func=atomic.exportd)
+    exportp.add_argument("--graph", dest="graph", default="/var/lib/docker",
+                        help=_("Root of the Docker runtime (Default: /var/lib/docker)"))
+    exportp.add_argument("--dir", dest="export_location",
+                         default="/var/lib/docker-migrate",
+                         help=_("Path for exporting docker (Default: /var/lib/docker-migrate)"))
+	
+    # atomic import
+    importp = migrate_subparser.add_parser(
+         "import", help=_("import a docker instance from a filesystem directory"),
+         epilog="import a docker instance."
+         "The import command would import docker images,"
+         "containers and volumes from a filesystem directory.")
+    importp.set_defaults(func=atomic.importd)
+    importp.add_argument("--graph", dest="graph", default="/var/lib/docker",
+                         help=_("Root of the Docker runtime (Default: /var/lib/docker)"))
+    importp.add_argument("--dir", dest="import_location",
+                         default="/var/lib/docker-migrate",
+                         help=_("Path for importing docker (Default: /var/lib/docker-migrate)"))
+
     # atomic mount
     mountp = subparser.add_parser(
         "mount", help=_("mount container image to a specified directory"),
@@ -248,7 +279,6 @@ if __name__ == '__main__':
     mountp.add_argument("image", help=_("image/container id"))
     mountp.add_argument("mountpoint", help=_("filesystem location to mount "
                                              "the image/container"))
-
     # atomic push
     pushp = subparser.add_parser(
         "push", aliases=['upload'], help=_("push latest image to repository"),

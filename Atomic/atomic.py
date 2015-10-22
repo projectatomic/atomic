@@ -15,6 +15,8 @@ import Atomic.util as util
 import Atomic.satellite as satellite
 import Atomic.pulp as pulp
 import dbus
+import Atomic.docker_export as docker_export
+import Atomic.docker_import as docker_import
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -145,6 +147,12 @@ class Atomic(object):
 
             prevstatus = status
         self.writeOut("")
+
+    def exportd(self):
+        docker_export.export_docker(self.args.graph, self.args.export_location)
+
+    def importd(self):
+        docker_import.import_docker(self.args.graph, self.args.import_location)   
 
     def push(self):
         prevstatus = ""
