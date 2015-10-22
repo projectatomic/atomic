@@ -371,11 +371,11 @@ class DockerMount(Mount):
             Mount._activate_thin_device(dm_dev_name, dm_dev_id, dm_dev_size,
                                         dm_pool)
 
-        # XFS should get nosuid
+        # XFS should get nouuid
         fstype = Mount._get_fs(dm_dev_path)
-        if fstype.upper() == 'XFS' and 'suid' not in options:
-            if 'nosuid' not in options:
-                options.append('nosuid')
+        if fstype.upper() == 'XFS' and 'nouuid' not in options:
+            if 'nouuid' not in options:
+                options.append('nouuid')
         try:
             Mount.mount_path(dm_dev_path, self.mountpoint,
                              optstring=(','.join(options)))
