@@ -432,6 +432,9 @@ class Atomic(object):
             subprocess.check_call(cmd, env=self.cmd_env, shell=True)
 
     def scan(self):
+        if (not self.args.images and not self.args.containers and not self.args.all) and len(self.args.scan_targets) == 0:
+            sys.stderr.write("\nYou must provide a list of containers or images to scan\n")
+            sys.exit(1)
         self.ping()
         BUS_NAME = "org.OpenSCAP.daemon"
         OBJECT_PATH = "/OpenSCAP/daemon"
