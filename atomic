@@ -236,12 +236,6 @@ if __name__ == '__main__':
         epilog="push the latest specified image to a repository.")
     pushp.set_defaults(func=atomic.push)
 
-    # atomic push
-    pushp = subparser.add_parser(
-        "push", help=_("push latest image to repository"),
-        epilog="atomic push uploads the latest specified image.")
-    pushp.set_defaults(func=atomic.push)
-
     # making it so we cannot call both the --pulp and --satellite commands
     # at the same time (mutually exclusive)
     pushgroup = pushp.add_mutually_exclusive_group()
