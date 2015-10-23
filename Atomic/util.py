@@ -121,6 +121,8 @@ def print_scan_summary(json_data, names=None):
 
     if len(names) > 0:
         max_width = _max_width(names)
+    else:
+        max_width = min_width
     template = "{0:" + str(max_width) + "}   {1:5} {2:5} {3:5} {4:5}"
     sevs = ['critical', 'important', 'moderate', 'low']
     writeOut(template.format("Container/Image", "Cri", "Imp", "Med", "Low"))
