@@ -26,8 +26,8 @@ cd atomic
 Build and install it.
 ```
 pip install -r requirements.txt
-make all
-make install
+# Note, due to a bug in pylint within pip and Debian8 it is required to pass true. 
+PYLINT=true make install
 ```
 
 Your install will now be complete!
