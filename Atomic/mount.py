@@ -95,7 +95,7 @@ class Mount:
         """
         Destroys a thin device via subprocess call.
         """
-        r = util.subp(['dmsetup', 'remove', name])
+        r = util.subp(['dmsetup', 'remove', '--retry', name])
         if r.return_code != 0:
             raise MountError('Could not remove thin device:\n' + r.stderr)
 
