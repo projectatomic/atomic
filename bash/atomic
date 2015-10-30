@@ -235,6 +235,35 @@ _atomic_uninstall() {
 	__atomic_image_repos_and_tags_and_ids
 }
 
+
+_atomic_diff() {
+	local all_options="$options_with_args
+		--help
+		--json
+        --display
+        --names-only
+        --no-files -n
+        --rpms -r
+        --verbose -v
+	"
+
+	[ "$command" = "diff" ] && all_options="$all_options"
+
+
+    case "$cur" in
+    -*)
+        COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+        ;;
+    *)
+        local counter=$( __atomic_pos_first_nonflag $( __atomic_to_alternatives "$options_with_args" ) )
+
+        if [ $cword -eq $counter ]; then
+            __atomic_image_repos_and_tags_and_ids
+        fi
+        ;;
+	esac
+}
+
 _atomic_run() {
 	local options_with_args="
 		--name -n
@@ -548,6 +577,7 @@ _atomic() {
 
 	local commands=(
 		host
+		diff
 		info
 		install
 		images

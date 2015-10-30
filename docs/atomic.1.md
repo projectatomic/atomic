@@ -6,7 +6,7 @@ atomic \- Atomic Management Tool
 
 # SYNOPSIS
 **atomic** [OPTIONS] COMMAND [arg...]
-  {host,images,info,install,mount,run,stop,uninstall,unmount,update,upload,verify,version}
+  {diff,host,images,info,install,mount,run,scan,stop,uninstall,unmount,update,upload,verify,version}
 [**-h**|**-help**]
 
 # DESCRIPTION
@@ -17,6 +17,9 @@ Atomic Management Tool
   Print usage statement
 
 # COMMANDS
+**atomic-diff(1)**
+show the differences between two images|containers' RPMs
+
 **atomic-host(1)**
 execute Atomic commands
 
@@ -34,6 +37,9 @@ mount image or container to filesystem
 
 **atomic-run(1)**
 execute image run method (default)
+
+**atomic-scan(1)**
+scan an image or container for CVEs
 
 **atomic-stop(1)**
 execute container image stop method
@@ -58,3 +64,4 @@ display image 'Name Version Release' label
 
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)
+November, 2015 Addition of scan and diff by Brent Baude (bbaude at dot com)

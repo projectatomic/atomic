@@ -482,19 +482,19 @@ class DockerMount(Mount):
         '''
         return [x['Id'] for x in self.client.containers(all=True)]
 
-    def _unmount_devicemapper(self):
+    def _unmount_devicemapper(self, path=None):
         """
         Devicemapper unmount backend.
         """
-
-        dev = Mount.get_dev_at_mountpoint(self.mountpoint)
+        mountpoint = self.mountpoint if path is None else path
+        dev = Mount.get_dev_at_mountpoint(mountpoint)
         cid = dev.split("-")[-1]
         dev_name = dev.replace('/dev/mapper/', '')
         if cid not in self._get_all_cids():
             raise MountError('Device mounted at {} is not a docker container.'
-                             ''.format(self.mountpoint))
+                             ''.format(mountpoint))
 
-        Mount.unmount_path(self.mountpoint)
+        Mount.unmount_path(mountpoint)
         cinfo = self.client.inspect_container(cid)
 
         # Was the container live mounted? If so, done.
@@ -525,14 +525,15 @@ class DockerMount(Mount):
                              'docker container.')
         return cdir.replace('/var/lib/docker/overlay/', '')
 
-    def _unmount_overlay(self):
+    def _unmount_overlay(self, path=None):
         """
         OverlayFS unmount backend.
         """
-        if Mount.get_dev_at_mountpoint(self.mountpoint) != 'overlay':
-            raise MountError('Device mounted at {} is not an atomic mount.'.format(self.mountpoint))
+        mountpoint = self.mountpoint if path is None else path
+        if Mount.get_dev_at_mountpoint(mountpoint) != 'overlay':
+            raise MountError('Device mounted at {} is not an atomic mount.'.format(mountpoint))
         cid = self._get_overlay_mount_cid()
-        Mount.unmount_path(self.mountpoint)
+        Mount.unmount_path(mountpoint)
         self._cleanup_container(self.client.inspect_container(cid))
 
     def _clean_temp_container_by_path(self, path):
