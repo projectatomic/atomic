@@ -4,15 +4,15 @@ set -e
 
 main() {
 if [ $(id -u) != 0 ];then
-	echo "Run 'containers-migrate' as root user"
+	echo "Run 'migrate' as root user"
 	exit 
 fi
 
 NUMARGS=$#
 
 if [ $NUMARGS -eq 0 ] || [ "$1" = "--help" ];then 
-	echo "Usage: containers-migrate COMMAND [ARGS] [OPTIONS]
-       containers-migrate [--help]
+	echo "Usage: migrate COMMAND [ARGS] [OPTIONS]
+       migrate [--help]
 
 A self-sufficient tool for migrating docker containers from one backend storage to another
 
@@ -24,21 +24,21 @@ fi
 
 if [ "$1" = "export" ];then
    if [ -z "$2" ]; then
-	echo "containers-migrate: "export" requires a minimum of 1 argument.
-See 'containers-migrate export --help'
+	echo "migrate: "export" requires a minimum of 1 argument.
+See 'migrate export --help'
 
-Usage: containers-migrate export CONTAINER-ID [OPTIONS]
+Usage: migrate export CONTAINER-ID [OPTIONS]
 
 Export a container from an existing storage"
 	exit
    elif [ "$2" = "--help" ];then
 	echo "
-Usage: containers-migrate export CONTAINER-ID [OPTIONS]
+Usage: migrate export CONTAINER-ID [OPTIONS]
 
 Export a container from an existing storage
 
 --graph   	    Root of the Docker runtime (Default: /var/lib/docker)
---export-location   Path for exporting the container (Default: /var/lib/docker-migrate/containers)"
+--export-location   Path for exporting the container (Default: /var/lib/atomic/migrate/containers)"
 	exit
    else
 	container_export $2 $3 $4
@@ -47,21 +47,21 @@ fi
 
 if [ "$1" = "import" ];then
    if [ -z "$2" ]; then
-        echo "containers-migrate: "import" requires a minimum of 1 argument.
-See 'containers-migrate import --help'
+        echo "migrate: "import" requires a minimum of 1 argument.
+See 'migrate import --help'
         
-Usage: containers-migrate import CONTAINER-ID [OPTIONS]
+Usage: migrate import CONTAINER-ID [OPTIONS]
 
 Import a container into a new storage"
         exit
    elif [ "$2" = "--help" ];then
         echo "
-Usage: containers-migrate import CONTAINER-ID [OPTIONS]
+Usage: migrate import CONTAINER-ID [OPTIONS]
 
 Import a container into a new storage
 
 --graph             Root of the Docker runtime (Default: /var/lib/docker)
---import-location   Path for importing the container (Default: /var/lib/docker-migrate/containers)"
+--import-location   Path for importing the container (Default: /var/lib/atomic/migrate/containers)"
         exit
    else
         container_import $2 $3 $4
@@ -94,7 +94,7 @@ container_export(){
 	fi
 
 	if [ -z "$exportPath" ]; then
-		exportPath="/var/lib/docker-migrate"
+		exportPath="/var/lib/atomic/migrate"
 	fi
 
         dockerPid=$(ps aux|grep [d]ocker|awk 'NR==1{print $2}')
@@ -116,11 +116,11 @@ container_export(){
 	echo $dockerRootDir>containerInfo.txt
 	echo $containerBaseImageID>>containerInfo.txt
 	echo $notruncContainerID>>containerInfo.txt
-        /usr/libexec/dockermigrate/gotar -cf container-metadata.tar $dockerRootDir/containers/$notruncContainerID 2> /dev/null
+        /usr/libexec/atomic/gotar -cf container-metadata.tar $dockerRootDir/containers/$notruncContainerID 2> /dev/null
         imageID=$(docker commit $containerID)||exit 1
         mkdir -p $tmpDir/temp
         docker save $imageID > $tmpDir/temp/image.tar||exit 1
-	$(cd $tmpDir/temp; /usr/libexec/dockermigrate/gotar -xf image.tar)
+	$(cd $tmpDir/temp; /usr/libexec/atomic/gotar -xf image.tar)
         cd $tmpDir/temp/$imageID
         cp layer.tar $tmpDir/container-diff.tar
         cd $tmpDir
@@ -152,7 +152,7 @@ container_import(){
         fi
 
         if [ -z "$importPath" ]; then
-                importPath="/var/lib/docker-migrate"
+                importPath="/var/lib/atomic/migrate"
         fi
 
 	dockerPid=$(ps aux|grep [d]ocker|awk 'NR==1{print $2}')
@@ -169,14 +169,14 @@ container_import(){
 
 	cd $importPath/containers/migrate-$containerID
 	dockerBaseImageID=$(sed -n '2p' containerInfo.txt)||exit 1	
-	cat container-diff.tar|docker run -i -v /usr/libexec/dockermigrate/gotar:/dev/shm/gotar $dockerBaseImageID /dev/shm/gotar -xf -
+	cat container-diff.tar|docker run -i -v /usr/libexec/atomic/gotar:/dev/shm/gotar $dockerBaseImageID /dev/shm/gotar -xf -
 	newContainerID=$(docker ps -lq)||exit 1
 	newContainerName=$(docker inspect -f '{{.Name}}' $newContainerID)||exit 1
 	newNotruncContainerID=$(docker ps -aq --no-trunc|grep $newContainerID)||exit 1					
 	cd $dockerRootDir/containers/$newNotruncContainerID
 	rm -rf *
 	cp $importPath/containers/migrate-$containerID/container-metadata.tar .
-	/usr/libexec/dockermigrate/gotar -xf container-metadata.tar	
+	/usr/libexec/atomic/gotar -xf container-metadata.tar	
 	rm container-metadata.tar
 	oldDockerRootDir=$(sed -n '1p' $importPath/containers/migrate-$containerID/containerInfo.txt)||exit 1
 	oldNotruncContainerID=$(sed -n '3p' $importPath/containers/migrate-$containerID/containerInfo.txt)||exit 1
@@ -184,7 +184,7 @@ container_import(){
 	baseDir=$(echo $oldDockerRootDir|cut -d"/" -f 2)
 	rm -rf $baseDir
 
-	oldStorageDriver=$(sed -n '1p' $importPath/dockerInfo.txt)||exit 1
+	oldStorageDriver=$(sed -n '1p' $importPath/info.txt)||exit 1
 	newStorageDriver=$(docker info|grep "Storage Driver"|cut -d" " -f 3)
 
 	sed -i "s|\"Driver\":\"$oldStorageDriver\"|\"Driver\":\"$newStorageDriver\"|g" config.json	
