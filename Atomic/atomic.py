@@ -91,7 +91,7 @@ class Atomic(object):
                 "${IMAGE}"]
 
     def __init__(self):
-        self.d = docker.Client()
+        self.d = AtomicDocker()
         self.name = None
         self.image = None
         self.spc = False
@@ -675,20 +675,10 @@ class Atomic(object):
                 # Shut up pylint in case we're on a machine with upstream
                 # docker-py, which lacks the remote keyword arg.
                 #pylint: disable=unexpected-keyword-arg
-                inspection = self.d.inspect_image(self.args.image, remote=True)
+                inspection = self.d.remote_inspect(self.args.image)
             except docker.errors.APIError:
                 # image does not exist on any configured registry
                 _no_such_image()
-            except TypeError:  # pragma: no cover
-                # If a user doesn't have remote-inspection, setting remote=True
-                # above will raise TypeError.
-                # TODO: remove if remote inspection is accepted into docker
-                # But we should error if the user specifically requested remote
-                if self.args.force_remote_info:
-                    raise ValueError('Your docker daemon does not support '
-                                     'remote inspection.')
-                else:
-                    _no_such_image()
         # By this point, inspection cannot be "None"
         try:
             labels = inspection['Config']['Labels']
@@ -828,44 +818,6 @@ class Atomic(object):
 
         return self._images
 
-    def verify(self):
-        def get_label(label):
-            val = self._get_args(label)
-            if val:
-                return val[0]
-            return ""
-        self.inspect = self._inspect_image()
-        if not self.inspect:
-            raise ValueError("Image %s does not exist" % self.image)
-        current_name = get_label("Name")
-        version = ""
-        if current_name:
-            version = "%s-%s-%s" % (current_name, get_label("Version"),
-                                    get_label("Release"))
-
-        name = None
-        buf = ""
-        for layer in self.get_layers():
-            if name == layer["Name"]:
-                continue
-            name = layer["Name"]
-            if len(name) > 0:
-                for i in self.get_image_infos():
-                    if i["Name"] == name:
-                        if i["Version"] > layer["Version"]:
-                            buf = ("Image '%s' contains a layer '%s' that is "
-                                   "out of date.\nImage version '%s' is "
-                                   "available, current version could contain "
-                                   "vulnerabilities." % (self.image,
-                                                         layer["Version"],
-                                                         i["Version"]))
-                            buf += ("You should rebuild the '%s' image using "
-                                    "docker build." % (self.image))
-                            break
-        return buf
-
-    def print_verify(self):
-        self.writeOut(self.verify())
 
     def mount(self):
         try:
@@ -1063,7 +1015,6 @@ class Atomic(object):
 
         return self.active_containers
 
-
 class AtomicError(Exception):
     pass
 
@@ -1092,3 +1043,7 @@ class AtomicDocker(docker.Client):
         if ps_args is not None:
             params['ps_args'] = ps_args
         return self._result(self._get(u, params=params), True)
+
+    def remote_inspect(self, image_id):
+        return self._result(self._get(self._url("/images/{0}/json?remote=1".
+                                                format(image_id))), True)

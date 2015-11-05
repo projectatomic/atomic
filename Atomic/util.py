@@ -18,21 +18,21 @@ else:
     input = input
 
 
+def _decompose(compound_name):
+    """ '[reg/]repo[:tag]' -> (reg, repo, tag) """
+    reg, repo, tag = '', compound_name, ''
+    if '/' in repo:
+        reg, repo = repo.split('/', 1)
+    if ':' in repo:
+        repo, tag = repo.rsplit(':', 1)
+    return reg, repo, tag
+
 def image_by_name(img_name, images=None):
     """
     Returns a list of image data for images which match img_name. Will
     optionally take a list of images from a docker.Client.images
     query to avoid multiple docker queries.
     """
-    def _decompose(compound_name):
-        """ '[reg/]repo[:tag]' -> (reg, repo, tag) """
-        reg, repo, tag = '', compound_name, ''
-        if '/' in repo:
-            reg, repo = repo.split('/', 1)
-        if ':' in repo:
-            repo, tag = repo.rsplit(':', 1)
-        return reg, repo, tag
-
     i_reg, i_rep, i_tag = _decompose(img_name)
 
     # Correct for bash-style matching expressions.
