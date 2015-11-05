@@ -31,6 +31,9 @@ Switch to alternate installed tree at next boot
 **upgrade**
 Upgrade to the latest Atomic tree if one is available
 
+**deploy**
+Download and deploy a specific Atomic tree
+
 # SEE ALSO
     man rpm-ostree 
 

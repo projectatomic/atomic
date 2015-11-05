@@ -169,6 +169,25 @@ if __name__ == '__main__':
                                     "if you want to pass additional "
                                     "unsupported arguments to rpm-ostree."))
 
+        # atomic host deploy
+        deployp = host_subparser.add_parser(
+            "deploy", help=_("deploy a specific commit"))
+        deployp.set_defaults(func=atomic.host_deploy)
+        deployp.add_argument("revision", help=_("Checksum or version to deploy"));
+        deployp.add_argument("-r", "--reboot", dest="reboot",
+                             action="store_true",
+                             help=_("Reboot after deployment is complete"))
+        deployp.add_argument("--os", dest="os",
+                             help=_("Operate on provided OSNAME"))
+        deployp.add_argument("--preview", dest="preview",
+                             action="store_true",
+                             help=_("Just preview package differences"))
+        deployp.add_argument("args", nargs=argparse.REMAINDER,
+                             help=_("Additional arguments appended to the "
+                                    "deploy method.  Use `-- --OPTION=VAL` "
+                                    "if you want to pass additional "
+                                    "unsupported arguments to rpm-ostree."))
+
     # atomic info
     infop = subparser.add_parser(
         "info", help=_("display label information about an image"),
