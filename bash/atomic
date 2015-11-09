@@ -385,7 +385,7 @@ _atomic_host_deploy() {
 _atomic_host_rollback() {
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "--reboot -h --help" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "-r --reboot -h --help" -- "$cur" ) )
 			;;
 		*)
 			;;
@@ -395,7 +395,7 @@ _atomic_host_rollback() {
 _atomic_host_status() {
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "-h --help" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "-p --pretty -h --help" -- "$cur" ) )
 			;;
 		*)
 			;;
@@ -405,7 +405,7 @@ _atomic_host_status() {
 _atomic_host_upgrade() {
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "--reboot -h --help" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "-r --reboot --os --allow-downgrade --check-diff -h --help" -- "$cur" ) )
 			;;
 		*)
 			;;
