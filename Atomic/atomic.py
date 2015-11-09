@@ -549,6 +549,16 @@ class Atomic(object):
             argv.append("--os=" % self.args.os )
         self._rpmostree(argv)
 
+    def host_deploy(self):
+        argv = ["deploy", self.args.revision]
+        if self.args.reboot:
+            argv.append("--reboot")
+        if self.args.os:
+            argv.append("--os=" % self.args.os)
+        if self.args.preview:
+            argv.append("--preview")
+        self._rpmostree(argv)
+
     def uninstall(self):
         self.inspect = self._inspect_container()
         if self.inspect and self.force:
