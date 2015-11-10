@@ -159,7 +159,48 @@ _atomic_info() {
 		    ;;
 	esac
 }
+_atomic_scan() {
+    local options_with_args="
+		--fetch_cves
+	"
+	local all_options="$options_with_args
+		--help -h
+		--json
+		--detail
+		--all
+		--images
+		--containers
+	"
+	[ "$command" = "scan" ] && all_options="$all_options"
 
+	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
+
+	case "$prev" in
+		$options_with_args_glob )
+			return 0
+			;;
+	esac
+
+    case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+			;;
+		*)
+
+			local counter=$( __atomic_pos_first_nonflag $( __atomic_to_alternatives "$options_with_args" ) )
+
+			if [ $cword -eq $counter ]; then
+				__atomic_containers_and_images
+				return 0
+			fi
+
+			COMPREPLY=( $( compgen -d "$cur" ) )
+			return 0
+			;;
+	esac
+	return 0
+
+}
 _atomic_verify() {
 	case "$cur" in
 		*)
@@ -456,6 +497,7 @@ _atomic() {
 		install
 		images
 		mount
+		scan
 		stop
 		run
 		verify
