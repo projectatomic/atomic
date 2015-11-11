@@ -331,8 +331,8 @@ class Atomic(object):
         except docker.errors.APIError:
             pass
         except requests.exceptions.ConnectionError as e:
-            raise IOError("Unable to communicate with docker daemon: %s\n" %
-                          str(e))
+            raise IOError("Cannot connect to the Docker daemon. Is the docker daemon running on this host?")
+
         return None
 
     def _inspect_container(self, name=None):
@@ -648,7 +648,7 @@ class Atomic(object):
         inspection = None
         if not self.args.force_remote_info:
             try:
-                inspection = self.d.inspect_image(self.args.image)
+                inspection = self._inspect_image(self.args.image)
             except docker.errors.APIError:
                 # No such image locally, but fall back to remote
                 pass
