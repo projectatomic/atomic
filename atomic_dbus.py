@@ -18,7 +18,7 @@ class atomic_dbus(slip.dbus.service.Object):
             self.recurse = False
 
     def __init__(self, *p, **k):
-        super(atomic_dbus, self).__init__(*p, **k)
+        slip.dbus.service.Object.__init__(*p, **k)
         self.atomic = Atomic.Atomic()
 
     """
