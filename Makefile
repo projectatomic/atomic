@@ -7,7 +7,7 @@ PYLINT ?= /usr/bin/pylint
 GO_MD2MAN ?= /usr/bin/go-md2man
 
 .PHONY: all
-all: python-build docs
+all: python-build docs pylint-check
 
 .PHONY: test
 test:
@@ -16,6 +16,8 @@ test:
 .PHONY: python-build
 python-build:
 	$(PYTHON) setup.py build
+
+pylint-check:
 	$(PYLINT) -E --additional-builtins=_ *.py atomic Atomic tests/unit/*.py
 
 MANPAGES_MD = $(wildcard docs/*.md)
