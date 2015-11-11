@@ -159,7 +159,48 @@ _atomic_info() {
 		    ;;
 	esac
 }
+_atomic_scan() {
+    local options_with_args="
+		--fetch_cves
+	"
+	local all_options="$options_with_args
+		--help -h
+		--json
+		--detail
+		--all
+		--images
+		--containers
+	"
+	[ "$command" = "scan" ] && all_options="$all_options"
 
+	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
+
+	case "$prev" in
+		$options_with_args_glob )
+			return 0
+			;;
+	esac
+
+    case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+			;;
+		*)
+
+			local counter=$( __atomic_pos_first_nonflag $( __atomic_to_alternatives "$options_with_args" ) )
+
+			if [ $cword -eq $counter ]; then
+				__atomic_containers_and_images
+				return 0
+			fi
+
+			COMPREPLY=( $( compgen -d "$cur" ) )
+			return 0
+			;;
+	esac
+	return 0
+
+}
 _atomic_verify() {
 	case "$cur" in
 		*)
@@ -372,10 +413,20 @@ _atomic_stop() {
 	esac
 }
 
+_atomic_host_deploy() {
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "-r --reboot --os --preview -h --help" -- "$cur" ) )
+			;;
+		*)
+			;;
+	esac
+}
+
 _atomic_host_rollback() {
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "--reboot -h --help" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "-r --reboot -h --help" -- "$cur" ) )
 			;;
 		*)
 			;;
@@ -385,7 +436,7 @@ _atomic_host_rollback() {
 _atomic_host_status() {
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "-h --help" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "-p --pretty -h --help" -- "$cur" ) )
 			;;
 		*)
 			;;
@@ -395,7 +446,7 @@ _atomic_host_status() {
 _atomic_host_upgrade() {
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "--reboot -h --help" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "-r --reboot --os --allow-downgrade --check-diff -h --help" -- "$cur" ) )
 			;;
 		*)
 			;;
@@ -424,6 +475,7 @@ _atomic_host_host() {
 
 _atomic_host() {
 	local commands=(
+		deploy
 	        rollback
 		status
 		upgrade
@@ -445,6 +497,7 @@ _atomic() {
 		install
 		images
 		mount
+		scan
 		stop
 		run
 		verify
