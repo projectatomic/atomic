@@ -487,6 +487,61 @@ _atomic_host() {
 	return 0
 }
 
+_atomic_migrate() {
+	local commands=(
+		export
+		import
+	)
+
+	local completions_func=_atomic_migrate_${prev}
+        declare -F $completions_func >/dev/null && $completions_func
+
+	return 0
+}
+
+_atomic_migrate_migrate() {
+        local boolean_options="
+                --help -h
+        "
+        case "$prev" in
+                $main_options_with_args_glob )
+                        return
+                        ;;
+        esac
+
+        case "$cur" in
+                -*)
+                        COMPREPLY=( $( compgen -W "$boolean_options $main_options_with_args" -- "$cur" ) )
+                        ;;
+                *)
+                        COMPREPLY=( $( compgen -W "${commands[*]} help" -- "$cur" ) )
+                        ;;
+        esac
+}
+
+
+_atomic_migrate_export() {
+	case "$cur" in
+                -*)
+                        COMPREPLY=( $( compgen -W "--graph --dir -h --help" -- "$cur" ) )
+                        ;;
+                *)
+                        ;;
+        esac
+}
+
+_atomic_migrate_import() {
+	case "$cur" in
+                -*)
+                        COMPREPLY=( $( compgen -W "--graph --dir -h --help" -- "$cur" ) )
+                        ;;
+                *)
+                        ;;
+        esac
+
+}
+
+
 _atomic() {
 	local previous_extglob_setting=$(shopt -p extglob)
 	shopt -s extglob
@@ -496,6 +551,7 @@ _atomic() {
 		info
 		install
 		images
+		migrate
 		mount
 		scan
 		stop

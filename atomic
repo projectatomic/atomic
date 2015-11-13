@@ -232,6 +232,37 @@ if __name__ == '__main__':
     imagesp.add_argument("--prune", action="store_true",
                          help=_("prune dangling images"))
 
+    # atomic migrate
+    migratep = subparser.add_parser("migrate", help=_("migrate container's content from one backend storage "
+                                                    "to another"))
+    migrate_subparser = migratep.add_subparsers(help=_("migrate commands"))
+
+   # atomic export
+    exportp = migrate_subparser.add_parser(
+        "export", help=_("export containers and it's associated contents into a filesystem directory"),
+        epilog="export container's content. "
+        "The export command would export images, "
+        "containers and volumes into a filesystem directory.")
+    exportp.set_defaults(func=atomic.Export)
+    exportp.add_argument("--graph", dest="graph", default="/var/lib/docker",
+                        help=_("Root of the Docker runtime (Default: /var/lib/docker)"))
+    exportp.add_argument("--dir", dest="export_location",
+                         default="/var/lib/atomic/migrate",
+                         help=_("Path for exporting container's content (Default: /var/lib/atomic/migrate)"))
+	
+    # atomic import
+    importp = migrate_subparser.add_parser(
+         "import", help=_("import containers and it's associated contents from a filesystem directory"),
+         epilog="import container's content."
+         "The import command would import images,"
+         "containers and volumes from a filesystem directory.")
+    importp.set_defaults(func=atomic.Import)
+    importp.add_argument("--graph", dest="graph", default="/var/lib/docker",
+                         help=_("Root of the Docker runtime (Default: /var/lib/docker)"))
+    importp.add_argument("--dir", dest="import_location",
+                         default="/var/lib/atomic/migrate",
+                         help=_("Path for importing container's content (Default: /var/lib/atomic/migrate)"))
+
     # atomic mount
     mountp = subparser.add_parser(
         "mount", help=_("mount container image to a specified directory"),
@@ -248,7 +279,6 @@ if __name__ == '__main__':
     mountp.add_argument("image", help=_("image/container id"))
     mountp.add_argument("mountpoint", help=_("filesystem location to mount "
                                              "the image/container"))
-
     # atomic push
     pushp = subparser.add_parser(
         "push", aliases=['upload'], help=_("push latest image to repository"),

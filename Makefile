@@ -32,7 +32,7 @@ docs: $(MANPAGES_MD:%.md=%)
 .PHONY: clean
 clean:
 	$(PYTHON) setup.py clean
-	-rm -rf build *~ \#* *pyc .#* docs/*.1
+	-rm -rf dist build *~ \#* *pyc .#* docs/*.1
 
 .PHONY: install-only
 install-only:
@@ -40,6 +40,9 @@ install-only:
 
 	install -d -m 0755 $(DESTDIR)/usr/bin
 	ln -fs ../share/atomic/atomic $(DESTDIR)/usr/bin/atomic
+
+	install -d -m 0755 $(DESTDIR)/usr/libexec/atomic
+	install -m 0755 migrate.sh gotar $(DESTDIR)/usr/libexec/atomic
 
 	[ -d $(SYSCONFDIR) ] || mkdir -p $(SYSCONFDIR)
 	install -m 644 atomic.sysconfig $(SYSCONFDIR)/atomic
