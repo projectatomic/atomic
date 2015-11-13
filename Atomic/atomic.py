@@ -462,6 +462,15 @@ class Atomic(object):
                 docker_id = self.get_input_id(scan_input)
                 input_resolve[docker_id] = scan_input
                 scan_list.append(docker_id)
+
+        # Check to make sure none of the docker objects we need to
+        # scan are already mounted.
+        for docker_obj in scan_list:
+            if util.is_dock_obj_mounted(docker_obj):
+                sys.stderr.write("\nThe object {0} is already mounted (in  "
+                                 "use) and therefore cannot be scanned.\n"
+                                 .format(docker_obj))
+                sys.exit(1)
         util.writeOut("\nScanning...\n")
         bus = dbus.SystemBus()
         try:

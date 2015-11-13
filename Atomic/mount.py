@@ -176,6 +176,7 @@ class DockerMount(Mount):
         Mount.__init__(self, mountpoint, live)
         self.client = docker.Client()
         self.mnt_mkdir = mnt_mkdir
+        self.tmp_image = None
 
     def _create_temp_container(self, iid):
         """
@@ -210,7 +211,12 @@ class DockerMount(Mount):
             )['Id']
         except docker.errors.APIError as ex:
             raise MountError(str(ex))
+        self.tmp_image = iid
         return self._create_temp_container(iid)
+
+    def _is_container_running(self, cid):
+        cinfo = self.client.inspect_container(cid)
+        return cinfo['State']['Running']
 
     def _identifier_as_cid(self, identifier):
         """
@@ -335,8 +341,10 @@ class DockerMount(Mount):
             # to mount things by cid, then the new mountpoint is the
             # mount_path plus the first 20 chars of the cid
             self.mountpoint = os.path.join(self.mountpoint, cid[:20])
+
             try:
-                os.mkdir(self.mountpoint)
+                if not os.path.exists(self.mountpoint) :
+                    os.mkdir(self.mountpoint)
             except Exception as e:
                 raise MountError(e)
 
@@ -449,6 +457,12 @@ class DockerMount(Mount):
             except Exception as e:
                 raise MountError(e)
 
+    def _clean_tmp_image(self):
+        # If a temporary image is created with commit,
+        # clean up that too
+        if self.tmp_image is not None:
+            self.client.remove_image(self.tmp_image)
+
     def unmount(self):
         """
         Unmounts and cleans-up after a previous mount().
@@ -520,4 +534,6 @@ class DockerMount(Mount):
 
     def _clean_temp_container_by_path(self, path):
         short_cid = os.path.basename(path)
-        self.client.remove_container(short_cid)
+        if not self.live:
+            self.client.remove_container(short_cid)
+        self._clean_tmp_image()

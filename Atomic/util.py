@@ -189,3 +189,34 @@ def print_detail_scan_summary(json_data, names=None):
                                                      cve['rhsa_ref_url']))
                         writeOut("")
     return clean
+
+def get_mounts_by_path():
+    '''
+    Gets all mounted devices and paths
+    :return: dict of mounted devices and related information by path
+    '''
+    mount_info = []
+    f = open('/proc/mounts', 'r')
+    for line in f:
+        _tmp = line.split(" ")
+        mount_info.append({'path': _tmp[1],
+                           'device': _tmp[0],
+                           'type': _tmp[2],
+                           'options': _tmp[3]
+                           }
+                          )
+    return mount_info
+
+def is_dock_obj_mounted(docker_obj):
+    '''
+    Check if the provided docker object, which needs to be an ID,
+    is currently mounted and should be considered "busy"
+    :param docker_obj: str, must be in ID format
+    :return: bool True or False
+    '''
+    mount_info = get_mounts_by_path()
+    devices = [x['device'] for x in mount_info]
+    # If we can find the ID of the object in the list
+    # of devices which comes from mount, safe to assume
+    # it is busy.
+    return any(docker_obj in x for x in devices)
