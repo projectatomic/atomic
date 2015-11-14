@@ -431,17 +431,11 @@ if __name__ == '__main__':
         args = parser.parse_args()
         atomic.set_args(args)
         sys.exit(args.func())
-    except ValueError as e:
-        sys.stderr.write("%s\n" % str(e))
-        sys.exit(1)
-    except IOError as e:
-        sys.stderr.write("%s\n" % str(e))
-        sys.exit(1)
     except KeyboardInterrupt:
         sys.exit(0)
+    except (ValueError, IOError, docker.errors.DockerException) as e:
+        sys.stderr.write("%s\n" % str(e))
+        sys.exit(1)
     except subprocess.CalledProcessError as e:
         sys.stderr.write("\n")
         sys.exit(e.returncode)
-    except docker.errors.DockerException as e:
-        sys.stderr.write("%s\n" % str(e))
-        sys.exit(1)
