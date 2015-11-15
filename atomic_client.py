@@ -1,7 +1,5 @@
-import dbus
-import dbus.service
-
 import sys
+
 import dbus
 import dbus.service
 import dbus.mainloop.glib

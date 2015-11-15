@@ -1,27 +1,29 @@
-import sys
 import os
-import argparse
-import docker
-import json
-import subprocess
-import getpass
-import requests
-import pipes
+import sys
 import pwd
+import json
 import time
 import math
-import Atomic.mount as mount
-import Atomic.util as util
-import Atomic.satellite as satellite
-import Atomic.pulp as pulp
-import dbus
-from Atomic.Export import export_docker
-from Atomic.Import import import_docker
-
+import pipes
+import getpass
+import argparse
+import subprocess
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
 except ImportError:
     DEVNULL = open(os.devnull, 'wb')
+
+import dbus
+import docker
+import requests
+
+from . import mount
+from . import util
+from . import satellite
+from . import pulp
+from .Export import export_docker
+from .Import import import_docker
+
 
 IMAGES = []
 

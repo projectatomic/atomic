@@ -1,15 +1,16 @@
 """
 import docker images, containers and volumes from a filesystem directory.
 """
-import sys
 import os
+import sys
 import subprocess
-import Atomic.util as util
-
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
 except ImportError:
     DEVNULL = open(os.devnull, 'wb')
+
+from . import util
+
 
 def import_docker(graph, import_location):
     """

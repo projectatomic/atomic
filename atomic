@@ -21,13 +21,13 @@
 #    02110-1301 USA.
 #
 #
-import sys
 import os
-import argparse
+import sys
 import gettext
-import docker
+import argparse
 import subprocess
 
+import docker
 import Atomic
 
 PROGNAME = "atomic"

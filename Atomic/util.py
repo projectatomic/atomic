@@ -1,10 +1,11 @@
+import sys
+import json
+import subprocess
 import collections
+from fnmatch import fnmatch as matches
+
 import docker
 import selinux
-import subprocess
-import sys
-from fnmatch import fnmatch as matches
-import json
 
 """Atomic Utility Module"""
 

@@ -1,13 +1,15 @@
-import sys
-import requests
-import json
 import os
+import sys
+import json
 import base64
-from Atomic import util
 try:
     import ConfigParser as configparser
 except ImportError:  # py3 compat
     import configparser
+
+import requests
+
+from . import util
 
 # On latest Fedora, this is a symlink
 if hasattr(requests, 'packages'):
