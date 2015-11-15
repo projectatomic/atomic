@@ -224,6 +224,11 @@ def is_dock_obj_mounted(docker_obj):
 
 
 def urllib3_disable_warnings():
+    if not 'requests' in sys.modules:
+        import requests
+    else:
+        requests = sys.modules['requests']
+
     # On latest Fedora, this is a symlink
     if hasattr(requests, 'packages'):
         requests.packages.urllib3.disable_warnings()
@@ -232,8 +237,9 @@ def urllib3_disable_warnings():
         # to talk to urllib3 directly
         have_urllib3 = False
         try:
-            import urllib3
-            have_urllib3 = True
+            if not 'urllib3' in sys.modules:
+                import urllib3
+                have_urllib3 = True
         except ImportError as e:
             pass
         if have_urllib3:
