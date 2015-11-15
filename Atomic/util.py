@@ -221,3 +221,22 @@ def is_dock_obj_mounted(docker_obj):
     # of devices which comes from mount, safe to assume
     # it is busy.
     return any(docker_obj in x for x in devices)
+
+
+def urllib3_disable_warnings():
+    # On latest Fedora, this is a symlink
+    if hasattr(requests, 'packages'):
+        requests.packages.urllib3.disable_warnings()
+    else:
+        # But with python-requests-2.4.3-1.el7.noarch, we need
+        # to talk to urllib3 directly
+        have_urllib3 = False
+        try:
+            import urllib3
+            have_urllib3 = True
+        except ImportError as e:
+            pass
+        if have_urllib3:
+            # Except only call disable-warnings if it exists
+            if hasattr(urllib3, 'disable_warnings'):
+                urllib3.disable_warnings()
