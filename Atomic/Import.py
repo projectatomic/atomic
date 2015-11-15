@@ -52,7 +52,7 @@ def import_images(import_location):
     tarballs = subprocess.check_output("ls {0}/images".format(import_location), shell=True)
     split_tarballs = tarballs.split()
     for i in split_tarballs:
-	util.writeOut("Importing image with id: {0}".format(i[:-4]))
+        util.writeOut("Importing image with id: {0}".format(i[:-4]))
         subprocess.check_call("docker load < {0}/images/{1}".format(import_location, i), shell=True)
 
 def import_containers(graph, import_location):

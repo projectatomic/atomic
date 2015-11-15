@@ -128,7 +128,7 @@ class Atomic(object):
         return subprocess.check_call(["/usr/bin/docker", "pull", self.image])
 
     def pull(self):
-      	prevstatus = ""
+        prevstatus = ""
         for line in self.d.pull(self.image, stream=True):
             bar = json.loads(line)
             status = bar['status']
@@ -149,10 +149,10 @@ class Atomic(object):
         self.writeOut("")
 
     def Export(self):
-	Export.export_docker(self.args.graph, self.args.export_location)
+        Export.export_docker(self.args.graph, self.args.export_location)
 
     def Import(self):
-	Import.import_docker(self.args.graph, self.args.import_location)   
+        Import.import_docker(self.args.graph, self.args.import_location)
 
     def push(self):
         prevstatus = ""
