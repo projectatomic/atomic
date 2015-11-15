@@ -469,3 +469,7 @@ if __name__ == '__main__':
     except subprocess.CalledProcessError as e:
         sys.stderr.write("\n")
         sys.exit(e.returncode)
+    except AttributeError:
+        # python3 throws exception on no args to atomic
+        parser.print_usage()
+        sys.exit(1)

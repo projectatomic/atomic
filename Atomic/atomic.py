@@ -15,8 +15,8 @@ import Atomic.util as util
 import Atomic.satellite as satellite
 import Atomic.pulp as pulp
 import dbus
-import Atomic.Export as Export
-import Atomic.Import as Import
+from Atomic.Export import export_containers
+from Atomic.Import import import_containers
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -24,7 +24,6 @@ except ImportError:
     DEVNULL = open(os.devnull, 'wb')
 
 IMAGES = []
-
 
 def convert_size(size):
     if size > 0:
@@ -128,7 +127,7 @@ class Atomic(object):
         return subprocess.check_call(["/usr/bin/docker", "pull", self.image])
 
     def pull(self):
-      	prevstatus = ""
+        prevstatus = ""
         for line in self.d.pull(self.image, stream=True):
             bar = json.loads(line)
             status = bar['status']
@@ -149,10 +148,10 @@ class Atomic(object):
         self.writeOut("")
 
     def Export(self):
-	Export.export_docker(self.args.graph, self.args.export_location)
+        export_containers(self.args.graph, self.args.export_location)
 
     def Import(self):
-	Import.import_docker(self.args.graph, self.args.import_location)   
+        import_containers(self.args.graph, self.args.import_location)
 
     def push(self):
         prevstatus = ""
