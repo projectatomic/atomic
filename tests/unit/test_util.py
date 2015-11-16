@@ -22,7 +22,7 @@ class TestAtomicUtil(unittest.TestCase):
         self.assertTrue(len(matches) == 1)
 
     def test_image_by_name_registry_match(self):
-        matches = util.image_by_name('dock*/centos:latest')
+        matches = util.image_by_name('/centos:latest')
         self.assertTrue(len(matches) == 1)
 
     def test_image_by_name_no_match(self):
