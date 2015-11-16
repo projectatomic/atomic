@@ -392,6 +392,9 @@ if __name__ == '__main__':
     stopp.add_argument("-n", "--name", dest="name", default=None,
                        help=_("name of container"))
     stopp.add_argument("image", help=_("container image"))
+    stopp.add_argument("args", nargs=argparse.REMAINDER,
+                          help=_("Additional arguments appended to the image "
+                                 "stop method"))
 
     # atomic run
     runp = subparser.add_parser(

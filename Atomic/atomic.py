@@ -520,7 +520,7 @@ class Atomic(object):
 
         args = self._get_args("STOP")
         if args:
-            cmd = self.gen_cmd(args)
+            cmd = self.gen_cmd(args + list(map(pipes.quote, self.args.args)))
             self.display(cmd)
             subprocess.check_call(cmd, env=self.cmd_env, shell=True)
 
