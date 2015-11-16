@@ -9,21 +9,10 @@ IFS=$'\n\t'
 ATOMIC=${ATOMIC:="/usr/bin/atomic"}
 DOCKER=${DOCKER:="/usr/bin/docker"}
 
-setup () {
-    DISP_DIR="${WORK_DIR}/disp_test"
-    mkdir -p "${DISP_DIR}"
-    
-    INAME="atomic-test-1"
-}
-
 teardown () {
-    rm -rf "${DISP_DIR}"
-    ${DOCKER} rm TEST3
-    ${DOCKER} rm TEST4
+    ${DOCKER} rm TEST3 TEST4 2> /dev/null
 }
 trap teardown EXIT
-
-setup
 
 # Remove the --user UID:GID
 OUTPUT=`${ATOMIC} run --display -n TEST1 atomic-test-1 | sed 's/ --user [0-9]*:[0-9]* //' | xargs`
