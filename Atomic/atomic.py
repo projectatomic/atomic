@@ -734,7 +734,7 @@ class Atomic(object):
 
         args = self._get_args("INSTALL")
         if not args:
-            args = self.INSTALL_ARGS
+            return
 
         cmd = self.gen_cmd(args + list(map(pipes.quote, self.args.args)))
 
