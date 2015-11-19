@@ -88,7 +88,8 @@ class Mount:
         cmd = ['dmsetup', 'create', name, '--table', table]
         r = util.subp(cmd)
         if r.return_code != 0:
-            raise MountError('Failed to create thin device: ' + r.stderr)
+            raise MountError('Failed to create thin device: %s' %
+                             r.stderr.decode(sys.getdefaultencoding()))
 
     @staticmethod
     def _remove_thin_device(name):
@@ -97,7 +98,8 @@ class Mount:
         """
         r = util.subp(['dmsetup', 'remove', '--retry', name])
         if r.return_code != 0:
-            raise MountError('Could not remove thin device:\n' + r.stderr)
+            raise MountError('Could not remove thin device:\n%s' %
+                             r.stderr.decode(sys.getdefaultencoding()))
 
     @staticmethod
     def _is_device_active(device):
@@ -137,7 +139,8 @@ class Mount:
         r = util.subp(cmd)
         if r.return_code != 0:
             raise MountError('Could not mount docker container:\n' +
-                             ' '.join(cmd) + '\n' + r.stderr)
+                             ' '.join(cmd) + '\n%s' %
+                             r.stderr.decode(sys.getdefaultencoding()))
 
     @staticmethod
     def get_dev_at_mountpoint(mntpoint):
@@ -147,7 +150,7 @@ class Mount:
         """
         results = util.subp(['findmnt', '-o', 'SOURCE', mntpoint])
         if results.return_code != 0:
-            raise MountError('No device mounted at ' + mntpoint)
+            raise MountError('No device mounted at %s' % mntpoint)
 
         stdout = results.stdout.decode(sys.getdefaultencoding())
         return stdout.replace('SOURCE\n', '').strip().split('\n')[-1]
@@ -191,7 +194,7 @@ class DockerMount(Mount):
                 environment=['_ATOMIC_TEMP_CONTAINER'],
                 detach=True, network_disabled=True)['Id']
         except docker.errors.APIError as ex:
-            raise MountError('Error creating temporary container:\n' + str(ex))
+            raise MountError('Error creating temporary container:\n%s' % str(ex))
 
     def _clone(self, cid):
         """
@@ -426,7 +429,7 @@ class DockerMount(Mount):
 
         if status.return_code != 0:
             self._cleanup_container(cinfo)
-            raise MountError('Failed to mount OverlayFS device.\n' +
+            raise MountError('Failed to mount OverlayFS device.\n%s' %
                              status.stderr.decode(sys.getdefaultencoding()))
 
     def _cleanup_container(self, cinfo):
