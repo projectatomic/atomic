@@ -83,8 +83,8 @@ class Mount:
         Provisions an LVM device-mapper thin device reflecting,
         DM device id 'dm_id' in the docker pool.
         """
-        table = '0 {0} thin /dev/mapper/{1} {2}'.format(int(size) / 512,
-                                                        pool, dm_id)
+        table = '0 %d thin /dev/mapper/%s %s' %  (int(size)/512, pool, dm_id)
+        
         cmd = ['dmsetup', 'create', name, '--table', table]
         r = util.subp(cmd)
         if r.return_code != 0:
