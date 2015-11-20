@@ -328,9 +328,6 @@ class DockerMount(Mount):
         """
         Devicemapper mount backend.
         """
-        if os.geteuid() != 0:
-            raise MountError('Insufficient privileges to mount device.')
-
         if self.live and options:
             raise MountError('Cannot set mount options for live container '
                              'mount.')
@@ -400,9 +397,6 @@ class DockerMount(Mount):
         """
         OverlayFS mount backend.
         """
-        if os.geteuid() != 0:
-            raise MountError('Insufficient privileges to mount device.')
-
         if self.live:
             raise MountError('The OverlayFS backend does not support live '
                              'mounts.')

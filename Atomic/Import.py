@@ -18,9 +18,6 @@ def import_docker(graph, import_location):
     and volumes.
     """
 
-    if os.geteuid() != 0:
-        sys.exit("You need to have root privileges to run atomic import.")
-
     if not os.path.isdir(import_location):
         sys.exit("{0} does not exist".format(import_location))
     try:
