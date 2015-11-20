@@ -1,16 +1,18 @@
 """
 export docker images, containers and volumes into a filesystem directory.
 """
-import docker
-import sys
 import os
+import sys
 import subprocess
-import Atomic.util as util
-
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
 except ImportError:
     DEVNULL = open(os.devnull, 'wb')
+
+import docker
+
+from . import util
+
 
 DOCKER_CLIENT = docker.Client()
 

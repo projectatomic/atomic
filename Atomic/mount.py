@@ -22,13 +22,13 @@
 
 import os
 import sys
+import json
+from fnmatch import fnmatch as matches
 
 import docker
-import json
 
-from Atomic import util
+from . import util
 
-from fnmatch import fnmatch as matches
 
 """ Module for mounting and unmounting containerized applications. """
 
