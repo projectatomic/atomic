@@ -91,6 +91,9 @@ def add_opt(sub):
     sub.add_argument("--opt3", dest="opt3",help=argparse.SUPPRESS)
 
 if __name__ == '__main__':
+    if os.geteuid() != 0:
+        exit("%s needs to be run as root." % sys.argv[0] )
+   
     atomic = Atomic.Atomic()
     parser = HelpByDefaultArgumentParser(description=atomic.help())
     parser.register('action', 'parsers', AliasedSubParsersAction)

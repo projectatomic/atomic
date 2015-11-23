@@ -854,8 +854,6 @@ class Atomic(object):
         self.writeOut(self.verify())
 
     def mount(self):
-        if os.geteuid() != 0:
-            raise ValueError("This command must be run as root.")
         try:
             options = [opt for opt in self.args.options.split(',') if opt]
             mount.DockerMount(self.args.mountpoint,
@@ -871,8 +869,6 @@ class Atomic(object):
             raise ValueError(str(dme))
 
     def unmount(self):
-        if os.geteuid() != 0:
-            raise ValueError("This command must be run as root.")
         try:
             dev = mount.Mount.get_dev_at_mountpoint(self.args.mountpoint)
 

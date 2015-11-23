@@ -22,9 +22,6 @@ def export_docker(graph, export_location):
     and volumes.
     """
 
-    if os.geteuid() != 0:
-        sys.exit("You need to have root privileges to run atomic export.")
-
     if not os.path.isdir(export_location):
         os.makedirs(export_location)
 
