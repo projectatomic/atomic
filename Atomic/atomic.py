@@ -9,8 +9,6 @@ import getpass
 import argparse
 import subprocess
 import dbus
-import diff
-
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -21,6 +19,7 @@ import dbus
 import docker
 import requests
 
+from . import diff
 from . import mount
 from . import util
 from . import satellite
