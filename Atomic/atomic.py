@@ -472,7 +472,6 @@ class Atomic(object):
                                  "use) and therefore cannot be scanned.\n"
                                  .format(docker_obj))
                 sys.exit(1)
-        util.writeOut("\nScanning...\n")
         bus = dbus.SystemBus()
         try:
             oscap_d = bus.get_object(BUS_NAME, OBJECT_PATH)
