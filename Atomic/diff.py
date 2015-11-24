@@ -5,6 +5,7 @@ import Atomic.util as util
 from filecmp import dircmp
 import Atomic.mount as mount
 
+#pylint: disable=no-member
 
 class DiffHelpers(object):
     """
