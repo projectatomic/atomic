@@ -1066,19 +1066,20 @@ class Atomic(object):
 
         image_list = helpers.create_image_list(images)
 
-        # Set up RPM classes and make sure each docker object
-        # is RPM-based
-        if self.args.rpms:
-            rpm_image_list = helpers.build_rpm_list(image_list)
+        try:
+            # Set up RPM classes and make sure each docker object
+            # is RPM-based
+            if self.args.rpms:
+                rpm_image_list = helpers.build_rpm_list(image_list)
 
-        if not self.args.no_files:
-            helpers.output_files(images, image_list)
+            if not self.args.no_files:
+                helpers.output_files(images, image_list)
 
-        if self.args.rpms:
-            helpers.output_rpms(rpm_image_list)
-
-        # Clean up
-        helpers._cleanup(image_list)
+            if self.args.rpms:
+                helpers.output_rpms(rpm_image_list)
+        finally:
+            # Clean up
+            helpers._cleanup(image_list)
 
         if self.args.json:
             util.output_json(helpers.json_out)
