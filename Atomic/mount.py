@@ -380,7 +380,7 @@ class DockerMount(Mount):
                                         dm_pool)
 
         # XFS should get nouuid
-        fstype = Mount._get_fs(dm_dev_path)
+        fstype = Mount._get_fs(dm_dev_path).decode(sys.getdefaultencoding())
         if fstype.upper() == 'XFS' and 'nouuid' not in options:
             if 'nouuid' not in options:
                 options.append('nouuid')
