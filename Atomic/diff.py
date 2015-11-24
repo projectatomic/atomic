@@ -158,16 +158,19 @@ class RpmDiff(object):
         ts = rpm.TransactionSet(chroot_os)
         ts.setVSFlags((rpm._RPMVSF_NOSIGNATURES | rpm._RPMVSF_NODIGESTS))
         image_rpms = []
+        enc=sys.getdefaultencoding()
         for hdr in ts.dbMatch():  # No sorting  # pylint: disable=no-member
-            if hdr['name'] == 'gpg-pubkey':
+            name = hdr['name'].decode(enc)
+            if name == 'gpg-pubkey':
                 continue
             else:
                 if not self.names_only:
-                    foo = "{0}-{1}-{2}".format(hdr['name'],
+                    foo = "{0}-{1}-{2}".format(name, 
                                                hdr['epochnum'],
-                                               hdr['version'])
+                                               hdr['version'].decode(enc))
+
                 else:
-                    foo = "{0}".format(hdr['name'])
+                    foo = "{0}".format(name)
                 image_rpms.append(foo)
         return sorted(image_rpms)
 
