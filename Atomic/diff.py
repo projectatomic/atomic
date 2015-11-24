@@ -159,7 +159,7 @@ class RpmDiff(object):
         ts = rpm.TransactionSet(chroot_os)
         ts.setVSFlags((rpm._RPMVSF_NOSIGNATURES | rpm._RPMVSF_NODIGESTS))
         image_rpms = []
-        for hdr in ts.dbMatch():  # No sorting
+        for hdr in ts.dbMatch():  # No sorting  # pylint: disable=no-member
             if hdr['name'] == 'gpg-pubkey':
                 continue
             else:
