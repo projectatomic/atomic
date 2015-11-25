@@ -42,24 +42,40 @@ setup () {
 
 cleanup () {
 	systemctl stop docker
+
+	if findmnt /var/lib/docker >/dev/null; then
+		umount /var/lib/docker
+	fi
+
 	rm -rf /var/lib/overlayfs
-	umount /var/lib/docker 2>/dev/null
-	mv /etc/sysconfig/docker.backup /etc/sysconfig/docker 2>/dev/null
-	mv /etc/sysconfig/docker-storage.backup /etc/sysconfig/docker-storage 2>/dev/null
+
+	if [ -f /etc/sysconfig/docker.backup ]; then
+		mv /etc/sysconfig/docker{.backup,}
+	fi
+
+	if [ -f /etc/sysconfig/docker-storage.backup ]; then
+		mv /etc/sysconfig/docker-storage{.backup,}
+	fi
+
 	systemctl start docker
-	${DOCKER} rm -f -v test-migrate-1 test-migrate-2
+
+	for cnt in test-migrate-1 test-migrate-2; do
+		if ${DOCKER} inspect $cnt &>/dev/null; then
+			${DOCKER} rm -f -v $cnt
+		fi
+	done
 }
 
 trap cleanup EXIT
 
-# Test for atomic migrate export and import using default graph 
-# (/var/lib/docker) and export/import location (/var/lib/atomic-migrate).
+# Test for atomic migrate export and import using the default graph
+# at /var/lib/docker
 atomic_migrate () {
-	setup 
-  	${ATOMIC} migrate export
-  	switch_docker_storage
-  	echo 'y'|${ATOMIC} migrate import
-  	systemctl restart docker
+	setup
+	${ATOMIC} migrate export --dir "$(pwd)/migrate-dir"
+	switch_docker_storage
+	echo 'y'|${ATOMIC} migrate import --dir "$(pwd)/migrate-dir"
+	systemctl restart docker
 }
 
 switch_docker_storage () {
@@ -75,4 +91,3 @@ switch_docker_storage () {
 }
 
 atomic_migrate
-
