@@ -52,7 +52,7 @@ def import_images(import_location):
     tarballs = subprocess.check_output("ls {0}/images".format(import_location), shell=True)
     split_tarballs = tarballs.split()
     for i in split_tarballs:
-        util.writeOut("Importing image with id: {0}".format(i[:-4]))
+        util.writeOut("Importing image: {0}".format(i[:12]))
         subprocess.check_call("docker load < {0}/images/{1}".format(import_location, i), shell=True)
 
 def import_containers(graph, import_location):
@@ -76,7 +76,7 @@ def import_volumes(graph, import_location):
     """
     Method for importing docker volumes from a filesystem directory.
     """
-    util.writeOut("Importing Volumes")
+    util.writeOut("Importing volumes")
     subprocess.check_call("/usr/bin/tar --selinux -xzvf {0}/volumes/volumeData.tar.gz"
                           " -C {1}/volumes"
                           .format(import_location, graph), stdout=DEVNULL, shell=True)

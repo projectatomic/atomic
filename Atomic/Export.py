@@ -28,7 +28,7 @@ def export_docker(graph, export_location):
         os.makedirs(export_location)
 
     try:
-	#Save the docker storage driver
+    #Save the docker storage driver
         storage_driver = DOCKER_CLIENT.info()["Driver"]
         filed = open(export_location+"/info.txt", "w")
         filed.write(storage_driver)
@@ -56,32 +56,23 @@ def export_images(export_location):
     split_images, split_ids = ([] for i in range(2))
     for j in DOCKER_CLIENT.images():
         split_images.append(j["RepoTags"])
-    for k in DOCKER_CLIENT.images():
-        split_ids.append(k["Id"])
+        split_ids.append(j["Id"])
 
     dic = {}
 
     for i in range(0, len(split_ids)):
-        if split_images[i] == '<none>:<none>':
+        if '<none>:<none>' in split_images[i]:
             continue
-        if split_ids[i] in dic:
-            dic[split_ids[i]] = [dic[split_ids[i]], split_images[i]]
-        else:
-            dic[split_ids[i]] = split_images[i]
+        if split_ids[i] not in dic:
+            dic[split_ids[i]] = []
+        dic[split_ids[i]].extend(split_images[i])
 
     for ids, images in dic.iteritems():
-        util.writeOut("Exporting image with id: {0}".format(ids[:12]))
-        if isinstance(images, list):
-            img = ""
-            for i, val in enumerate(images):
-                img = img+" "+val
-            subprocess.check_call(
-                "docker save {0} > {1}/images/{2}.tar".format(
-                    img.lstrip(), export_location, ids[:12]), shell=True)
-        else:
-            subprocess.check_call(
-                "docker save {0} > {1}/images/{2}.tar".format(
-                    images, export_location, ids[:12]), shell=True)
+        util.writeOut("Exporting image: {0}".format(ids[:12]))
+        img = " ".join(images)
+        subprocess.check_call(
+            "docker save {0} > {1}/images/{2}.tar".format(
+                img, export_location, ids[:12]), shell=True)
 
 def export_containers(graph, export_location):
     """
@@ -108,7 +99,7 @@ def export_volumes(graph, export_location):
     """
     if not os.path.isdir(export_location + "/volumes"):
         os.makedirs(export_location + "/volumes")
-    util.writeOut("Exporting Volumes")
+    util.writeOut("Exporting volumes")
     subprocess.check_call("/usr/bin/tar --selinux -zcvf {0}/volumes/volumeData.tar.gz"
                           " -C {1}/volumes ."
                           .format(export_location, graph), stdout=DEVNULL, shell=True)
