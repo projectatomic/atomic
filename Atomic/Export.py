@@ -16,6 +16,8 @@ from . import util
 
 DOCKER_CLIENT = docker.Client()
 
+ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
+
 def export_docker(graph, export_location):
     """
     This is a wrapper function for exporting docker images, containers
@@ -93,10 +95,11 @@ def export_containers(graph, export_location):
         split_containers.append(j["Id"])
 
     for i in range(0, len(split_containers)):
-        util.writeOut("Exporting container ID:{0}".format(split_containers[i][:12]))
-        subprocess.check_call("/usr/libexec/atomic/migrate.sh export --container-id={0}"
-                              " --graph={1} --export-location={2}"
-                              .format(split_containers[i][:12], graph, export_location),
+        util.writeOut("Exporting container: {0}".format(split_containers[i][:12]))
+        subprocess.check_call("{0}/migrate.sh export --container-id={1}"
+                              " --graph={2} --export-location={3}"
+                              .format(ATOMIC_LIBEXEC, split_containers[i],
+                                      graph, export_location),
                               shell=True)
 
 def export_volumes(graph, export_location):

@@ -12,6 +12,8 @@ except ImportError:
 from . import util
 
 
+ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
+
 def import_docker(graph, import_location):
     """
     This is a wrapper function for importing docker images, containers
@@ -64,10 +66,11 @@ def import_containers(graph, import_location):
     containers = subprocess.check_output("ls {0}/containers".format(import_location), shell=True)
     split_containers = containers.split()
     for i in split_containers:
-        util.writeOut("Importing container ID:{0}".format(i[8:]))
-        subprocess.check_call("/usr/libexec/atomic/migrate.sh import --container-id={0}"
-                              " --graph={1} --import-location={2}"
-                              .format(i[8:], graph, import_location), shell=True)
+        i = i[8:] # strip off the "migrate-"
+        util.writeOut("Importing container: {0}".format(i[:12]))
+        subprocess.check_call("{0}/migrate.sh import --container-id={1}"
+                              " --graph={2} --import-location={3}"
+                              .format(ATOMIC_LIBEXEC, i, graph, import_location), shell=True)
 
 def import_volumes(graph, import_location):
     """
