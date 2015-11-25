@@ -39,8 +39,9 @@ if [[ ${OUTPUT} != "I am the run label." ]]; then
     exit 1
 fi
 
+# The centos image does not have an INSTALL label, so `atomic install` should be
+# a noop.
 OUTPUT=`${ATOMIC} install --display -n TEST5 centos | xargs`
-OUTPUT2='/usr/bin/docker run -t -i --rm --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=TEST5 -e IMAGE=centos -e CONFDIR=/host/etc/TEST5 -e LOGDIR=/host/var/log/TEST5 -e DATADIR=/host/var/lib/TEST5 --name TEST5 centos'
-if [[ ${OUTPUT} != ${OUTPUT2} ]]; then
+if [[ -n ${OUTPUT} ]]; then
     exit 1
 fi
