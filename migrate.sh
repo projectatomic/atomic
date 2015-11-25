@@ -73,6 +73,16 @@ fi
 
 }
 
+get_docker_pid() {
+	if ! systemctl is-active docker >/dev/null; then
+		echo "Docker daemon is not running"
+		exit 1
+	fi
+
+	pid=$(systemctl show -p MainPID docker.service)
+	echo ${pid#*=}
+}
+
 container_export(){
 	for arg in "$@"
 	do 
@@ -100,7 +110,7 @@ container_export(){
 		exportPath="/var/lib/atomic/migrate"
 	fi
 
-        dockerPid=$(ps aux|grep [d]ocker|awk 'NR==1{print $2}')
+        dockerPid=$(get_docker_pid)
         dockerCmdline=$(cat /proc/$dockerPid/cmdline)||exit 1
         if [[ $dockerCmdline =~ "-g=" ]] || [[ $dockerCmdline =~ "-g/" ]] || [[ $dockerCmdline =~ "--graph" ]];then
                 if [ -z "$dockerRootDir" ] || [ $dockerRootDir = "/var/lib/docker" ];then
@@ -158,7 +168,7 @@ container_import(){
                 importPath="/var/lib/atomic/migrate"
         fi
 
-	dockerPid=$(ps aux|grep [d]ocker|awk 'NR==1{print $2}')
+        dockerPid=$(get_docker_pid)
         dockerCmdline=$(cat /proc/$dockerPid/cmdline)||exit 1
         if [[ $dockerCmdline =~ "-g=" ]] || [[ $dockerCmdline =~ "-g/" ]] || [[ $dockerCmdline =~ "--graph" ]];then
                 if [ -z "$dockerRootDir" ] || [ $dockerRootDir = "/var/lib/docker" ];then
