@@ -4,13 +4,11 @@ import docker images, containers and volumes from a filesystem directory.
 import os
 import sys
 import subprocess
-try:
-    from subprocess import DEVNULL  # pylint: disable=no-name-in-module
-except ImportError:
-    DEVNULL = open(os.devnull, 'wb')
 
 from . import util
 
+
+ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
 
 def import_docker(graph, import_location):
     """
@@ -37,7 +35,7 @@ def import_docker(graph, import_location):
     choice = sys.stdin.read(1)
     if (choice == 'y') or (choice == 'Y'):
         util.writeOut("Deleting {0}".format(import_location))
-        subprocess.check_call("rm -rf {0}".format(import_location), shell=True)
+        subprocess.check_call(['/usr/bin/rm', '-rf', import_location])
     else:
         util.writeOut("Cleanup operation aborted")
     util.writeOut("Please restart docker daemon for the changes to take effect")
@@ -47,37 +45,44 @@ def import_images(import_location):
     """
     Method for importing docker images from a filesystem directory.
     """
-    tarballs = subprocess.check_output("ls {0}/images".format(import_location), shell=True)
-    split_tarballs = tarballs.split()
-    for i in split_tarballs:
-        util.writeOut("Importing image with id: {0}".format(i[:-4]))
-        subprocess.check_call("docker load < {0}/images/{1}".format(import_location, i), shell=True)
+    subdir = import_location + '/images'
+    images = os.listdir(subdir)
+    for image in images:
+        util.writeOut("Importing image: {0}".format(image[:12]))
+        with open(subdir + '/' + image) as f:
+            subprocess.check_call(["/usr/bin/docker", "load"], stdin=f)
 
 def import_containers(graph, import_location):
     """
     Method for importing docker containers from a filesystem directory.
     """
-    if not os.path.isdir(import_location + "/containers"):
-        sys.exit("{0} does not exist. No containers to import."
-                 .format(import_location+"/containers"))
+    subdir = import_location + '/containers'
+    containers = os.listdir(subdir)
+    for cnt in containers:
+        cnt = cnt[8:] # strip off the "migrate-" prefix
+        util.writeOut("Importing container: {0}".format(cnt[:12]))
+        subprocess.check_call([ATOMIC_LIBEXEC + '/migrate.sh',
+                               'import',
+                               '--container-id=' + cnt,
+                               '--graph=' + graph,
+                               '--import-location=' + import_location])
 
-    containers = subprocess.check_output("ls {0}/containers".format(import_location), shell=True)
-    split_containers = containers.split()
-    for i in split_containers:
-        util.writeOut("Importing container ID:{0}".format(i[8:]))
-        subprocess.check_call("/usr/libexec/atomic/migrate.sh import --container-id={0}"
-                              " --graph={1} --import-location={2}"
-                              .format(i[8:], graph, import_location), shell=True)
+def tar_extract(srcfile, destdir):
+    subprocess.check_call(['/usr/bin/tar', '--extract', '--gzip', '--selinux',
+                           '--file', srcfile, '--directory', destdir])
 
 def import_volumes(graph, import_location):
     """
     Method for importing docker volumes from a filesystem directory.
     """
-    util.writeOut("Importing Volumes")
-    subprocess.check_call("/usr/bin/tar --selinux -xzvf {0}/volumes/volumeData.tar.gz"
-                          " -C {1}/volumes"
-                          .format(import_location, graph), stdout=DEVNULL, shell=True)
-    if os.path.isdir(graph + "/vfs"):
-        subprocess.check_call("/usr/bin/tar --selinux -xzvf {0}/volumes/vfsData.tar.gz"
-                              " -C {1}/vfs"
-                              .format(import_location, graph), stdout=DEVNULL,  shell=True)
+
+    volfile = import_location + '/volumes/volumeData.tar.gz'
+    if os.path.isfile(volfile):
+        util.writeOut("Importing volumes")
+        tar_extract(srcfile=volfile,
+                    destdir = graph + '/volumes')
+
+    vfsfile = import_location + '/volumes/vfsData.tar.gz'
+    if os.path.isfile(vfsfile) and os.path.isdir(graph + "/vfs"):
+        tar_extract(srcfile=vfsfile,
+                    destdir = graph + '/vfs')

@@ -2,6 +2,9 @@
 # bash script to migrate containers from one backend storage to another.
 set -e
 
+ATOMIC_LIBEXEC="${ATOMIC_LIBEXEC-/usr/libexec/atomic}"
+GOTAR="$ATOMIC_LIBEXEC/gotar"
+
 main() {
 if [ $(id -u) != 0 ];then
 	echo "Run 'migrate' as root user"
@@ -70,6 +73,16 @@ fi
 
 }
 
+get_docker_pid() {
+	if ! systemctl is-active docker >/dev/null; then
+		echo "Docker daemon is not running"
+		exit 1
+	fi
+
+	pid=$(systemctl show -p MainPID docker.service)
+	echo ${pid#*=}
+}
+
 container_export(){
 	for arg in "$@"
 	do 
@@ -97,7 +110,7 @@ container_export(){
 		exportPath="/var/lib/atomic/migrate"
 	fi
 
-        dockerPid=$(ps aux|grep [d]ocker|awk 'NR==1{print $2}')
+        dockerPid=$(get_docker_pid)
         dockerCmdline=$(cat /proc/$dockerPid/cmdline)||exit 1
         if [[ $dockerCmdline =~ "-g=" ]] || [[ $dockerCmdline =~ "-g/" ]] || [[ $dockerCmdline =~ "--graph" ]];then
                 if [ -z "$dockerRootDir" ] || [ $dockerRootDir = "/var/lib/docker" ];then
@@ -116,11 +129,11 @@ container_export(){
 	echo $dockerRootDir>containerInfo.txt
 	echo $containerBaseImageID>>containerInfo.txt
 	echo $notruncContainerID>>containerInfo.txt
-        /usr/libexec/atomic/gotar -cf container-metadata.tar $dockerRootDir/containers/$notruncContainerID 2> /dev/null
+        "$GOTAR" -cf container-metadata.tar $dockerRootDir/containers/$notruncContainerID 2> /dev/null
         imageID=$(docker commit $containerID)||exit 1
         mkdir -p $tmpDir/temp
         docker save $imageID > $tmpDir/temp/image.tar||exit 1
-	$(cd $tmpDir/temp; /usr/libexec/atomic/gotar -xf image.tar)
+	$(cd $tmpDir/temp; "$GOTAR" -xf image.tar)
         cd $tmpDir/temp/$imageID
         cp layer.tar $tmpDir/container-diff.tar
         cd $tmpDir
@@ -155,7 +168,7 @@ container_import(){
                 importPath="/var/lib/atomic/migrate"
         fi
 
-	dockerPid=$(ps aux|grep [d]ocker|awk 'NR==1{print $2}')
+        dockerPid=$(get_docker_pid)
         dockerCmdline=$(cat /proc/$dockerPid/cmdline)||exit 1
         if [[ $dockerCmdline =~ "-g=" ]] || [[ $dockerCmdline =~ "-g/" ]] || [[ $dockerCmdline =~ "--graph" ]];then
                 if [ -z "$dockerRootDir" ] || [ $dockerRootDir = "/var/lib/docker" ];then
@@ -169,14 +182,14 @@ container_import(){
 
 	cd $importPath/containers/migrate-$containerID
 	dockerBaseImageID=$(sed -n '2p' containerInfo.txt)||exit 1	
-	cat container-diff.tar|docker run -i -v /usr/libexec/atomic/gotar:/dev/shm/gotar $dockerBaseImageID /dev/shm/gotar -xf -
+	cat container-diff.tar|docker run -i -v "$GOTAR:/dev/shm/gotar" $dockerBaseImageID /dev/shm/gotar -xf -
 	newContainerID=$(docker ps -lq)||exit 1
 	newContainerName=$(docker inspect -f '{{.Name}}' $newContainerID)||exit 1
 	newNotruncContainerID=$(docker ps -aq --no-trunc|grep $newContainerID)||exit 1					
 	cd $dockerRootDir/containers/$newNotruncContainerID
 	rm -rf *
 	cp $importPath/containers/migrate-$containerID/container-metadata.tar .
-	/usr/libexec/atomic/gotar -xf container-metadata.tar	
+	"$GOTAR" -xf container-metadata.tar	
 	rm container-metadata.tar
 	oldDockerRootDir=$(sed -n '1p' $importPath/containers/migrate-$containerID/containerInfo.txt)||exit 1
 	oldNotruncContainerID=$(sed -n '3p' $importPath/containers/migrate-$containerID/containerInfo.txt)||exit 1
