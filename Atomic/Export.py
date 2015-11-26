@@ -4,10 +4,6 @@ export docker images, containers and volumes into a filesystem directory.
 import os
 import sys
 import subprocess
-try:
-    from subprocess import DEVNULL  # pylint: disable=no-name-in-module
-except ImportError:
-    DEVNULL = open(os.devnull, 'wb')
 
 import docker
 
@@ -53,26 +49,21 @@ def export_images(export_location):
     if not os.path.isdir(export_location + "/images"):
         os.makedirs(export_location + "/images")
 
-    split_images, split_ids = ([] for i in range(2))
-    for j in DOCKER_CLIENT.images():
-        split_images.append(j["RepoTags"])
-        split_ids.append(j["Id"])
+    images = {}
+    for image in DOCKER_CLIENT.images():
+        id, tags = image["Id"], image["RepoTags"]
 
-    dic = {}
-
-    for i in range(0, len(split_ids)):
-        if '<none>:<none>' in split_images[i]:
+        if '<none>:<none>' in tags:
             continue
-        if split_ids[i] not in dic:
-            dic[split_ids[i]] = []
-        dic[split_ids[i]].extend(split_images[i])
+        if id not in images:
+            images[id] = []
+        images[id].extend(tags)
 
-    for ids, images in dic.iteritems():
-        util.writeOut("Exporting image: {0}".format(ids[:12]))
-        img = " ".join(images)
-        subprocess.check_call(
-            "docker save {0} > {1}/images/{2}.tar".format(
-                img, export_location, ids[:12]), shell=True)
+    for id in images:
+        tags = " ".join(images[id])
+        util.writeOut("Exporting image: {0}".format(id[:12]))
+        with open(export_location + '/images/' + id, 'w') as f:
+            subprocess.check_call(["/usr/bin/docker", "save", tags], stdout=f)
 
 def export_containers(graph, export_location):
     """
@@ -81,17 +72,20 @@ def export_containers(graph, export_location):
     if not os.path.isdir(export_location + "/containers"):
         os.makedirs(export_location + "/containers")
 
-    split_containers = []
-    for j in DOCKER_CLIENT.containers(all=True):
-        split_containers.append(j["Id"])
+    for container in DOCKER_CLIENT.containers(all=True):
+        id = container["Id"]
 
-    for i in range(0, len(split_containers)):
-        util.writeOut("Exporting container: {0}".format(split_containers[i][:12]))
-        subprocess.check_call("{0}/migrate.sh export --container-id={1}"
-                              " --graph={2} --export-location={3}"
-                              .format(ATOMIC_LIBEXEC, split_containers[i],
-                                      graph, export_location),
-                              shell=True)
+        util.writeOut("Exporting container: {0}".format(id[:12]))
+        subprocess.check_call([ATOMIC_LIBEXEC + '/migrate.sh',
+                               'export',
+                               '--container-id=' + id,
+                               '--graph=' + graph,
+                               '--export-location=' + export_location])
+
+def tar_create(srcdir, destfile):
+    subprocess.check_call(['/usr/bin/tar', '--create', '--gzip', '--selinux',
+                           '--file', destfile, '--directory', srcdir, '.'])
+
 
 def export_volumes(graph, export_location):
     """
@@ -99,13 +93,11 @@ def export_volumes(graph, export_location):
     """
     if not os.path.isdir(export_location + "/volumes"):
         os.makedirs(export_location + "/volumes")
+
     util.writeOut("Exporting volumes")
-    subprocess.check_call("/usr/bin/tar --selinux -zcvf {0}/volumes/volumeData.tar.gz"
-                          " -C {1}/volumes ."
-                          .format(export_location, graph), stdout=DEVNULL, shell=True)
+    tar_create(srcdir = graph + '/volumes',
+               destfile = export_location + '/volumes/volumeData.tar.gz')
+
     if os.path.isdir(graph + "/vfs"):
-        subprocess.check_call("/usr/bin/tar --selinux -zcvf {0}/volumes/vfsData.tar.gz"
-                              " -C {1}/vfs ."
-                              .format(export_location, graph), stdout=DEVNULL, shell=True)
-
-
+        tar_create(srcdir = graph + '/vfs',
+                   destfile = export_location + '/volumes/vfsData.tar.gz')
