@@ -6,7 +6,8 @@ import dbus.mainloop.glib
 from gi.repository import GLib
 import slip.dbus.service
 from slip.dbus import polkit
-import Atomic
+
+from . import Atomic
 
 
 class atomic_dbus(slip.dbus.service.Object):
@@ -19,7 +20,7 @@ class atomic_dbus(slip.dbus.service.Object):
 
     def __init__(self, *p, **k):
         slip.dbus.service.Object.__init__(*p, **k)
-        self.atomic = Atomic.Atomic()
+        self.atomic = Atomic()
 
     """
     The version method takes in an image name and returns its version
