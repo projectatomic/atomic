@@ -1,10 +1,11 @@
 import os
 import sys
 import rpm
-import Atomic.util as util
 from filecmp import dircmp
-import Atomic.mount as mount
-from Atomic import Atomic
+
+from . import util
+from . import mount
+from . import Atomic
 
 class Diff(Atomic):
     def diff(self):
