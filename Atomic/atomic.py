@@ -19,7 +19,6 @@ import dbus
 import docker
 import requests
 
-from . import diff
 from . import mount
 from . import util
 from . import satellite
@@ -1064,38 +1063,6 @@ class Atomic(object):
             self.active_containers = self.d.containers(all=False)
 
         return self.active_containers
-
-
-    def diff(self):
-        '''
-        Allows you to 'diff' the RPMs between two different docker images|containers.
-        :return: None
-        '''
-        helpers = diff.DiffHelpers(self.args)
-        images = self.args.compares
-        # Check to make sure each input is valid
-        for image in images:
-            self.get_input_id(image)
-
-        image_list = helpers.create_image_list(images)
-
-        try:
-            # Set up RPM classes and make sure each docker object
-            # is RPM-based
-            if self.args.rpms:
-                rpm_image_list = helpers.build_rpm_list(image_list)
-
-            if not self.args.no_files:
-                helpers.output_files(images, image_list)
-
-            if self.args.rpms:
-                helpers.output_rpms(rpm_image_list)
-        finally:
-            # Clean up
-            helpers._cleanup(image_list)
-
-        if self.args.json:
-            util.output_json(helpers.json_out)
 
 
 class AtomicError(Exception):

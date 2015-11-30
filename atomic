@@ -29,6 +29,7 @@ import subprocess
 
 import docker
 import Atomic
+from Atomic.diff import Diff
 
 PROGNAME = "atomic"
 gettext.bindtextdomain(PROGNAME, "/usr/share/locale")
@@ -104,7 +105,7 @@ if __name__ == '__main__':
     diffp = subparser.add_parser(
     "diff", help=_("Show differences between two container images, file diff or RPMS."),
     epilog="atomic diff 'image1|container1' 'image2|container2'")
-    diffp.set_defaults(func=atomic.diff)
+    diffp.set_defaults(_class=Diff, func='diff')
     diffp.add_argument("compares", nargs=2,
                        help=_("Container images to compare"))
     diffp.add_argument("--json", default=False, action='store_true',
@@ -127,7 +128,7 @@ if __name__ == '__main__':
         # atomic host rollback
         rollbackp = host_subparser.add_parser(
             "rollback", help=_("switch to alternate installed tree at next boot"))
-        rollbackp.set_defaults(func=atomic.host_rollback)
+        rollbackp.set_defaults(func='host_rollback')
         rollbackp.add_argument("-r", "--reboot", dest="reboot",
                                action="store_true",
                                help=_("initiate a reboot after rollback is "
@@ -151,13 +152,13 @@ if __name__ == '__main__':
                                     "if you want to pass additional "
                                     "unsupported arguments to rpm-ostree."))
 
-        statusp.set_defaults(func=atomic.host_status)
+        statusp.set_defaults(func='host_status')
 
         # atomic host upgrade
         upgradep = host_subparser.add_parser(
             "upgrade", help=_("upgrade to the latest Atomic tree if one "
                               "is available"))
-        upgradep.set_defaults(func=atomic.host_upgrade)
+        upgradep.set_defaults(func='host_upgrade')
         upgradep.add_argument("-r", "--reboot", dest="reboot",
                               action="store_true",
                               help=_("if an upgrade is available, reboot "
@@ -179,7 +180,7 @@ if __name__ == '__main__':
         # atomic host rebase
         rebasep = host_subparser.add_parser(
             "rebase", help=_("Download and deploy a new origin refspec"))
-        rebasep.set_defaults(func=atomic.host_rebase)
+        rebasep.set_defaults(func='host_rebase')
         rebasep.add_argument("--os", dest="os",
                               help=_("Operate on provided OSNAME"))
         rebasep.add_argument("refspec",
@@ -193,7 +194,7 @@ if __name__ == '__main__':
         # atomic host deploy
         deployp = host_subparser.add_parser(
             "deploy", help=_("deploy a specific commit"))
-        deployp.set_defaults(func=atomic.host_deploy)
+        deployp.set_defaults(func='host_deploy')
         deployp.add_argument("revision", help=_("Checksum or version to deploy"));
         deployp.add_argument("-r", "--reboot", dest="reboot",
                              action="store_true",
@@ -214,7 +215,7 @@ if __name__ == '__main__':
         "info", help=_("display label information about an image"),
         epilog="atomic info attempts to read and display the LABEL "
         "information about an image")
-    infop.set_defaults(func=atomic.info)
+    infop.set_defaults(func='info')
     infop.add_argument("--remote", dest="force_remote_info",
                        action='store_true', default=False,
                        help=_('ignore local images and only scan registries'))
@@ -228,7 +229,7 @@ if __name__ == '__main__':
         "the image on to your machine.  You could add a LABEL "
         "INSTALL command to your Dockerfile like: 'LABEL INSTALL "
         "%s'" % atomic.print_install())
-    installp.set_defaults(func=atomic.install)
+    installp.set_defaults(func='install')
     add_opt(installp)
     installp.add_argument("-n", "--name", dest="name", default=None,
                           help=_("name of container"))
@@ -249,7 +250,7 @@ if __name__ == '__main__':
         "container images on your system.  Using the --prune "
         "option, will free up disk space deleting unused "
         "'dangling' images")
-    imagesp.set_defaults(func=atomic.images)
+    imagesp.set_defaults(func='images')
     imagesp.add_argument("--prune", action="store_true",
                          help=_("prune dangling images"))
 
@@ -264,7 +265,7 @@ if __name__ == '__main__':
         epilog="export container's content. "
         "The export command would export images, "
         "containers and volumes into a filesystem directory.")
-    exportp.set_defaults(func=atomic.Export)
+    exportp.set_defaults(func='Export')
     exportp.add_argument("--graph", dest="graph", default="/var/lib/docker",
                         help=_("Root of the Docker runtime (Default: /var/lib/docker)"))
     exportp.add_argument("--dir", dest="export_location",
@@ -277,7 +278,7 @@ if __name__ == '__main__':
          epilog="import container's content."
          "The import command would import images,"
          "containers and volumes from a filesystem directory.")
-    importp.set_defaults(func=atomic.Import)
+    importp.set_defaults(func='Import')
     importp.add_argument("--graph", dest="graph", default="/var/lib/docker",
                          help=_("Root of the Docker runtime (Default: /var/lib/docker)"))
     importp.add_argument("--dir", dest="import_location",
@@ -290,7 +291,7 @@ if __name__ == '__main__':
         epilog="atomic mount attempts to mount a container image to a "
         "specified directory so that its contents may be "
         "inspected.")
-    mountp.set_defaults(func=atomic.mount)
+    mountp.set_defaults(func='mount')
     mountp.add_argument("-o", "--options", dest="options", default="",
                         help=_("comma-separated list of mount options, "
                                "defaults are 'ro,nodev,nosuid'"))
@@ -304,7 +305,7 @@ if __name__ == '__main__':
     pushp = subparser.add_parser(
         "push", aliases=['upload'], help=_("push latest image to repository"),
         epilog="push the latest specified image to a repository.")
-    pushp.set_defaults(func=atomic.push)
+    pushp.set_defaults(func='push')
 
     # making it so we cannot call both the --pulp and --satellite commands
     # at the same time (mutually exclusive)
@@ -368,7 +369,7 @@ if __name__ == '__main__':
     scanp = subparser.add_parser(
         "scan", help=_("scan an image or container for CVEs"),
         epilog="atomic scan <input> scans a container or image for CVEs")
-    scanp.set_defaults(func=atomic.scan)
+    scanp.set_defaults(func='scan')
     scan_group = scanp.add_mutually_exclusive_group()
     scan_out = scanp.add_mutually_exclusive_group()
     scan_out.add_argument("--json", default=False, action='store_true', help=_("output json"))
@@ -384,7 +385,7 @@ if __name__ == '__main__':
         "stop", help=_("execute container image stop method"),
         epilog="atomic will just stop the container if it is running, if "
         "image does not specify LABEL STOP")
-    stopp.set_defaults(func=atomic.stop)
+    stopp.set_defaults(func='stop')
     add_opt(stopp)
     stopp.add_argument("-n", "--name", dest="name", default=None,
                        help=_("name of container"))
@@ -395,7 +396,7 @@ if __name__ == '__main__':
         "run", help=_("execute container image run method"),
         epilog="atomic run defaults to the following command, if image "
         "does not specify LABEL run\n'%s'" % atomic.print_run())
-    runp.set_defaults(func=atomic.run)
+    runp.set_defaults(func='run')
     add_opt(runp)
     runp.add_argument("-n", "--name", dest="name", default=None,
                       help=_("name of container"))
@@ -422,7 +423,7 @@ if __name__ == '__main__':
         "remove the image from your machine.  You could add a "
         "LABEL UNINSTALL command to your Dockerfile like: 'LABEL "
         "UNINSTALL %s'" % atomic.print_uninstall())
-    uninstallp.set_defaults(func=atomic.uninstall)
+    uninstallp.set_defaults(func='uninstall')
     add_opt(uninstallp)
     uninstallp.add_argument("-n", "--name", dest="name", default=None,
                             help=_("name of container"))
@@ -440,7 +441,7 @@ if __name__ == '__main__':
         "unmount", help=_("unmount container image"),
         epilog="atomic unmount will unmount a container image previously "
         "mounted with atomic mount")
-    unmountp.set_defaults(func=atomic.unmount)
+    unmountp.set_defaults(func='unmount')
     unmountp.add_argument("mountpoint",
                           help=_("filesystem location of image/container to "
                                  "be unmounted"))
@@ -452,7 +453,7 @@ if __name__ == '__main__':
         "previously created  container based on this image exists, "
         "the container will continue to use the old image.  Use "
         "--force to remove the outdated container.")
-    updatep.set_defaults(func=atomic.update)
+    updatep.set_defaults(func='update')
     updatep.add_argument("-f", "--force", default=False, dest="force",
                          action="store_true",
                          help=_("remove all containers based on this image"))
@@ -466,7 +467,7 @@ if __name__ == '__main__':
     versionp.add_argument("-r", "--recurse", default=False, dest="recurse",
                           action="store_true",
                           help=_("recurse through all layers"))
-    versionp.set_defaults(func=atomic.print_version)
+    versionp.set_defaults(func='print_version')
     versionp.add_argument("image", help=_("container image"))
 
     # atomic verify
@@ -475,13 +476,14 @@ if __name__ == '__main__':
         epilog="atomic verify checks whether there is a newer image "
         "available and scans through all layers to see if any of "
         "the sublayers have a new version available")
-    verifyp.set_defaults(func=atomic.print_verify)
+    verifyp.set_defaults(func='print_verify')
     verifyp.add_argument("image", help=_("container image"))
-
     try:
         args = parser.parse_args()
-        atomic.set_args(args)
-        sys.exit(args.func())
+        _class = atomic if '_class' not in args else args._class()
+        _class.set_args(args)
+        _func = getattr(_class, args.func)
+        sys.exit(_func())
     except KeyboardInterrupt:
         sys.exit(0)
     except (ValueError, IOError, docker.errors.DockerException) as e:
