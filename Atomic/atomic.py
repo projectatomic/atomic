@@ -708,21 +708,34 @@ class Atomic(object):
         return " "
 
     def images(self):
+        def get_col_lengths(_images):
+            '''
+            Determine the max length of the repository and tag names
+            :param _images:
+            :return: a set with len of repository and tag
+            '''
+            repo_tags = [item.split(":") for sublist in _images for item
+                         in sublist['RepoTags']]
+            # We add the 1 to the repo max length for self.dangling(repo)
+            return max([len(x[0]) for x in repo_tags]) + 1,\
+                   max([len(x[1]) for x in repo_tags])
+
         if self.args.prune:
             cmd = "/usr/bin/docker images --filter dangling=true -q".split()
             for i in subprocess.check_output(cmd, stderr=DEVNULL).split():
                 self.d.remove_image(i, force=True)
             return
 
-        self.writeOut(" %-35s %-19s %.12s            %-19s %-10s" %
-                      ("REPOSITORY", "TAG", "IMAGE ID", "CREATED",
-                       "VIRTUAL SIZE"))
-
+        _images = self.get_images()
+        _max_repo, _max_tag = get_col_lengths(_images)
+        col_out = "{0:" + str(_max_repo) + "} {1:" + str(_max_tag) + \
+                  "} {2:12} {3:19} {4:10}"
+        self.writeOut(col_out.format("REPOSITORY", "TAG", "IMAGE ID",
+                                     "CREATED", "VIRTUAL SIZE"))
         for image in self.get_images():
             repo, tag = image["RepoTags"][0].rsplit(":", 1)
-            self.writeOut(
-                "%s%-35s %-19s %.12s        %-19s %-12s" %
-                (self.dangling(repo), repo, tag, image["Id"],
+            self.writeOut(col_out.format(self.dangling(repo) + repo,
+                                         tag, image["Id"][:12],
                  time.strftime("%F %H:%M",
                                time.localtime(image["Created"])),
                  convert_size(image["VirtualSize"])))
