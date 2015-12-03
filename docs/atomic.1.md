@@ -44,6 +44,9 @@ scan an image or container for CVEs
 **atomic-stop(1)**
 execute container image stop method
 
+**atomic-top(1)**
+display a top-like list of container processes
+
 **atomic-uninstall(1)**
 uninstall container from system
 

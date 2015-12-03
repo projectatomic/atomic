@@ -1054,12 +1054,12 @@ class Atomic(object):
 
         return self.containers
 
-    def get_active_containers(self):
+    def get_active_containers(self, refresh=False):
         '''
         Wrapper function for obtaining active containers.  Should be used
         instead of direct queries to docker
         '''
-        if not self.active_containers:
+        if not self.active_containers or refresh:
             self.active_containers = self.d.containers(all=False)
 
         return self.active_containers
@@ -1074,3 +1074,22 @@ def SetFunc(function):
         def __call__(self, parser, namespace, values, option_string=None):
             setattr(namespace, self.dest, function)
     return customAction
+
+
+class AtomicDocker(docker.Client):
+    """
+    A class based on the docker client class with custom APIs specifically for
+    atomic
+    """
+    def atomic_top(self, container, ps_args=None):
+        """
+        Same as the docker top API but allows passing of ps args
+        :param container: container ID
+        :param ps_args:  custom ps args
+        :return:
+        """
+        u = self._url("/containers/{0}/top".format(container))
+        params = {}
+        if ps_args is not None:
+            params['ps_args'] = ps_args
+        return self._result(self._get(u, params=params), True)
