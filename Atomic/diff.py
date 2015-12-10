@@ -21,22 +21,32 @@ class Diff(Atomic):
 
         image_list = helpers.create_image_list(images)
 
-        # Set up RPM classes and make sure each docker object
-        # is RPM-based
-        if self.args.rpms:
-            rpm_image_list = helpers.build_rpm_list(image_list)
+        try:
+            # Set up RPM classes and make sure each docker object
+            # is RPM-based
+            rpm_image_list = []
+            if self.args.rpms:
+                for image in image_list:
+                    rpmimage = RpmDiff(image.chroot, image.name, self.args.names_only)
+                    if not rpmimage.is_rpm:
+                        helpers._cleanup(image_list)
+                        raise ValueError("{0} is not RPM based.".format(rpmimage.name))
+                    rpm_image_list.append(rpmimage)
 
-        if not self.args.no_files:
-            helpers.output_files(images, image_list)
+            if not self.args.no_files:
+                helpers.output_files(images, image_list)
 
-        if self.args.rpms:
-            helpers.output_rpms(rpm_image_list)
+            if self.args.rpms:
+                helpers.output_rpms(rpm_image_list)
 
-        # Clean up
-        helpers._cleanup(image_list)
+            # Clean up
+            helpers._cleanup(image_list)
 
-        if self.args.json:
-            util.output_json(helpers.json_out)
+            if self.args.json:
+                util.output_json(helpers.json_out)
+        except KeyboardInterrupt:
+            util.writeOut("Quitting...")
+            helpers._cleanup(image_list)
 
 class DiffHelpers(object):
     """
@@ -45,29 +55,6 @@ class DiffHelpers(object):
     def __init__(self, args):
         self.args = args
         self.json_out = {}
-
-    def build_rpm_list(self, image_list):
-        """
-        Build and return a list of rpms
-        :param image_list:
-        :return: list
-        """
-        rpm_image_list = []
-        for image in image_list:
-            rpm_image_list.append(RpmDiff(image.chroot, image.name, self.args.names_only))
-        self.are_all_images_rpm(rpm_image_list)
-        return rpm_image_list
-
-    @staticmethod
-    def are_all_images_rpm(image_list):
-        """
-        Stub function to determine if all images are RPM based after mounting
-        :param image_list:
-        :return: bool True or False
-        """
-        for image in image_list:
-            if not image.is_rpm:
-                raise ValueError("{0} is not RPM based.".format(image.name))
 
     @staticmethod
     def _cleanup(image_list):
@@ -132,7 +119,6 @@ class DiffHelpers(object):
                     _tmp.update(rpm_json[image])
                     self.json_out[image] = _tmp
 
-
 class DiffObj(object):
     def __init__(self, docker_name):
         self.dm = mount.DockerMount("/tmp", mnt_mkdir=True)
@@ -161,8 +147,6 @@ class RpmDiff(object):
         self.rpms = None
         self.release = None
         self.names_only = names_only
-        if self.is_rpm:
-            self._get_rpm_content()
 
     def _get_rpm_content(self):
         """
@@ -326,9 +310,9 @@ class DiffFS(object):
             (_dir, dir_names, files) = x
             if len(dir_names) < 1 and len(files) > 0:
                 for _file in files:
-                    file_list.append(os.path.join(_dir, _file))
+                    file_list.append(os.path.join(_dir, _file).encode('utf-8'))
             elif len(dir_names) < 1 and len(files) < 1:
-                file_list.append(_dir)
+                file_list.append(_dir.encode('utf-8'))
         return file_list
 
     def delta(self, compare_obj):
