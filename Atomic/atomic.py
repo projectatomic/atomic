@@ -8,7 +8,6 @@ import pipes
 import getpass
 import argparse
 import subprocess
-import dbus
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
