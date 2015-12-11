@@ -128,6 +128,8 @@ class Top(Atomic):
         :param con_id: id of the container
         :return: dict
         """
+        if len(self.active_containers) == 0:
+            raise ValueError("No containers running")
         f_procs = []
         # Get the name of the container by ID
         con_name = str(next((l for l in self.active_containers if l['Id'] == con_id), None)['Names'][0])
@@ -142,13 +144,14 @@ class Top(Atomic):
         if self.titles is None:
             self.titles = con_procs['Titles']
 
-        # Massage the information into a dict
-        for proc in con_procs['Processes']:
-            t_dict = {'CID': con_id,
-                      'NAME': con_name}
-            for place in range(0, len(proc)):
-                t_dict[self.titles[place]] = proc[place]
-            f_procs.append(t_dict)
+        if con_procs['Processes'] != None:
+            # Massage the information into a dict
+            for proc in con_procs['Processes']:
+                t_dict = {'CID': con_id,
+                          'NAME': con_name}
+                for place in range(0, len(proc)):
+                    t_dict[self.titles[place]] = proc[place]
+                    f_procs.append(t_dict)
         return f_procs
 
     def output_top(self, sorted_info):
