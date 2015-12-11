@@ -31,6 +31,7 @@ import docker
 import Atomic
 from Atomic.diff import Diff
 from Atomic.top import Top
+from Atomic.verify import Verify
 
 PROGNAME = "atomic"
 gettext.bindtextdomain(PROGNAME, "/usr/share/locale")
@@ -485,8 +486,12 @@ if __name__ == '__main__':
         epilog="atomic verify checks whether there is a newer image "
         "available and scans through all layers to see if any of "
         "the sublayers have a new version available")
-    verifyp.set_defaults(func='print_verify')
+    verifyp.set_defaults(_class=Verify, func='verify')
     verifyp.add_argument("image", help=_("container image"))
+    verifyp.add_argument("-v", "--verbose", default=False,
+                          action="store_true",
+                          help=_("Report status of each layer"))
+
     try:
         args = parser.parse_args()
         _class = atomic if '_class' not in args else args._class()
