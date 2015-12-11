@@ -100,7 +100,7 @@ class Atomic(object):
         self._images = []
         self.containers = False
         self.images_cache = None
-        self.active_containers = False
+        self.active_containers = []
 
     def writeOut(self, output, lf="\n"):
         sys.stdout.flush()
@@ -1058,7 +1058,7 @@ class Atomic(object):
         Wrapper function for obtaining active containers.  Should be used
         instead of direct queries to docker
         '''
-        if not self.active_containers or refresh:
+        if len(self.active_containers) == 0 or refresh:
             self.active_containers = self.d.containers(all=False)
 
         return self.active_containers
