@@ -24,7 +24,7 @@ import os
 import sys
 import json
 from fnmatch import fnmatch as matches
-
+import time
 import docker
 
 from . import util
@@ -156,13 +156,25 @@ class Mount:
         return stdout.replace('SOURCE\n', '').strip().split('\n')[-1]
 
     @staticmethod
-    def unmount_path(path):
+    def unmount_path(path, timeout=10):
         """
         Unmounts the directory specified by path.
         """
-        r = util.subp(['umount', path])
-        if r.return_code != 0:
-            raise ValueError(r.stderr)
+
+        # Added this timeout loop because it seems openscap/openscap-daemon
+        # still has a left over process running that causes the mount path
+        # to be busy and therefore causes the umount to fail.
+        #
+        # When that is fixed, this can revert to a simple command executed
+        # by subp.
+        for x in range(0, timeout, 1):
+            rc, result_stdout, result_stderr = util.subp(['umount', path])
+            if rc == 0:
+                return rc, result_stdout, result_stderr
+            sys.stderr.write("Warning: {}\nRetrying {}/{} to unmount {}\n"
+                             .format(result_stderr, x+1, timeout, path))
+            time.sleep(1)
+        raise ValueError("Unable to unmount {0} due to {1}".format(path, result_stderr))
 
 
 class DockerMount(Mount):
@@ -458,7 +470,7 @@ class DockerMount(Mount):
         # If a temporary image is created with commit,
         # clean up that too
         if self.tmp_image is not None:
-            self.client.remove_image(self.tmp_image)
+            self.client.remove_image(self.tmp_image, noprune=True)
 
     def unmount(self):
         """
