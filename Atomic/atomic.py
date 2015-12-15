@@ -1031,19 +1031,6 @@ class AtomicDocker(docker.Client):
     A class based on the docker client class with custom APIs specifically for
     atomic
     """
-    def atomic_top(self, container, ps_args=None):
-        """
-        Same as the docker top API but allows passing of ps args
-        :param container: container ID
-        :param ps_args:  custom ps args
-        :return:
-        """
-        u = self._url("/containers/{0}/top".format(container))
-        params = {}
-        if ps_args is not None:
-            params['ps_args'] = ps_args
-        return self._result(self._get(u, params=params), True)
-
     def remote_inspect(self, image_id):
         return self._result(self._get(self._url("/images/{0}/json?remote=1".
                                                 format(image_id))), True)

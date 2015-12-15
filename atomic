@@ -93,6 +93,14 @@ def add_opt(sub):
     sub.add_argument("--opt2", dest="opt2",help=argparse.SUPPRESS)
     sub.add_argument("--opt3", dest="opt3",help=argparse.SUPPRESS)
 
+
+def check_negative(value):
+    ivalue = int(value)
+    if ivalue < 1:
+        raise argparse.ArgumentTypeError("%s must be a positive integer value greater than 0." % value)
+    return ivalue
+
+
 if __name__ == '__main__':
     if os.geteuid() != 0:
         exit("%s needs to be run as root." % sys.argv[0] )
@@ -423,6 +431,7 @@ if __name__ == '__main__':
     topp.set_defaults(_class=Top, func='atomic_top')
     topp.add_argument("-d", type=int, default=1, help=_("Interval (secs) to refresh process information"))
     topp.add_argument("-o", "--optional", help=_("Additional fields to display"), nargs='*', choices=['time', 'stime', 'ppid'])
+    topp.add_argument("-n", help=_("Number of iterations"), type=check_negative)
     topp.add_argument("containers", nargs="*", help=_("list of containers to monitor, leave blank for all"))
 
     # atomic uninstall

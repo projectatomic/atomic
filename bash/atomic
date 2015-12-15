@@ -207,6 +207,7 @@ _atomic_top() {
 		--optional
 		-o
 		-d
+        -n
 	"
     local all_options="$options_with_args"
     [ "$command" = "top" ] && all_options="$all_options"
