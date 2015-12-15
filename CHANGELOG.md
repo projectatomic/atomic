@@ -1,3 +1,7 @@
+## 1.8 (2015-12-10)
+Add `atomic top`
+Fix lean in `atomic diff`
+
 ## 1.7 (2015-11-13)
 Add `atomic migrate`
 Add `atomic host deploy`
