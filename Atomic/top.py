@@ -151,7 +151,7 @@ class Top(Atomic):
                           'NAME': con_name}
                 for place in range(0, len(proc)):
                     t_dict[self.titles[place]] = proc[place]
-                    f_procs.append(t_dict)
+                f_procs.append(t_dict)
         return f_procs
 
     def output_top(self, sorted_info):
