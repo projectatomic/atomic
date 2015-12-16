@@ -84,7 +84,7 @@ class Mount:
         DM device id 'dm_id' in the docker pool.
         """
         table = '0 %d thin /dev/mapper/%s %s' %  (int(size)/512, pool, dm_id)
-        
+
         cmd = ['dmsetup', 'create', name, '--table', table]
         r = util.subp(cmd)
         if r.return_code != 0:
@@ -99,7 +99,7 @@ class Mount:
         r = util.subp(['dmsetup', 'remove', '--retry', name])
         if r.return_code != 0:
             raise MountError('Could not remove thin device:\n%s' %
-                             r.stderr.decode(sys.getdefaultencoding()))
+                             r.stderr.decode(sys.getdefaultencoding()).split("\n")[0])
 
     @staticmethod
     def _is_device_active(device):
@@ -270,7 +270,7 @@ class DockerMount(Mount):
             tags = [t for i in images for t in i['RepoTags']]
             raise SelectionMatchError(identifier, tags)
         elif len(images) == 1:
-            return self._create_temp_container(images[0]['Id'])
+            return self._create_temp_container(images[0]['Id'].replace("sha256:", ""))
 
         raise MountError('{} did not match any image or container.'
                          ''.format(identifier))
@@ -299,13 +299,10 @@ class DockerMount(Mount):
         try:
             # Check if a container/image is already mounted at the
             # desired mount point.
-            dev = Mount.get_dev_at_mountpoint(self.mountpoint)
-            cid = (dev.split("-")[-1]).replace('[/rootfs]', '')
-            dev_name = dev.replace('/dev/mapper/', '')
-            if cid in self._get_all_cids():
-                raise MountError("Unable to mount a container or image over "
-                                 "another container or image at '{0}'"
-                                 .format(self.mountpoint))
+            cid, dev_name = self._get_cid_from_mountpoint(self.mountpoint)
+            if cid:
+                raise ValueError("container/image '{0}' already mounted at '{1}'"
+                                 .format(cid, self.mountpoint))
         except MountError:
             pass
 
@@ -400,9 +397,9 @@ class DockerMount(Mount):
             Mount.mount_path(dm_dev_path, self.mountpoint,
                              optstring=(','.join(options)))
         except MountError as de:
+            self._cleanup_container(cinfo)
             if not self.live:
                 Mount._remove_thin_device(dm_dev_name)
-            self._cleanup_container(cinfo)
             raise de
 
     def _mount_overlay(self, identifier, options):
@@ -488,18 +485,29 @@ class DockerMount(Mount):
         '''
         return [x['Id'] for x in self.client.containers(all=True)]
 
+    def _get_cid_from_mountpoint(self, mountpoint):
+        dev = Mount.get_dev_at_mountpoint(mountpoint)
+        dev_name = dev.replace('/dev/mapper/', '').replace('[/rootfs]', '')
+
+        cid = None
+        for c in self._get_all_cids():
+            graph = self.client.inspect_container(c)["GraphDriver"]
+            if graph["Name"] != "devicemapper":
+                continue
+            if dev_name == graph["Data"]["DeviceName"]:
+                cid=c
+
+        return cid, dev_name
+
     def _unmount_devicemapper(self, path=None):
         """
         Devicemapper unmount backend.
         """
         mountpoint = self.mountpoint if path is None else path
-        dev = Mount.get_dev_at_mountpoint(mountpoint)
-        cid = dev.split("-")[-1]
-        dev_name = dev.replace('/dev/mapper/', '')
-        if cid not in self._get_all_cids():
+        cid, dev_name = self._get_cid_from_mountpoint(mountpoint)
+        if not cid:
             raise MountError('Device mounted at {} is not a docker container.'
                              ''.format(mountpoint))
-
         Mount.unmount_path(mountpoint)
         cinfo = self.client.inspect_container(cid)
 

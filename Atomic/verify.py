@@ -3,8 +3,6 @@ from . import Atomic
 import os
 from docker.errors import NotFound
 from operator import itemgetter
-from exceptions import StopIteration
-
 
 class Verify(Atomic):
     DEBUG = False
