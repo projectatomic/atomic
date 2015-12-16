@@ -65,20 +65,15 @@ class Verify(Atomic):
         for name in names:
             remote = False
             _match = next((x for x in layers if x['Name'] == name and x['Tag'] is not ''), None)
+            local_nvr = ""
             if _match is not None:
                 if self.is_repo_from_local_registry(_match['Id']):
-                    latest_version = _match['Version'] if _match['Version'] is not "" else "Version unavailable"
+                    local_nvr = latest_version = _match['Version']
                     remote = True
                 else:
                     latest_version = self.get_latest_remote_version(_match['Tag'])
-                local_nvr = _match['Version'] if _match['Version'] is not "" \
-                    else "Version unavailable"
 
-                if (local_nvr == "Version unavailable") or (
-                            latest_version == "Version unavailable"):
-                    no_version = True
-                else:
-                    no_version = False
+                no_version = (latest_version == "")
 
                 iid = _match["Id"]
                 tag = _match['Tag']
@@ -225,12 +220,18 @@ class Verify(Atomic):
         :return: sorted list of base_images
         """
         try:
-            _match = (x for x in layers if x["Id"] == _id).next()
+            try:
+                _match = (x for x in layers if x["Id"] == _id).__next__()
+            except:
+                _match = (x for x in layers if x["Id"] == _id).next()
         except StopIteration:
             # We were unable to associate IDs due to the local image being set
             # to intermediate by docker bc it is outdated. Therefore we find
             # the first instance by name for the index
-            _match = (x for x in layers if x["Name"] == name).next()
+            try:
+                _match = (x for x in layers if x["Name"] == name).__next__()
+            except:
+                _match = (x for x in layers if x["Name"] == name).next()
         return _match['index']
 
     def get_local_latest_version(self, name):
@@ -278,4 +279,3 @@ class Verify(Atomic):
     def pull_label(image, key):
         if key in image["Labels"]:
             return image['Labels'][key]
-
