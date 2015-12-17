@@ -3,7 +3,7 @@
 import dbus
 import dbus.service
 import dbus.mainloop.glib
-from gi.repository import GLib
+from gi.repository import GLib # pylint: disable=no-name-in-module
 import slip.dbus.service
 from slip.dbus import polkit
 
