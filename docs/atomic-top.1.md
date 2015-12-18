@@ -6,7 +6,7 @@ atomic-top - Run a top-like list of active container processes
 # SYNOPSIS
 **atomic top**
 [**-h**|**--help**]
-[**-d**][**-o, --optional=[time, stime, ppid]**]
+[**-d**][**-o, --optional=[time, stime, ppid]**][**-n**]
 [Containers to monitor]
 
 # DESCRIPTION
@@ -28,6 +28,9 @@ Like top, you can exit the interactive view and return to the command line, use 
   Define the interval in seconds on which you want to refresh the process information.  The interval should be an
   integer greater than 0.  The default interval is set to 1.
 
+**-n**
+  The number of iterations.  Must be greater than 0.
+
 **-o** **--optional**
   Add more fields of data to collect for each process.  The fields resemble fields commonly used by
   ps -o.  They currently are: [time, stime, ppid]
@@ -37,9 +40,9 @@ Monitor processes with default fields.
 
     atomic top
 
-Monitor processes with default fields on a 5 second interval.
+Monitor processes with default fields on a 5 second interval for 3 interations
 
-    atomic top -d 5
+    atomic top -d 5 -n 3
 
 Monitor processes and add in the data for the parent PIDs.
 

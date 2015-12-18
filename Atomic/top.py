@@ -5,6 +5,7 @@ import tty
 import sys
 import termios
 import select
+from os import isatty
 from operator import itemgetter
 
 
@@ -86,11 +87,15 @@ class Top(Atomic):
         """
         # Activate optional columns
         self._activate_optionals()
-
+        # Do we have a tty?
+        # Can run ./atomic top <&- to replicate no tty
+        has_tty = isatty(0)
         # Set up terminal, input handling
-        fd = sys.stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
+        if has_tty:
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
         sort_vals = [x['character'].upper() for x in self.headers if x['active'] and x['sort']]
+        counter = 0
         while True:
             proc_info = []
             if len(self.args.containers) < 1:
@@ -100,14 +105,15 @@ class Top(Atomic):
             for cid in con_ids:
                 proc_info += self.get_pids_by_container(cid)
             # Reset screen
-            if not self.DEBUG:
+            if not self.DEBUG and has_tty:
                 util.writeOut("\033c")
             sorted_info = self.reformat_ps_info(proc_info)
             self._set_dynamic_column_widths(sorted_info)
             self.output_top(sorted_info)
-            tty.setraw(sys.stdin.fileno())
+            if has_tty:
+                tty.setraw(sys.stdin.fileno())
             i, ii, iii = select.select([sys.stdin], [], [], self.args.d)
-            if i:
+            if i and has_tty:
                 ch = sys.stdin.read(1)
                 # Detect 'q' or Cntrl-c
                 if ch.upper() == 'q'.upper() or ord(ch) == 3:
@@ -120,7 +126,11 @@ class Top(Atomic):
                                        None and header['character'].upper() == ch.upper()), False)
 
             # reset terminal
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            if has_tty:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            counter += 1
+            if counter == self.args.n:
+                raise SystemExit
 
     def get_pids_by_container(self, con_id):
         """
@@ -138,8 +148,7 @@ class Top(Atomic):
         # Assemble the ps args
         ps_args = [header['ps_opt']for header in sorted(self.headers, key=itemgetter('index')) if header['ps_opt']
                    is not None and header['active']]
-        con_procs = self.AD.atomic_top(con_id, ps_args="o {}".format(",".join(ps_args)))
-
+        con_procs = self.AD.top(con_id, ps_args="-o{}".format(",".join(ps_args)))
         # Set the column header titles one-time
         if self.titles is None:
             self.titles = con_procs['Titles']
