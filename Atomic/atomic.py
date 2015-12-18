@@ -511,12 +511,13 @@ class Atomic(object):
                 sys.exit(1)
 
     def stop(self):
-        try:
-            cid = self._is_container(self.name, active=True)
-            self.name = cid
-        except AtomicError as error:
-            util.writeOut(error)
-            sys.exit(1)
+        self.inspect = self._inspect_container()
+        if self.inspect is None:
+            self.inspect = self._inspect_image()
+            if self.inspect is None:
+                util.writeOut("Container/Image '%s' does not exists" %
+                              self.name)
+                sys.exit(1)
 
         args = self._get_args("STOP")
         if args:
