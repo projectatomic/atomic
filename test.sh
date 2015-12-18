@@ -134,6 +134,15 @@ export ATOMIC="${COVERAGE}
 atomic"
 
 for tf in `find ./tests/integration/ -name test_*.sh`; do
+
+    if [ -n "${TEST_INTEGRATION+ }" ]; then
+        tfbn=$(basename "$tf" .sh)
+        tfbn="${tfbn#test_}"
+        if [[ " $TEST_INTEGRATION " != *" $tfbn "* ]]; then
+            continue
+        fi
+    fi
+
     printf "Running test $(basename ${tf})...\t\t"
     printf "\n==== ${tf} ====\n" >> ${LOG}
     if ${tf} &>> ${LOG}; then
