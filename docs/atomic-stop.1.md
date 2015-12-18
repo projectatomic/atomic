@@ -8,7 +8,7 @@ atomic-stop - Execute container image stop method
 **atomic stop**
 [**-h**|**--help**]
 [**-n**][**--name**[=*NAME*]]
-IMAGE
+IMAGE [ARG...]
 
 # DESCRIPTION
 **atomic stop** attempts to read the `LABEL STOP` field in the container
@@ -27,6 +27,8 @@ atomic would execute this command before stopping the container.
 
 If this field does not exist, `atomic stop` will just stop the container, if
 the container is running.
+
+Any additional arguments will be appended to the command.
 
 # OPTIONS:
 **-h** **--help**
