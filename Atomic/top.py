@@ -148,7 +148,7 @@ class Top(Atomic):
         # Assemble the ps args
         ps_args = [header['ps_opt']for header in sorted(self.headers, key=itemgetter('index')) if header['ps_opt']
                    is not None and header['active']]
-        con_procs = self.AD.top(con_id, ps_args="-o{}".format(",".join(ps_args)))
+        con_procs = self.AD.top(con_id, ps_args="-eo {}".format(",".join(ps_args)))
         # Set the column header titles one-time
         if self.titles is None:
             self.titles = con_procs['Titles']
