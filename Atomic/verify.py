@@ -69,6 +69,7 @@ class Verify(Atomic):
                     local_nvr = latest_version = _match['Version']
                     remote = True
                 else:
+                    local_nvr = self.get_local_latest_version(name)
                     latest_version = self.get_latest_remote_version(_match['Tag'])
 
                 no_version = (latest_version == "")
@@ -197,6 +198,8 @@ class Verify(Atomic):
                     str(_max_name) + "} {1:" + \
                     str(_max_name) + "} {2:1}"
         util.writeOut("\n{} contains the following images:\n".format(image))
+        util.writeOut(three_col.format("Local Version", "Latest Version", ""))
+        util.writeOut(three_col.format("-------------", "--------------", ""))
         for _image in base_images:
             local = _image['local_nvr']
             latest = _image['latest_nvr']
@@ -245,6 +248,7 @@ class Verify(Atomic):
                     return self.assemble_nvr(image)
             else:
                 continue
+        return "Version unavailable"
 
     def get_latest_remote_version(self, tag):
         r_inspect = self.d.remote_inspect(tag)
@@ -261,10 +265,16 @@ class Verify(Atomic):
         :param image:
         :return: str
         """
-        nvr = "%s-%s-%s" % (self.pull_label(image, 'Name'),
-                            self.pull_label(image, 'Version'),
-                            self.pull_label(image, 'Release'))
-        return nvr
+
+        name = self.pull_label(image, 'Name')
+        version = self.pull_label(image, 'Version')
+        release = self.pull_label(image, 'Release')
+        nvr = "%s-%s-%s" % (name, version, release)
+
+        if any(True for x in [name, version, release] if x is None):
+            return "Version unavailable"
+        else:
+            return nvr
 
     @staticmethod
     def get_local_version(name, layers):
