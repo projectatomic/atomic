@@ -6,7 +6,7 @@ atomic-top - Run a top-like list of active container processes
 # SYNOPSIS
 **atomic top**
 [**-h**|**--help**]
-[**-d**][**-o, --optional=[time, stime, ppid]**][**-n**]
+[**-d**][**-o, --optional=[time, stime, ppid, uid, gid, user, group]**][**-n**]
 [Containers to monitor]
 
 # DESCRIPTION
@@ -33,7 +33,7 @@ Like top, you can exit the interactive view and return to the command line, use 
 
 **-o** **--optional**
   Add more fields of data to collect for each process.  The fields resemble fields commonly used by
-  ps -o.  They currently are: [time, stime, ppid]
+  ps -o.  They currently are: [time, stime, ppid, uid, gid, user, group]
 
 # EXAMPLES
 Monitor processes with default fields.
@@ -44,9 +44,9 @@ Monitor processes with default fields on a 5 second interval for 3 interations
 
     atomic top -d 5 -n 3
 
-Monitor processes and add in the data for the parent PIDs.
+Monitor processes and add in the data for the parent PIDs and UID.
 
-    atomic top -o ppid
+    atomic top -o ppid uid
 
 # HISTORY
 December 2015, Originally written by Brent Baude (bbaude at redhat dot com)

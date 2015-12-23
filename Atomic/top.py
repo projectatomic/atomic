@@ -58,7 +58,15 @@ class Top(Atomic):
             {'shortname': 'STIME', 'column': '(S)TIME', 'character': 's', 'sort': True, 'index': 7,
              'field': '{:10}', 'active': False, 'ps_opt': 'stime', 'sort_order': True},
             {'shortname': 'PPID', 'column': 'PPI(D)', 'character': 'd', 'sort': True, 'index': 8,
-             'field': '{:10}', 'active': False, 'ps_opt': 'ppid', 'sort_order': False}
+             'field': '{:10}', 'active': False, 'ps_opt': 'ppid', 'sort_order': False},
+            {'shortname': 'UID', 'column': '(U)ID', 'character': 'u', 'sort': True, 'index': 9,
+             'field': '{:6}', 'active': True, 'ps_opt': 'uid', 'sort_order': True},
+            {'shortname': 'GID', 'column': '(G)ID', 'character': 'g', 'sort': True, 'index': 10,
+             'field': '{:6}', 'active': True, 'ps_opt': 'gid', 'sort_order': True},
+            {'shortname': 'USER', 'column': 'USER', 'character': None, 'sort': False, 'index': 11,
+             'field': '{:10}', 'active': False, 'ps_opt': 'user'},
+            {'shortname': 'GROUP', 'column': 'GROUP', 'character': None, 'sort': False, 'index': 12,
+             'field': '{:10}', 'active': False, 'ps_opt': 'group'}
         ]
 
     def _activate_optionals(self):
