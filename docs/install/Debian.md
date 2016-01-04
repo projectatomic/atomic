@@ -4,15 +4,15 @@
 ##Make
 On Debian, You will need to install the required build dependencies to build `atomic`
 
-Install the selinux python bindings in order to build `atomic`
+Install the selinux python bindings and go-md2man in order to build `atomic`
 ```
-apt-get install python-selinux
+apt-get install python-selinux go-md2man
 
 ```
 
 Pip the required python depencies and `ln` to the /usr/bin dir
 ```
-pip install pylint go-m2dman
+pip install pylint
 ln /usr/local/bin/pylint /usr/bin/pylint
 ```
 
@@ -34,5 +34,5 @@ Your install will now be complete!
 
 ```
 ▶ atomic --version
-1.2
+1.5
 ```
