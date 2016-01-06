@@ -709,10 +709,11 @@ class Atomic(object):
             return max([len(x[0]) for x in repo_tags]) + 1,\
                    max([len(x[1]) for x in repo_tags])
 
+        enc = sys.getdefaultencoding()
         if self.args.prune:
             cmd = "/usr/bin/docker images --filter dangling=true -q".split()
             for i in subprocess.check_output(cmd, stderr=DEVNULL).split():
-                self.d.remove_image(i, force=True)
+                self.d.remove_image(i.decode(enc), force=True)
             return
 
         _images = self.get_images()
