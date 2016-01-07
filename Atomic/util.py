@@ -231,7 +231,7 @@ def urllib3_disable_warnings():
 
     # On latest Fedora, this is a symlink
     if hasattr(requests, 'packages'):
-        requests.packages.urllib3.disable_warnings()
+        requests.packages.urllib3.disable_warnings() #pylint: disable=maybe-no-member
     else:
         # But with python-requests-2.4.3-1.el7.noarch, we need
         # to talk to urllib3 directly
