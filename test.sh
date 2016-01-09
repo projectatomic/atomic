@@ -60,7 +60,6 @@ make_docker_images () {
         chksum=$(_checksum ${df})
         IFS=$'.' read -a split <<< "${BASE_NAME}"
         iname="atomic-test-${split[1]}"
-
         # If there is a matching Dockerfile.X.d, then include its contents
         # in the checksum data.
         chksum="${chksum}$(_checksum ${df}.d)"
@@ -81,6 +80,16 @@ make_docker_images () {
         df_cp=${WORK_DIR}/${BASE_NAME}
         cp ${df} ${df_cp}
         printf "\nLABEL \"Checksum\"=\"${chksum}" >> ${df_cp}
+
+        # Copy help.1 into atomic-test-1
+        if [[ ${iname} = "atomic-test-1" ]]; then
+            cp ./tests/test-images/help.1 ${WORK_DIR}
+        fi
+
+        # Copy help.sh into atomic-test-3
+        if [[ ${iname} = "atomic-test-3" ]]; then
+            cp ./tests/test-images/help.sh ${WORK_DIR}
+        fi
 
         # Remove the old image... Though there may not be one.
         set +e

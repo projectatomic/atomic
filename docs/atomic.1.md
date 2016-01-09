@@ -20,6 +20,9 @@ Atomic Management Tool
 **atomic-diff(1)**
 show the differences between two images|containers' RPMs
 
+**atomic-help(1)**
+show help associated with a container or image
+
 **atomic-host(1)**
 execute Atomic commands
 

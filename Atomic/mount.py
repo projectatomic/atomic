@@ -208,12 +208,18 @@ class DockerMount(Mount):
         except docker.errors.APIError as ex:
             raise MountError('Error creating temporary container:\n%s' % str(ex))
 
-    def _clone(self, cid):
+    def _clone(self, cid, image_only=False):
         """
-        Create a temporary image snapshot from a given cid.
+        Create a temporary image snapshot from a given cid and then
+        create temporary container from the temporary image.
 
         Temporary image snapshots are marked with a sentinel label
         so that they can be cleaned on unmount.
+
+        image_only: Create the image from the container only
+
+        Return:  the id of the temporary container unless image_only=True
+                 in which case it returns the image cloned image id.
         """
         try:
             iid = self.client.commit(
@@ -227,7 +233,10 @@ class DockerMount(Mount):
         except docker.errors.APIError as ex:
             raise MountError(str(ex))
         self.tmp_image = iid
-        return self._create_temp_container(iid)
+        if image_only:
+            return iid
+        else:
+            return self._create_temp_container(iid)
 
     def _is_container_running(self, cid):
         cinfo = self.client.inspect_container(cid)
@@ -469,14 +478,17 @@ class DockerMount(Mount):
         if self.tmp_image is not None:
             self.client.remove_image(self.tmp_image, noprune=True)
 
-    def unmount(self):
+    def unmount(self, path=None):
         """
         Unmounts and cleans-up after a previous mount().
         """
         driver = self.client.info()['Driver']
         driver_unmount_fn = getattr(self, "_unmount_" + driver,
                                     self._unsupported_backend)
-        driver_unmount_fn()
+        if path is not None:
+            driver_unmount_fn(path=path)
+        else:
+            driver_unmount_fn()
 
     def _get_all_cids(self):
         '''
