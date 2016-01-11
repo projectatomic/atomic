@@ -702,12 +702,17 @@ class Atomic(object):
             Determine the max length of the repository and tag names
             :param _images:
             :return: a set with len of repository and tag
+
+            If there are no images, return 1, 1
             '''
             repo_tags = [item.split(":") for sublist in _images for item
                          in sublist['RepoTags']]
             # We add the 1 to the repo max length for self.dangling(repo)
-            return max([len(x[0]) for x in repo_tags]) + 1,\
-                   max([len(x[1]) for x in repo_tags])
+            if repo_tags:
+                return max([len(x[0]) for x in repo_tags]) + 1,\
+                       max([len(x[1]) for x in repo_tags])
+            else:
+                return 1, 1
 
         enc = sys.getdefaultencoding()
         if self.args.prune:
