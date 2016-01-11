@@ -7,6 +7,7 @@ import termios
 import select
 from os import isatty
 from operator import itemgetter
+from docker.utils import kwargs_from_env
 
 
 class Top(Atomic):
@@ -20,7 +21,7 @@ class Top(Atomic):
         super(Top, self).__init__()
         self.input_var = None
         self._sort = 'CID'
-        self.AD = AtomicDocker()
+        self.AD = AtomicDocker(**kwargs_from_env())
         self.name_id = {}
         self.optional = None
         self.titles = None

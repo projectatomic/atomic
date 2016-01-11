@@ -28,6 +28,7 @@ import time
 import docker
 
 from . import util
+from docker.utils import kwargs_from_env
 
 
 """ Module for mounting and unmounting containerized applications. """
@@ -189,7 +190,7 @@ class DockerMount(Mount):
 
     def __init__(self, mountpoint, live=False, mnt_mkdir=False):
         Mount.__init__(self, mountpoint, live)
-        self.client = docker.Client()
+        self.client = docker.Client(**kwargs_from_env())
         self.mnt_mkdir = mnt_mkdir
         self.tmp_image = None
 
