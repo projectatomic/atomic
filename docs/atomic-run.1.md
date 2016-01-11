@@ -10,6 +10,7 @@ atomic-run - Execute container image run method
 [**--display**]
 [**-n**][**--name**[=*NAME*]]
 [**--spc**]
+[**--quiet**]
 IMAGE [COMMAND] [ARG...]
 
 # DESCRIPTION
@@ -65,6 +66,9 @@ NAME will default to the IMAGENAME if it is not specified.
   Run container in super privileged container mode.  The image will run with the following command:
 
 `/usr/bin/docker run -t -i --rm --privileged -v /:/host -v /run:/run --net=host --ipc=host --pid=host -e HOST=/host -e NAME=${NAME} -e IMAGE=${IMAGE} --name ${NAME} ${IMAGE}`
+
+**--quiet**
+  Run without verbose messaging (i.e. security warnings).
 
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)

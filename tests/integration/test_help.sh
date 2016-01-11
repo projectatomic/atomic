@@ -17,7 +17,7 @@ IFS=$'\n\t'
 OUTPUT=$(/bin/true)
 
 # Test standard help in man format
-${ATOMIC} help --no_pager atomic-test-1 1>/dev/null
+${ATOMIC} help atomic-test-1 1>/dev/null
 
 # Test override label
 ${ATOMIC} help atomic-test-3 1>/dev/null

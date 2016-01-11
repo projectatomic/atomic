@@ -296,6 +296,7 @@ _atomic_run() {
 		--help
 		--spc
                --display
+        --quiet
 	"
 
 	[ "$command" = "run" ] && all_options="$all_options"
