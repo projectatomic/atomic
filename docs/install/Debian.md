@@ -4,18 +4,11 @@
 ##Make
 On Debian, You will need to install the required build dependencies to build `atomic`
 
-Install the selinux python bindings and go-md2man in order to build `atomic`
-```
-apt-get install python-selinux go-md2man
+"rpm" is required in order to `diff` two Docker images.
 
 ```
-
-Pip the required python depencies and `ln` to the /usr/bin dir
+apt-get install go-md2man rpm python-selinux python-rpm python-dbus python-pylint
 ```
-pip install pylint
-ln /usr/local/bin/pylint /usr/bin/pylint
-```
-
 
 Get the code
 ```
@@ -26,13 +19,20 @@ cd atomic
 Build and install it.
 ```
 pip install -r requirements.txt
-# Note, due to a bug in pylint within pip and Debian8 it is required to pass true. 
-PYLINT=true make install
+make install
 ```
 
 Your install will now be complete!
 
 ```
 ▶ atomic --version
-1.5
+1.8
+```
+
+##Notes
+
+Warning: Atomic no longer packages the CLI as an egg and thus upgrading from `atomic` 1.5 to 1.8 requires removing conflicting folders.
+
+```
+rm -rf /usr/lib/python2.7/site-packages/Atomic/ /usr/lib/python2.7/site-packages/atomic-*
 ```
