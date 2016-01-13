@@ -64,7 +64,7 @@ def export_images(export_location):
         tags = " ".join(images[id])
         util.writeOut("Exporting image: {0}".format(id[:12]))
         with open(export_location + '/images/' + id, 'w') as f:
-            subprocess.check_call(["/usr/bin/docker", "save", tags], stdout=f)
+            subprocess.check_call(["docker", "save", tags], stdout=f)
 
 def export_containers(graph, export_location):
     """
