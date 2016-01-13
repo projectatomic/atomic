@@ -50,7 +50,7 @@ def import_images(import_location):
     for image in images:
         util.writeOut("Importing image: {0}".format(image[:12]))
         with open(subdir + '/' + image) as f:
-            subprocess.check_call(["/usr/bin/docker", "load"], stdin=f)
+            subprocess.check_call(["docker", "load"], stdin=f)
 
 def import_containers(graph, import_location):
     """

@@ -50,7 +50,7 @@ def find_repo_tag(d, id):
 
 
 class Atomic(object):
-    INSTALL_ARGS = ["/usr/bin/docker", "run",
+    INSTALL_ARGS = ["docker", "run",
                     "-t",
                     "-i",
                     "--rm",
@@ -68,7 +68,7 @@ class Atomic(object):
                     "--name", "${NAME}",
                     "${IMAGE}"]
 
-    SPC_ARGS = ["/usr/bin/docker", "run",
+    SPC_ARGS = ["docker", "run",
                 "-t",
                 "-i",
                 "--rm",
@@ -84,7 +84,7 @@ class Atomic(object):
                 "-e", "IMAGE=${IMAGE}",
                 "${IMAGE}"]
 
-    RUN_ARGS = ["/usr/bin/docker", "create",
+    RUN_ARGS = ["docker", "create",
                 "-t",
                 "-i",
                 "--name", "${NAME}",
@@ -127,7 +127,7 @@ class Atomic(object):
     def update(self):
         if self.force:
             self.force_delete_containers()
-        return subprocess.check_call(["/usr/bin/docker", "pull", self.image])
+        return subprocess.check_call(["docker", "pull", self.image])
 
     def pull(self):
         prevstatus = ""
@@ -285,7 +285,7 @@ class Atomic(object):
 
     def _running(self):
         if self._interactive():
-            cmd = ["/usr/bin/docker", "exec", "-t", "-i", self.name]
+            cmd = ["docker", "exec", "-t", "-i", self.name]
             if self.command:
                 cmd += self.command
             else:
@@ -297,11 +297,11 @@ class Atomic(object):
         else:
             if self.command:
                 if self.args.display:
-                    return self.writeOut("/usr/bin/docker exec -t -i %s %s" %
+                    return self.writeOut("docker exec -t -i %s %s" %
                                          (self.name, self.command))
                 else:
                     return subprocess.check_call(
-                        ["/usr/bin/docker", "exec", "-t", "-i", self.name] +
+                        ["docker", "exec", "-t", "-i", self.name] +
                         self.command, stderr=DEVNULL)
             else:
                 if not self.args.display:
@@ -311,26 +311,26 @@ class Atomic(object):
         if self._interactive():
             if self.command:
                 subprocess.check_call(
-                    ["/usr/bin/docker", "start", self.name],
+                    ["docker", "start", self.name],
                     stderr=DEVNULL)
                 return subprocess.check_call(
-                    ["/usr/bin/docker", "exec", "-t", "-i", self.name] +
+                    ["docker", "exec", "-t", "-i", self.name] +
                     self.command)
             else:
                 return subprocess.check_call(
-                    ["/usr/bin/docker", "start", "-i", "-a", self.name],
+                    ["docker", "start", "-i", "-a", self.name],
                     stderr=DEVNULL)
         else:
             if self.command:
                 subprocess.check_call(
-                    ["/usr/bin/docker", "start", self.name],
+                    ["docker", "start", self.name],
                     stderr=DEVNULL)
                 return subprocess.check_call(
-                    ["/usr/bin/docker", "exec", "-t", "-i", self.name] +
+                    ["docker", "exec", "-t", "-i", self.name] +
                     self.command)
             else:
                 return subprocess.check_call(
-                    ["/usr/bin/docker", "start", self.name],
+                    ["docker", "start", self.name],
                     stderr=DEVNULL)
 
     def _inspect_image(self, image=None):
@@ -601,8 +601,8 @@ class Atomic(object):
             subprocess.check_call(cmd, env=self.cmd_env, shell=True)
 
         if self.name == self.image:
-            self.writeOut("/usr/bin/docker rmi %s" % self.image)
-            subprocess.check_call(["/usr/bin/docker", "rmi", self.image])
+            self.writeOut("docker rmi %s" % self.image)
+            subprocess.check_call(["docker", "rmi", self.image])
 
     @property
     def cmd_env(self):
@@ -716,7 +716,7 @@ class Atomic(object):
 
         enc = sys.getdefaultencoding()
         if self.args.prune:
-            cmd = "/usr/bin/docker images --filter dangling=true -q".split()
+            cmd = "docker images --filter dangling=true -q".split()
             for i in subprocess.check_output(cmd, stderr=DEVNULL).split():
                 self.d.remove_image(i.decode(enc), force=True)
             return
