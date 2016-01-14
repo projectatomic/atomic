@@ -72,7 +72,7 @@ trap cleanup EXIT
 # at /var/lib/docker
 atomic_migrate () {
 	setup
-	${ATOMIC} migrate export --dir "$(pwd)/migrate-dir"
+	echo 'y'|${ATOMIC} migrate export --dir "$(pwd)/migrate-dir"
 	switch_docker_storage
 	echo 'y'|${ATOMIC} migrate import --dir "$(pwd)/migrate-dir"
 	systemctl restart docker

@@ -24,22 +24,28 @@ def export_docker(graph, export_location):
     if not os.path.isdir(export_location):
         os.makedirs(export_location)
 
-    try:
-    #Save the docker storage driver
-        storage_driver = DOCKER_CLIENT.info()["Driver"]
-        filed = open(export_location+"/info.txt", "w")
-        filed.write(storage_driver)
-        filed.close()
+    dangling_images = DOCKER_CLIENT.images(filters={"dangling":True}, quiet=True)
+    if any(dangling_images):
+        util.writeOut("There are dangling images in your system. Would you like atomic to prune them [y/N]")
+        choice = sys.stdin.read(1)
+        if choice.lower() == 'y':
+            util.writeOut("Deleting dangling images")
+            subprocess.check_call(["docker", "rmi", "-f"]+dangling_images)
+        else:
+            raise ValueError("Please delete dangling images before running atomic migrate export")
 
-        #export docker images
-        export_images(export_location)
-        #export docker containers
-        export_containers(graph, export_location)
-        #export docker volumes
-        export_volumes(graph, export_location)
-    except:
-        error = sys.exc_info()[0]
-        sys.exit(error)
+    #Save the docker storage driver
+    storage_driver = DOCKER_CLIENT.info()["Driver"]
+    filed = open(export_location+"/info.txt", "w")
+    filed.write(storage_driver)
+    filed.close()
+
+    #export docker images
+    export_images(export_location)
+    #export docker containers
+    export_containers(graph, export_location)
+    #export docker volumes
+    export_volumes(graph, export_location)
 
     util.writeOut("atomic export completed successfully")
 
@@ -79,7 +85,7 @@ def export_containers(graph, export_location):
         util.writeOut("Exporting container: {0}".format(id[:12]))
         subprocess.check_call([ATOMIC_LIBEXEC + '/migrate.sh',
                                'export',
-                               '--container-id=' + id,
+                               '--container-id=' + id[:12],
                                '--graph=' + graph,
                                '--export-location=' + export_location])
 
@@ -96,9 +102,9 @@ def export_volumes(graph, export_location):
         os.makedirs(export_location + "/volumes")
 
     util.writeOut("Exporting volumes")
-    tar_create(srcdir = graph + '/volumes',
-               destfile = export_location + '/volumes/volumeData.tar.gz')
+    tar_create(srcdir=graph + '/volumes',
+               destfile=export_location + '/volumes/volumeData.tar.gz')
 
     if os.path.isdir(graph + "/vfs"):
-        tar_create(srcdir = graph + '/vfs',
-                   destfile = export_location + '/volumes/vfsData.tar.gz')
+        tar_create(srcdir=graph + '/vfs',
+                   destfile=export_location + '/volumes/vfsData.tar.gz')

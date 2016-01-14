@@ -130,15 +130,17 @@ container_export(){
 	echo $containerBaseImageID>>containerInfo.txt
 	echo $notruncContainerID>>containerInfo.txt
         "$GOTAR" -cf container-metadata.tar $dockerRootDir/containers/$notruncContainerID 2> /dev/null
-        imageID=$(docker commit $containerID)||exit 1
+        imageName=$(echo $RANDOM)
+        docker commit $containerID $imageName 1>/dev/null||exit 1
         mkdir -p $tmpDir/temp
-        docker save $imageID > $tmpDir/temp/image.tar||exit 1
+        docker save $imageName > $tmpDir/temp/image.tar||exit 1
 	$(cd $tmpDir/temp; "$GOTAR" -xf image.tar)
-        cd $tmpDir/temp/$imageID
+        diffLayerID=$(python -c 'import json; f=open("temp/repositories"); j=json.load(f); print(j[j.keys()[0]]["latest"])')
+        cd $tmpDir/temp/$diffLayerID
         cp layer.tar $tmpDir/container-diff.tar
         cd $tmpDir
         rm -rf temp
-        docker rmi -f $imageID 1>/dev/null||exit 1
+        docker rmi -f $imageName 1>/dev/null||exit 1
 }
 
 container_import(){
