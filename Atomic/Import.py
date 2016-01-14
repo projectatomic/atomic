@@ -18,28 +18,21 @@ def import_docker(graph, import_location):
 
     if not os.path.isdir(import_location):
         sys.exit("{0} does not exist".format(import_location))
-    try:
-        #import docker images
-        import_images(import_location)
-        #import docker containers
-        import_containers(graph, import_location)
-        #import docker volumes
-        import_volumes(graph, import_location)
-    except:
-        error = sys.exc_info()[0]
-        sys.exit(error)
+    #import docker images
+    import_images(import_location)
+    #import docker containers
+    import_containers(graph, import_location)
+    #import docker volumes
+    import_volumes(graph, import_location)
 
     util.writeOut("atomic import completed successfully")
     util.writeOut("Would you like to cleanup (rm -rf {0}) the temporary directory [y/N]"
-          .format(import_location))
+                  .format(import_location))
     choice = sys.stdin.read(1)
-    if (choice == 'y') or (choice == 'Y'):
+    if choice.lower() == 'y':
         util.writeOut("Deleting {0}".format(import_location))
         subprocess.check_call(['/usr/bin/rm', '-rf', import_location])
-    else:
-        util.writeOut("Cleanup operation aborted")
     util.writeOut("Please restart docker daemon for the changes to take effect")
-
 
 def import_images(import_location):
     """
@@ -80,9 +73,9 @@ def import_volumes(graph, import_location):
     if os.path.isfile(volfile):
         util.writeOut("Importing volumes")
         tar_extract(srcfile=volfile,
-                    destdir = graph + '/volumes')
+                    destdir=graph + '/volumes')
 
     vfsfile = import_location + '/volumes/vfsData.tar.gz'
     if os.path.isfile(vfsfile) and os.path.isdir(graph + "/vfs"):
         tar_extract(srcfile=vfsfile,
-                    destdir = graph + '/vfs')
+                    destdir=graph + '/vfs')
