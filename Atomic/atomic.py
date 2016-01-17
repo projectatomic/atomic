@@ -99,7 +99,7 @@ class Atomic(object):
         self.force = False
         self._images = []
         self.containers = False
-        self.images_cache = None
+        self.images_cache = []
         self.active_containers = []
 
     def writeOut(self, output, lf="\n"):
@@ -722,6 +722,8 @@ class Atomic(object):
             return
 
         _images = self.get_images()
+        if len(_images) == 0:
+            return
         _max_repo, _max_tag = get_col_lengths(_images)
         col_out = "{0:" + str(_max_repo) + "} {1:" + str(_max_tag) + \
                   "} {2:12} {3:19} {4:10}"
@@ -998,8 +1000,10 @@ class Atomic(object):
         Wrapper function that should be used instead of querying docker
         multiple times for a list of images.
         '''
-        if not self.images_cache:
-            self.images_cache = self.d.images()
+        if len(self.images_cache) == 0:
+            images = self.d.images()
+            if images:
+                self.images_cache = images
         return self.images_cache
 
     def get_containers(self):
