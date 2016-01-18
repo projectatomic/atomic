@@ -11,7 +11,7 @@ all: python-build docs pylint-check
 
 .PHONY: test
 test:
-	sh ./test.sh
+	./test.sh
 
 .PHONY: python-build
 python-build:
