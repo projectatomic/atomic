@@ -117,10 +117,16 @@ make_docker_images
 echo "UNIT TESTS:"
 
 COVERAGE_BIN="/usr/bin/coverage"
+
 if [[ ! -x "${COVERAGE_BIN}" ]]; then
-    # The executable is "coverage2" on systems with default python3 and no
-    # python3 install.
-    COVERAGE_BIN="/usr/bin/coverage2"
+  # Check to see if it is in local instead.
+  COVERAGE_BIN="/usr/local/bin/coverage"
+fi
+
+if [[ ! -x "${COVERAGE_BIN}" ]]; then
+  # The executable is "coverage2" on systems with default python3 and no
+  # python3 install.
+  COVERAGE_BIN="/usr/bin/coverage2"
 fi
 
 set +e
