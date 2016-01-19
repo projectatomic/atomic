@@ -25,6 +25,7 @@ from . import pulp
 from .Export import export_docker
 from .Import import import_docker
 from docker.utils import kwargs_from_env
+import re
 
 IMAGES = []
 
@@ -470,8 +471,9 @@ class Atomic(object):
         args = self._get_args("STOP")
         if args:
             cmd = self.gen_cmd(args + list(map(pipes.quote, self.args.args)))
+            cmd = self.sub_env_strings(cmd)
             self.display(cmd)
-            subprocess.check_call(cmd, env=self.cmd_env, shell=True)
+            util.check_call(cmd, env=self.cmd_env)
 
         # Container exists
         try:
@@ -545,8 +547,9 @@ class Atomic(object):
         args = self._get_args("UNINSTALL")
         if args:
             cmd = self.gen_cmd(args + list(map(pipes.quote, self.args.args)))
+            cmd = self.sub_env_strings(cmd)
             self.display(cmd)
-            subprocess.check_call(cmd, env=self.cmd_env, shell=True)
+            util.check_call(cmd, env=self.cmd_env)
 
         if self.name == self.image:
             self.writeOut("docker rmi %s" % self.image)
@@ -554,37 +557,28 @@ class Atomic(object):
 
     @property
     def cmd_env(self):
-        env = dict(os.environ)
-        env.update({'NAME': self.name,
-                    'IMAGE': self.image})
+        os.environ['NAME'] = self.name
+        os.environ['IMAGE'] = self.image
 
         if hasattr(self.args, 'opt1') and self.args.opt1:
-            env['OPT1'] = self.args.opt1
+            os.environ['OPT1'] = self.args.opt1
 
         if hasattr(self.args, 'opt2') and self.args.opt2:
-            env['OPT2'] = self.args.opt2
+            os.environ['OPT2'] = self.args.opt2
 
         if hasattr(self.args, 'opt3') and self.args.opt3:
-            env['OPT3'] = self.args.opt3
+            os.environ['OPT3'] = self.args.opt3
 
         default_uid = "0"
         with open("/proc/self/loginuid") as f:
             default_uid = f.readline()
 
-        if "SUDO_UID" in os.environ:
-            env["SUDO_UID"] = os.environ["SUDO_UID"]
-        else:
-            env["SUDO_UID"] = default_uid
+        if "SUDO_UID" not in os.environ:
+            os.environ["SUDO_UID"] = default_uid
 
-        if 'SUDO_GID' in os.environ:
-            env['SUDO_GID'] = os.environ['SUDO_GID']
-        else:
-            try:
-                env['SUDO_GID'] = str(pwd.getpwuid(int(env["SUDO_UID"]))[3])
-            except:
-                env["SUDO_GID"] = default_uid
+        if 'SUDO_GID' not in os.environ:
+            os.environ["SUDO_GID"] = default_uid
 
-        return env
 
     def gen_cmd(self, cargs):
         args = []
@@ -698,11 +692,12 @@ class Atomic(object):
         if not args:
             return
 
-        cmd = self.gen_cmd(args + list(map(pipes.quote, self.args.args)))
+        cmd = self.sub_env_strings(self.gen_cmd(args + list(map(pipes.quote, self.args.args))))
 
         self.display(cmd)
+
         if not self.args.display:
-            return subprocess.check_call(cmd, env=self.cmd_env, shell=True)
+            return util.check_call(cmd)
 
     def help(self):
         if os.path.exists("/usr/bin/rpm-ostree"):
@@ -831,8 +826,28 @@ class Atomic(object):
             self.writeOut("%s %s %s" % (layer["Id"], version, layer["Tag"]))
 
     def display(self, cmd):
-        subprocess.check_call(
-            "/bin/echo \"" + cmd + "\"", env=self.cmd_env, shell=True)
+        util.writeOut(self.sub_env_strings(cmd))
+
+    def sub_env_strings(self, in_string):
+        """
+        Performs substitutions on an input string based on defined
+        environment variables.
+        :param in_string: string to perform the subs on
+        :return: string
+        """
+        # Set environment variables
+        self.cmd_env
+
+        # Perform variable subs
+        in_string = os.path.expandvars(in_string)
+
+        # Replace undefined variables with blank
+        in_string = re.sub('\$\{?\S*\}?', '', in_string)
+
+        # Solve whitespacing
+        in_string = " ".join(in_string.split())
+
+        return in_string
 
     def ping(self):
         '''
