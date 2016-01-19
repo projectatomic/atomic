@@ -33,6 +33,7 @@ from Atomic.diff import Diff
 from Atomic.top import Top
 from Atomic.verify import Verify
 from Atomic.help import AtomicHelp
+from Atomic.run import Run
 
 PROGNAME = "atomic"
 gettext.bindtextdomain(PROGNAME, "/usr/share/locale")
@@ -417,7 +418,8 @@ if __name__ == '__main__':
         "run", help=_("execute container image run method"),
         epilog="atomic run defaults to the following command, if image "
         "does not specify LABEL run\n'%s'" % atomic.print_run())
-    runp.set_defaults(func='run')
+    runp.set_defaults(_class=Run, func='run')
+    run_group = runp.add_mutually_exclusive_group()
     add_opt(runp)
     runp.add_argument("-n", "--name", dest="name", default=None,
                       help=_("name of container"))
@@ -429,8 +431,10 @@ if __name__ == '__main__':
                       help=_("command to execute within the container. "
                              "If container is not running, command is appended"
                              "to the image run method"))
+    run_group.add_argument("--quiet", "-q", default=True, action="store_false",
+                      help=_("Be less verbose."))
 
-    runp.add_argument(
+    run_group.add_argument(
         "--display",
         default=False,
         action="store_true",

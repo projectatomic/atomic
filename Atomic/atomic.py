@@ -387,59 +387,7 @@ class Atomic(object):
         command += self.image
         return command
 
-    def run(self):
-        missing_RUN = False
-        self.inspect = self._inspect_container()
-
-        if self.inspect:
-            self._check_latest()
-            # Container exists
-            if self.inspect["State"]["Running"]:
-                return self._running()
-            elif not self.args.display:
-                return self._start()
-
-        # Container does not exist
-        self.inspect = self._inspect_image()
-        if not self.inspect:
-            if self.args.display:
-                return self.display("Need to pull %s" % self.image)
-
-            self.update()
-            self.inspect = self._inspect_image()
-
-        if self.spc:
-            if self.command:
-                args = self.SPC_ARGS + self.command
-            else:
-                args = self.SPC_ARGS + self._get_cmd()
-
-            cmd = self.gen_cmd(args)
-        else:
-            args = self._get_args("RUN")
-            if args:
-                args += self.command
-            else:
-                missing_RUN = True
-                if self.command:
-                    args = self.RUN_ARGS + self.command
-                else:
-                    args = self.RUN_ARGS + self._get_cmd()
-
-            cmd = self.gen_cmd(args)
-            self.display(cmd)
-            if self.args.display:
-                return
-
-            if missing_RUN:
-                subprocess.check_call(cmd, env=self.cmd_env,
-                                      shell=True, stderr=DEVNULL,
-                                      stdout=DEVNULL)
-                return self._start()
-
-        self.display(cmd)
-        if not self.args.display:
-            subprocess.check_call(cmd, env=self.cmd_env, shell=True)
+    #def run -> Atomic/run.py
 
     def scan(self):
         if (not self.args.images and not self.args.containers and not self.args.all) and len(self.args.scan_targets) == 0:
