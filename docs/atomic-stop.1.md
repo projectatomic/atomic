@@ -16,7 +16,7 @@ IMAGE.
 
 If the container image has a `LABEL STOP` instruction like the following:
 
-`LABEL STOP /usr/bin/docker kill -s HUP ${NAME}
+`LABEL STOP /usr/bin/docker kill -s HUP \${NAME}`
 
 atomic would execute this command before stopping the container.
 
