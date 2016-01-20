@@ -36,8 +36,8 @@ if [ ! -f /etc/sysconfig/docker-storage ];then
 fi
 
 setup () {
-	${DOCKER} create --name test-migrate-1 -v /tmp fedora /bin/bash
-	${DOCKER} create --name test-migrate-2 -v /tmp busybox /bin/bash
+	CNT1=$(${DOCKER} create --name test-migrate-1 -v /tmp fedora /bin/bash)
+	CNT2=$(${DOCKER} create --name test-migrate-2 -v /tmp busybox /bin/bash)
 }
 
 cleanup () {
@@ -76,6 +76,12 @@ atomic_migrate () {
 	switch_docker_storage
 	echo 'y'|${ATOMIC} migrate import --dir "$(pwd)/migrate-dir"
 	systemctl restart docker
+
+	# check that the containers were actually migrated (this implicitly also
+	# checks that at least the fedora and busybox images were also migrated)
+	for cnt in $CNT1 $CNT2; do
+		${DOCKER} inspect $cnt
+	done
 }
 
 switch_docker_storage () {
@@ -83,10 +89,18 @@ switch_docker_storage () {
 	mkdir -p /var/lib/overlayfs
 	mount -o bind /var/lib/overlayfs /var/lib/docker
 	restorecon -R -v /var/lib/docker
-	cp /etc/sysconfig/docker /etc/sysconfig/docker.backup
-	cp /etc/sysconfig/docker-storage /etc/sysconfig/docker-storage.backup
-	sed -i "/OPTIONS/c OPTIONS=''" /etc/sysconfig/docker
-	sed -i '/DOCKER_STORAGE_OPTIONS/c DOCKER_STORAGE_OPTIONS="-s overlay"' /etc/sysconfig/docker-storage
+
+	# NB: Let's not actually switch over to overlayfs for now because it can
+	# trigger a kernel mm bug from the overlay module's allocations. There is a
+	# "fix" (an overlay patch to work around the mm bug) which has made it
+	# upstream, but is not yet in the stable kernels. Until then, let's not use
+	# overlayfs (see https://github.com/coreos/bugs/issues/489 for more info).
+
+	#cp /etc/sysconfig/docker /etc/sysconfig/docker.backup
+	#cp /etc/sysconfig/docker-storage /etc/sysconfig/docker-storage.backup
+	#sed -i "/OPTIONS/c OPTIONS=''" /etc/sysconfig/docker
+	#sed -i '/DOCKER_STORAGE_OPTIONS/c DOCKER_STORAGE_OPTIONS="-s overlay"' /etc/sysconfig/docker-storage
+
 	systemctl start docker
 }
 
