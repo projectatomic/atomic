@@ -435,7 +435,33 @@ class Atomic(object):
                 fetch = 1
             else:
                 fetch = 0
-            scan_return = json.loads(oscap_i.scan_list(scan_list, 4, fetch, timeout=99999))
+
+            json_result = ""
+            try:
+                token = oscap_i.CVEScanListAsync(
+                    scan_list, 4, fetch
+                )
+                try:
+                    while True:
+                        success, json_result = oscap_i.GetCVEScanListAsyncResults(token)
+                        if success:
+                            break
+                        time.sleep(1)
+                except:
+                    oscap_i.CancelCVEScanListAsync(token)
+                    raise
+
+            except dbus.exceptions.DBusException as e:
+                if e.get_dbus_name() == \
+                        "org.freedesktop.DBus.Error.UnknownMethod":
+                    # Maybe we are using an old version of openscap-daemon and the
+                    # async API is not supported. Perform the scan with the old
+                    # synchronized API.
+                    json_result = oscap_i.scan_list(scan_list, 4, fetch, timeout=99999)
+                else:
+                    raise
+
+            scan_return = json.loads(json_result)
 
         except dbus.exceptions.DBusException as e:
             message = "The openscap-daemon returned: {0}".format(e.get_dbus_message())
