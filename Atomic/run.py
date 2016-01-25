@@ -72,33 +72,29 @@ class Run(Atomic):
     @staticmethod
     def check_args(cmd):
         found_sec_arg = False
-        security_args = { '--privileged': 'This container runs without '
-                                          'separation and should be considered'
-                                          ' the same as root on your system.',
-                          '--cap-add': 'Adding capabilities to your container'
-                                       ' could allow processes from the'
-                                       ' container to break out onto'
-                                       ' your host system.',
-                          '--security-opt '
-                          'label:disable': 'Disabling label separation turns'
-                                           ' off tools like SELinux and could'
-                                           ' allow processes from the '
-                                           'container to break out onto'
-                                           ' your host system.',
-                          '--net=host': 'Processes in this container can'
-                                        ' listen to ports (and possibly'
-                                        ' rawip traffic) on the hosts '
-                                        'network.',
-                          '--pid=host': 'Processes in this container can see'
-                                        ' and interact with all processes on '
-                                        'the host and disables SELinux within'
-                                        'the container.',
-                          '--ipc=host': 'Processes in this container can see '
-                                        'and possibly interact with all '
-                                        'semaphores and shared memory segments'
-                                        ' on the host as well as disables '
-                                        'SELinux within the container.'
-                          }
+        security_args = {
+            '--privileged':
+                'This container runs without separation and should be '
+                'considered the same as root on your system.',
+            '--cap-add':
+                'Adding capabilities to your container could allow processes '
+                'from the container to break out onto your host system.',
+            '--security-opt label:disable':
+                'Disabling label separation turns off tools like SELinux and '
+                'could allow processes from the container to break out onto '
+                'your host system.',
+            '--net=host':
+                'Processes in this container can listen to ports (and '
+                'possibly rawip traffic) on the host\'s network.',
+            '--pid=host':
+                'Processes in this container can see and interact with all '
+                'processes on the host and disables SELinux within the '
+                'container.',
+            '--ipc=host':
+                'Processes in this container can see and possibly interact '
+                'with all semaphores and shared memory segments on the host '
+                'as well as disables SELinux within the container.'
+        }
 
         for sec_arg in security_args:
             if sec_arg in cmd:
