@@ -5,6 +5,8 @@ PROFILEDIR ?= $(DESTDIR)/etc/profile.d
 PYTHON ?= /usr/bin/python
 PYLINT ?= /usr/bin/pylint
 GO_MD2MAN ?= /usr/bin/go-md2man
+PYTHONSITELIB=$(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print get_python_lib(0)")
+VERSION=$(shell $(PYTHON) setup.py --version)
 
 .PHONY: all
 all: python-build docs pylint-check
@@ -37,6 +39,8 @@ clean:
 .PHONY: install-only
 install-only:
 	$(PYTHON) setup.py install --install-scripts /usr/share/atomic `test -n "$(DESTDIR)" && echo --root $(DESTDIR)`
+
+	(cd $(DESTDIR)/$(PYTHONSITELIB) && rm -f atomic-$(VERSION)-*egg-info)
 
 	install -d -m 0755 $(DESTDIR)/usr/bin
 	ln -fs ../share/atomic/atomic $(DESTDIR)/usr/bin/atomic
