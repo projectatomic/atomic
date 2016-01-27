@@ -203,8 +203,8 @@ container_import(){
 	oldStorageDriver=$(sed -n '1p' $importPath/info.txt)||exit 1
 	newStorageDriver=$(docker info|grep "Storage Driver"|cut -d" " -f 3)
 
-	sed -i "s|\"Driver\":\"$oldStorageDriver\"|\"Driver\":\"$newStorageDriver\"|g" config.json	
-	sed -i "s|$oldDockerRootDir/containers/$oldNotruncContainerID|$dockerRootDir/containers/$oldNotruncContainerID|g" config.json
+	sed -i "s|\"Driver\":\"$oldStorageDriver\"|\"Driver\":\"$newStorageDriver\"|g" config.v2.json	
+	sed -i "s|$oldDockerRootDir/containers/$oldNotruncContainerID|$dockerRootDir/containers/$oldNotruncContainerID|g" config.v2.json
 
 	cd $dockerRootDir
 	find . -name "*$newNotruncContainerID*" -type d -exec rename $newNotruncContainerID $oldNotruncContainerID {} +
