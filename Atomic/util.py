@@ -4,6 +4,7 @@ import subprocess
 import collections
 from fnmatch import fnmatch as matches
 from docker.utils import kwargs_from_env
+import os
 
 import docker
 import selinux
@@ -74,6 +75,12 @@ def subp(cmd):
     out, err = proc.communicate()
     return ReturnTuple(proc.returncode, stdout=out, stderr=err)
 
+
+def check_call(cmd, env=os.environ, stderr=None, stdout=None):
+    # Make sure cmd is a list
+    if not isinstance(cmd, list):
+        cmd = cmd.split(" ")
+    return subprocess.check_call(cmd, env=env, stderr=stderr, stdout=stdout)
 
 def default_container_context():
     if selinux.is_selinux_enabled() != 0:

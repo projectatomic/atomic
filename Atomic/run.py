@@ -54,20 +54,22 @@ class Run(Atomic):
                     args = self.RUN_ARGS + self._get_cmd()
 
             cmd = self.gen_cmd(args)
+            cmd = self.sub_env_strings(cmd)
             self.display(cmd)
             if self.args.display:
                 return
 
             if missing_RUN:
-                subprocess.check_call(cmd, env=self.cmd_env,
-                                      shell=True, stderr=DEVNULL,
-                                      stdout=DEVNULL)
+                util.check_call(cmd,
+                                env=self.cmd_env,
+                                stderr=DEVNULL,
+                                stdout=DEVNULL)
                 return self._start()
 
         if self.args.quiet:
             self.check_args(cmd)
         if not self.args.display:
-            subprocess.check_call(cmd, env=self.cmd_env, shell=True)
+            util.check_call(self.sub_env_strings(cmd), env=self.cmd_env)
 
     @staticmethod
     def check_args(cmd):
