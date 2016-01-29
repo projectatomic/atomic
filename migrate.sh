@@ -139,6 +139,7 @@ container_export(){
         cd $tmpDir/temp/$diffLayerID
         cp layer.tar $tmpDir/container-diff.tar
         cd $tmpDir
+        /usr/bin/tar --delete -f container-diff.tar run/gotar 2>/dev/null || true
         rm -rf temp
         docker rmi -f $imageName 1>/dev/null||exit 1
 }
