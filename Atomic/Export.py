@@ -11,7 +11,7 @@ from . import util
 from docker.utils import kwargs_from_env
 
 
-DOCKER_CLIENT = docker.Client(**kwargs_from_env())
+DOCKER_CLIENT = docker.AutoVersionClient(**kwargs_from_env())
 
 ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
 

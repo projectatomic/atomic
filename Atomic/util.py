@@ -45,7 +45,7 @@ def image_by_name(img_name, images=None):
 
     # If the images were not passed in, go get them.
     if images is None:
-        c = docker.Client(**kwargs_from_env())
+        c = docker.AutoVersionClient(**kwargs_from_env())
         images = c.images(all=False)
 
     valid_images = []

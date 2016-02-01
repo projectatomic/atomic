@@ -1026,7 +1026,7 @@ def SetFunc(function):
     return customAction
 
 
-class AtomicDocker(docker.Client):
+class AtomicDocker(docker.AutoVersionClient):
     """
     A class based on the docker client class with custom APIs specifically for
     atomic

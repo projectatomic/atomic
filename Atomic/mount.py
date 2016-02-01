@@ -190,7 +190,7 @@ class DockerMount(Mount):
 
     def __init__(self, mountpoint, live=False, mnt_mkdir=False):
         Mount.__init__(self, mountpoint, live)
-        self.client = docker.Client(**kwargs_from_env())
+        self.client = docker.AutoVersionClient(**kwargs_from_env())
         self.mnt_mkdir = mnt_mkdir
         self.tmp_image = None
 
