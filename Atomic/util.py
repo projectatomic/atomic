@@ -5,7 +5,6 @@ import collections
 from fnmatch import fnmatch as matches
 from docker.utils import kwargs_from_env
 import os
-
 import docker
 import selinux
 
@@ -254,3 +253,19 @@ def urllib3_disable_warnings():
             # Except only call disable-warnings if it exists
             if hasattr(urllib3, 'disable_warnings'):
                 urllib3.disable_warnings()
+
+
+def skopeo(image):
+    """
+    Performs remote inspection of an image on a registry
+    :param image:  fully qualified name
+    :return: Returns json formatted data
+    """
+
+    cmd = ['/usr/bin/skopeo', image]
+    results = subp(cmd)
+    if results.return_code is not 0:
+        raise ValueError(results.stderr)
+    else:
+        return json.loads(results.stdout)
+

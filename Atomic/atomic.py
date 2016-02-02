@@ -92,7 +92,7 @@ class Atomic(object):
                 "${IMAGE}"]
 
     def __init__(self):
-        self.d = AtomicDocker(**kwargs_from_env())
+        self.d = docker.Client(**kwargs_from_env())
         self.name = None
         self.image = None
         self.spc = False
@@ -644,7 +644,7 @@ class Atomic(object):
                 # Shut up pylint in case we're on a machine with upstream
                 # docker-py, which lacks the remote keyword arg.
                 #pylint: disable=unexpected-keyword-arg
-                inspection = self.d.remote_inspect(self.args.image)
+                inspection = util.skopeo(self.args.image)
             except docker.errors.APIError:
                 # image does not exist on any configured registry
                 _no_such_image()
@@ -1015,6 +1015,7 @@ class Atomic(object):
 
         return self.active_containers
 
+
 class AtomicError(Exception):
     pass
 
@@ -1024,13 +1025,3 @@ def SetFunc(function):
         def __call__(self, parser, namespace, values, option_string=None):
             setattr(namespace, self.dest, function)
     return customAction
-
-
-class AtomicDocker(docker.AutoVersionClient):
-    """
-    A class based on the docker client class with custom APIs specifically for
-    atomic
-    """
-    def remote_inspect(self, image_id):
-        return self._result(self._get(self._url("/images/{0}/json?remote=1".
-                                                format(image_id))), True)
