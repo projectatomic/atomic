@@ -251,7 +251,7 @@ class Verify(Atomic):
         return "Version unavailable"
 
     def get_latest_remote_version(self, tag):
-        r_inspect = self.d.remote_inspect(tag)
+        r_inspect = util.skopeo(tag)
         if 'Labels' in r_inspect['Config'] \
                 and r_inspect['Config']['Labels'] is not None:
             latest_version = self.assemble_nvr(r_inspect['Config'])
