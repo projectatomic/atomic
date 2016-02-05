@@ -499,7 +499,7 @@ class Atomic(object):
             cmd = self.gen_cmd(args + list(map(pipes.quote, self.args.args)))
             cmd = self.sub_env_strings(cmd)
             self.display(cmd)
-            util.check_call(cmd, env=self.cmd_env)
+            util.check_call(cmd, env=self.cmd_env())
 
         # Container exists
         try:
@@ -575,7 +575,7 @@ class Atomic(object):
             cmd = self.gen_cmd(args + list(map(pipes.quote, self.args.args)))
             cmd = self.sub_env_strings(cmd)
             self.display(cmd)
-            util.check_call(cmd, env=self.cmd_env)
+            util.check_call(cmd, env=self.cmd_env())
 
         if self.name == self.image:
             self.writeOut("docker rmi %s" % self.image)
@@ -604,7 +604,7 @@ class Atomic(object):
 
         if 'SUDO_GID' not in os.environ:
             os.environ["SUDO_GID"] = default_uid
-
+        return os.environ
 
     def gen_cmd(self, cargs):
         args = []
@@ -862,7 +862,7 @@ class Atomic(object):
         :return: string
         """
         # Set environment variables
-        self.cmd_env
+        self.cmd_env()
 
         # Perform variable subs
         in_string = os.path.expandvars(in_string)
