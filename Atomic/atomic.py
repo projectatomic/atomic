@@ -581,7 +581,6 @@ class Atomic(object):
             self.writeOut("docker rmi %s" % self.image)
             subprocess.check_call(["docker", "rmi", self.image])
 
-    @property
     def cmd_env(self):
         os.environ['NAME'] = self.name
         os.environ['IMAGE'] = self.image
