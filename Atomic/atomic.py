@@ -40,11 +40,22 @@ def convert_size(size):
     return '0B'
 
 
-def find_repo_tag(d, id):
+def find_repo_tag(d, id, image_name):
+    def image_in_repotags(image_name, repotags):
+        if image_name in repotags:
+            return image_name
+        for repotag in repotags:
+            if repotag.startswith("{}:".format(image_name)):
+                return image_name
+        return None
+
     global IMAGES
     if len(IMAGES) == 0:
         IMAGES = d.images()
     for image in IMAGES:
+        repo_tag = image_in_repotags(image_name, image['RepoTags'])
+        if repo_tag is not None:
+            return repo_tag
         if id == image["Id"]:
             return image["RepoTags"][0]
     return ""
@@ -751,7 +762,7 @@ class Atomic(object):
         version = ("%s-%s-%s" % (get_label("Name"), get_label("Version"),
                                  get_label("Release"))).strip("-")
         return({"Id": image['Id'], "Name": get_label("Name"),
-                "Version": version, "Tag": find_repo_tag(self.d, image['Id']),
+                "Version": version, "Tag": find_repo_tag(self.d, image['Id'], self.image),
                 "Parent": image['Parent']})
 
     def get_layers(self):

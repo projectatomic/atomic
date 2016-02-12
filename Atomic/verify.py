@@ -5,7 +5,7 @@ from docker.errors import NotFound
 from operator import itemgetter
 
 class Verify(Atomic):
-    DEBUG = False
+    DEBUG = True
 
     def verify(self):
         """
@@ -25,6 +25,17 @@ class Verify(Atomic):
                 if layer['Tag'] is not "" and layer['Name'] is "":
                     layer['Name'] = layer['Tag']
             return layers
+
+        def is_iid(input):
+            for i in self.get_images():
+                if i['Id'].startswith(self.image):
+                    return True
+            return False
+
+        if is_iid(self.image):
+            if len(self._inspect_image()['RepoTags']) > 1:
+                raise ValueError("\nThe image ID {} is tagged with multiple repositories. "
+                                 "Please use a repository name instead.\n".format(self.image))
 
         layers = fix_layers(self.get_layers())
         if self.DEBUG:
@@ -70,7 +81,7 @@ class Verify(Atomic):
                     remote = True
                 else:
                     local_nvr = self.get_local_latest_version(name)
-                    latest_version = self.get_latest_remote_version(_match['Tag'])
+                    latest_version = self.get_latest_remote_version(_match['Tag'], name)
 
                 no_version = (latest_version == "")
 
@@ -248,31 +259,30 @@ class Verify(Atomic):
                     return self.assemble_nvr(image)
             else:
                 continue
-        return "Version unavailable"
+        return "{}-Version unavailable".format(name)
 
-    def get_latest_remote_version(self, tag):
+    def get_latest_remote_version(self, tag, name=None):
         r_inspect = util.skopeo(tag)
         if 'Labels' in r_inspect['Config'] \
                 and r_inspect['Config']['Labels'] is not None:
-            latest_version = self.assemble_nvr(r_inspect['Config'])
+            latest_version = self.assemble_nvr(r_inspect['Config'], image_name=name)
         else:
             latest_version = "Version unavailable"
         return latest_version
 
-    def assemble_nvr(self, image):
+    def assemble_nvr(self, image, image_name=None):
         """
         Simple formatting def for NVR
         :param image:
         :return: str
         """
-
         name = self.pull_label(image, 'Name')
         version = self.pull_label(image, 'Version')
         release = self.pull_label(image, 'Release')
         nvr = "%s-%s-%s" % (name, version, release)
 
         if any(True for x in [name, version, release] if x is None):
-            return "Version unavailable"
+            return "{}-Version unavailable".format(image_name)
         else:
             return nvr
 
@@ -281,7 +291,7 @@ class Verify(Atomic):
         for layer in layers:
             if layer['Name'] is name:
                 return layer['Version'] if 'Version' in layer \
-                    else "Version unavailable"
+                    else "Version unavailable".format(name)
 
     @staticmethod
     def pull_label(image, key):
