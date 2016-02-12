@@ -8,6 +8,7 @@ import pipes
 import getpass
 import argparse
 import subprocess
+import shutil
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -109,6 +110,7 @@ class Atomic(object):
         self.name = None
         self.image = None
         self.spc = False
+        self.system = False
         self.inspect = None
         self.force = False
         self._images = []
@@ -278,6 +280,11 @@ class Atomic(object):
             self.spc = False
 
         try:
+            self.system = args.system
+        except:
+            pass
+
+        try:
             self.name = args.name
         except:
             pass
@@ -291,6 +298,8 @@ class Atomic(object):
             self.name = self.image.split("/")[-1].split(":")[0]
             if self.spc:
                 self.name = self.name + "-spc"
+            if self.system:
+                self.name = self.name + "-system"
 
     def _getconfig(self, key, default=None):
         assert self.inspect is not None
@@ -676,7 +685,8 @@ class Atomic(object):
                                time.localtime(image["Created"])),
                  convert_size(image["VirtualSize"])))
 
-    def install(self):
+
+    def _check_if_image_present(self):
         self.inspect = self._inspect_image()
         if not self.inspect:
             if self.args.display:
@@ -685,6 +695,11 @@ class Atomic(object):
             self.update()
             self.inspect = self._inspect_image()
 
+    def install(self):
+        if self.system:
+            return self._install_system_container()
+
+        self._check_if_image_present()
         args = self._get_args("INSTALL")
         if not args:
             return
@@ -695,6 +710,49 @@ class Atomic(object):
 
         if not self.args.display:
             return util.check_call(cmd)
+
+    def _install_system_container(self):
+        self._check_if_image_present()
+
+        cmd = self.sub_env_strings(self.gen_cmd(["docker", "run", "-d", "--name", self.image, self.image]))
+        self.display(cmd)
+        if not self.args.display:
+            util.check_call(cmd, env=self.cmd_env())
+
+        try:
+            destination = "/var/system/%s.%d" % (self.image, 0)
+            rootfs = os.path.join(destination, "rootfs")
+            cmd = "docker export '%s' | tar --directory='%s' -xf -" % (self.image, rootfs)
+            self.display(cmd)
+            if not self.args.display:
+                os.makedirs(rootfs)
+                subprocess.check_call(cmd, shell=True)
+
+            exports = os.path.join(destination, "rootfs/exports")
+            exportfs = os.path.join(exports, "rootfs")
+            if os.path.exists(exportfs):
+                shutil.copy2(exportfs, "/")
+
+            if not self.args.display:
+                sym = "/var/system/%s" % (self.image)
+                if os.path.exists(sym):
+                    os.unlink(sym)
+                os.symlink(destination, sym)
+
+            shutil.copy2(os.path.join(exports, "config.json"), os.path.join(destination, "config.json"))
+
+            unitfile = os.path.join(exports, "service.template")
+            unitfileout = "/usr/local/lib/systemd/system/%s.service" % (self.image)
+            if os.path.exists(unitfile):
+                with open(unitfile, 'r') as infile, open(unitfileout, "w") as outfile:
+                    outfile.write(infile.read().replace("$DEST", destination))
+
+        finally:
+            cmd = self.sub_env_strings(self.gen_cmd(["docker", "rm", "-f", self.image]))
+            self.writeOut(cmd)
+            if not self.args.display:
+                util.check_call(cmd, env=self.cmd_env())
+
 
     def help(self):
         if os.path.exists("/usr/bin/rpm-ostree"):

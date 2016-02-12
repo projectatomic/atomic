@@ -277,6 +277,9 @@ if __name__ == '__main__':
         action="store_true",
         help=_("preview the command that %s would execute") % sys.argv[0])
     installp.add_argument("image", help=_("container image"))
+    installp.add_argument("--system", dest="system",
+                          action='store_true', default=False,
+                          help=_('install a system container'))
     installp.add_argument("args", nargs=argparse.REMAINDER,
                           help=_("Additional arguments appended to the image "
                                  "install method"))
