@@ -1,13 +1,11 @@
 from . import Atomic
 from . import util
 import tty
-import docker
 import sys
 import termios
 import select
 from os import isatty
 from operator import itemgetter
-from docker.utils import kwargs_from_env
 
 
 class Top(Atomic):
@@ -21,7 +19,6 @@ class Top(Atomic):
         super(Top, self).__init__()
         self.input_var = None
         self._sort = 'CID'
-        self.AD = docker.Client(**kwargs_from_env())
         self.name_id = {}
         self.optional = None
         self.titles = None
@@ -157,7 +154,7 @@ class Top(Atomic):
         # Assemble the ps args
         ps_args = [header['ps_opt']for header in sorted(self.headers, key=itemgetter('index')) if header['ps_opt']
                    is not None and header['active']]
-        con_procs = self.AD.top(con_id, ps_args="-eo {}".format(",".join(ps_args)))
+        con_procs = self.d.top(con_id, ps_args="-eo {}".format(",".join(ps_args)))
         # Set the column header titles one-time
         if self.titles is None:
             self.titles = con_procs['Titles']
