@@ -508,6 +508,9 @@ class Atomic(object):
         self._ostreeadmin(argv)
 
     def uninstall(self):
+        if self._system_container_exists(self.name):
+            return self._uninstall_system_container()
+
         self.inspect = self._inspect_container()
         if self.inspect and self.force:
             self.force_delete_containers()
@@ -710,6 +713,34 @@ class Atomic(object):
 
         if not self.args.display:
             return util.check_call(cmd)
+
+    def systemctl_command(self, cmd):
+        cmd = self.sub_env_strings(self.gen_cmd(["systemctl", cmd, self.image]))
+        self.display(cmd)
+        if not self.args.display:
+            util.check_call(cmd, env=self.cmd_env())
+
+    def _system_container_exists(self, name):
+        return os.path.exists("/var/system/%s" % name)
+
+    def _uninstall_system_container(self):
+        systemdir = os.path.realpath("/var/system/%s" % self.image)
+        service_installed = os.path.exists(os.path.join(systemdir, "rootfs/exports/service.template"))
+        self.args.display = False
+        if service_installed:
+            self.systemctl_command("stop")
+            self.systemctl_command("disable")
+
+        if service_installed:
+            os.unlink("/usr/local/lib/systemd/system/%s.service" % (self.image))
+
+        exportedfs = os.path.join(systemdir, "rootfs/exports/rootfs/")
+        for root, _, files in os.walk(exportedfs):
+            for f in files:
+                os.unlink("/" + os.path.relpath(os.path.join(root, f), exportedfs))
+
+        os.unlink("/var/system/%s" % self.image)
+        shutil.rmtree("/var/system/%s.0" % self.image)
 
     def _install_system_container(self):
         self._check_if_image_present()
