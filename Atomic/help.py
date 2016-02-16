@@ -91,5 +91,5 @@ class AtomicHelp(Atomic):
         """
         cmd = self.gen_cmd(self.alt_help_cmd.split(" "))
         self.display(cmd)
-        util.check_call(cmd, env=self.cmd_env)
+        util.check_call(cmd, env=self.cmd_env())
 
