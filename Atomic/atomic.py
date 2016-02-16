@@ -148,6 +148,11 @@ class Atomic(object):
                     self.d.remove_container(c["Id"], force=True)
 
     def update(self):
+        if self.args.container:
+            if self._system_container_exists(self.args.image):
+                return self._update_system_container()
+            raise ValueError("Container '%s' is not installed" % self.args.image)
+
         self.ping()
         if self.force:
             self.force_delete_containers()
@@ -741,9 +746,13 @@ class Atomic(object):
 
         os.unlink("/var/system/%s" % self.image)
         shutil.rmtree("/var/system/%s.0" % self.image)
+        if os.path.exists("/var/system/%s.1" % self.image):
+            shutil.rmtree("/var/system/%s.1" % self.image)
 
-    def _install_system_container(self):
+    def _do_extract_oci(self, deployment, upgrade):
         self._check_if_image_present()
+
+        self.writeOut("Extracting to %s" % ("/var/system/%s.%d" % (self.image, deployment)))
 
         cmd = self.sub_env_strings(self.gen_cmd(["docker", "run", "-d", "--name", self.image, self.image]))
         self.display(cmd)
@@ -751,7 +760,7 @@ class Atomic(object):
             util.check_call(cmd, env=self.cmd_env())
 
         try:
-            destination = "/var/system/%s.%d" % (self.image, 0)
+            destination = "/var/system/%s.%d" % (self.image, deployment)
             rootfs = os.path.join(destination, "rootfs")
             cmd = "docker export '%s' | tar --directory='%s' -xf -" % (self.image, rootfs)
             self.display(cmd)
@@ -777,6 +786,11 @@ class Atomic(object):
             if os.path.exists(unitfile):
                 with open(unitfile, 'r') as infile, open(unitfileout, "w") as outfile:
                     outfile.write(infile.read().replace("$DEST", destination))
+                self.systemctl_command("enable")
+                if upgrade:
+                    self.systemctl_command("restart")
+                else:
+                    self.systemctl_command("start")
 
         finally:
             cmd = self.sub_env_strings(self.gen_cmd(["docker", "rm", "-f", self.image]))
@@ -784,6 +798,23 @@ class Atomic(object):
             if not self.args.display:
                 util.check_call(cmd, env=self.cmd_env())
 
+    def _install_system_container(self):
+        if os.path.exists("/var/system/%s.0" % self.image):
+            self.writeOut("/var/system/%s.0 already present" % self.image)
+            return
+
+        return self._do_extract_oci(0, False)
+
+    def _update_system_container(self):
+        oci = "/var/system/%s" % (self.image)
+        next_deployment = 0
+        self.args.display = False
+        if os.path.realpath(oci)[-1] == "0":
+            next_deployment = 1
+
+        if os.path.exists("/var/system/%s.%d" % (self.image, next_deployment)):
+            shutil.rmtree("/var/system/%s.%d" % (self.image, next_deployment))
+        return self._do_extract_oci(next_deployment, True)
 
     def help(self):
         if os.path.exists("/usr/bin/rpm-ostree"):
