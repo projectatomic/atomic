@@ -5,13 +5,8 @@ import os
 import sys
 import subprocess
 
-import docker
-
+from .client import get_docker_client
 from . import util
-from docker.utils import kwargs_from_env
-
-
-DOCKER_CLIENT = docker.AutoVersionClient(**kwargs_from_env())
 
 ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
 
@@ -24,7 +19,7 @@ def export_docker(graph, export_location):
     if not os.path.isdir(export_location):
         os.makedirs(export_location)
 
-    dangling_images = DOCKER_CLIENT.images(filters={"dangling":True}, quiet=True)
+    dangling_images = get_docker_client().images(filters={"dangling":True}, quiet=True)
     if any(dangling_images):
         util.writeOut("There are dangling images in your system. Would you like atomic to prune them [y/N]")
         choice = sys.stdin.read(1)
@@ -35,7 +30,7 @@ def export_docker(graph, export_location):
             raise ValueError("Please delete dangling images before running atomic migrate export")
 
     #Save the docker storage driver
-    storage_driver = DOCKER_CLIENT.info()["Driver"]
+    storage_driver = get_docker_client().info()["Driver"]
     filed = open(export_location+"/info.txt", "w")
     filed.write(storage_driver)
     filed.close()
@@ -57,7 +52,7 @@ def export_images(export_location):
         os.makedirs(export_location + "/images")
 
     images = {}
-    for image in DOCKER_CLIENT.images():
+    for image in get_docker_client().images():
         id, tags = image["Id"], image["RepoTags"]
 
         if '<none>:<none>' in tags:
@@ -79,7 +74,7 @@ def export_containers(graph, export_location):
     if not os.path.isdir(export_location + "/containers"):
         os.makedirs(export_location + "/containers")
 
-    for container in DOCKER_CLIENT.containers(all=True):
+    for container in get_docker_client().containers(all=True):
         id = container["Id"]
 
         util.writeOut("Exporting container: {0}".format(id[:12]))

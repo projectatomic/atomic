@@ -24,8 +24,8 @@ from . import satellite
 from . import pulp
 from .Export import export_docker
 from .Import import import_docker
-from docker.utils import kwargs_from_env
 import re
+from .client import get_docker_client
 
 IMAGES = []
 
@@ -92,7 +92,7 @@ class Atomic(object):
                 "${IMAGE}"]
 
     def __init__(self):
-        self.d = docker.Client(**kwargs_from_env())
+        self.d = get_docker_client()
         self.name = None
         self.image = None
         self.spc = False

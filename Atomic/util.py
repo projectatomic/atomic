@@ -3,11 +3,9 @@ import json
 import subprocess
 import collections
 from fnmatch import fnmatch as matches
-from docker.utils import kwargs_from_env
 import os
-import docker
 import selinux
-
+from .client import get_docker_client
 """Atomic Utility Module"""
 
 ReturnTuple = collections.namedtuple('ReturnTuple',
@@ -44,7 +42,7 @@ def image_by_name(img_name, images=None):
 
     # If the images were not passed in, go get them.
     if images is None:
-        c = docker.AutoVersionClient(**kwargs_from_env())
+        c = get_docker_client()
         images = c.images(all=False)
 
     valid_images = []
