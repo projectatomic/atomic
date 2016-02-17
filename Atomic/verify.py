@@ -5,7 +5,7 @@ from docker.errors import NotFound
 from operator import itemgetter
 
 class Verify(Atomic):
-    DEBUG = True
+    DEBUG = False
 
     def verify(self):
         """
@@ -291,7 +291,7 @@ class Verify(Atomic):
         for layer in layers:
             if layer['Name'] is name:
                 return layer['Version'] if 'Version' in layer \
-                    else "Version unavailable".format(name)
+                    else "Version unavailable"
 
     @staticmethod
     def pull_label(image, key):
