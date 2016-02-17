@@ -265,5 +265,5 @@ def skopeo(image):
     if results.return_code is not 0:
         raise ValueError(results.stderr)
     else:
-        return json.loads(results.stdout)
+        return json.loads(results.stdout.decode('utf-8'))
 
