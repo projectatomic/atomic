@@ -9,6 +9,8 @@ import getpass
 import argparse
 import subprocess
 import shutil
+import tempfile
+import tarfile
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -749,6 +751,46 @@ class Atomic(object):
         if os.path.exists("/var/system/%s.1" % self.image):
             shutil.rmtree("/var/system/%s.1" % self.image)
 
+    def _extract_docker_image(self, image, rootfs):
+        tmpdir = tempfile.mkdtemp()
+
+        with tempfile.NamedTemporaryFile(mode='w') as tmp_image:
+            save_cmd = ["docker", "save", image]
+            cmd = self.sub_env_strings(self.gen_cmd(save_cmd))
+            self.display(cmd)
+            if not self.args.display:
+                util.check_call(cmd, env=self.cmd_env(), stdout=tmp_image)
+            with tarfile.open(tmp_image.name, 'r') as t:
+                t.extractall(tmpdir)
+
+        first = None
+        child = {}
+        for i in os.listdir(tmpdir):
+            d = os.path.join(tmpdir, i)
+            if len(i) == 64 and os.path.isdir(d):
+                with open(os.path.join(d, "json"), 'r') as data:
+                    j = json.loads(data.read())
+                    parent = j.get('parent')
+                    if parent:
+                        child[parent] = i
+                    else:
+                        first = i
+
+        def extract_union(rootfs, layer):
+            with tarfile.open(os.path.join(layer, "layer.tar"), 'r') as t:
+                for it in t:
+                    if os.path.basename(it.name).startswith(".wh."):
+                        destfile = os.path.join(os.path.dirname(it.name), os.path.basename(it.name)[4:])
+                        os.unlink(os.path.join(rootfs, destfile))
+                    elif not it.isdev():
+                        t.extract(it, rootfs)
+        it = first
+        while it:
+            extract_union(rootfs, os.path.join(tmpdir, it))
+            it = child.get(it)
+
+        shutil.rmtree(tmpdir)
+
     def _do_extract_oci(self, deployment, upgrade, skip_restart=False):
         self._check_if_image_present()
 
@@ -763,13 +805,6 @@ class Atomic(object):
             destination = "/var/system/%s.%d" % (self.name, deployment)
             rootfs = os.path.join(destination, "rootfs")
             cmd = "docker export '%s' | tar --directory='%s' -xf -" % (self.image, rootfs)
-            self.display(cmd)
-            if not self.args.display:
-                os.makedirs(rootfs)
-                subprocess.check_call(cmd, shell=True)
-
-            exports = os.path.join(destination, "rootfs/exports")
-
             if not self.args.display:
                 with open(os.path.join(destination, "image"), 'w') as image:
                     image.write(self.image + "\n")
@@ -792,11 +827,31 @@ class Atomic(object):
                 else:
                     self.systemctl_command("start")
 
-        finally:
-            cmd = self.sub_env_strings(self.gen_cmd(["docker", "rm", "-f", self.image]))
-            self.writeOut(cmd)
-            if not self.args.display:
-                util.check_call(cmd, env=self.cmd_env())
+        self._extract_docker_image(self.image, os.path.join(destination, "rootfs"))
+
+        exports = os.path.join(destination, "rootfs/exports")
+
+        if not self.args.display:
+            with open(os.path.join(destination, "image"), 'w') as image:
+                image.write(self.image + "\n")
+            sym = "/var/spc/%s" % (self.name)
+            if os.path.exists(sym):
+                os.unlink(sym)
+            os.symlink(destination, sym)
+
+        shutil.copy2(os.path.join(exports, "config.json"), os.path.join(destination, "config.json"))
+
+        unitfile = os.path.join(exports, "service.template")
+        unitfileout = "/usr/local/lib/systemd/system/%s.service" % (self.name)
+        if os.path.exists(unitfile):
+            with open(unitfile, 'r') as infile, open(unitfileout, "w") as outfile:
+                data = infile.read().replace("$DESTDIR", destination).replace("$NAME", self.name)
+                outfile.write(data)
+            self.systemctl_command("enable")
+            if upgrade:
+                self.systemctl_command("restart")
+            else:
+                self.systemctl_command("start")
 
     def _install_system_container(self):
         if os.path.exists("/var/system/%s.0" % self.name):
