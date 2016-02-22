@@ -1,3 +1,11 @@
+## 1.9 (2016-2-22)
+Use Skopeo for remote inspection
+Use docker.AutoVersionClient to avoid API version mismatch
+atomic: harden shell invocations
+Use the async API from openscap-daemon to perform CVE scans if possible
+Atomic/run.py: Add security implications messages based on RUN label
+Atomic/help.py: Display man-like help for an image
+
 ## 1.8 (2015-12-10)
 Add `atomic top`
 Fix lean in `atomic diff`
