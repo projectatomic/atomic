@@ -11,6 +11,10 @@ import subprocess
 import shutil
 import tempfile
 import tarfile
+import stat
+import gi
+gi.require_version('OSTree', '1.0')
+from gi.repository import Gio, GLib, OSTree
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -152,7 +156,7 @@ class Atomic(object):
     def update(self):
         if self.args.container:
             if self._system_container_exists(self.args.image):
-                return self._update_system_container()
+                return self._update_system_container(self.args.image)
             raise ValueError("Container '%s' is not installed" % self.args.image)
 
         self.ping()
@@ -545,8 +549,8 @@ class Atomic(object):
             subprocess.check_call([self.docker_binary(), "rmi", self.image])
 
     def cmd_env(self):
-        os.environ['NAME'] = self.name
-        os.environ['IMAGE'] = self.image
+        os.environ['NAME'] = self.name or ""
+        os.environ['IMAGE'] = self.image or ""
 
         if hasattr(self.args, 'opt1') and self.args.opt1:
             os.environ['OPT1'] = self.args.opt1
@@ -721,8 +725,8 @@ class Atomic(object):
         if not self.args.display:
             return util.check_call(cmd)
 
-    def systemctl_command(self, cmd):
-        cmd = self.sub_env_strings(self.gen_cmd(["systemctl", cmd, self.name]))
+    def systemctl_command(self, cmd, name):
+        cmd = self.sub_env_strings(self.gen_cmd(["systemctl", cmd, name]))
         self.display(cmd)
         if not self.args.display:
             util.check_call(cmd, env=self.cmd_env())
@@ -735,8 +739,8 @@ class Atomic(object):
         service_installed = os.path.exists(os.path.join(systemdir, "rootfs/exports/service.template"))
         self.args.display = False
         if service_installed:
-            self.systemctl_command("stop")
-            self.systemctl_command("disable")
+            self.systemctl_command("stop", self.name)
+            self.systemctl_command("disable", self.name)
 
         if service_installed:
             os.unlink("/usr/local/lib/systemd/system/%s.service" % (self.name))
@@ -751,9 +755,16 @@ class Atomic(object):
         if os.path.exists("/var/system/%s.1" % self.image):
             shutil.rmtree("/var/system/%s.1" % self.image)
 
-    def _extract_docker_image(self, image, rootfs):
-        tmpdir = tempfile.mkdtemp()
+    def _check_system_docker_image(self, repo, upgrade, image):
 
+        current_rev = repo.resolve_rev("ociimage/%s" % image, True)
+        # FIXME check also `docker images -q --no-trunc output`
+        if not upgrade and current_rev[1]:
+            return False
+
+        #subprocess.check_call(["docker", "pull", self.image])
+
+        tmpdir = tempfile.mkdtemp()
         with tempfile.NamedTemporaryFile(mode='w') as tmp_image:
             save_cmd = ["docker", "save", image]
             cmd = self.sub_env_strings(self.gen_cmd(save_cmd))
@@ -763,78 +774,94 @@ class Atomic(object):
             with tarfile.open(tmp_image.name, 'r') as t:
                 t.extractall(tmpdir)
 
-        first = None
+        first_layer = None
         child = {}
+        refs = {}
+        repo.prepare_transaction()
         for i in os.listdir(tmpdir):
             d = os.path.join(tmpdir, i)
             if len(i) == 64 and os.path.isdir(d):
                 with open(os.path.join(d, "json"), 'r') as data:
                     j = json.loads(data.read())
                     parent = j.get('parent')
+                    child[parent] = i
+                    if not parent:
+                        first_layer = i
+
+                ref = repo.resolve_rev("ociimage/%s" % i, True)[1]
+                if ref:
+                    # Layer already present, store its ref and do not do anything
+                    refs[i] = ref
+                    continue
+
+                with tarfile.open(os.path.join(d, "layer.tar"), 'r') as t:
+                    mtree = OSTree.MutableTree()
+                    repo.write_archive_to_mtree(Gio.File.new_for_path(t.name), mtree, None, True)
+                    root = repo.write_mtree(mtree)[1]
                     if parent:
-                        child[parent] = i
+                        metav = GLib.Variant("a{sv}", {'docker.parent': GLib.Variant('s', "ociimage/%s" % parent), 'docker.layer': GLib.Variant('s', i)})
                     else:
-                        first = i
+                        metav = GLib.Variant("a{sv}", {'docker.layer': GLib.Variant('s', i)})
 
-        def extract_union(rootfs, layer):
-            with tarfile.open(os.path.join(layer, "layer.tar"), 'r') as t:
-                for it in t:
-                    if os.path.basename(it.name).startswith(".wh."):
-                        destfile = os.path.join(os.path.dirname(it.name), os.path.basename(it.name)[4:])
-                        os.unlink(os.path.join(rootfs, destfile))
-                    elif not it.isdev():
-                        t.extract(it, rootfs)
-        it = first
-        while it:
-            extract_union(rootfs, os.path.join(tmpdir, it))
-            it = child.get(it)
+                    csum = repo.write_commit(None, "", None, metav, root)[1]
+                    refs[i] = csum
+                    repo.transaction_set_ref(None, "ociimage/%s" % i, csum)
 
-        shutil.rmtree(tmpdir)
+        it = first_layer
+        while child.get(it):
+            it = child[it]
 
-    def _do_extract_oci(self, deployment, upgrade, skip_restart=False):
-        self._check_if_image_present()
+        # Point to the last layer
+        repo.transaction_set_ref(None, "ociimage/%s" % image, refs[it])
+        repo.commit_transaction(None)
+        return True
 
-        self.writeOut("Extracting to %s" % ("/var/system/%s.%d" % (self.image, deployment)))
+    @staticmethod
+    def _get_commit_metadata(repo, rev, key):
+        commit = repo.load_commit(rev)[1]
+        metadata = commit.get_child_value(0)
+        if key not in metadata.keys():
+            return None
+        return metadata[key]
 
-        cmd = self.sub_env_strings(self.gen_cmd(["docker", "run", "-d", "--name", self.image, self.image]))
-        self.display(cmd)
-        if not self.args.display:
-            util.check_call(cmd, env=self.cmd_env())
+    def _checkout_system_container(self, repo, name, image, deployment, upgrade):
+        regloc, image, tag = Atomic._parse_imagename(image)
+        imagebranch = "ociimage/%s-%s" % (image.replace("sha256:", ""), tag)
 
-        try:
-            destination = "/var/system/%s.%d" % (self.name, deployment)
-            rootfs = os.path.join(destination, "rootfs")
-            cmd = "docker export '%s' | tar --directory='%s' -xf -" % (self.image, rootfs)
-            if not self.args.display:
-                with open(os.path.join(destination, "image"), 'w') as image:
-                    image.write(self.image + "\n")
-                sym = "/var/system/%s" % (self.name)
-                if os.path.exists(sym):
-                    os.unlink(sym)
-                os.symlink(destination, sym)
+        destination = "/var/system/%s.%d" % (name, deployment)
+        self.writeOut("Extracting to %s" % destination)
 
-            shutil.copy2(os.path.join(exports, "config.json"), os.path.join(destination, "config.json"))
+        rootfs = os.path.join(destination, "rootfs")
+        sysroot = OSTree.Sysroot()
+        sysroot.load()
+        osname = sysroot.get_booted_deployment().get_osname()
 
-            unitfile = os.path.join(exports, "service.template")
-            unitfileout = "/usr/local/lib/systemd/system/%s.service" % (self.name)
-            if os.path.exists(unitfile):
-                with open(unitfile, 'r') as infile, open(unitfileout, "w") as outfile:
-                    data = infile.read().replace("$DESTDIR", destination).replace("$NAME", self.name)
-                    outfile.write(data)
-                self.systemctl_command("enable")
-                if upgrade:
-                    self.systemctl_command("restart")
-                else:
-                    self.systemctl_command("start")
+        rootfs = os.path.join("/ostree/deploy/", osname, os.path.relpath(rootfs, "/"))
+        os.makedirs(rootfs)
+        revs = []
 
-        self._extract_docker_image(self.image, os.path.join(destination, "rootfs"))
+        rev = repo.resolve_rev("ociimage/%s" % self.image, False)[1]
+        while rev[1]:
+            revs.insert(0, rev)
+            parent = _get_commit_metadata(repo, rev, 'docker.parent')
+            if not parent:
+                break
+            rev = repo.resolve_rev(parent, False)[1]
+
+        options = OSTree.RepoCheckoutOptions()
+        options.overwrite_mode = OSTree.RepoCheckoutOverwriteMode.UNION_FILES
+        rootfs_fd = os.open(rootfs, os.O_DIRECTORY)
+        for layer in layers:
+            rev = repo.resolve_rev("ociimage/%s" % layer.replace("sha256:", ""), False)[1]
+            repo.checkout_tree_at(options, rootfs_fd, rootfs, rev)
+        os.close(rootfs_fd)
 
         exports = os.path.join(destination, "rootfs/exports")
 
         if not self.args.display:
-            with open(os.path.join(destination, "image"), 'w') as image:
-                image.write(self.image + "\n")
-            sym = "/var/spc/%s" % (self.name)
+            with open(os.path.join(destination, "image"), 'w') as imgfile:
+                imgfile.write("%s\n" % image)
+            sym = "/var/system/%s" % (name)
             if os.path.exists(sym):
                 os.unlink(sym)
             os.symlink(destination, sym)
@@ -842,36 +869,58 @@ class Atomic(object):
         shutil.copy2(os.path.join(exports, "config.json"), os.path.join(destination, "config.json"))
 
         unitfile = os.path.join(exports, "service.template")
-        unitfileout = "/usr/local/lib/systemd/system/%s.service" % (self.name)
+        unitfileout = "/usr/local/lib/systemd/system/%s.service" % (name)
         if os.path.exists(unitfile):
             with open(unitfile, 'r') as infile, open(unitfileout, "w") as outfile:
-                data = infile.read().replace("$DESTDIR", destination).replace("$NAME", self.name)
+                data = infile.read().replace("$DESTDIR", destination).replace("$NAME", name)
                 outfile.write(data)
-            self.systemctl_command("enable")
+            self.systemctl_command("enable", name)
             if upgrade:
-                self.systemctl_command("restart")
+                self.systemctl_command("restart", name)
             else:
-                self.systemctl_command("start")
+                self.systemctl_command("start", name)
+        return True
 
     def _install_system_container(self):
+        repo = OSTree.Repo.new(Gio.File.new_for_path("/ostree/repo"))
+        repo.open(None)
+
+        if not self._check_system_docker_image(repo, True, self.image):
+            return False
+
+        self._check_system_docker_image(repo, False, self.image)
+
         if os.path.exists("/var/system/%s.0" % self.name):
             self.writeOut("/var/system/%s.0 already present" % self.name)
             return
 
-        return self._do_extract_oci(0, False)
+        return self._checkout_system_container(repo, self.name, self.image, 0, False)
 
-    def _update_system_container(self):
+    def _update_system_container(self, repo, name):
         self.args.display = False
 
-        oci = os.path.join("/var/oci", self.name)
+        repo = OSTree.Repo.new(Gio.File.new_for_path("/ostree/repo"))
+        repo.open(None)
+
+        path = os.path.join("/var/oci", name)
         next_deployment = 0
-        if os.path.realpath(oci).endswith(".0"):
+        if os.path.realpath(path).endswith(".0"):
             next_deployment = 1
+
+        if os.path.exists("/var/oci/%s.%d" % (name, next_deployment)):
+            shutil.rmtree("/var/oci/%s.%d" % (name, next_deployment))
+
+        image = None
+        with open(os.path.join("/var/oci", name, "image"), "r") as i:
+            image = i.readline().rstrip("\n")
+
+        if not self._check_system_docker_image(repo, True, self.image):
+            return False
 
         if os.path.exists("/var/system/%s.%d" % (self.name, next_deployment)):
             shutil.rmtree("/var/system/%s.%d" % (self.name, next_deployment))
 
-        self._do_extract_oci(next_deployment, True)
+        self._checkout_system_container(repo, name, image, next_deployment, True)
 
     def help(self):
         if os.path.exists("/usr/bin/rpm-ostree"):
