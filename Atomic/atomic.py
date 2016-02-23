@@ -26,6 +26,7 @@ from .Export import export_docker
 from .Import import import_docker
 import re
 from .client import get_docker_client
+from .util import NoDockerDaemon
 
 IMAGES = []
 
@@ -137,6 +138,7 @@ class Atomic(object):
                     self.d.remove_container(c["Id"], force=True)
 
     def update(self):
+        self.ping()
         if self.force:
             self.force_delete_containers()
         return subprocess.check_call(["docker", "pull", self.image])
@@ -163,12 +165,20 @@ class Atomic(object):
         self.writeOut("")
 
     def Export(self):
-        export_docker(self.args.graph, self.args.export_location)
+        try:
+            export_docker(self.args.graph, self.args.export_location)
+        except requests.exceptions.ConnectionError:
+            raise NoDockerDaemon()
 
     def Import(self):
-        import_docker(self.args.graph, self.args.import_location)
+        self.ping()
+        try:
+            import_docker(self.args.graph, self.args.import_location)
+        except requests.exceptions.ConnectionError:
+            raise NoDockerDaemon()
 
     def push(self):
+        self.ping()
         prevstatus = ""
         # Priority order:
         # If user passes in a password/username/url/ssl flag, use that
@@ -352,8 +362,8 @@ class Atomic(object):
             return self.d.inspect_image(self.image)
         except docker.errors.APIError:
             pass
-        except requests.exceptions.ConnectionError as e:
-            raise IOError("Cannot connect to the Docker daemon. Is the docker daemon running on this host?")
+        except requests.exceptions.ConnectionError:
+            raise NoDockerDaemon()
 
         return None
 
@@ -365,8 +375,7 @@ class Atomic(object):
         except docker.errors.APIError:
             pass
         except requests.exceptions.ConnectionError as e:
-            raise IOError("Unable to communicate with docker daemon: %s\n" %
-                          str(e))
+            raise NoDockerDaemon()
         return None
 
     def _get_args(self, label):
@@ -819,7 +828,7 @@ class Atomic(object):
                                                     "rootfs"),
                                        self.args.mountpoint, bind=True)
 
-        except mount.MountError as dme:
+        except (mount.MountError, mount.NoDockerDaemon) as dme:
             raise ValueError(str(dme))
 
     def unmount(self):
@@ -848,7 +857,8 @@ class Atomic(object):
         except docker.errors.APIError:
             self.update()
             self.inspect = self.d.inspect_image(self.image)
-
+        except requests.exceptions.ConnectionError:
+            raise NoDockerDaemon()
         if self.args.recurse:
             return self.get_layers()
         else:
@@ -893,8 +903,7 @@ class Atomic(object):
         try:
             self.d.ping()
         except requests.exceptions.ConnectionError:
-            sys.stderr.write("\nUnable to communicate with docker daemon\n")
-            sys.exit(1)
+            raise NoDockerDaemon()
 
     def _is_container(self, identifier, active=False):
         '''
@@ -1000,7 +1009,10 @@ class Atomic(object):
         multiple times for a list of images.
         '''
         if len(self.images_cache) == 0:
-            images = self.d.images()
+            try:
+                images = self.d.images()
+            except requests.exceptions.ConnectionError:
+                raise NoDockerDaemon()
             if images:
                 self.images_cache = images
         return self.images_cache
@@ -1028,7 +1040,6 @@ class Atomic(object):
 
 class AtomicError(Exception):
     pass
-
 
 def SetFunc(function):
     class customAction(argparse.Action):

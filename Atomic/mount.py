@@ -28,7 +28,8 @@ import time
 import docker
 from .client import get_docker_client
 from . import util
-
+import requests
+from .util import NoDockerDaemon
 
 """ Module for mounting and unmounting containerized applications. """
 
@@ -59,7 +60,6 @@ class Mount:
     A class which contains backend-independent methods useful for mounting and
     unmounting containers.
     """
-
     def __init__(self, mountpoint, live=False):
         """
         Constructs the Mount class with a mountpoint.
@@ -315,7 +315,11 @@ class DockerMount(Mount):
         except MountError:
             pass
 
-        driver = self.client.info()['Driver']
+        try:
+            driver = self.client.info()['Driver']
+        except requests.exceptions.ConnectionError:
+            raise NoDockerDaemon()
+
         driver_mount_fn = getattr(self, "_mount_" + driver,
                                   self._unsupported_backend)
         driver_mount_fn(identifier, options)
@@ -567,3 +571,5 @@ class DockerMount(Mount):
         if not self.live:
             self.client.remove_container(short_cid)
         self._clean_tmp_image()
+
+

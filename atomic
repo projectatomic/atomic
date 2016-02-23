@@ -34,6 +34,7 @@ from Atomic.top import Top
 from Atomic.verify import Verify
 from Atomic.help import AtomicHelp
 from Atomic.run import Run
+from Atomic.atomic import NoDockerDaemon
 
 PROGNAME = "atomic"
 gettext.bindtextdomain(PROGNAME, "/usr/share/locale")
@@ -524,7 +525,7 @@ if __name__ == '__main__':
         sys.exit(_func())
     except KeyboardInterrupt:
         sys.exit(0)
-    except (ValueError, IOError, docker.errors.DockerException) as e:
+    except (ValueError, IOError, docker.errors.DockerException, NoDockerDaemon) as e:
         sys.stderr.write("%s\n" % str(e))
         sys.exit(1)
     except subprocess.CalledProcessError as e:
