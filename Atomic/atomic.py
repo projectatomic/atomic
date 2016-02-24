@@ -732,10 +732,10 @@ class Atomic(object):
             util.check_call(cmd, env=self.cmd_env())
 
     def _system_container_exists(self, name):
-        return os.path.exists("/var/system/%s" % name)
+        return os.path.exists("/var/lib/containers/atomic/%s" % name)
 
     def _uninstall_system_container(self):
-        systemdir = os.path.realpath("/var/system/%s" % self.image)
+        systemdir = os.path.realpath("/var/lib/containers/atomic/%s" % self.name)
         service_installed = os.path.exists(os.path.join(systemdir, "rootfs/exports/service.template"))
         self.args.display = False
         if service_installed:
@@ -745,15 +745,10 @@ class Atomic(object):
         if service_installed:
             os.unlink("/usr/local/lib/systemd/system/%s.service" % (self.name))
 
-        exportedfs = os.path.join(systemdir, "rootfs/exports/rootfs/")
-        for root, _, files in os.walk(exportedfs):
-            for f in files:
-                os.unlink("/" + os.path.relpath(os.path.join(root, f), exportedfs))
-
-        os.unlink("/var/system/%s" % self.image)
-        shutil.rmtree("/var/system/%s.0" % self.image)
-        if os.path.exists("/var/system/%s.1" % self.image):
-            shutil.rmtree("/var/system/%s.1" % self.image)
+        os.unlink("/var/lib/containers/atomic/%s" % self.name)
+        shutil.rmtree("/var/lib/containers/atomic/%s.0" % self.name)
+        if os.path.exists("/var/lib/containers/atomic/%s.1" % self.name):
+            shutil.rmtree("/var/lib/containers/atomic/%s.1" % self.name)
 
     def _check_system_docker_image(self, repo, upgrade, image):
 
@@ -828,7 +823,8 @@ class Atomic(object):
         regloc, image, tag = Atomic._parse_imagename(image)
         imagebranch = "ociimage/%s-%s" % (image.replace("sha256:", ""), tag)
 
-        destination = "/var/system/%s.%d" % (name, deployment)
+        destination = "/var/lib/containers/atomic/%s.%d" % (name, deployment)
+
         self.writeOut("Extracting to %s" % destination)
 
         rootfs = os.path.join(destination, "rootfs")
@@ -859,9 +855,10 @@ class Atomic(object):
         exports = os.path.join(destination, "rootfs/exports")
 
         if not self.args.display:
-            with open(os.path.join(destination, "image"), 'w') as imgfile:
-                imgfile.write("%s\n" % image)
-            sym = "/var/system/%s" % (name)
+            with open(os.path.join(destination, "image"), 'w') as image:
+                image.write(self.image + "\n")
+            sym = "/var/lib/containers/atomic/%s" % (name)
+
             if os.path.exists(sym):
                 os.unlink(sym)
             os.symlink(destination, sym)
@@ -890,8 +887,8 @@ class Atomic(object):
 
         self._check_system_docker_image(repo, False, self.image)
 
-        if os.path.exists("/var/system/%s.0" % self.name):
-            self.writeOut("/var/system/%s.0 already present" % self.name)
+        if os.path.exists("/var/lib/containers/atomic/%s.0" % self.name):
+            self.writeOut("/var/lib/containers/atomic/%s.0 already present" % self.name)
             return
 
         return self._checkout_system_container(repo, self.name, self.image, 0, False)
@@ -902,23 +899,22 @@ class Atomic(object):
         repo = OSTree.Repo.new(Gio.File.new_for_path("/ostree/repo"))
         repo.open(None)
 
-        path = os.path.join("/var/oci", name)
+        if not self._check_system_docker_image(repo, True, self.image):
+            return False
+
+        if not self.force:
+            return
+
+        oci = os.path.join("/var/lib/containers/atomic", self.name)
         next_deployment = 0
-        if os.path.realpath(path).endswith(".0"):
+        if os.path.realpath(oci).endswith(".0"):
             next_deployment = 1
-
-        if os.path.exists("/var/oci/%s.%d" % (name, next_deployment)):
-            shutil.rmtree("/var/oci/%s.%d" % (name, next_deployment))
-
-        image = None
-        with open(os.path.join("/var/oci", name, "image"), "r") as i:
-            image = i.readline().rstrip("\n")
 
         if not self._check_system_docker_image(repo, True, self.image):
             return False
 
-        if os.path.exists("/var/system/%s.%d" % (self.name, next_deployment)):
-            shutil.rmtree("/var/system/%s.%d" % (self.name, next_deployment))
+        if os.path.exists("/var/lib/containers/atomic/%s.%d" % (name, next_deployment)):
+            shutil.rmtree("/var/lib/containers/atomic/%s.%d" % (name, next_deployment))
 
         self._checkout_system_container(repo, name, image, next_deployment, True)
 
