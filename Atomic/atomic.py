@@ -115,6 +115,7 @@ class Atomic(object):
         self.containers = False
         self.images_cache = []
         self.active_containers = []
+        self.atomic_config = None
 
     def writeOut(self, output, lf="\n"):
         sys.stdout.flush()
@@ -410,101 +411,6 @@ class Atomic(object):
         return command
 
     #def run -> Atomic/run.py
-
-    def scan(self):
-        if (not self.args.images and not self.args.containers and not self.args.all) and len(self.args.scan_targets) == 0:
-            sys.stderr.write("\nYou must provide a list of containers or images to scan\n")
-            sys.exit(1)
-        self.ping()
-        BUS_NAME = "org.OpenSCAP.daemon"
-        OBJECT_PATH = "/OpenSCAP/daemon"
-        INTERFACE = "org.OpenSCAP.daemon.Interface"
-        input_resolve = {}
-        if self.args.images:
-            scan_list = self._get_all_image_ids()
-        elif self.args.containers:
-            scan_list = self._get_all_container_ids()
-        elif self.args.all:
-            cids = self._get_all_container_ids()
-            iids = self._get_all_image_ids()
-            scan_list = cids + iids
-        else:
-            scan_list = []
-            for scan_input in self.args.scan_targets:
-                docker_id = self.get_input_id(scan_input)
-                input_resolve[docker_id] = scan_input
-                scan_list.append(docker_id)
-
-        # Check to make sure none of the docker objects we need to
-        # scan are already mounted.
-        for docker_obj in scan_list:
-            if util.is_dock_obj_mounted(docker_obj):
-                sys.stderr.write("\nThe object {0} is already mounted (in  "
-                                 "use) and therefore cannot be scanned.\n"
-                                 .format(docker_obj))
-                sys.exit(1)
-        bus = dbus.SystemBus()
-        try:
-            oscap_d = bus.get_object(BUS_NAME, OBJECT_PATH)
-            oscap_i = dbus.Interface(oscap_d, INTERFACE)
-            # Check if the user has asked to override the behaviour of fetching the
-            # latest CVE input data, as defined in the openscap-daemon conf file
-            # oscap-daemon a byte of 0 (False), 1 (True), and 2 (no change)
-
-            if self.args.fetch_cves is None:
-                fetch = 2
-            elif self.args.fetch_cves:
-                fetch = 1
-            else:
-                fetch = 0
-
-            json_result = ""
-            try:
-                token = oscap_i.CVEScanListAsync(
-                    scan_list, 4, fetch
-                )
-                try:
-                    while True:
-                        success, json_result = oscap_i.GetCVEScanListAsyncResults(token)
-                        if success:
-                            break
-                        time.sleep(1)
-                except:
-                    oscap_i.CancelCVEScanListAsync(token)
-                    raise
-
-            except dbus.exceptions.DBusException as e:
-                if e.get_dbus_name() == \
-                        "org.freedesktop.DBus.Error.UnknownMethod":
-                    # Maybe we are using an old version of openscap-daemon and the
-                    # async API is not supported. Perform the scan with the old
-                    # synchronized API.
-                    json_result = oscap_i.scan_list(scan_list, 4, fetch, timeout=99999)
-                else:
-                    raise
-
-            scan_return = json.loads(json_result)
-
-        except dbus.exceptions.DBusException as e:
-            message = "The openscap-daemon returned: {0}".format(e.get_dbus_message())
-            if e.get_dbus_name() == 'org.freedesktop.DBus.Error.ServiceUnknown':
-                message = "Unable to find the openscap-daemon dbus service. "\
-                          "Either start the openscap-daemon service or pull " \
-                          "and run the openscap-daemon image"
-            sys.stderr.write("\n{0}\n\n".format(message))
-            sys.exit(1)
-
-        if self.args.json:
-            util.output_json(scan_return)
-
-        else:
-            if not self.args.detail:
-                clean = util.print_scan_summary(scan_return, input_resolve)
-            else:
-                clean = util.print_detail_scan_summary(scan_return,
-                                                       input_resolve)
-            if not clean:
-                sys.exit(1)
 
     def stop(self):
         self.inspect = self._inspect_container()
@@ -856,31 +762,39 @@ class Atomic(object):
         return self._images
 
 
-    def mount(self):
+    def mount(self, mountpoint=None, image=None, live=False):
         try:
-            options = [opt for opt in self.args.options.split(',') if opt]
-            mount.DockerMount(self.args.mountpoint,
-                              self.args.live).mount(self.args.image, options)
+            if mountpoint is None:
+                mountpoint = self.args.mountpoint
+            if image is None:
+                image = self.args.image
+            if 'live' in self.args:
+                live = self.args.live
+
+            options = [opt for opt in self.args.options.split(',') if opt] if 'options' in self.args else ""
+            mount.DockerMount(mountpoint, live).mount(image, options)
 
             # only need to bind-mount on the devicemapper driver
             if self.d.info()['Driver'] == 'devicemapper':
-                mount.Mount.mount_path(os.path.join(self.args.mountpoint,
-                                                    "rootfs"),
-                                       self.args.mountpoint, bind=True)
+                mount.Mount.mount_path(os.path.join(mountpoint, "rootfs"),
+                                       mountpoint,
+                                       bind=True)
 
         except (mount.MountError, mount.NoDockerDaemon) as dme:
             raise ValueError(str(dme))
 
-    def unmount(self):
+    def unmount(self, mountpoint=None):
+        if mountpoint is None:
+            mountpoint = self.args.mountpoint
         try:
-            dev = mount.Mount.get_dev_at_mountpoint(self.args.mountpoint)
+            dev = mount.Mount.get_dev_at_mountpoint(mountpoint)
 
             # If there's a bind-mount over the directory, unbind it.
             if dev.rsplit('[', 1)[-1].strip(']') == '/rootfs' \
                     and self.d.info()['Driver'] == 'devicemapper':
-                mount.Mount.unmount_path(self.args.mountpoint)
+                mount.Mount.unmount_path(mountpoint)
 
-            return mount.DockerMount(self.args.mountpoint).unmount()
+            return mount.DockerMount(mountpoint).unmount()
 
         except mount.MountError as dme:
             raise ValueError(str(dme))
@@ -1087,6 +1001,24 @@ class Atomic(object):
             if x['name'] == self.image:
                 return '{}/{}'.format(x['registry_name'], x['name'])
         return None
+
+    def get_atomic_config_item(self, config_items):
+        """
+        Lookup and return the atomic configuration file value
+        for a given structure. Returns None if the option
+        cannot be found.
+        """
+        def _recursive_get(items):
+            yaml_struct = self.atomic_config
+            try:
+                for i in items:
+                    yaml_struct = yaml_struct[i]
+            except KeyError:
+                return None
+            return yaml_struct
+        if self.atomic_config is None:
+            self.atomic_config = util.get_atomic_config()
+        return _recursive_get(config_items)
 
 class AtomicError(Exception):
     pass
