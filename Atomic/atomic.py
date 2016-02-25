@@ -745,70 +745,101 @@ class Atomic(object):
         if service_installed:
             os.unlink("/usr/local/lib/systemd/system/%s.service" % (self.name))
 
-        os.unlink("/var/lib/containers/atomic/%s" % self.name)
-        shutil.rmtree("/var/lib/containers/atomic/%s.0" % self.name)
+        if os.path.exists("/var/lib/containers/atomic/%s" % self.name):
+            os.unlink("/var/lib/containers/atomic/%s" % self.name)
+        if os.path.exists("/var/lib/containers/atomic/%s.0" % self.name):
+            shutil.rmtree("/var/lib/containers/atomic/%s.0" % self.name)
         if os.path.exists("/var/lib/containers/atomic/%s.1" % self.name):
             shutil.rmtree("/var/lib/containers/atomic/%s.1" % self.name)
 
-    def _check_system_docker_image(self, repo, upgrade, image):
+    @staticmethod
+    def _parse_imagename(imagename):
+        sep = imagename.find("/")
+        reg, image = imagename[:sep], imagename[sep + 1:]
+        sep = image.find(":")
+        if sep > 0:
+            return reg, image[:sep], image[sep + 1:]
+        else:
+            return reg, image, "latest"
 
-        current_rev = repo.resolve_rev("ociimage/%s" % image, True)
-        # FIXME check also `docker images -q --no-trunc output`
+    def _skopeo_get_manifest(self):
+        r = util.subp(['skopeo', 'inspect', '--raw', "docker://%s" % self.image])
+        if r.return_code != 0:
+            raise IOError('Failed to fetch the manifest for: %s.' % self.image)
+        return r.stdout.decode(sys.getdefaultencoding())
+
+    def _skopeo_get_layers(self, layers):
+        temp_dir = tempfile.mkdtemp()
+        args = ['skopeo', 'layers', "docker://%s" % self.image] + layers
+        r = util.subp(args, cwd=temp_dir)
+        if r.return_code != 0:
+            raise IOError('Failed to fetch the manifest for: %s.' % self.image)
+        return temp_dir
+
+    @staticmethod
+    def _get_layers_from_manifest(manifest):
+        manifest_json = json.loads(manifest)
+        layers = list(i["blobSum"] for i in manifest_json["fsLayers"])
+        layers.reverse()
+        return layers
+
+    def _check_system_docker_image(self, repo, upgrade):
+        regloc, image, tag = Atomic._parse_imagename(self.image)
+        imagebranch = "ociimage/%s-%s" % (image.replace("sha256:", ""), tag)
+        current_rev = repo.resolve_rev(imagebranch, True)
         if not upgrade and current_rev[1]:
             return False
 
-        #subprocess.check_call(["docker", "pull", self.image])
+        manifest = self._skopeo_get_manifest()
+        layers = Atomic._get_layers_from_manifest(manifest)
+        missing_layers = []
+        for i in layers:
+            layer = i.replace("sha256:", "")
+            if not repo.resolve_rev("ociimage/%s" % layer, True)[1]:
+                missing_layers.append(layer)
+                self.writeOut("Missing layer %s" % layer)
 
-        tmpdir = tempfile.mkdtemp()
-        with tempfile.NamedTemporaryFile(mode='w') as tmp_image:
-            save_cmd = ["docker", "save", image]
-            cmd = self.sub_env_strings(self.gen_cmd(save_cmd))
-            self.display(cmd)
-            if not self.args.display:
-                util.check_call(cmd, env=self.cmd_env(), stdout=tmp_image)
-            with tarfile.open(tmp_image.name, 'r') as t:
-                t.extractall(tmpdir)
+        if len(missing_layers) == 0:
+            return True
 
-        first_layer = None
-        child = {}
-        refs = {}
+        layers_dir = self._skopeo_get_layers(missing_layers)
+
+        downloaded_layers = {}
+        for root, _, files in os.walk(layers_dir):
+            for f in files:
+                if f.endswith(".tar"):
+                    downloaded_layers[f.replace(".tar", "")] = os.path.join(root, f)
+
         repo.prepare_transaction()
-        for i in os.listdir(tmpdir):
-            d = os.path.join(tmpdir, i)
-            if len(i) == 64 and os.path.isdir(d):
-                with open(os.path.join(d, "json"), 'r') as data:
-                    j = json.loads(data.read())
-                    parent = j.get('parent')
-                    child[parent] = i
-                    if not parent:
-                        first_layer = i
+        for layer, tar in downloaded_layers.items():
+            if layer not in missing_layers:
+                continue
+            with tarfile.open(tar, 'r') as t:
+                mtree = OSTree.MutableTree()
+                repo.write_archive_to_mtree(Gio.File.new_for_path(t.name), mtree, None, True)
+                root = repo.write_mtree(mtree)[1]
+                metav = GLib.Variant("a{sv}", {'docker.layer': GLib.Variant('s', layer)})
+            csum = repo.write_commit(None, "", None, metav, root)[1]
+            repo.transaction_set_ref(None, "ociimage/%s" % layer, csum)
 
-                ref = repo.resolve_rev("ociimage/%s" % i, True)[1]
-                if ref:
-                    # Layer already present, store its ref and do not do anything
-                    refs[i] = ref
-                    continue
+        # create a ociimage/$image-$tag branch
+        metadata = GLib.Variant("a{sv}", {'docker.manifest': GLib.Variant('s', manifest)})
+        mtree = OSTree.MutableTree()
+        file_info = Gio.FileInfo()
+        file_info.set_attribute_uint32("unix::uid", 0);
+        file_info.set_attribute_uint32("unix::gid", 0);
+        file_info.set_attribute_uint32("unix::mode", 0o755 | stat.S_IFDIR);
 
-                with tarfile.open(os.path.join(d, "layer.tar"), 'r') as t:
-                    mtree = OSTree.MutableTree()
-                    repo.write_archive_to_mtree(Gio.File.new_for_path(t.name), mtree, None, True)
-                    root = repo.write_mtree(mtree)[1]
-                    if parent:
-                        metav = GLib.Variant("a{sv}", {'docker.parent': GLib.Variant('s', "ociimage/%s" % parent), 'docker.layer': GLib.Variant('s', i)})
-                    else:
-                        metav = GLib.Variant("a{sv}", {'docker.layer': GLib.Variant('s', i)})
+        dirmeta = OSTree.create_directory_metadata(file_info, None);
+        csum_dirmeta = repo.write_metadata(OSTree.ObjectType.DIR_META, None, dirmeta)[1]
+        mtree.set_metadata_checksum(OSTree.checksum_from_bytes(csum_dirmeta))
 
-                    csum = repo.write_commit(None, "", None, metav, root)[1]
-                    refs[i] = csum
-                    repo.transaction_set_ref(None, "ociimage/%s" % i, csum)
+        root = repo.write_mtree(mtree)[1]
+        csum = repo.write_commit(None, "", None, metadata, root)[1]
+        repo.transaction_set_ref(None, imagebranch, csum)
 
-        it = first_layer
-        while child.get(it):
-            it = child[it]
-
-        # Point to the last layer
-        repo.transaction_set_ref(None, "ociimage/%s" % image, refs[it])
         repo.commit_transaction(None)
+        shutil.rmtree(layers_dir)
         return True
 
     @staticmethod
@@ -836,13 +867,10 @@ class Atomic(object):
         os.makedirs(rootfs)
         revs = []
 
-        rev = repo.resolve_rev("ociimage/%s" % self.image, False)[1]
-        while rev[1]:
-            revs.insert(0, rev)
-            parent = _get_commit_metadata(repo, rev, 'docker.parent')
-            if not parent:
-                break
-            rev = repo.resolve_rev(parent, False)[1]
+        rev = repo.resolve_rev(imagebranch, False)[1]
+
+        manifest = Atomic._get_commit_metadata(repo, rev, "docker.manifest")
+        layers = Atomic._get_layers_from_manifest(manifest)
 
         options = OSTree.RepoCheckoutOptions()
         options.overwrite_mode = OSTree.RepoCheckoutOverwriteMode.UNION_FILES
@@ -863,7 +891,10 @@ class Atomic(object):
                 os.unlink(sym)
             os.symlink(destination, sym)
 
-        shutil.copy2(os.path.join(exports, "config.json"), os.path.join(destination, "config.json"))
+        for i in ["config.json", "runtime.json"]:
+            src = os.path.join(exports, i)
+            if os.path.exists(src):
+                shutil.copy2(src, os.path.join(destination, i))
 
         unitfile = os.path.join(exports, "service.template")
         unitfileout = "/usr/local/lib/systemd/system/%s.service" % (name)
@@ -885,7 +916,7 @@ class Atomic(object):
         if not self._check_system_docker_image(repo, True, self.image):
             return False
 
-        self._check_system_docker_image(repo, False, self.image)
+        self._check_system_docker_image(repo, False)
 
         if os.path.exists("/var/lib/containers/atomic/%s.0" % self.name):
             self.writeOut("/var/lib/containers/atomic/%s.0 already present" % self.name)
@@ -899,13 +930,13 @@ class Atomic(object):
         repo = OSTree.Repo.new(Gio.File.new_for_path("/ostree/repo"))
         repo.open(None)
 
-        if not self._check_system_docker_image(repo, True, self.image):
+        if not self._check_system_docker_image(repo, False):
             return False
 
         if not self.force:
             return
 
-        oci = os.path.join("/var/lib/containers/atomic", self.name)
+        oci = os.path.join("/var/lib/containers/atomic", name)
         next_deployment = 0
         if os.path.realpath(oci).endswith(".0"):
             next_deployment = 1

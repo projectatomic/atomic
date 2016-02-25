@@ -69,12 +69,13 @@ def image_by_name(img_name, images=None):
     return valid_images
 
 
-def subp(cmd):
+def subp(cmd, cwd=None):
     """
     Run a command as a subprocess.
     Return a triple of return code, standard out, standard err.
     """
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+    proc = subprocess.Popen(cmd, cwd=cwd,
+                            stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
     out, err = proc.communicate()
     return ReturnTuple(proc.returncode, stdout=out, stderr=err)
