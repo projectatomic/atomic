@@ -25,8 +25,8 @@ By default, the comparison is done by name and version of the RPMs.
   Output in the form of JSON.
 
 **-n** **--no-files**
-  Instead of comparing the differences in name and version, it will only compare the difference in name.
-  This will also change the output to only output the names.
+  Do not perform a file based diff between the two images or containers.  Often used
+  when performing an RPM-based diff to restrict output.
 
 **--names-only**
   Only show the RPM names and not versions.
