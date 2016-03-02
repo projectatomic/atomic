@@ -6,6 +6,8 @@ import termios
 import select
 from os import isatty
 from operator import itemgetter
+import requests
+from atomic import NoDockerDaemon
 
 
 class Top(Atomic):
@@ -105,7 +107,10 @@ class Top(Atomic):
         while True:
             proc_info = []
             if len(self.args.containers) < 1:
-                con_ids = [x['Id'] for x in self.get_active_containers(refresh=True)]
+                try:
+                    con_ids = [x['Id'] for x in self.get_active_containers(refresh=True)]
+                except requests.exceptions.ConnectionError:
+                    raise NoDockerDaemon()
             else:
                 con_ids = self.args.containers
             for cid in con_ids:

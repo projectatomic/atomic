@@ -267,3 +267,6 @@ def skopeo(image):
     else:
         return json.loads(results.stdout.decode('utf-8'))
 
+class NoDockerDaemon(Exception):
+    def __init__(self):
+        Exception.__init__(self, "The docker daemon does not appear to be running.")
