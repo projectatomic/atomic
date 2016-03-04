@@ -183,9 +183,10 @@ class RpmDiff(object):
                 continue
             else:
                 if not self.names_only:
-                    foo = "{0}-{1}-{2}".format(name, 
-                                               hdr['epochnum'],
-                                               hdr['version'].decode(enc))
+                    foo = "{0}-{1}-{2}-{3}".format(name,
+                                                   hdr['epochnum'],
+                                                   hdr['version'].decode(enc),
+                                                   hdr['release'])
 
                 else:
                     foo = "{0}".format(name)
