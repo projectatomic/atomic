@@ -112,7 +112,11 @@ class Top(Atomic):
                 except requests.exceptions.ConnectionError:
                     raise NoDockerDaemon()
             else:
-                con_ids = self.args.containers
+                con_ids = []
+                self.get_active_containers(refresh=True)
+                # verify the inputs are valid
+                for user_input in self.args.containers:
+                    con_ids.append(self.get_input_id(user_input))
             for cid in con_ids:
                 proc_info += self.get_pids_by_container(cid)
             # Reset screen
@@ -149,11 +153,12 @@ class Top(Atomic):
         :param con_id: id of the container
         :return: dict
         """
+
         if len(self.active_containers) == 0:
             raise ValueError("No containers running")
         f_procs = []
         # Get the name of the container by ID
-        con_name = str(next((l for l in self.active_containers if l['Id'] == con_id), None)['Names'][0])
+        con_name = str(next((l for l in self.active_containers if l['Id'].startswith(con_id)), None)['Names'][0])
         if con_name.startswith("/"):
             con_name = con_name.replace("/", "")
         # Assemble the ps args
