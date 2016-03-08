@@ -26,7 +26,8 @@ from .Export import export_docker
 from .Import import import_docker
 import re
 from .client import get_docker_client
-from .util import NoDockerDaemon
+from .util import NoDockerDaemon, DockerObjectNotFound
+from docker.errors import NotFound
 
 IMAGES = []
 
@@ -360,7 +361,7 @@ class Atomic(object):
             if image:
                 return self.d.inspect_image(image)
             return self.d.inspect_image(self.image)
-        except docker.errors.APIError:
+        except NotFound:
             pass
         except requests.exceptions.ConnectionError:
             raise NoDockerDaemon()
@@ -372,7 +373,7 @@ class Atomic(object):
             name = self.name
         try:
             return self.d.inspect_container(name)
-        except docker.errors.APIError:
+        except NotFound:
             pass
         except requests.exceptions.ConnectionError as e:
             raise NoDockerDaemon()
@@ -510,9 +511,7 @@ class Atomic(object):
         if self.inspect is None:
             self.inspect = self._inspect_image()
             if self.inspect is None:
-                util.writeOut("Container/Image '%s' does not exists" %
-                              self.name)
-                sys.exit(1)
+                raise DockerObjectNotFound(self.name)
 
         args = self._get_args("STOP")
         if args:
@@ -653,21 +652,17 @@ class Atomic(object):
 
         inspection = None
         if not self.args.force_remote_info:
-            try:
-                inspection = self._inspect_image(self.args.image)
-            except docker.errors.APIError:
-                # No such image locally, but fall back to remote
-                pass
+            inspection = self._inspect_image(self.args.image)
+            # No such image locally, but fall back to remote
         if inspection is None:
-            try:
-                # Shut up pylint in case we're on a machine with upstream
-                # docker-py, which lacks the remote keyword arg.
-                #pylint: disable=unexpected-keyword-arg
-                inspection = util.skopeo(self.args.image)
-            except docker.errors.APIError:
-                # image does not exist on any configured registry
-                _no_such_image()
-        # By this point, inspection cannot be "None"
+            # Shut up pylint in case we're on a machine with upstream
+            # docker-py, which lacks the remote keyword arg.
+            #pylint: disable=unexpected-keyword-arg
+            inspection = util.skopeo(self.args.image)
+            # image does not exist on any configured registry
+        if inspection is None:
+            _no_such_image()
+            # By this point, inspection cannot be "None"
         try:
             labels = inspection['Config']['Labels']
         except TypeError:  # pragma: no cover
@@ -854,7 +849,7 @@ class Atomic(object):
 
         try:
             self.inspect = self.d.inspect_image(self.image)
-        except docker.errors.APIError:
+        except NotFound:
             self.update()
             self.inspect = self.d.inspect_image(self.image)
         except requests.exceptions.ConnectionError:
@@ -1000,8 +995,7 @@ class Atomic(object):
             return self._is_container(identifier)
         except AtomicError:
             pass
-        raise ValueError("Unable to associate '{0}' with a container or image."
-                         .format(identifier))
+        raise DockerObjectNotFound(identifier)
 
     def get_images(self):
         '''

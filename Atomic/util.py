@@ -270,3 +270,7 @@ def skopeo(image):
 class NoDockerDaemon(Exception):
     def __init__(self):
         Exception.__init__(self, "The docker daemon does not appear to be running.")
+
+class DockerObjectNotFound(ValueError):
+    def __init__(self, msg):
+        Exception.__init__(self, "Unable to associate '{}' with an image or container".format(msg))
