@@ -9,9 +9,9 @@ with open('requirements.txt') as f:
 
 setup(
     name="atomic", scripts=["atomic", "atomic_dbus.py"],
-    version = _Atomic.__version__,
-    author = _Atomic.__author__,
-    author_email = _Atomic.__author_email__,
+    version=_Atomic.__version__,
+    author=_Atomic.__author__,
+    author_email=_Atomic.__author_email__,
     packages=["Atomic"],
     data_files=[('/etc/dbus-1/system.d/', ["org.atomic.conf"]),
                 ('/usr/share/dbus-1/system-services', ["org.atomic.service"]),
