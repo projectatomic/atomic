@@ -31,9 +31,10 @@ if [[ "${HAS_REMOTE}" -eq 0 ]]; then
     fi
 fi
 
-if [[ "${TEST_DOES_NOT_EXIST}" != "" ]]; then
-    exit 1
-fi
+# Disabled temporarily until skopeo discussion
+#if [[ "${TEST_DOES_NOT_EXIST}" != "" ]]; then
+#    exit 1
+#fi
 
 validTest1
 

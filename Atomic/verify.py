@@ -3,6 +3,7 @@ from . import Atomic
 import os
 from docker.errors import NotFound
 from operator import itemgetter
+from .atomic import AtomicError
 
 class Verify(Atomic):
     DEBUG = False
@@ -26,16 +27,17 @@ class Verify(Atomic):
                     layer['Name'] = layer['Tag']
             return layers
 
-        def is_iid(input):
-            for i in self.get_images():
-                if i['Id'].startswith(self.image):
-                    return True
-            return False
-
-        if is_iid(self.image):
-            if len(self._inspect_image()['RepoTags']) > 1:
-                raise ValueError("\nThe image ID {} is tagged with multiple repositories. "
-                                 "Please use a repository name instead.\n".format(self.image))
+        # Check if the input is an image id associated with more than one
+        # repotag.  If so, error out.
+        if self.is_iid(self.image):
+            self.get_fq_name(self._inspect_image())
+        # The input is not an image id
+        else:
+            try:
+                iid = self._is_image(self.image)
+                self.image = self.get_fq_name(self._inspect_image(iid))
+            except AtomicError:
+                self._no_such_image()
 
         layers = fix_layers(self.get_layers())
         if self.DEBUG:
