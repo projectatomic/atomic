@@ -7,7 +7,7 @@ import select
 from os import isatty
 from operator import itemgetter
 import requests
-from atomic import NoDockerDaemon
+from .util import NoDockerDaemon
 
 
 class Top(Atomic):
