@@ -613,6 +613,9 @@ class Atomic(object):
         if hasattr(self.args, 'opt3') and self.args.opt3:
             os.environ['OPT3'] = self.args.opt3
 
+        if not hasattr(self.args, 'PWD'):
+            os.environ['PWD'] = os.getcwd()
+
         default_uid = "0"
         with open("/proc/self/loginuid") as f:
             default_uid = f.readline()
