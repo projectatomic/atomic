@@ -5,7 +5,7 @@ PROFILEDIR ?= $(DESTDIR)/etc/profile.d
 PYTHON ?= /usr/bin/python
 PYLINT ?= /usr/bin/pylint
 GO_MD2MAN ?= /usr/bin/go-md2man
-PYTHONSITELIB=$(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print get_python_lib(0)")
+PYTHONSITELIB=$(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(0))")
 VERSION=$(shell $(PYTHON) setup.py --version)
 
 .PHONY: all
