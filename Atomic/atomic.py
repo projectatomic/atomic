@@ -681,6 +681,7 @@ class Atomic(object):
             cmd = "docker images --filter dangling=true -q".split()
             for i in subprocess.check_output(cmd, stderr=DEVNULL).split():
                 self.d.remove_image(i.decode(enc), force=True)
+            self._prune_ostree_images()
             return
 
         _images = self.get_images()
@@ -751,6 +752,38 @@ class Atomic(object):
             shutil.rmtree("/var/lib/containers/atomic/%s.0" % self.name)
         if os.path.exists("/var/lib/containers/atomic/%s.1" % self.name):
             shutil.rmtree("/var/lib/containers/atomic/%s.1" % self.name)
+
+    def _prune_ostree_images(self):
+        repo = OSTree.Repo.new(Gio.File.new_for_path("/ostree/repo"))
+        repo.open(None)
+        refs = {}
+        app_refs = []
+        prefix = "ociimage/"
+
+        for i in repo.list_refs()[1]:
+            if i.startswith(prefix):
+                if len(i) == len(prefix) + 64:
+                    refs[i] = False
+                else:
+                    app_refs.append(i)
+
+        def visit(rev):
+            commit = repo.resolve_rev(rev, False)[1]
+            manifest = Atomic._get_commit_metadata(repo, commit, "docker.manifest")
+            if not manifest:
+                return
+            for layer in Atomic._get_layers_from_manifest(manifest):
+                refs[prefix + layer.replace("sha256:", "")] = True
+
+        for app in app_refs:
+            visit(app)
+
+        for k, v in refs.items():
+            if not v:
+                ref = OSTree.parse_refspec(k)
+                print("Deleting %s" % k)
+                repo.set_ref_immediate(ref[1], ref[2], None)
+        return
 
     @staticmethod
     def _parse_imagename(imagename):
