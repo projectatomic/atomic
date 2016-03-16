@@ -274,6 +274,45 @@ class Atomic(object):
 
                 prevstatus = status
 
+    def pull_image(self):
+        repo = self._get_ostree_repo()
+        if self.args.docker:
+            self._check_system_docker_image(repo, True)
+        elif self.args.tar:
+            temp_dir = tempfile.mkdtemp()
+            with tarfile.open(self.args.image, 'r') as t:
+                t.extractall(temp_dir)
+                manifest = ""
+                with open(os.path.join(temp_dir, "manifest.json"), 'r') as mfile:
+                    manifest = mfile.read()
+                layers = {}
+                next_layer = {}
+                top_layer = None
+                for m in json.loads(manifest):
+                    regloc, image, tag = Atomic._parse_imagename(m["RepoTags"][0])
+                    imagebranch = "ociimage/%s-%s" % (image.replace("sha256:", ""), tag)
+                    for i in m["Layers"]:
+                        layer = i.replace("/layer.tar", "")
+                        layers[layer] = os.path.join(temp_dir, i)
+                        with open(os.path.join(temp_dir, layer, "json"), 'r') as f:
+                            json_layer = json.loads(f.read())
+                            parent = json_layer.get("parent")
+                            if not parent:
+                                top_layer = layer
+                            next_layer[parent] = layer
+
+                    layers_ordered = []
+                    it = top_layer
+                    while it:
+                        layers_ordered.append(it)
+                        it = next_layer.get(it)
+
+                    manifest = json.dumps({"Layers" : layers_ordered})
+                    Atomic._import_layers_into_ostree(repo, imagebranch, manifest, layers)
+            shutil.rmtree(temp_dir)
+        return
+
+
     def set_args(self, args):
         self.args = args
         try:
@@ -781,7 +820,7 @@ class Atomic(object):
         for k, v in refs.items():
             if not v:
                 ref = OSTree.parse_refspec(k)
-                print("Deleting %s" % k)
+                self.writeOut("Deleting %s" % k)
                 repo.set_ref_immediate(ref[1], ref[2], None)
         return
 
@@ -812,9 +851,42 @@ class Atomic(object):
     @staticmethod
     def _get_layers_from_manifest(manifest):
         manifest_json = json.loads(manifest)
-        layers = list(i["blobSum"] for i in manifest_json["fsLayers"])
-        layers.reverse()
+        fs_layers = manifest_json.get("fsLayers")
+        if fs_layers:
+            layers = list(i["blobSum"] for i in fs_layers)
+            layers.reverse()
+        else:
+            layers = manifest_json.get("Layers")
         return layers
+
+    @staticmethod
+    def _import_layers_into_ostree(repo, imagebranch, manifest, layers):
+        repo.prepare_transaction()
+        for layer, tar in layers.items():
+            mtree = OSTree.MutableTree()
+            repo.write_archive_to_mtree(Gio.File.new_for_path(tar), mtree, None, True)
+            root = repo.write_mtree(mtree)[1]
+            metav = GLib.Variant("a{sv}", {'docker.layer': GLib.Variant('s', layer)})
+            csum = repo.write_commit(None, "", None, metav, root)[1]
+            repo.transaction_set_ref(None, "ociimage/%s" % layer, csum)
+
+        # create a ociimage/$image-$tag branch
+        metadata = GLib.Variant("a{sv}", {'docker.manifest': GLib.Variant('s', manifest)})
+        mtree = OSTree.MutableTree()
+        file_info = Gio.FileInfo()
+        file_info.set_attribute_uint32("unix::uid", 0);
+        file_info.set_attribute_uint32("unix::gid", 0);
+        file_info.set_attribute_uint32("unix::mode", 0o755 | stat.S_IFDIR);
+
+        dirmeta = OSTree.create_directory_metadata(file_info, None);
+        csum_dirmeta = repo.write_metadata(OSTree.ObjectType.DIR_META, None, dirmeta)[1]
+        mtree.set_metadata_checksum(OSTree.checksum_from_bytes(csum_dirmeta))
+
+        root = repo.write_mtree(mtree)[1]
+        csum = repo.write_commit(None, "", None, metadata, root)[1]
+        repo.transaction_set_ref(None, imagebranch, csum)
+
+        repo.commit_transaction(None)
 
     def _check_system_docker_image(self, repo, upgrade):
         regloc, image, tag = Atomic._parse_imagename(self.image)
@@ -837,41 +909,18 @@ class Atomic(object):
 
         layers_dir = self._skopeo_get_layers(missing_layers)
 
-        downloaded_layers = {}
+        layers = {}
         for root, _, files in os.walk(layers_dir):
             for f in files:
                 if f.endswith(".tar"):
-                    downloaded_layers[f.replace(".tar", "")] = os.path.join(root, f)
+                    layer_file = os.path.join(root, f)
+                    layer = f.replace(".tar", "")
+                    if layer in missing_layers:
+                        layers[layer] = layer_file
 
-        repo.prepare_transaction()
-        for layer, tar in downloaded_layers.items():
-            if layer not in missing_layers:
-                continue
-            with tarfile.open(tar, 'r') as t:
-                mtree = OSTree.MutableTree()
-                repo.write_archive_to_mtree(Gio.File.new_for_path(t.name), mtree, None, True)
-                root = repo.write_mtree(mtree)[1]
-                metav = GLib.Variant("a{sv}", {'docker.layer': GLib.Variant('s', layer)})
-            csum = repo.write_commit(None, "", None, metav, root)[1]
-            repo.transaction_set_ref(None, "ociimage/%s" % layer, csum)
+        if (len(layers)):
+            Atomic._import_layers_into_ostree(repo, imagebranch, manifest, layers)
 
-        # create a ociimage/$image-$tag branch
-        metadata = GLib.Variant("a{sv}", {'docker.manifest': GLib.Variant('s', manifest)})
-        mtree = OSTree.MutableTree()
-        file_info = Gio.FileInfo()
-        file_info.set_attribute_uint32("unix::uid", 0);
-        file_info.set_attribute_uint32("unix::gid", 0);
-        file_info.set_attribute_uint32("unix::mode", 0o755 | stat.S_IFDIR);
-
-        dirmeta = OSTree.create_directory_metadata(file_info, None);
-        csum_dirmeta = repo.write_metadata(OSTree.ObjectType.DIR_META, None, dirmeta)[1]
-        mtree.set_metadata_checksum(OSTree.checksum_from_bytes(csum_dirmeta))
-
-        root = repo.write_mtree(mtree)[1]
-        csum = repo.write_commit(None, "", None, metadata, root)[1]
-        repo.transaction_set_ref(None, imagebranch, csum)
-
-        repo.commit_transaction(None)
         shutil.rmtree(layers_dir)
         return True
 
@@ -942,9 +991,13 @@ class Atomic(object):
                 self.systemctl_command("start", name)
         return True
 
-    def _install_system_container(self):
+    def _get_ostree_repo(self):
         repo = OSTree.Repo.new(Gio.File.new_for_path("/ostree/repo"))
         repo.open(None)
+        return repo
+
+    def _install_system_container(self):
+        repo = self._get_ostree_repo()
 
         if not self._check_system_docker_image(repo, True, self.image):
             return False
@@ -960,8 +1013,7 @@ class Atomic(object):
     def _update_system_container(self, repo, name):
         self.args.display = False
 
-        repo = OSTree.Repo.new(Gio.File.new_for_path("/ostree/repo"))
-        repo.open(None)
+        repo = self._get_ostree_repo()
 
         if not self._check_system_docker_image(repo, False):
             return False
