@@ -941,11 +941,16 @@ class Atomic(object):
         self.writeOut("Extracting to %s" % destination)
 
         rootfs = os.path.join(destination, "rootfs")
-        sysroot = OSTree.Sysroot()
-        sysroot.load()
-        osname = sysroot.get_booted_deployment().get_osname()
 
-        rootfs = os.path.join("/ostree/deploy/", osname, os.path.relpath(rootfs, "/"))
+        # Under Atomic, get the real deployment location.  It is needed to create the hard links.
+        try:
+            sysroot = OSTree.Sysroot()
+            sysroot.load()
+            osname = sysroot.get_booted_deployment().get_osname()
+            rootfs = os.path.join("/ostree/deploy/", osname, os.path.relpath(rootfs, "/"))
+        except:
+            pass
+
         os.makedirs(rootfs)
         revs = []
 
