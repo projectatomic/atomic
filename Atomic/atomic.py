@@ -793,9 +793,8 @@ class Atomic(object):
             self.systemctl_command("stop", self.name)
             self.systemctl_command("disable", self.name)
 
-        if service_installed:
-            os.unlink("/usr/local/lib/systemd/system/%s.service" % (self.name))
-
+        if os.path.exists(os.path.join("/etc/systemd/system", "%s.service" % self.name)):
+            os.unlink(os.path.join("/etc/systemd/system", "%s.service" % self.name))
         if os.path.exists("/var/lib/containers/atomic/%s" % self.name):
             os.unlink("/var/lib/containers/atomic/%s" % self.name)
         if os.path.exists("/var/lib/containers/atomic/%s.0" % self.name):
@@ -1014,7 +1013,7 @@ class Atomic(object):
                     _write_template(infile.read(), values, outfile)
 
         unitfile = os.path.join(exports, "service.template")
-        unitfileout = "/usr/local/lib/systemd/system/%s.service" % (name)
+        unitfileout = os.path.join("/etc/systemd/system", "%s.service" % name)
         if os.path.exists(unitfile):
             with open(unitfile, 'r') as infile, open(unitfileout, "w") as outfile:
                 _write_template(infile.read(), values, outfile)
