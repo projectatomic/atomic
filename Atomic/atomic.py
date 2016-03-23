@@ -567,8 +567,8 @@ class Atomic(object):
         self._ostreeadmin(argv)
 
     def uninstall(self):
-        if self._system_container_exists(self.name):
-            return self._uninstall_system_container()
+        if self._system_container_exists(self.args.image):
+            return self._uninstall_system_container(self.args.image)
 
         self.inspect = self._inspect_container()
         if self.inspect and self.force:
@@ -785,22 +785,22 @@ class Atomic(object):
     def _system_container_exists(self, name):
         return os.path.exists("/var/lib/containers/atomic/%s" % name)
 
-    def _uninstall_system_container(self):
-        systemdir = os.path.realpath("/var/lib/containers/atomic/%s" % self.name)
+    def _uninstall_system_container(self, name):
+        systemdir = os.path.realpath("/var/lib/containers/atomic/%s" % name)
         service_installed = os.path.exists(os.path.join(systemdir, "rootfs/exports/service.template"))
         self.args.display = False
         if service_installed:
-            self.systemctl_command("stop", self.name)
-            self.systemctl_command("disable", self.name)
+            self.systemctl_command("stop", name)
+            self.systemctl_command("disable", name)
 
-        if os.path.exists(os.path.join("/etc/systemd/system", "%s.service" % self.name)):
-            os.unlink(os.path.join("/etc/systemd/system", "%s.service" % self.name))
-        if os.path.exists("/var/lib/containers/atomic/%s" % self.name):
-            os.unlink("/var/lib/containers/atomic/%s" % self.name)
-        if os.path.exists("/var/lib/containers/atomic/%s.0" % self.name):
-            shutil.rmtree("/var/lib/containers/atomic/%s.0" % self.name)
-        if os.path.exists("/var/lib/containers/atomic/%s.1" % self.name):
-            shutil.rmtree("/var/lib/containers/atomic/%s.1" % self.name)
+        if os.path.exists(os.path.join("/etc/systemd/system", "%s.service" % name)):
+            os.unlink(os.path.join("/etc/systemd/system", "%s.service" % name))
+        if os.path.exists("/var/lib/containers/atomic/%s" % name):
+            os.unlink("/var/lib/containers/atomic/%s" % name)
+        if os.path.exists("/var/lib/containers/atomic/%s.0" % name):
+            shutil.rmtree("/var/lib/containers/atomic/%s.0" % name)
+        if os.path.exists("/var/lib/containers/atomic/%s.1" % name):
+            shutil.rmtree("/var/lib/containers/atomic/%s.1" % name)
 
     def _prune_ostree_images(self):
         repo = OSTree.Repo.new(Gio.File.new_for_path("/ostree/repo"))
