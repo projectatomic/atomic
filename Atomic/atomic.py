@@ -284,36 +284,38 @@ class Atomic(object):
             self._check_system_docker_image(repo, "docker://%s" % self.image, True)
         elif self.args.tar:
             temp_dir = tempfile.mkdtemp()
-            with tarfile.open(self.args.image, 'r') as t:
-                t.extractall(temp_dir)
-                manifest = ""
-                with open(os.path.join(temp_dir, "manifest.json"), 'r') as mfile:
-                    manifest = mfile.read()
-                layers = {}
-                next_layer = {}
-                top_layer = None
-                for m in json.loads(manifest):
-                    regloc, image, tag = Atomic._parse_imagename(m["RepoTags"][0])
-                    imagebranch = "ociimage/%s-%s" % (image.replace("sha256:", ""), tag)
-                    for i in m["Layers"]:
-                        layer = i.replace("/layer.tar", "")
-                        layers[layer] = os.path.join(temp_dir, i)
-                        with open(os.path.join(temp_dir, layer, "json"), 'r') as f:
-                            json_layer = json.loads(f.read())
-                            parent = json_layer.get("parent")
-                            if not parent:
-                                top_layer = layer
-                            next_layer[parent] = layer
+            try:
+                with tarfile.open(self.args.image, 'r') as t:
+                    t.extractall(temp_dir)
+                    manifest = ""
+                    with open(os.path.join(temp_dir, "manifest.json"), 'r') as mfile:
+                        manifest = mfile.read()
+                    layers = {}
+                    next_layer = {}
+                    top_layer = None
+                    for m in json.loads(manifest):
+                        regloc, image, tag = Atomic._parse_imagename(m["RepoTags"][0])
+                        imagebranch = "ociimage/%s-%s" % (image.replace("sha256:", ""), tag)
+                        for i in m["Layers"]:
+                            layer = i.replace("/layer.tar", "")
+                            layers[layer] = os.path.join(temp_dir, i)
+                            with open(os.path.join(temp_dir, layer, "json"), 'r') as f:
+                                json_layer = json.loads(f.read())
+                                parent = json_layer.get("parent")
+                                if not parent:
+                                    top_layer = layer
+                                next_layer[parent] = layer
 
-                    layers_ordered = []
-                    it = top_layer
-                    while it:
-                        layers_ordered.append(it)
-                        it = next_layer.get(it)
+                        layers_ordered = []
+                        it = top_layer
+                        while it:
+                            layers_ordered.append(it)
+                            it = next_layer.get(it)
 
-                    manifest = json.dumps({"Layers" : layers_ordered})
-                    Atomic._import_layers_into_ostree(repo, imagebranch, manifest, layers)
-            shutil.rmtree(temp_dir)
+                        manifest = json.dumps({"Layers" : layers_ordered})
+                        Atomic._import_layers_into_ostree(repo, imagebranch, manifest, layers)
+            finally:
+                shutil.rmtree(temp_dir)
         return
 
 
@@ -860,10 +862,14 @@ class Atomic(object):
 
     def _skopeo_get_layers(self, image, layers):
         temp_dir = tempfile.mkdtemp()
-        args = ['skopeo', 'layers', image] + layers
-        r = util.subp(args, cwd=temp_dir)
-        if r.return_code != 0:
-            raise IOError('Failed to fetch the manifest for: %s.' % image)
+        try:
+            args = ['skopeo', 'layers', image] + layers
+            r = util.subp(args, cwd=temp_dir)
+            if r.return_code != 0:
+                raise IOError('Failed to fetch the manifest for: %s.' % image)
+        except Exception as e:
+            shutil.rmtree(temp_dir)
+            raise e
         return temp_dir
 
     @staticmethod
@@ -926,20 +932,20 @@ class Atomic(object):
             return True
 
         layers_dir = self._skopeo_get_layers(img, missing_layers)
+        try:
+            layers = {}
+            for root, _, files in os.walk(layers_dir):
+                for f in files:
+                    if f.endswith(".tar"):
+                        layer_file = os.path.join(root, f)
+                        layer = f.replace(".tar", "")
+                        if layer in missing_layers:
+                            layers[layer] = layer_file
 
-        layers = {}
-        for root, _, files in os.walk(layers_dir):
-            for f in files:
-                if f.endswith(".tar"):
-                    layer_file = os.path.join(root, f)
-                    layer = f.replace(".tar", "")
-                    if layer in missing_layers:
-                        layers[layer] = layer_file
-
-        if (len(layers)):
-            Atomic._import_layers_into_ostree(repo, imagebranch, manifest, layers)
-
-        shutil.rmtree(layers_dir)
+            if (len(layers)):
+                Atomic._import_layers_into_ostree(repo, imagebranch, manifest, layers)
+        finally:
+            shutil.rmtree(layers_dir)
         return True
 
     @staticmethod
