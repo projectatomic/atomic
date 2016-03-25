@@ -746,6 +746,9 @@ class Atomic(object):
             self._prune_ostree_images()
             return
 
+        if self.args.system:
+            return self._system_images()
+
         _images = self.get_images()
         if len(_images) == 0:
             return
@@ -790,6 +793,20 @@ class Atomic(object):
         if not self.args.display:
             return util.check_call(cmd)
 
+    def _system_images(self):
+        repo = self._get_ostree_repo()
+
+        prefix = "ociimage/"
+
+        revs = [x for x in repo.list_refs()[1] if x.startswith(prefix) and len(x) != len(prefix) + 64]
+        max_column = max([len(rev) for rev in revs]) + 2
+        col_out = "{0:%d} {1:64}" % max_column
+        self.writeOut(col_out.format("IMAGE", "COMMIT"))
+
+        for rev in revs:
+            commit = repo.resolve_rev(rev, False)[1]
+            self.writeOut(col_out.format(rev, commit))
+
     def systemctl_command(self, cmd, name):
         cmd = self.sub_env_strings(self.gen_cmd(["systemctl", cmd, name]))
         self.display(cmd)
@@ -820,8 +837,7 @@ class Atomic(object):
             shutil.rmtree("/var/lib/containers/atomic/%s.1" % name)
 
     def _prune_ostree_images(self):
-        repo = OSTree.Repo.new(Gio.File.new_for_path("/ostree/repo"))
-        repo.open(None)
+        repo = self._get_ostree_repo()
         refs = {}
         app_refs = []
         prefix = "ociimage/"
