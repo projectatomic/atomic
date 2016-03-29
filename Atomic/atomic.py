@@ -279,6 +279,40 @@ class Atomic(object):
 
                 prevstatus = status
 
+    def _pull_dockertar_layers(self, repo, imagebranch, temp_dir, input_layers):
+        layers = {}
+        next_layer = {}
+        top_layer = None
+        for i in input_layers:
+            layer = i.replace("/layer.tar", "")
+            layers[layer] = os.path.join(temp_dir, i)
+            with open(os.path.join(temp_dir, layer, "json"), 'r') as f:
+                json_layer = json.loads(f.read())
+                parent = json_layer.get("parent")
+                if not parent:
+                    top_layer = layer
+                next_layer[parent] = layer
+
+        layers_map = {}
+        enc = sys.getdefaultencoding()
+        for k, v in layers.items():
+            out = subprocess.check_output([ATOMIC_LIBEXEC + '/dockertar-sha256-helper',
+           v], stderr=DEVNULL)
+            layers_map[k] = out.decode(enc).replace("\n", "")
+        layers_ordered = []
+
+        it = top_layer
+        while it:
+            layers_ordered.append(layers_map[it])
+            it = next_layer.get(it)
+
+        manifest = json.dumps({"Layers" : layers_ordered})
+
+        layers_to_import = {}
+        for k, v in layers.items():
+            layers_to_import[layers_map[k]] = v
+        Atomic._import_layers_into_ostree(repo, imagebranch, manifest, layers_to_import)
+
     def pull_image(self):
         repo = self._get_ostree_repo()
         if self.args.docker:
@@ -288,44 +322,29 @@ class Atomic(object):
             try:
                 with tarfile.open(self.args.image, 'r') as t:
                     t.extractall(temp_dir)
-                    manifest = ""
-                    with open(os.path.join(temp_dir, "manifest.json"), 'r') as mfile:
-                        manifest = mfile.read()
-                    layers = {}
-                    next_layer = {}
-                    top_layer = None
-                    for m in json.loads(manifest):
-                        regloc, image, tag = Atomic._parse_imagename(m["RepoTags"][0])
-                        imagebranch = "ociimage/%s-%s" % (image.replace("sha256:", ""), tag)
-                        for i in m["Layers"]:
-                            layer = i.replace("/layer.tar", "")
-                            layers[layer] = os.path.join(temp_dir, i)
-                            with open(os.path.join(temp_dir, layer, "json"), 'r') as f:
-                                json_layer = json.loads(f.read())
-                                parent = json_layer.get("parent")
-                                if not parent:
-                                    top_layer = layer
-                                next_layer[parent] = layer
-
-                        layers_map = {}
-                        enc = sys.getdefaultencoding()
-                        for k, v in layers.items():
-                            out = subprocess.check_output([ATOMIC_LIBEXEC + '/dockertar-sha256-helper',
-                                                           v], stderr=DEVNULL)
-                            layers_map[k] = out.decode(enc).replace("\n", "")
-                        layers_ordered = []
-
-                        it = top_layer
-                        while it:
-                            layers_ordered.append(layers_map[it])
-                            it = next_layer.get(it)
-
-                        manifest = json.dumps({"Layers" : layers_ordered})
-
-                        layers_to_import = {}
-                        for k, v in layers.items():
-                            layers_to_import[layers_map[k]] = v
-                        Atomic._import_layers_into_ostree(repo, imagebranch, manifest, layers_to_import)
+                    manifest_file = os.path.join(temp_dir, "manifest.json")
+                    if os.path.exists(manifest_file):
+                        manifest = ""
+                        with open(manifest_file, 'r') as mfile:
+                            manifest = mfile.read()
+                        for m in json.loads(manifest):
+                            regloc, image, tag = Atomic._parse_imagename(m["RepoTags"][0])
+                            imagebranch = "ociimage/%s-%s" % (image.replace("sha256:", ""), tag)
+                            input_layers = m["Layers"]
+                            self._pull_dockertar_layers(repo, imagebranch, temp_dir, input_layers)
+                    else:
+                        repositories = ""
+                        repositories_file = os.path.join(temp_dir, "repositories")
+                        with open(repositories_file, 'r') as rfile:
+                            repositories = rfile.read()
+                        regloc, image, tag = Atomic._parse_imagename(list(json.loads(repositories).keys())[0])
+                        imagebranch = "ociimage/%s-%s" % (image, tag)
+                        input_layers = []
+                        for name in os.listdir(temp_dir):
+                            if name == "repositories":
+                                continue
+                            input_layers.append(name + "/layer.tar")
+                        self._pull_dockertar_layers(repo, imagebranch, temp_dir, input_layers)
             finally:
                 shutil.rmtree(temp_dir)
         return
