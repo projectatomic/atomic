@@ -645,36 +645,65 @@ class Atomic(object):
             args.append(c)
         return " ".join(args)
 
+    def get_fq_name(self, image_info):
+        if len(image_info['RepoTags']) > 1:
+            raise ValueError("\n{} is tagged with multiple repositories. "
+                             "Please use a repository name instead.\n".format(self.image))
+        else:
+            return image_info['RepoTags'][0]
+
+    def is_iid(self, input):
+        for i in self.get_images():
+            if i['Id'].startswith(self.image):
+                return True
+        return False
+
+    def _no_such_image(self):
+        raise ValueError("Could not find any image matching '{}'"
+                         .format(self.args.image))
+
     def info(self):
         """
         Retrieve and print all LABEL information for a given image.
         """
-        def _no_such_image():
-            raise ValueError('Could not find any image matching "{}".'
-                             ''.format(self.args.image))
-
+        def _no_label():
+            raise ValueError("'{}' has no label information."
+                             .format(self.args.image))
+        # Check if the input is an image id associated with more than one
+        # repotag.  If so, error out.
+        if self.is_iid(self.image):
+            self.get_fq_name(self._inspect_image())
+        # The input is not an image id
+        else:
+            try:
+                iid = self._is_image(self.image)
+                self.image = self.get_fq_name(self._inspect_image(iid))
+            except AtomicError:
+                if self.args.force_remote_info:
+                    self.image = self.find_remote_image()
+                if self.image is None:
+                    self._no_such_image()
+        util.writeOut("Image Name: {}".format(self.image))
         inspection = None
         if not self.args.force_remote_info:
-            inspection = self._inspect_image(self.args.image)
+            inspection = self._inspect_image(self.image)
             # No such image locally, but fall back to remote
         if inspection is None:
             # Shut up pylint in case we're on a machine with upstream
             # docker-py, which lacks the remote keyword arg.
             #pylint: disable=unexpected-keyword-arg
-            inspection = util.skopeo(self.args.image)
+            inspection = util.skopeo(self.image)
             # image does not exist on any configured registry
-        if inspection is None:
-            _no_such_image()
-            # By this point, inspection cannot be "None"
         try:
             labels = inspection['Config']['Labels']
         except TypeError:  # pragma: no cover
             # Some images may not have a 'Labels' key.
-            raise ValueError('{} has no label information.'
-                             ''.format(self.args.image))
-        if labels is not None:
+            _no_label()
+        if labels is not None and len(labels) is not 0:
             for label in labels:
                 self.writeOut('{0}: {1}'.format(label, labels[label]))
+        else:
+            _no_label()
 
     def dangling(self, image):
         if image == "<none>":
@@ -1034,6 +1063,17 @@ class Atomic(object):
 
         return self.active_containers
 
+    def find_remote_image(self):
+        """
+        Based on the user's input, see if we can associate the input with a remote
+        registry and image.
+        :return: str(fq name)
+        """
+        results = self.d.search(self.image)
+        for x in results:
+            if x['name'] == self.image:
+                return '{}/{}'.format(x['registry_name'], x['name'])
+        return None
 
 class AtomicError(Exception):
     pass
