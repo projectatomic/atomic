@@ -315,6 +315,8 @@ class Atomic(object):
 
     def pull_image(self):
         repo = self._get_ostree_repo()
+        if self.args.ostree:
+            self._check_system_ostree_image(repo, "ostree://%s" % self.image, True)
         if self.args.docker:
             self._check_system_docker_image(repo, "docker://%s" % self.image, True)
         elif self.args.tar:
@@ -959,6 +961,14 @@ class Atomic(object):
 
         repo.commit_transaction(None)
 
+    def _check_system_ostree_image(self, repo, img, upgrade):
+        imagebranch = img.replace("ostree://", "")
+        current_rev = repo.resolve_rev(imagebranch, True)
+        if not upgrade and current_rev[1]:
+            return False
+        remote, branch = imagebranch.split(":")
+        return repo.pull(remote, [branch], 0, None)
+
     def _check_system_docker_image(self, repo, img, upgrade):
         regloc, image, tag = Atomic._parse_imagename(img.replace("docker://", ""))
         imagebranch = "ociimage/%s-%s" % (image.replace("sha256:", ""), tag)
@@ -1004,8 +1014,11 @@ class Atomic(object):
         return metadata[key]
 
     def _checkout_system_container(self, repo, name, img, deployment, upgrade):
-        regloc, image, tag = Atomic._parse_imagename(img.replace("docker://", ""))
-        imagebranch = "ociimage/%s-%s" % (image.replace("sha256:", ""), tag)
+        if "docker://" in img:
+            regloc, image, tag = Atomic._parse_imagename(img.replace("docker://", ""))
+            imagebranch = "ociimage/%s-%s" % (image.replace("sha256:", ""), tag)
+        elif "ostree://" in img:
+            imagebranch = img.replace("ostree://", "")
 
         destination = "/var/lib/containers/atomic/%s.%d" % (name, deployment)
 
@@ -1028,15 +1041,22 @@ class Atomic(object):
         rev = repo.resolve_rev(imagebranch, False)[1]
 
         manifest = Atomic._get_commit_metadata(repo, rev, "docker.manifest")
-        layers = Atomic._get_layers_from_manifest(manifest)
-
         options = OSTree.RepoCheckoutOptions()
         options.overwrite_mode = OSTree.RepoCheckoutOverwriteMode.UNION_FILES
-        rootfs_fd = os.open(rootfs, os.O_DIRECTORY)
-        for layer in layers:
-            rev = repo.resolve_rev("ociimage/%s" % layer.replace("sha256:", ""), False)[1]
-            repo.checkout_tree_at(options, rootfs_fd, rootfs, rev)
-        os.close(rootfs_fd)
+
+        rootfs_fd = None
+        try:
+            rootfs_fd = os.open(rootfs, os.O_DIRECTORY)
+            if manifest is None:
+                repo.checkout_tree_at(options, rootfs_fd, rootfs, rev)
+            else:
+                layers = Atomic._get_layers_from_manifest(manifest)
+                for layer in layers:
+                    rev_layer = repo.resolve_rev("ociimage/%s" % layer.replace("sha256:", ""), False)[1]
+                    repo.checkout_tree_at(options, rootfs_fd, rootfs, rev_layer)
+        finally:
+            if rootfs_fd:
+                os.close(rootfs_fd)
 
         exports = os.path.join(destination, "rootfs/exports")
 
@@ -1094,13 +1114,12 @@ class Atomic(object):
     def _install_system_container(self):
         repo = self._get_ostree_repo()
 
-        if not self._check_system_docker_image(repo, True, self.image):
-            return False
-
-        if not self.image.startswith("docker://"):
-            raise ValueError("Image type for '%s' not known. Only docker:// is supported." % self.image)
-
-        self._check_system_docker_image(repo, self.image, False)
+        if self.image.startswith("docker://"):
+            self._check_system_docker_image(repo, self.image, False)
+        elif self.image.startswith("ostree://"):
+            self._check_system_ostree_image(repo, self.image, False)
+        else:
+            raise ValueError("Image type for '%s' not known. Only docker:// and ostree:// are supported." % self.image)
 
         if os.path.exists("/var/lib/containers/atomic/%s.0" % self.name):
             self.writeOut("/var/lib/containers/atomic/%s.0 already present" % self.name)

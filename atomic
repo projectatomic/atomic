@@ -365,6 +365,8 @@ if __name__ == '__main__':
                        help=_("import from a Docker save'd tarball."))
     pullp.add_argument("--docker", dest="docker", action="store_true",
                        help=_("import from a Docker registry."))
+    pullp.add_argument("--ostree", dest="ostree", action="store_true",
+                       help=_("import from an OSTree repository."))
     pullp.add_argument("image", help=_("image id"))
     pullp.set_defaults(func='pull_image')
 
