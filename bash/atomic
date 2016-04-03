@@ -506,6 +506,16 @@ _atomic_host_upgrade() {
 	esac
 }
 
+_atomic_host_unlock() {
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "--hotfix -h --help" -- "$cur" ) )
+			;;
+		*)
+			;;
+	esac
+}
+
 _atomic_host_host() {
 	local boolean_options="
 		--help -h
@@ -553,6 +563,7 @@ _atomic_host() {
 	        rollback
 		status
 		upgrade
+	        unlock	
 	)
 
 	local completions_func=_atomic_host_${prev}

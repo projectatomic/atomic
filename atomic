@@ -230,6 +230,19 @@ if __name__ == '__main__':
                                     "if you want to pass additional "
                                     "unsupported arguments to rpm-ostree."))
 
+        # atomic host unlock
+        unlockp = host_subparser.add_parser(
+            "unlock", help=_("Make the current deployment mutable (for development or a hotfix)"))
+        unlockp.set_defaults(func='host_unlock')
+        unlockp.add_argument("--hotfix", dest="hotfix",
+                               action="store_true",
+                               help=_("Retain any changes after reboot"))
+        unlockp.add_argument("args", nargs=argparse.REMAINDER,
+                               help=_("Additional arguments appended to the "
+                                      "unlock method.  Use `-- --OPTION=VAL` "
+                                      "if you want to pass additional "
+                                      "unsupported arguments to ostree."))
+
     # atomic info
     infop = subparser.add_parser(
         "info", help=_("display label information about an image"),
