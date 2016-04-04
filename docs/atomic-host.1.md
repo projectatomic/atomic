@@ -34,8 +34,18 @@ Upgrade to the latest Atomic tree if one is available
 **deploy**
 Download and deploy a specific Atomic tree
 
+**unlock**
+Remove the read-only bind mount on `/usr`
+and replace it with a writable overlay filesystem.  This
+default invocation of "unlock" is intended for
+development/testing purposes.  All changes in the overlay
+are lost on reboot (or upgrade).  Pass `--hotfix` to create changes
+that persist on reboot (but still not upgrades).
+
+
 # SEE ALSO
     man rpm-ostree 
+    man ostree 
 
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)

@@ -527,11 +527,18 @@ class Atomic(object):
         except KeyError:
             pass
 
-    def _rpmostree(self, args):
+    def _passthrough(self, args):
+        cmd = args[0]
         aargs = self.args.args
         if len(aargs) > 0 and aargs[0] == "--":
             aargs = aargs[1:]
-        os.execl("/usr/bin/rpm-ostree", "rpm-ostree", *(args + aargs))
+        os.execl("/usr/bin/" + cmd, *(args + aargs))
+
+    def _rpmostree(self, args):
+        self._passthrough(['rpm-ostree'] + args)
+
+    def _ostreeadmin(self, args):
+        self._passthrough(['ostree', 'admin'] + args)
 
     def host_status(self):
         argv = ["status"]
@@ -572,6 +579,12 @@ class Atomic(object):
         if self.args.preview:
             argv.append("--preview")
         self._rpmostree(argv)
+
+    def host_unlock(self):
+        argv = ['unlock']
+        if self.args.hotfix:
+            argv.append("--hotfix")
+        self._ostreeadmin(argv)
 
     def uninstall(self):
         self.inspect = self._inspect_container()
