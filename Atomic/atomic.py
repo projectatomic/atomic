@@ -40,6 +40,10 @@ from docker.errors import NotFound
 IMAGES = []
 ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
 
+SYSTEM_CHECKOUT_PATH = "/var/lib/containers/atomic"
+OSTREE_OCIIMAGE_PREFIX = "ociimage/"
+SYSTEMD_UNIT_FILES_DEST = "/etc/systemd/system"
+
 def convert_size(size):
     if size > 0:
         size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
@@ -789,9 +793,7 @@ class Atomic(object):
     def _system_images(self):
         repo = self._get_ostree_repo()
 
-        prefix = "ociimage/"
-
-        revs = [x for x in repo.list_refs()[1] if x.startswith(prefix) and len(x) != len(prefix) + 64]
+        revs = [x for x in repo.list_refs()[1] if x.startswith(OSTREE_OCIIMAGE_PREFIX) and len(x) != len(OSTREE_DOCKERIMG_PREFIX) + 64]
         max_column = max([len(rev) for rev in revs]) + 2
         col_out = "{0:%d} {1:64}" % max_column
         self.writeOut(col_out.format("IMAGE", "COMMIT"))
@@ -807,7 +809,7 @@ class Atomic(object):
             util.check_call(cmd, env=self.cmd_env())
 
     def _system_container_exists(self, name):
-        return os.path.exists("/var/lib/containers/atomic/%s" % name)
+        return os.path.exists("%s/%s" % (SYSTEM_CHECKOUT_PATH, name))
 
     def _uninstall_system_container(self, name):
         self.args.display = False
@@ -820,24 +822,23 @@ class Atomic(object):
         except:
             pass
 
-        if os.path.exists(os.path.join("/etc/systemd/system", "%s.service" % name)):
-            os.unlink(os.path.join("/etc/systemd/system", "%s.service" % name))
-        if os.path.exists("/var/lib/containers/atomic/%s" % name):
-            os.unlink("/var/lib/containers/atomic/%s" % name)
-        if os.path.exists("/var/lib/containers/atomic/%s.0" % name):
-            shutil.rmtree("/var/lib/containers/atomic/%s.0" % name)
-        if os.path.exists("/var/lib/containers/atomic/%s.1" % name):
-            shutil.rmtree("/var/lib/containers/atomic/%s.1" % name)
+        if os.path.exists(os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)):
+            os.unlink(os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name))
+
+        if os.path.exists("%s/%s" % (SYSTEM_CHECKOUT_PATH, name)):
+            os.unlink("%s/%s" % (SYSTEM_CHECKOUT_PATH, name))
+        for deploy in ["0", "1"]:
+            if os.path.exists("%s/%s.%s" % (SYSTEM_CHECKOUT_PATH, name, deploy)):
+                shutil.rmtree("%s/%s.%s" % (SYSTEM_CHECKOUT_PATH, name, deploy))
 
     def _prune_ostree_images(self):
         repo = self._get_ostree_repo()
         refs = {}
         app_refs = []
-        prefix = "ociimage/"
 
         for i in repo.list_refs()[1]:
-            if i.startswith(prefix):
-                if len(i) == len(prefix) + 64:
+            if i.startswith(OSTREE_OCIIMAGE_PREFIX):
+                if len(i) == len(OSTREE_OCIIMAGE_PREFIX) + 64:
                     refs[i] = False
                 else:
                     app_refs.append(i)
@@ -848,7 +849,7 @@ class Atomic(object):
             if not manifest:
                 return
             for layer in Atomic._get_layers_from_manifest(manifest):
-                refs[prefix + layer.replace("sha256:", "")] = True
+                refs[OSTREE_OCIIMAGE_PREFIX + layer.replace("sha256:", "")] = True
 
         for app in app_refs:
             visit(app)
@@ -913,9 +914,9 @@ class Atomic(object):
             root = repo.write_mtree(mtree)[1]
             metav = GLib.Variant("a{sv}", {'docker.layer': GLib.Variant('s', layer)})
             csum = repo.write_commit(None, "", None, metav, root)[1]
-            repo.transaction_set_ref(None, "ociimage/%s" % layer, csum)
+            repo.transaction_set_ref(None, "%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), csum)
 
-        # create a ociimage/$image-$tag branch
+        # create a $OSTREE_OCIIMAGE_PREFIX$image-$tag branch
         metadata = GLib.Variant("a{sv}", {'docker.manifest': GLib.Variant('s', manifest)})
         mtree = OSTree.MutableTree()
         file_info = Gio.FileInfo()
@@ -945,7 +946,7 @@ class Atomic(object):
                             manifest = mfile.read()
                         for m in json.loads(manifest):
                             regloc, image, tag = Atomic._parse_imagename(m["RepoTags"][0])
-                            imagebranch = "ociimage/%s-%s" % (image.replace("sha256:", ""), tag)
+                            imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image.replace("sha256:", ""), tag)
                             input_layers = m["Layers"]
                             self._pull_dockertar_layers(repo, imagebranch, temp_dir, input_layers)
                     else:
@@ -954,7 +955,7 @@ class Atomic(object):
                         with open(repositories_file, 'r') as rfile:
                             repositories = rfile.read()
                         regloc, image, tag = Atomic._parse_imagename(list(json.loads(repositories).keys())[0])
-                        imagebranch = "ociimage/%s-%s" % (image, tag)
+                        imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image, tag)
                         input_layers = []
                         for name in os.listdir(temp_dir):
                             if name == "repositories":
@@ -974,7 +975,7 @@ class Atomic(object):
 
     def _check_system_docker_image(self, repo, img, upgrade):
         regloc, image, tag = Atomic._parse_imagename(img.replace("docker://", ""))
-        imagebranch = "ociimage/%s-%s" % (image.replace("sha256:", ""), tag)
+        imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image.replace("sha256:", ""), tag)
         current_rev = repo.resolve_rev(imagebranch, True)
         if not upgrade and current_rev[1]:
             return False
@@ -984,7 +985,7 @@ class Atomic(object):
         missing_layers = []
         for i in layers:
             layer = i.replace("sha256:", "")
-            if not repo.resolve_rev("ociimage/%s" % layer, True)[1]:
+            if not repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1]:
                 missing_layers.append(layer)
                 self.writeOut("Missing layer %s" % layer)
 
@@ -1019,12 +1020,11 @@ class Atomic(object):
     def _checkout_system_container(self, repo, name, img, deployment, upgrade):
         if "docker://" in img:
             regloc, image, tag = Atomic._parse_imagename(img.replace("docker://", ""))
-            imagebranch = "ociimage/%s-%s" % (image.replace("sha256:", ""), tag)
+            imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image.replace("sha256:", ""), tag)
         elif "ostree://" in img:
             imagebranch = img.replace("ostree://", "")
 
-        destination = "/var/lib/containers/atomic/%s.%d" % (name, deployment)
-
+        destination = "%s/%s.%d" % (SYSTEM_CHECKOUT_PATH, name, deployment)
         self.writeOut("Extracting to %s" % destination)
 
         rootfs = os.path.join(destination, "rootfs")
@@ -1055,7 +1055,7 @@ class Atomic(object):
             else:
                 layers = Atomic._get_layers_from_manifest(manifest)
                 for layer in layers:
-                    rev_layer = repo.resolve_rev("ociimage/%s" % layer.replace("sha256:", ""), False)[1]
+                    rev_layer = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer.replace("sha256:", "")), False)[1]
                     repo.checkout_tree_at(options, rootfs_fd, rootfs, rev_layer)
         finally:
             if rootfs_fd:
@@ -1066,7 +1066,8 @@ class Atomic(object):
         if not self.args.display:
             with open(os.path.join(destination, "image"), 'w') as imgfile:
                 imgfile.write("%s\n" % img)
-            sym = "/var/lib/containers/atomic/%s" % (name)
+
+            sym = "%s/%s" % (SYSTEM_CHECKOUT_PATH, name)
 
             if os.path.exists(sym):
                 os.unlink(sym)
@@ -1097,7 +1098,7 @@ class Atomic(object):
                     _write_template(infile.read(), values, outfile)
 
         unitfile = os.path.join(exports, "service.template")
-        unitfileout = os.path.join("/etc/systemd/system", "%s.service" % name)
+        unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
         if os.path.exists(unitfile):
             with open(unitfile, 'r') as infile, open(unitfileout, "w") as outfile:
                 _write_template(infile.read(), values, outfile)
@@ -1124,8 +1125,8 @@ class Atomic(object):
         else:
             raise ValueError("Image type for '%s' not known. Only docker:// and ostree:// are supported." % self.image)
 
-        if os.path.exists("/var/lib/containers/atomic/%s.0" % self.name):
-            self.writeOut("/var/lib/containers/atomic/%s.0 already present" % self.name)
+        if os.path.exists("%s/%s.0" % (SYSTEM_CHECKOUT_PATH, self.name)):
+            self.writeOut("%s/%s.0 already present" % (SYSTEM_CHECKOUT_PATH, self.name))
             return
 
         return self._checkout_system_container(repo, self.name, self.image, 0, False)
@@ -1138,13 +1139,18 @@ class Atomic(object):
         if not self._check_system_docker_image(repo, False):
             return False
 
-        if not self.force:
-            return
+        path = os.path.join(SYSTEM_CHECKOUT_PATH, name)
 
-        oci = os.path.join("/var/lib/containers/atomic", name)
         next_deployment = 0
-        if os.path.realpath(oci).endswith(".0"):
+        if os.path.realpath(path).endswith(".0"):
             next_deployment = 1
+
+        if os.path.exists("%s/%s.%d" % (SYSTEM_CHECKOUT_PATH, name, next_deployment)):
+            shutil.rmtree("%s/%s.%d" % (SYSTEM_CHECKOUT_PATH, name, next_deployment))
+
+        image = None
+        with open(os.path.join(SYSTEM_CHECKOUT_PATH, name, "image"), "r") as i:
+            image = i.readline().rstrip("\n")
 
         if not self._check_system_docker_image(repo, True, self.image):
             return False
