@@ -319,12 +319,14 @@ class Atomic(object):
 
     def pull_image(self):
         repo = self._get_ostree_repo()
-        if self.args.ostree:
-            self._check_system_ostree_image(repo, "ostree://%s" % self.image, True)
-        if self.args.docker:
-            self._check_system_docker_image(repo, "docker://%s" % self.image, True)
-        elif self.args.tar:
-            self._pull_docker_tar(repo, self.args.image)
+        if self.args.image.startswith("ostree://"):
+            self._check_system_ostree_image(repo, self.image, True)
+        elif self.args.image.startswith("docker://"):
+            self._check_system_docker_image(repo, self.image, True)
+        elif self.args.image.startswith("dockertar://"):
+            self._pull_docker_tar(repo, self.args.image.replace("dockertar://", ""))
+        else:
+            raise ValueError("Image type of '%s' is not known" % self.args.image)
         return
 
 
@@ -793,7 +795,8 @@ class Atomic(object):
     def _system_images(self):
         repo = self._get_ostree_repo()
 
-        revs = [x for x in repo.list_refs()[1] if x.startswith(OSTREE_OCIIMAGE_PREFIX) and len(x) != len(OSTREE_DOCKERIMG_PREFIX) + 64]
+        revs = [x for x in repo.list_refs()[1] if x.startswith(OSTREE_OCIIMAGE_PREFIX) \
+                and len(x) != len(OSTREE_OCIIMAGE_PREFIX) + 64]
         max_column = max([len(rev) for rev in revs]) + 2
         col_out = "{0:%d} {1:64}" % max_column
         self.writeOut(col_out.format("IMAGE", "COMMIT"))
