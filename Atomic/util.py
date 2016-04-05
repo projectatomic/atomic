@@ -1,3 +1,4 @@
+import shlex
 import sys
 import json
 import subprocess
@@ -76,7 +77,7 @@ def subp(cmd):
 def check_call(cmd, env=os.environ, stderr=None, stdout=None):
     # Make sure cmd is a list
     if not isinstance(cmd, list):
-        cmd = cmd.split(" ")
+        cmd = shlex.split(cmd)
     return subprocess.check_call(cmd, env=env, stderr=stderr, stdout=stdout)
 
 def default_container_context():
