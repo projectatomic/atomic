@@ -320,35 +320,7 @@ class Atomic(object):
         if self.args.docker:
             self._check_system_docker_image(repo, "docker://%s" % self.image, True)
         elif self.args.tar:
-            temp_dir = tempfile.mkdtemp()
-            try:
-                with tarfile.open(self.args.image, 'r') as t:
-                    t.extractall(temp_dir)
-                    manifest_file = os.path.join(temp_dir, "manifest.json")
-                    if os.path.exists(manifest_file):
-                        manifest = ""
-                        with open(manifest_file, 'r') as mfile:
-                            manifest = mfile.read()
-                        for m in json.loads(manifest):
-                            regloc, image, tag = Atomic._parse_imagename(m["RepoTags"][0])
-                            imagebranch = "ociimage/%s-%s" % (image.replace("sha256:", ""), tag)
-                            input_layers = m["Layers"]
-                            self._pull_dockertar_layers(repo, imagebranch, temp_dir, input_layers)
-                    else:
-                        repositories = ""
-                        repositories_file = os.path.join(temp_dir, "repositories")
-                        with open(repositories_file, 'r') as rfile:
-                            repositories = rfile.read()
-                        regloc, image, tag = Atomic._parse_imagename(list(json.loads(repositories).keys())[0])
-                        imagebranch = "ociimage/%s-%s" % (image, tag)
-                        input_layers = []
-                        for name in os.listdir(temp_dir):
-                            if name == "repositories":
-                                continue
-                            input_layers.append(name + "/layer.tar")
-                        self._pull_dockertar_layers(repo, imagebranch, temp_dir, input_layers)
-            finally:
-                shutil.rmtree(temp_dir)
+            self._pull_docker_tar(repo, self.args.image)
         return
 
 
@@ -960,6 +932,37 @@ class Atomic(object):
         repo.transaction_set_ref(None, imagebranch, csum)
 
         repo.commit_transaction(None)
+
+    def _pull_docker_tar(self, repo, image):
+            temp_dir = tempfile.mkdtemp()
+            try:
+                with tarfile.open(image, 'r') as t:
+                    t.extractall(temp_dir)
+                    manifest_file = os.path.join(temp_dir, "manifest.json")
+                    if os.path.exists(manifest_file):
+                        manifest = ""
+                        with open(manifest_file, 'r') as mfile:
+                            manifest = mfile.read()
+                        for m in json.loads(manifest):
+                            regloc, image, tag = Atomic._parse_imagename(m["RepoTags"][0])
+                            imagebranch = "ociimage/%s-%s" % (image.replace("sha256:", ""), tag)
+                            input_layers = m["Layers"]
+                            self._pull_dockertar_layers(repo, imagebranch, temp_dir, input_layers)
+                    else:
+                        repositories = ""
+                        repositories_file = os.path.join(temp_dir, "repositories")
+                        with open(repositories_file, 'r') as rfile:
+                            repositories = rfile.read()
+                        regloc, image, tag = Atomic._parse_imagename(list(json.loads(repositories).keys())[0])
+                        imagebranch = "ociimage/%s-%s" % (image, tag)
+                        input_layers = []
+                        for name in os.listdir(temp_dir):
+                            if name == "repositories":
+                                continue
+                            input_layers.append(name + "/layer.tar")
+                        self._pull_dockertar_layers(repo, imagebranch, temp_dir, input_layers)
+            finally:
+                shutil.rmtree(temp_dir)
 
     def _check_system_ostree_image(self, repo, img, upgrade):
         imagebranch = img.replace("ostree://", "")
