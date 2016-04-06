@@ -1020,7 +1020,7 @@ class Atomic(object):
             return None
         return metadata[key]
 
-    def _checkout_system_container(self, repo, name, img, deployment, upgrade):
+    def _checkout_system_container(self, repo, name, img, deployment, upgrade, values={}):
         if "docker://" in img:
             regloc, image, tag = Atomic._parse_imagename(img.replace("docker://", ""))
             imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image.replace("sha256:", ""), tag)
@@ -1029,6 +1029,9 @@ class Atomic(object):
 
         destination = "%s/%s.%d" % (SYSTEM_CHECKOUT_PATH, name, deployment)
         self.writeOut("Extracting to %s" % destination)
+
+        if self.args.display:
+            return True
 
         rootfs = os.path.join(destination, "rootfs")
 
@@ -1066,17 +1069,14 @@ class Atomic(object):
 
         exports = os.path.join(destination, "rootfs/exports")
 
-        if not self.args.display:
-            with open(os.path.join(destination, "image"), 'w') as imgfile:
-                imgfile.write("%s\n" % img)
+        sym = "%s/%s" % (SYSTEM_CHECKOUT_PATH, name)
+        if os.path.exists(sym):
+            os.unlink(sym)
+        os.symlink(destination, sym)
 
-            sym = "%s/%s" % (SYSTEM_CHECKOUT_PATH, name)
+        values["DESTDIR"] = destination
+        values["NAME"] = name
 
-            if os.path.exists(sym):
-                os.unlink(sym)
-            os.symlink(destination, sym)
-
-        values = {"DESTDIR" : destination, "NAME" : name}
         if self.args.setvalues is not None:
             for i in self.args.setvalues:
                 split = i.find("=")
@@ -1099,6 +1099,11 @@ class Atomic(object):
             if os.path.exists(src):
                 with open(src, 'r') as infile, open(os.path.join(destination, i), "w") as outfile:
                     _write_template(infile.read(), values, outfile)
+
+        with open(os.path.join(destination, "info"), 'w') as info_file:
+            info = {"image" : img,
+                    "values" : values}
+            info_file.write(json.dumps(info))
 
         unitfile = os.path.join(exports, "service.template")
         unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
@@ -1134,7 +1139,7 @@ class Atomic(object):
 
         return self._checkout_system_container(repo, self.name, self.image, 0, False)
 
-    def _update_system_container(self, repo, name):
+    def _update_system_container(self, name):
         self.args.display = False
 
         repo = self._get_ostree_repo()
@@ -1147,21 +1152,25 @@ class Atomic(object):
         next_deployment = 0
         if os.path.realpath(path).endswith(".0"):
             next_deployment = 1
+        else:
+            next_deployment = 0
 
         if os.path.exists("%s/%s.%d" % (SYSTEM_CHECKOUT_PATH, name, next_deployment)):
             shutil.rmtree("%s/%s.%d" % (SYSTEM_CHECKOUT_PATH, name, next_deployment))
 
-        image = None
-        with open(os.path.join(SYSTEM_CHECKOUT_PATH, name, "image"), "r") as i:
-            image = i.readline().rstrip("\n")
+        with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
+            info = json.loads(info_file.read())
 
-        if not self._check_system_docker_image(repo, True, self.image):
+        image = info["image"]
+        values = info["values"]
+
+        if not self._check_system_docker_image(repo, True, image):
             return False
 
         if os.path.exists("/var/lib/containers/atomic/%s.%d" % (name, next_deployment)):
             shutil.rmtree("/var/lib/containers/atomic/%s.%d" % (name, next_deployment))
 
-        self._checkout_system_container(repo, name, image, next_deployment, True)
+        self._checkout_system_container(repo, name, image, next_deployment, True, values)
 
     def help(self):
         if os.path.exists("/usr/bin/rpm-ostree"):
