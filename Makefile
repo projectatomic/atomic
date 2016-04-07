@@ -62,6 +62,7 @@ install-only:
 	install -m 644 atomic.conf $(DESTDIR)/etc
 
 	install -d $(DESTDIR)/etc/atomic.d
+	install -m 644 atomic.d/openscap $(DESTDIR)/etc/atomic.d
 
 .PHONY: install
 install: all install-only
