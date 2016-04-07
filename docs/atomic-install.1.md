@@ -9,6 +9,8 @@ atomic-install - Execute Image Install Method
 [**-h**|**--help**]
 [**--display**]
 [**-n**][**--name**[=*NAME*]]
+[**--set**=*NAME*=*VALUE*]
+[**--system**]
 IMAGE [ARG...]
 
 # DESCRIPTION
@@ -50,6 +52,12 @@ If --display is not specified the install command will execute.
 **-n** **--name**=""
    Use this name for creating installed content for the container.
 NAME will default to the IMAGENAME if it is not specified.
+
+**--set=NAME=VALUE**
+  Set a value that is going to be used by a system container for its configuration and can be specified multiple times.  It is used only by --system.
+
+**--system**
+  Install a system container.  A system container is a container that is executed out of an systemd unit file early in boot, using runc.
 
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)
