@@ -93,6 +93,8 @@ class Top(Atomic):
         Main sub-function for top
         :return: None
         """
+        # Make sure the docker daemon is running
+        self.ping()
         # Activate optional columns
         self._activate_optionals()
         # Do we have a tty?
