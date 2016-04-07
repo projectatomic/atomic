@@ -745,25 +745,22 @@ class Atomic(object):
             self._prune_ostree_images()
             return
 
-        if self.args.system:
-            return self._system_images()
-
         _images = self.get_images()
-        if len(_images) == 0:
-            return
-        _max_repo, _max_tag = get_col_lengths(_images)
-        col_out = "{0:" + str(_max_repo) + "} {1:" + str(_max_tag) + \
-                  "} {2:12} {3:19} {4:10}"
-        self.writeOut(col_out.format("REPOSITORY", "TAG", "IMAGE ID",
-                                     "CREATED", "VIRTUAL SIZE"))
-        for image in self.get_images():
-            repo, tag = image["RepoTags"][0].rsplit(":", 1)
-            self.writeOut(col_out.format(self.dangling(repo) + repo,
-                                         tag, image["Id"][:12],
-                 time.strftime("%F %H:%M",
-                               time.localtime(image["Created"])),
-                 convert_size(image["VirtualSize"])))
+        if len(_images) >= 0:
+            _max_repo, _max_tag = get_col_lengths(_images)
+            col_out = "{0:" + str(_max_repo) + "} {1:" + str(_max_tag) + \
+                      "} {2:12} {3:19} {4:10}"
+            self.writeOut(col_out.format("REPOSITORY", "TAG", "IMAGE ID",
+                                         "CREATED", "VIRTUAL SIZE"))
+            for image in self.get_images():
+                repo, tag = image["RepoTags"][0].rsplit(":", 1)
+                self.writeOut(col_out.format(self.dangling(repo) + repo,
+                                             tag, image["Id"][:12],
+                                             time.strftime("%F %H:%M",
+                                            time.localtime(image["Created"])),
+                                            convert_size(image["VirtualSize"])))
 
+            return self._system_images()
 
     def _check_if_image_present(self):
         self.inspect = self._inspect_image()
@@ -799,6 +796,8 @@ class Atomic(object):
                 and len(x) != len(OSTREE_OCIIMAGE_PREFIX) + 64]
         max_column = max([len(rev) for rev in revs]) + 2
         col_out = "{0:%d} {1:64}" % max_column
+        if len(revs) == 0:
+            return
         self.writeOut(col_out.format("IMAGE", "COMMIT"))
 
         for rev in revs:

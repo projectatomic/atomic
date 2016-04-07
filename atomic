@@ -298,9 +298,6 @@ if __name__ == '__main__':
     imagesp.set_defaults(func='images')
     imagesp.add_argument("--prune", action="store_true",
                          help=_("prune dangling images"))
-    imagesp.add_argument("--system", dest="system",
-                         action='store_true', default=False,
-                         help=_('Show system container images'))
 
     # atomic migrate
     migratep = subparser.add_parser("migrate", help=_("migrate container's content from one backend storage "
