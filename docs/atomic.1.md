@@ -15,6 +15,13 @@ Atomic Management Tool
 # OPTIONS
 **-h** **--help**
   Print usage statement
+# ENVIRONMENT VARIABLES
+
+**ATOMIC_CONF** The location of the atomic configuration file (normally /etc/atomic.conf) can be
+overridden with the _ATOMIC_CONF_ environment variable
+
+**ATOMIC_CONFD** The location of the atomic configuration directory (normally /etc/atomic.d/) can be
+overridden with the _ATOMIC_CONFD_ environment variable.
 
 # COMMANDS
 **atomic-diff(1)**
