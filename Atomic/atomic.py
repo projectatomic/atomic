@@ -320,6 +320,8 @@ class Atomic(object):
     def _pull_image_to_ostree(self, repo, image, upgrade):
         if image.startswith("ostree:"):
             self._check_system_ostree_image(repo, image, upgrade)
+        elif self.args.image.startswith("docker:"):
+            self._pull_docker_image(repo, image.replace("docker:", ""))
         elif self.args.image.startswith("dockertar:"):
             self._pull_docker_tar(repo, image.replace("dockertar:", ""))
         else: # Assume "oci:"
@@ -946,6 +948,11 @@ class Atomic(object):
         repo.transaction_set_ref(None, imagebranch, csum)
 
         repo.commit_transaction(None)
+
+    def _pull_docker_image(self, repo, image):
+        with tempfile.NamedTemporaryFile(mode="w") as temptar:
+            subprocess.check_call(["docker", "save", "-o", temptar.name, image])
+            return self._pull_docker_tar(repo, temptar.name)
 
     def _pull_docker_tar(self, repo, image):
             temp_dir = tempfile.mkdtemp()
