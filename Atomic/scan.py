@@ -31,7 +31,7 @@ class Scan(Atomic):
                 if i['scanner_name'] == scanner:
                     for x in i['scans']:
                         if x['name'] == scan_type:
-                            return i['image_name'], x['args']
+                            return i['image_name'], x['args'], i.get('custom_args')
 
         if self.args.list:
             self.print_scan_list()
@@ -41,7 +41,7 @@ class Scan(Atomic):
         yaml_error = "The image name or scanner arguments for '{}' is not " \
                      "defined in /etc/atomic.conf".format(self.args.scanner)
 
-        scanner_image_name, scanner_args = get_scan_info(self.args.scanner, scan_type)
+        scanner_image_name, scanner_args, custom_args = get_scan_info(self.args.scanner, scan_type)
 
         if not isinstance(scanner_args, list):
             raise ValueError("The scanner arguments for {} must be in list"
@@ -63,7 +63,10 @@ class Scan(Atomic):
                        '{}:{}'.format(self.results_dir, '/scanout')]
 
         # Assemble the cmd line for the scan
-        scan_cmd = docker_args + [scanner_image_name] + scanner_args
+        scan_cmd = docker_args
+        if custom_args is not None:
+            scan_cmd = scan_cmd + custom_args
+        scan_cmd = scan_cmd + [scanner_image_name] + scanner_args
 
         # Show the command being run
         util.writeOut(" ".join(scan_cmd))
@@ -113,6 +116,9 @@ class Scan(Atomic):
                     else (next((item for item in images if item['Id'] == self.get_input_id(scan_input)), None))
                 docker_object['input'] = scan_input
                 scan_list.append(docker_object)
+            if len(scan_list) < 1:
+                raise ValueError("You must provide at least one container or image for atomic "
+                                 "scan. See 'atomic scan --help' for more information")
 
         return scan_list
 
@@ -180,15 +186,24 @@ class Scan(Atomic):
             if json_results['Successful'].upper() == "FALSE":
                 util.writeOut("{}{} is not supported for this scan."
                               .format(' ' * 5, self._get_input_name_for_id(uuid)))
-            elif len(json_results['Vulnerabilities']) > 0:
+            elif 'Vulnerabilities' in json_results and len(json_results['Vulnerabilities']) > 0:
                 util.writeOut("The following issues were found:\n")
                 for vul in json_results['Vulnerabilities']:
-                    util.writeOut("{}{}".format(' ' * 5, vul['Title']))
-                    util.writeOut("{}Severity: {}".format(' ' * 5, vul['Severity']))
+                    if 'Title' in vul:
+                        util.writeOut("{}{}".format(' ' * 5, vul['Title']))
+                    if 'Severity' in vul:
+                        util.writeOut("{}Severity: {}".format(' ' * 5, vul['Severity']))
                     if 'Custom' in vul.keys() and len(vul['Custom']) > 0:
                         custom_field = vul['Custom']
                         self._output_custom(custom_field, 7)
                     util.writeOut("")
+            elif 'Results' in json_results and len(json_results['Results']) > 0:
+                util.writeOut("The following results were found:\n")
+                for result in json_results['Results']:
+                    if 'Custom' in result.keys() and len(result['Custom']) > 0:
+                        custom_field = result['Custom']
+                        self._output_custom(custom_field, 7)
+                util.writeOut("")
             else:
                 util.writeOut("{} passed the scan".format(self._get_input_name_for_id(uuid)))
         util.writeOut("\nFiles associated with this scan are in {}.\n".format(self.results_dir))
@@ -261,11 +276,10 @@ class Scan(Atomic):
             json.dump(environment, f, indent=4, separators=(',', ': '))
 
     def get_scan_type(self):
-        default_scanner = self.atomic_config.get('default_scanner')
         default_scan_type = None
         scan_types = []
         for i in self.scanners:
-            if i['scanner_name'] == default_scanner:
+            if i['scanner_name'] == self.args.scanner:
                 default_scan_type = i.get('default_scan')
                 if self.args.scan_type is None and default_scan_type is None:
                     raise ValueError("No scan type was given and there is no "
