@@ -1114,12 +1114,14 @@ class Atomic(object):
                 key, val = i[:split], i[split+1:]
                 values[key] = val
 
-        def _write_template(data, values, outfile):
-            # A dictionary that returns the empty string by default
-            args = defaultdict(str)
-            args.update(values)
+        def _write_template(inputfilename, data, values, outfile):
+            template = Template(data)
+            result = template.safe_substitute(values)
+            if '$' in result.replace("$$", ""):
+                missing = {x[1] for x in template.pattern.findall(data, template.flags) if len(x[1]) > 0 and x[1] not in values}
+                raise ValueError("The template file %s still contains unreplaced values for: %s" % \
+                                 (inputfilename, ", ".join(missing)))
 
-            result = Template(data).substitute(args)
             outfile.write(result)
 
         for i in ["config.json", "runtime.json"]:
@@ -1128,7 +1130,7 @@ class Atomic(object):
                 shutil.copyfile(src, os.path.join(destination, i))
             elif os.path.exists(src + ".template"):
                 with open(src + ".template", 'r') as infile, open(os.path.join(destination, i), "w") as outfile:
-                        _write_template(infile.read(), values, outfile)
+                        _write_template(src + ".template", infile.read(), values, outfile)
             else:
                 args = ['runc', 'spec']
                 r = util.subp(args, cwd=destination)
