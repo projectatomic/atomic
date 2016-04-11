@@ -340,7 +340,7 @@ class Atomic(object):
             self._check_system_oci_image(repo, image, upgrade)
 
     def pull_image(self):
-        if self.args.storage == "ostree":
+        if self.storage == "ostree":
             repo = self._get_ostree_repo()
             self._pull_image_to_ostree(repo, self.args.image, True)
         else:
@@ -382,6 +382,14 @@ class Atomic(object):
             self.force = args.force
         except:
             pass
+
+        try:
+            self.storage = args.storage
+        except:
+            self.storage = None
+
+        if not self.storage:
+            self.storage = self.get_atomic_config_item(["default_storage"])
 
         if not self.name and self.image is not None:
             self.name = self.image.split("/")[-1].split(":")[0]
