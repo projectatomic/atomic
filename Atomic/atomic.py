@@ -43,6 +43,18 @@ ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
 SYSTEM_CHECKOUT_PATH = "/var/lib/containers/atomic"
 OSTREE_OCIIMAGE_PREFIX = "ociimage/"
 SYSTEMD_UNIT_FILES_DEST = "/etc/systemd/system"
+SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE = """
+[Unit]
+Description=$NAME
+
+[Service]
+ExecStart=/bin/runc start $NAME
+Restart=on-crash
+WorkingDirectory=$DESTDIR
+
+[Install]
+WantedBy=multi-user.target
+"""
 
 def convert_size(size):
     if size > 0:
@@ -376,7 +388,7 @@ class Atomic(object):
             if self.spc:
                 self.name = self.name + "-spc"
             if self.system:
-                self.name = self.name + "-system"
+                self.name = self.image.replace(":", "/").split("/")[-1] + "-system"
 
     def _getconfig(self, key, default=None):
         assert self.inspect is not None
@@ -1111,11 +1123,15 @@ class Atomic(object):
             outfile.write(result)
 
         for i in ["config.json", "runtime.json"]:
-            src = os.path.join(exports, i + ".template")
-
+            src = os.path.join(exports, i)
             if os.path.exists(src):
-                with open(src, 'r') as infile, open(os.path.join(destination, i), "w") as outfile:
-                    _write_template(infile.read(), values, outfile)
+                shutil.copyfile(src, os.path.join(destination, i))
+            elif os.path.exists(src + ".template"):
+                with open(src + ".template", 'r') as infile, open(os.path.join(destination, i), "w") as outfile:
+                        _write_template(infile.read(), values, outfile)
+            else:
+                args = ['runc', 'spec']
+                r = util.subp(args, cwd=destination)
 
         with open(os.path.join(destination, "info"), 'w') as info_file:
             info = {"image" : img,
@@ -1125,14 +1141,19 @@ class Atomic(object):
         unitfile = os.path.join(exports, "service.template")
         unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
         if os.path.exists(unitfile):
-            with open(unitfile, 'r') as infile, open(unitfileout, "w") as outfile:
-                _write_template(infile.read(), values, outfile)
+            with open(unitfile, 'r') as infile:
+                systemd_template = infile.read()
+        else:
+            systemd_template = SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE
 
-            self.systemctl_command("enable", name)
-            if upgrade:
-                self.systemctl_command("restart", name)
-            else:
-                self.systemctl_command("start", name)
+        with open(unitfileout, "w") as outfile:
+            _write_template(unitfile, systemd_template, values, outfile)
+
+        self.systemctl_command("enable", name)
+        if upgrade:
+            self.systemctl_command("restart", name)
+        else:
+            self.systemctl_command("start", name)
         return True
 
     def _get_ostree_repo(self):
