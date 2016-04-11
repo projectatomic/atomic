@@ -40,7 +40,6 @@ from docker.errors import NotFound
 IMAGES = []
 ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
 
-SYSTEM_CHECKOUT_PATH = "/var/lib/containers/atomic"
 OSTREE_OCIIMAGE_PREFIX = "ociimage/"
 SYSTEMD_UNIT_FILES_DEST = "/etc/systemd/system"
 SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE = """
@@ -836,7 +835,7 @@ class Atomic(object):
             util.check_call(cmd, env=self.cmd_env())
 
     def _system_container_exists(self, name):
-        return os.path.exists("%s/%s" % (SYSTEM_CHECKOUT_PATH, name))
+        return os.path.exists("%s/%s" % (self._get_system_checkout_path(), name))
 
     def _uninstall_system_container(self, name):
         self.args.display = False
@@ -852,11 +851,11 @@ class Atomic(object):
         if os.path.exists(os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)):
             os.unlink(os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name))
 
-        if os.path.exists("%s/%s" % (SYSTEM_CHECKOUT_PATH, name)):
-            os.unlink("%s/%s" % (SYSTEM_CHECKOUT_PATH, name))
+        if os.path.exists("%s/%s" % (self._get_system_checkout_path(), name)):
+            os.unlink("%s/%s" % (self._get_system_checkout_path(), name))
         for deploy in ["0", "1"]:
-            if os.path.exists("%s/%s.%s" % (SYSTEM_CHECKOUT_PATH, name, deploy)):
-                shutil.rmtree("%s/%s.%s" % (SYSTEM_CHECKOUT_PATH, name, deploy))
+            if os.path.exists("%s/%s.%s" % (self._get_system_checkout_path(), name, deploy)):
+                shutil.rmtree("%s/%s.%s" % (self._get_system_checkout_path(), name, deploy))
 
     def _prune_ostree_images(self):
         repo = self._get_ostree_repo()
@@ -1064,7 +1063,7 @@ class Atomic(object):
             regloc, image, tag = Atomic._parse_imagename(img.replace("oci:", "").replace("docker:", ""))
             imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image.replace("sha256:", ""), tag)
 
-        destination = "%s/%s.%d" % (SYSTEM_CHECKOUT_PATH, name, deployment)
+        destination = "%s/%s.%d" % (self._get_system_checkout_path(), name, deployment)
         self.writeOut("Extracting to %s" % destination)
 
         if self.args.display:
@@ -1106,7 +1105,7 @@ class Atomic(object):
 
         exports = os.path.join(destination, "rootfs/exports")
 
-        sym = "%s/%s" % (SYSTEM_CHECKOUT_PATH, name)
+        sym = "%s/%s" % (self._get_system_checkout_path(), name)
         if os.path.exists(sym):
             os.unlink(sym)
         os.symlink(destination, sym)
@@ -1166,6 +1165,9 @@ class Atomic(object):
             self.systemctl_command("start", name)
         return True
 
+    def _get_system_checkout_path(self):
+        return self.get_atomic_config_item(["checkout_path"]) or "/var/lib/containers/atomic"
+
     def _get_ostree_repo(self):
         repo = OSTree.Repo.new(Gio.File.new_for_path(self.get_atomic_config_item(["ostree_repository"]) or "/ostree/repo"))
         repo.open(None)
@@ -1176,8 +1178,8 @@ class Atomic(object):
 
         self._pull_image_to_ostree(repo, self.image, False)
 
-        if os.path.exists("%s/%s.0" % (SYSTEM_CHECKOUT_PATH, self.name)):
-            self.writeOut("%s/%s.0 already present" % (SYSTEM_CHECKOUT_PATH, self.name))
+        if os.path.exists("%s/%s.0" % (self._get_system_checkout_path(), self.name)):
+            self.writeOut("%s/%s.0 already present" % (self._get_system_checkout_path(), self.name))
             return
 
         return self._checkout_system_container(repo, self.name, self.image, 0, False)
@@ -1187,7 +1189,7 @@ class Atomic(object):
 
         repo = self._get_ostree_repo()
 
-        path = os.path.join(SYSTEM_CHECKOUT_PATH, name)
+        path = os.path.join(self._get_system_checkout_path(), name)
 
         next_deployment = 0
         if os.path.realpath(path).endswith(".0"):
@@ -1195,8 +1197,8 @@ class Atomic(object):
         else:
             next_deployment = 0
 
-        if os.path.exists("%s/%s.%d" % (SYSTEM_CHECKOUT_PATH, name, next_deployment)):
-            shutil.rmtree("%s/%s.%d" % (SYSTEM_CHECKOUT_PATH, name, next_deployment))
+        if os.path.exists("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment)):
+            shutil.rmtree("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment))
 
         with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
             info = json.loads(info_file.read())
