@@ -1167,7 +1167,7 @@ class Atomic(object):
         return True
 
     def _get_ostree_repo(self):
-        repo = OSTree.Repo.new(Gio.File.new_for_path("/ostree/repo"))
+        repo = OSTree.Repo.new(Gio.File.new_for_path(self.get_atomic_config_item(["ostree_repository"]) or "/ostree/repo"))
         repo.open(None)
         return repo
 
