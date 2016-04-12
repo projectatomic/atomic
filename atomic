@@ -358,6 +358,7 @@ if __name__ == '__main__':
     # atomic pull
     pullp = subparser.add_parser("pull", help=_("pull latest image from a repository"),
         epilog="pull the latest specified image from a repository.")
+    pullp.add_argument("--storage", dest="storage", help=_("Specify the storage."))
     pullp.add_argument("image", help=_("image id"))
     pullp.set_defaults(func='pull_image')
 

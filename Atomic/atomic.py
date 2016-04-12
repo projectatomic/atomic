@@ -317,18 +317,21 @@ class Atomic(object):
             layers_to_import[layers_map[k]] = v
         Atomic._import_layers_into_ostree(repo, imagebranch, manifest, layers_to_import)
 
-    def pull_image(self):
-        repo = self._get_ostree_repo()
-        if self.args.image.startswith("ostree://"):
-            self._check_system_ostree_image(repo, self.image, True)
-        elif self.args.image.startswith("docker://"):
-            self._check_system_docker_image(repo, self.image, True)
-        elif self.args.image.startswith("dockertar://"):
-            self._pull_docker_tar(repo, self.args.image.replace("dockertar://", ""))
-        else:
-            raise ValueError("Image type of '%s' is not known" % self.args.image)
-        return
+    def _pull_image_to_ostree(self, repo, image, upgrade):
+        if image.startswith("ostree:"):
+            self._check_system_ostree_image(repo, image, upgrade)
+        elif self.args.image.startswith("dockertar:"):
+            self._pull_docker_tar(repo, image.replace("dockertar:", ""))
+        else: # Assume "oci:"
+            self._check_system_oci_image(repo, image, upgrade)
 
+    def pull_image(self):
+        if self.args.storage == "ostree":
+            repo = self._get_ostree_repo()
+            self._pull_image_to_ostree(repo, self.args.image, True)
+        else:
+            raise ValueError("Destination not known, please choose --storage=ostree")
+        return
 
     def set_args(self, args):
         self.args = args
@@ -878,8 +881,16 @@ class Atomic(object):
         else:
             return reg, image, "latest"
 
+    @staticmethod
+    def _convert_to_skopeo(image):
+        i = image.replace("oci:", "")
+        if "http:" in i:
+            return ["--insecure", "docker://" + i.replace("http:", "")]
+        else:
+            return ["docker://" + i.replace("https:", "")]
+
     def _skopeo_get_manifest(self, image):
-        r = util.subp(['skopeo', 'inspect', '--raw', image])
+        r = util.subp(['skopeo', 'inspect', '--raw'] + Atomic._convert_to_skopeo(image))
         if r.return_code != 0:
             raise IOError('Failed to fetch the manifest for: %s.' % image)
         return r.stdout.decode(sys.getdefaultencoding())
@@ -887,7 +898,7 @@ class Atomic(object):
     def _skopeo_get_layers(self, image, layers):
         temp_dir = tempfile.mkdtemp()
         try:
-            args = ['skopeo', 'layers', image] + layers
+            args = ['skopeo', 'layers'] + Atomic._convert_to_skopeo(image) + layers
             r = util.subp(args, cwd=temp_dir)
             if r.return_code != 0:
                 raise IOError('Failed to fetch the manifest for: %s.' % image)
@@ -968,15 +979,15 @@ class Atomic(object):
                 shutil.rmtree(temp_dir)
 
     def _check_system_ostree_image(self, repo, img, upgrade):
-        imagebranch = img.replace("ostree://", "")
+        imagebranch = img.replace("ostree:", "")
         current_rev = repo.resolve_rev(imagebranch, True)
         if not upgrade and current_rev[1]:
             return False
         remote, branch = imagebranch.split(":")
         return repo.pull(remote, [branch], 0, None)
 
-    def _check_system_docker_image(self, repo, img, upgrade):
-        regloc, image, tag = Atomic._parse_imagename(img.replace("docker://", ""))
+    def _check_system_oci_image(self, repo, img, upgrade):
+        regloc, image, tag = Atomic._parse_imagename(img.replace("oci:", ""))
         imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image.replace("sha256:", ""), tag)
         current_rev = repo.resolve_rev(imagebranch, True)
         if not upgrade and current_rev[1]:
@@ -1020,11 +1031,11 @@ class Atomic(object):
         return metadata[key]
 
     def _checkout_system_container(self, repo, name, img, deployment, upgrade, values={}):
-        if "docker://" in img:
-            regloc, image, tag = Atomic._parse_imagename(img.replace("docker://", ""))
+        if "ostree:" in img:
+            imagebranch = img.replace("ostree:", "")
+        else: # assume "oci:" image
+            regloc, image, tag = Atomic._parse_imagename(img.replace("oci:", "").replace("docker:", ""))
             imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image.replace("sha256:", ""), tag)
-        elif "ostree://" in img:
-            imagebranch = img.replace("ostree://", "")
 
         destination = "%s/%s.%d" % (SYSTEM_CHECKOUT_PATH, name, deployment)
         self.writeOut("Extracting to %s" % destination)
@@ -1125,12 +1136,7 @@ class Atomic(object):
     def _install_system_container(self):
         repo = self._get_ostree_repo()
 
-        if self.image.startswith("docker://"):
-            self._check_system_docker_image(repo, self.image, False)
-        elif self.image.startswith("ostree://"):
-            self._check_system_ostree_image(repo, self.image, False)
-        else:
-            raise ValueError("Image type for '%s' not known. Only docker:// and ostree:// are supported." % self.image)
+        self._pull_image_to_ostree(repo, self.image, False)
 
         if os.path.exists("%s/%s.0" % (SYSTEM_CHECKOUT_PATH, self.name)):
             self.writeOut("%s/%s.0 already present" % (SYSTEM_CHECKOUT_PATH, self.name))
@@ -1142,9 +1148,6 @@ class Atomic(object):
         self.args.display = False
 
         repo = self._get_ostree_repo()
-
-        if not self._check_system_docker_image(repo, False):
-            return False
 
         path = os.path.join(SYSTEM_CHECKOUT_PATH, name)
 
@@ -1162,9 +1165,6 @@ class Atomic(object):
 
         image = info["image"]
         values = info["values"]
-
-        if not self._check_system_docker_image(repo, True, image):
-            return False
 
         if os.path.exists("/var/lib/containers/atomic/%s.%d" % (name, next_deployment)):
             shutil.rmtree("/var/lib/containers/atomic/%s.%d" % (name, next_deployment))
