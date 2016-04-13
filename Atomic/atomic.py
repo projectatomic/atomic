@@ -796,6 +796,9 @@ class Atomic(object):
             self.inspect = self._inspect_image()
 
     def install(self):
+        if self._container_exists(self.name):
+            raise ValueError("A container '%s' is already present" % self.name)
+
         if self.system:
             return self._install_system_container()
         elif self.setvalues:
@@ -833,6 +836,12 @@ class Atomic(object):
         self.display(cmd)
         if not self.args.display:
             util.check_call(cmd, env=self.cmd_env())
+
+    def _container_exists(self, name):
+        try:
+            return self._system_container_exists(name) or self._inspect_container(name)
+        except Exception:
+            return False
 
     def _system_container_exists(self, name):
         return os.path.exists("%s/%s" % (self._get_system_checkout_path(), name))
