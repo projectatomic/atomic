@@ -80,11 +80,11 @@ def subp(cmd):
     return ReturnTuple(proc.returncode, stdout=out, stderr=err)
 
 
-def check_call(cmd, env=os.environ, stderr=None, stdout=None):
+def check_call(cmd, env=os.environ, stdin=None, stderr=None, stdout=None):
     # Make sure cmd is a list
     if not isinstance(cmd, list):
         cmd = shlex.split(cmd)
-    return subprocess.check_call(cmd, env=env, stderr=stderr, stdout=stdout)
+    return subprocess.check_call(cmd, env=env, stdin=stdin, stderr=stderr, stdout=stdout)
 
 def default_container_context():
     if selinux.is_selinux_enabled() != 0:
