@@ -36,7 +36,7 @@ from Atomic.verify import Verify
 from Atomic.help import AtomicHelp
 from Atomic.run import Run
 from Atomic.atomic import NoDockerDaemon
-from Atomic.util import get_atomic_config, get_scanners
+from Atomic.util import get_atomic_config, get_scanners, default_docker_lib
 import traceback
 
 PROGNAME = "atomic"
@@ -304,8 +304,9 @@ if __name__ == '__main__':
         "The export command would export images, "
         "containers and volumes into a filesystem directory.")
     exportp.set_defaults(func='Export')
-    exportp.add_argument("--graph", dest="graph", default="/var/lib/docker",
-                        help=_("Root of the Docker runtime (Default: /var/lib/docker)"))
+    exportp.add_argument("--graph", dest="graph",
+                         default=default_docker_lib(),
+                         help=_("Root of the Docker runtime (Default: %s)" % default_docker_lib()))
     exportp.add_argument("--dir", dest="export_location",
                          default="/var/lib/atomic/migrate",
                          help=_("Path for exporting container's content (Default: /var/lib/atomic/migrate)"))
@@ -317,8 +318,10 @@ if __name__ == '__main__':
          "The import command would import images,"
          "containers and volumes from a filesystem directory.")
     importp.set_defaults(func='Import')
-    importp.add_argument("--graph", dest="graph", default="/var/lib/docker",
-                         help=_("Root of the Docker runtime (Default: /var/lib/docker)"))
+    importp.add_argument("--graph", dest="graph",
+                         default=default_docker_lib(),
+                         help=_("Root of the Docker runtime (Default: %s)" % default_docker_lib()))
+
     importp.add_argument("--dir", dest="import_location",
                          default="/var/lib/atomic/migrate",
                          help=_("Path for importing container's content (Default: /var/lib/atomic/migrate)"))

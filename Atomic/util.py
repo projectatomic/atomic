@@ -15,6 +15,8 @@ ReturnTuple = collections.namedtuple('ReturnTuple',
                                      ['return_code', 'stdout', 'stderr'])
 ATOMIC_CONF = os.environ.get('ATOMIC_CONF', '/etc/atomic.conf')
 ATOMIC_CONFD = os.environ.get('ATOMIC_CONFD', '/etc/atomic.d/')
+_default_docker=None
+_default_docker_lib=None
 
 if sys.version_info[0] < 3:
     input = raw_input
@@ -215,3 +217,16 @@ def get_scanners():
             except AttributeError:
                 pass
     return scanners
+
+def default_docker():
+    global _default_docker
+    if not _default_docker:
+        atomic_config = get_atomic_config()
+        _default_docker = atomic_config.get('default_docker','docker')
+    return _default_docker
+
+def default_docker_lib():
+    global _default_docker_lib
+    if not _default_docker_lib:
+        _default_docker_lib = "/var/lib/%s" % default_docker()
+    return _default_docker_lib
