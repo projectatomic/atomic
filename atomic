@@ -37,6 +37,7 @@ from Atomic.help import AtomicHelp
 from Atomic.run import Run
 from Atomic.atomic import NoDockerDaemon
 from Atomic.util import get_atomic_config, get_scanners
+import traceback
 
 PROGNAME = "atomic"
 gettext.bindtextdomain(PROGNAME, "/usr/share/locale")
@@ -115,6 +116,7 @@ if __name__ == '__main__':
     parser = HelpByDefaultArgumentParser(description=atomic.help())
     parser.register('action', 'parsers', AliasedSubParsersAction)
     parser.add_argument('-v', '--version', action='version', version=Atomic.__version__)
+    parser.add_argument('--debug', default=False, action='store_true')
     subparser = parser.add_subparsers(help=_("commands"))
 
     # atomic diff
@@ -556,4 +558,7 @@ if __name__ == '__main__':
         parser.print_usage()
         sys.exit(1)
     except Exception as e:
-        sys.stderr.write("%sn" % str(e))
+        if args.debug:
+            traceback.print_exc(file=sys.stdout)
+        else:
+            sys.stderr.write("%sn" % str(e))
