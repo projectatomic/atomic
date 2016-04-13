@@ -25,7 +25,7 @@ def export_docker(graph, export_location):
         choice = sys.stdin.read(1)
         if choice.lower() == 'y':
             util.writeOut("Deleting dangling images")
-            subprocess.check_call(["docker", "rmi", "-f"]+dangling_images)
+            subprocess.check_call([util.default_docker(), "rmi", "-f"]+dangling_images)
         else:
             raise ValueError("Please delete dangling images before running atomic migrate export")
 
@@ -65,7 +65,7 @@ def export_images(export_location):
         tags = " ".join(images[id])
         util.writeOut("Exporting image: {0}".format(id[:12]))
         with open(export_location + '/images/' + id, 'w') as f:
-            subprocess.check_call(["docker", "save", tags], stdout=f)
+            subprocess.check_call([util.default_docker(), "save", tags], stdout=f)
 
 def export_containers(graph, export_location):
     """

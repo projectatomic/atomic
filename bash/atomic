@@ -28,7 +28,9 @@
 # options immediately following their corresponding long form.
 # This order should be applied to lists, alternatives and code blocks.
 
+
 __docker_q() {
+	docker=$(awk -F ": " '/^default_docker/ {print $2}' /etc/atomic.conf 2>/dev/null || echo docker)
 	docker 2>/dev/null "$@"
 }
 

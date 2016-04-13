@@ -64,7 +64,7 @@ def find_repo_tag(d, id, image_name):
 
 
 class Atomic(object):
-    INSTALL_ARGS = ["docker", "run",
+    INSTALL_ARGS = ["run",
                     "-t",
                     "-i",
                     "--rm",
@@ -82,7 +82,7 @@ class Atomic(object):
                     "--name", "${NAME}",
                     "${IMAGE}"]
 
-    SPC_ARGS = ["docker", "run",
+    SPC_ARGS = ["run",
                 "-t",
                 "-i",
                 "--rm",
@@ -98,7 +98,7 @@ class Atomic(object):
                 "-e", "IMAGE=${IMAGE}",
                 "${IMAGE}"]
 
-    RUN_ARGS = ["docker", "create",
+    RUN_ARGS = ["create",
                 "-t",
                 "-i",
                 "--name", "${NAME}",
@@ -116,6 +116,12 @@ class Atomic(object):
         self.images_cache = []
         self.active_containers = []
         self.atomic_config = None
+        self.docker_cmd = None
+
+    def docker_binary(self):
+        if not self.docker_cmd:
+            self.docker_cmd = util.default_docker()
+        return self.docker_cmd
 
     def writeOut(self, output, lf="\n"):
         sys.stdout.flush()
@@ -143,7 +149,7 @@ class Atomic(object):
         self.ping()
         if self.force:
             self.force_delete_containers()
-        return subprocess.check_call(["docker", "pull", self.image])
+        return subprocess.check_call([self.docker_binary(), "pull", self.image])
 
     def pull(self):
         prevstatus = ""
@@ -309,7 +315,7 @@ class Atomic(object):
 
     def _running(self):
         if self._interactive():
-            cmd = ["docker", "exec", "-t", "-i", self.name]
+            cmd = [self.docker_binary(), "exec", "-t", "-i", self.name]
             if self.command:
                 cmd += self.command
             else:
@@ -325,7 +331,7 @@ class Atomic(object):
                                          (self.name, self.command))
                 else:
                     return subprocess.check_call(
-                        ["docker", "exec", "-t", "-i", self.name] +
+                        [self.docker_binary(), "exec", "-t", "-i", self.name] +
                         self.command, stderr=DEVNULL)
             else:
                 if not self.args.display:
@@ -335,26 +341,26 @@ class Atomic(object):
         if self._interactive():
             if self.command:
                 subprocess.check_call(
-                    ["docker", "start", self.name],
+                    [self.docker_binary(), "start", self.name],
                     stderr=DEVNULL)
                 return subprocess.check_call(
-                    ["docker", "exec", "-t", "-i", self.name] +
+                    [self.docker_binary(), "exec", "-t", "-i", self.name] +
                     self.command)
             else:
                 return subprocess.check_call(
-                    ["docker", "start", "-i", "-a", self.name],
+                    [self.docker_binary(), "start", "-i", "-a", self.name],
                     stderr=DEVNULL)
         else:
             if self.command:
                 subprocess.check_call(
-                    ["docker", "start", self.name],
+                    [self.docker_binary(), "start", self.name],
                     stderr=DEVNULL)
                 return subprocess.check_call(
-                    ["docker", "exec", "-t", "-i", self.name] +
+                    [self.docker_binary(), "exec", "-t", "-i", self.name] +
                     self.command)
             else:
                 return subprocess.check_call(
-                    ["docker", "start", self.name],
+                    [self.docker_binary(), "start", self.name],
                     stderr=DEVNULL)
 
     def _inspect_image(self, image=None):
@@ -517,7 +523,7 @@ class Atomic(object):
 
         if self.name == self.image:
             self.writeOut("docker rmi %s" % self.image)
-            subprocess.check_call(["docker", "rmi", self.image])
+            subprocess.check_call([self.docker_binary(), "rmi", self.image])
 
     def cmd_env(self):
         os.environ['NAME'] = self.name
@@ -697,16 +703,16 @@ class Atomic(object):
             return _('Atomic Container Tool')
 
     def print_spc(self):
-        return " ".join(self.SPC_ARGS)
+        return "%s %s" % (self.docker_binary(), " ".join(self.SPC_ARGS))
 
     def print_run(self):
-        return " ".join(self.RUN_ARGS)
+        return "%s %s" % (self.docker_binary(), " ".join(self.RUN_ARGS))
 
     def print_install(self):
-        return " ".join(self.INSTALL_ARGS) + " /usr/bin/INSTALLCMD"
+        return "%s %s %s" % (self.docker_binary(), " ".join(self.INSTALL_ARGS), "/usr/bin/INSTALLCMD")
 
     def print_uninstall(self):
-        return " ".join(self.INSTALL_ARGS) + " /usr/bin/UNINSTALLCMD"
+        return "%s %s %s" % (self.docker_binary(), " ".join(self.INSTALL_ARGS), "/usr/bin/UNINSTALLCMD")
 
     def _get_layer(self, image):
         def get_label(label):

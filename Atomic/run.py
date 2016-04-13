@@ -37,11 +37,14 @@ class Run(Atomic):
 
         if self.spc:
             if self.command:
-                args = self.SPC_ARGS + self.command
+                args = [self.docker_binary()] + self.SPC_ARGS + self.command
             else:
-                args = self.SPC_ARGS + self._get_cmd()
+                args = [self.docker_binary()] + self.SPC_ARGS + self._get_cmd()
 
             cmd = self.gen_cmd(args)
+            self.display(cmd)
+            if self.args.display:
+                return
         else:
             args = self._get_args("RUN")
             if args:
@@ -49,9 +52,9 @@ class Run(Atomic):
             else:
                 missing_RUN = True
                 if self.command:
-                    args = self.RUN_ARGS + self.command
+                    args = [self.docker_binary()] + self.RUN_ARGS + self.command
                 else:
-                    args = self.RUN_ARGS + self._get_cmd()
+                    args = [self.docker_binary()] + self.RUN_ARGS + self._get_cmd()
 
             cmd = self.gen_cmd(args)
             cmd = self.sub_env_strings(cmd)
