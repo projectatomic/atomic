@@ -1073,6 +1073,16 @@ class Atomic(object):
             imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image.replace("sha256:", ""), tag)
 
         destination = "%s/%s.%d" % (self._get_system_checkout_path(), name, deployment)
+        exports = os.path.join(destination, "rootfs/exports")
+        unitfile = os.path.join(exports, "service.template")
+        unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
+
+        if not upgrade and os.path.exists(unitfileout):
+            raise ValueError("The file %s already exists." % unitfileout)
+
+        if os.path.exists(destination):
+            shutil.rmtree(destination)
+
         self.writeOut("Extracting to %s" % destination)
 
         if self.args.display:
@@ -1112,13 +1122,6 @@ class Atomic(object):
             if rootfs_fd:
                 os.close(rootfs_fd)
 
-        exports = os.path.join(destination, "rootfs/exports")
-
-        sym = "%s/%s" % (self._get_system_checkout_path(), name)
-        if os.path.exists(sym):
-            os.unlink(sym)
-        os.symlink(destination, sym)
-
         values["DESTDIR"] = destination
         values["NAME"] = name
 
@@ -1156,8 +1159,6 @@ class Atomic(object):
                     "values" : values}
             info_file.write(json.dumps(info))
 
-        unitfile = os.path.join(exports, "service.template")
-        unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
         if os.path.exists(unitfile):
             with open(unitfile, 'r') as infile:
                 systemd_template = infile.read()
@@ -1166,6 +1167,11 @@ class Atomic(object):
 
         with open(unitfileout, "w") as outfile:
             _write_template(unitfile, systemd_template, values, outfile)
+
+        sym = "%s/%s" % (self._get_system_checkout_path(), name)
+        if os.path.exists(sym):
+            os.unlink(sym)
+        os.symlink(destination, sym)
 
         self.systemctl_command("enable", name)
         if upgrade:
@@ -1187,8 +1193,8 @@ class Atomic(object):
 
         self._pull_image_to_ostree(repo, self.image, False)
 
-        if os.path.exists("%s/%s.0" % (self._get_system_checkout_path(), self.name)):
-            self.writeOut("%s/%s.0 already present" % (self._get_system_checkout_path(), self.name))
+        if self._system_container_exists(self.name):
+            self.writeOut("%s already present" % (self.name))
             return
 
         return self._checkout_system_container(repo, self.name, self.image, 0, False)
@@ -1214,9 +1220,6 @@ class Atomic(object):
 
         image = info["image"]
         values = info["values"]
-
-        if os.path.exists("/var/lib/containers/atomic/%s.%d" % (name, next_deployment)):
-            shutil.rmtree("/var/lib/containers/atomic/%s.%d" % (name, next_deployment))
 
         self._checkout_system_container(repo, name, image, next_deployment, True, values)
 
