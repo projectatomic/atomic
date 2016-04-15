@@ -108,9 +108,6 @@ def check_negative(value):
 
 
 if __name__ == '__main__':
-    if os.geteuid() != 0:
-        exit("%s needs to be run as root." % sys.argv[0] )
-
     atomic_config = get_atomic_config()
     atomic = Atomic.Atomic()
     parser = HelpByDefaultArgumentParser(description=atomic.help())
@@ -574,6 +571,8 @@ if __name__ == '__main__':
         sys.exit(0)
     except (ValueError, IOError, docker.errors.DockerException, NoDockerDaemon) as e:
         sys.stderr.write("%s\n" % str(e))
+        if os.geteuid() != 0:
+            exit("Some operations for %s require root access." % sys.argv[0] )
         sys.exit(1)
     except subprocess.CalledProcessError as e:
         sys.stderr.write("\n")
