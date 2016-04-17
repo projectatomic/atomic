@@ -310,7 +310,7 @@ if __name__ == '__main__':
     exportp.add_argument("--dir", dest="export_location",
                          default="/var/lib/atomic/migrate",
                          help=_("Path for exporting container's content (Default: /var/lib/atomic/migrate)"))
-	
+
     # atomic import
     importp = migrate_subparser.add_parser(
          "import", help=_("import containers and it's associated contents from a filesystem directory"),
