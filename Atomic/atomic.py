@@ -149,7 +149,7 @@ class Atomic(object):
             self.docker_cmd = util.default_docker()
         return self.docker_cmd
 
-    def writeOut(self, output, lf="\n"):
+    def write_out(self, output, lf="\n"):
         sys.stdout.flush()
         sys.stdout.write(output + lf)
 
@@ -190,20 +190,20 @@ class Atomic(object):
             bar = json.loads(line)
             status = bar['status']
             if prevstatus != status:
-                self.writeOut(status, "")
+                self.write_out(status, "")
             if 'id' not in bar:
                 continue
             if status == "Downloading":
-                self.writeOut(bar['progress'] + " ")
+                self.write_out(bar['progress'] + " ")
             elif status == "Extracting":
-                self.writeOut("Extracting: " + bar['id'])
+                self.write_out("Extracting: " + bar['id'])
             elif status == "Pull complete":
                 pass
             elif status.startswith("Pulling"):
-                self.writeOut("Pulling: " + bar['id'])
+                self.write_out("Pulling: " + bar['id'])
 
             prevstatus = status
-        self.writeOut("")
+        self.write_out("")
 
     def Export(self):
         try:
@@ -282,15 +282,15 @@ class Atomic(object):
                 bar = json.loads(line)
                 status = bar['status']
                 if prevstatus != status:
-                    self.writeOut(status, "")
+                    self.write_out(status, "")
                 if 'id' not in bar:
                     continue
                 if status == "Uploading":
-                    self.writeOut(bar['progress'] + " ")
+                    self.write_out(bar['progress'] + " ")
                 elif status == "Push complete":
                     pass
                 elif status.startswith("Pushing"):
-                    self.writeOut("Pushing: " + bar['id'])
+                    self.write_out("Pushing: " + bar['id'])
 
                 prevstatus = status
 
@@ -432,7 +432,7 @@ class Atomic(object):
         else:
             if self.command:
                 if self.args.display:
-                    return self.writeOut("docker exec -t -i %s %s" %
+                    return self.write_out("docker exec -t -i %s %s" %
                                          (self.name, self.command))
                 else:
                     return subprocess.check_call(
@@ -440,7 +440,7 @@ class Atomic(object):
                         self.command, stderr=DEVNULL)
             else:
                 if not self.args.display:
-                    self.writeOut("Container is running")
+                    self.write_out("Container is running")
 
     def _start(self):
         if self._interactive():
@@ -630,7 +630,7 @@ class Atomic(object):
             util.check_call(cmd, env=self.cmd_env())
 
         if self.name == self.image:
-            self.writeOut("docker rmi %s" % self.image)
+            self.write_out("docker rmi %s" % self.image)
             subprocess.check_call([self.docker_binary(), "rmi", self.image])
 
     def cmd_env(self):
@@ -716,7 +716,7 @@ class Atomic(object):
                     self.image = self.find_remote_image()
                 if self.image is None:
                     self._no_such_image()
-        util.writeOut("Image Name: {}".format(self.image))
+        util.write_out("Image Name: {}".format(self.image))
         inspection = None
         if not self.args.force_remote_info:
             inspection = self._inspect_image(self.image)
@@ -734,7 +734,7 @@ class Atomic(object):
             _no_label()
         if labels is not None and len(labels) is not 0:
             for label in labels:
-                self.writeOut('{0}: {1}'.format(label, labels[label]))
+                self.write_out('{0}: {1}'.format(label, labels[label]))
         else:
             _no_label()
 
@@ -774,11 +774,11 @@ class Atomic(object):
             _max_repo, _max_tag = get_col_lengths(_images)
             col_out = "{0:" + str(_max_repo) + "} {1:" + str(_max_tag) + \
                       "} {2:12} {3:19} {4:10}"
-            self.writeOut(col_out.format("REPOSITORY", "TAG", "IMAGE ID",
+            self.write_out(col_out.format("REPOSITORY", "TAG", "IMAGE ID",
                                          "CREATED", "VIRTUAL SIZE"))
             for image in self.get_images():
                 repo, tag = image["RepoTags"][0].rsplit(":", 1)
-                self.writeOut(col_out.format(self.dangling(repo) + repo,
+                self.write_out(col_out.format(self.dangling(repo) + repo,
                                              tag, image["Id"][:12],
                                              time.strftime("%F %H:%M",
                                             time.localtime(image["Created"])),
@@ -825,11 +825,11 @@ class Atomic(object):
         col_out = "{0:%d} {1:64}" % max_column
         if len(revs) == 0:
             return
-        self.writeOut(col_out.format("IMAGE", "COMMIT"))
+        self.write_out(col_out.format("IMAGE", "COMMIT"))
 
         for rev in revs:
             commit = repo.resolve_rev(rev, False)[1]
-            self.writeOut(col_out.format(rev, commit))
+            self.write_out(col_out.format(rev, commit))
 
     def systemctl_command(self, cmd, name):
         cmd = self.sub_env_strings(self.gen_cmd(["systemctl", cmd, name]))
@@ -892,7 +892,7 @@ class Atomic(object):
         for k, v in refs.items():
             if not v:
                 ref = OSTree.parse_refspec(k)
-                self.writeOut("Deleting %s" % k)
+                self.write_out("Deleting %s" % k)
                 repo.set_ref_immediate(ref[1], ref[2], None)
         return
 
@@ -1035,7 +1035,7 @@ class Atomic(object):
             layer = i.replace("sha256:", "")
             if not repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1]:
                 missing_layers.append(layer)
-                self.writeOut("Missing layer %s" % layer)
+                self.write_out("Missing layer %s" % layer)
 
         if len(missing_layers) == 0:
             return True
@@ -1083,7 +1083,7 @@ class Atomic(object):
         if os.path.exists(destination):
             shutil.rmtree(destination)
 
-        self.writeOut("Extracting to %s" % destination)
+        self.write_out("Extracting to %s" % destination)
 
         if self.args.display:
             return True
@@ -1194,7 +1194,7 @@ class Atomic(object):
         self._pull_image_to_ostree(repo, self.image, False)
 
         if self._system_container_exists(self.name):
-            self.writeOut("%s already present" % (self.name))
+            self.write_out("%s already present" % (self.name))
             return
 
         return self._checkout_system_container(repo, self.name, self.image, 0, False)
@@ -1356,10 +1356,10 @@ class Atomic(object):
             version = layer["Version"]
             if layer["Version"] == '':
                 version = "None"
-            self.writeOut("%s %s %s" % (layer["Id"], version, layer["Tag"]))
+            self.write_out("%s %s %s" % (layer["Id"], version, layer["Tag"]))
 
     def display(self, cmd):
-        util.writeOut(self.sub_env_strings(cmd))
+        util.write_out(self.sub_env_strings(cmd))
 
     def sub_env_strings(self, in_string):
         """

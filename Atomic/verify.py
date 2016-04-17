@@ -57,9 +57,9 @@ class Verify(Atomic):
             # Check if any of the base_images do not have versioning information
             versions = [x['local_nvr'] for x in base_images] + [x['latest_nvr'] for x in base_images]
             if 'Version unavailable' in versions:
-                util.writeOut("\nWARNING: One or more of the image layers does not have")
-                util.writeOut("{}versioning information. Printing each image layer".format(" " * 9))
-                util.writeOut("{}verbosely.".format(" " * 9))
+                util.write_out("\nWARNING: One or more of the image layers does not have")
+                util.write_out("{}versioning information. Printing each image layer".format(" " * 9))
+                util.write_out("{}verbosely.".format(" " * 9))
                 self._print_verify_verbose(base_images, self.image)
             else:
                 # Didn't detect any version differences, do nothing
@@ -183,14 +183,14 @@ class Verify(Atomic):
         :param image:
         :return:  None
         """
-        util.writeOut("\n{} contains images or layers that have updates:".format(image))
+        util.write_out("\n{} contains images or layers that have updates:".format(image))
         for _image in base_images:
             local = _image['local_nvr']
             latest = _image['latest_nvr']
             if local != latest:
-                util.writeOut("\n{0} '{1}' has an update to '{2}'"
+                util.write_out("\n{0} '{1}' has an update to '{2}'"
                               .format(" " * 5, local, latest))
-        util.writeOut("\n")
+        util.write_out("\n")
 
     @staticmethod
     def _print_verify_verbose(base_images, image):
@@ -210,9 +210,9 @@ class Verify(Atomic):
         three_col = "     {0:" + \
                     str(_max_name) + "} {1:" + \
                     str(_max_name) + "} {2:1}"
-        util.writeOut("\n{} contains the following images:\n".format(image))
-        util.writeOut(three_col.format("Local Version", "Latest Version", ""))
-        util.writeOut(three_col.format("-------------", "--------------", ""))
+        util.write_out("\n{} contains the following images:\n".format(image))
+        util.write_out(three_col.format("Local Version", "Latest Version", ""))
+        util.write_out(three_col.format("-------------", "--------------", ""))
         for _image in base_images:
             local = _image['local_nvr']
             latest = _image['latest_nvr']
@@ -221,8 +221,8 @@ class Verify(Atomic):
                 local = "{0} ({1})".format(tag, local)
                 latest = "{0} ({1})".format(tag,  latest)
             remote = "*" if local != latest else ""
-            util.writeOut(three_col.format(local, latest, remote))
-        util.writeOut("\n     * = version difference\n")
+            util.write_out(three_col.format(local, latest, remote))
+        util.write_out("\n     * = version difference\n")
 
     @staticmethod
     def get_index(name, layers, _id="0"):

@@ -123,7 +123,7 @@ class Top(Atomic):
                 proc_info += self.get_pids_by_container(cid)
             # Reset screen
             if not self.DEBUG and has_tty:
-                util.writeOut("\033c")
+                util.write_out("\033c")
             sorted_info = self.reformat_ps_info(proc_info)
             self._set_dynamic_column_widths(sorted_info)
             self.output_top(sorted_info)
@@ -203,15 +203,15 @@ class Top(Atomic):
         # output ATOMIC TOP title
         almost_center = len(formatted_col_headers)
         center_col = '{:^%WIDTH%}'.replace("%WIDTH%", str(almost_center))
-        util.writeOut(center_col.format("ATOMIC TOP\n"))
+        util.write_out(center_col.format("ATOMIC TOP\n"))
         # Output the headers
-        util.writeOut(formatted_col_headers)
+        util.write_out(formatted_col_headers)
         for ps in sorted_info:
             line_out = []
             for val in active_column_names:
                 line_out.append(ps[val])
             # Output the ps information
-            util.writeOut(out_format.format(*line_out))
+            util.write_out(out_format.format(*line_out))
 
     def reformat_ps_info(self, proc_info):
         """
@@ -223,7 +223,7 @@ class Top(Atomic):
         # Determine if the sort field needs to reverse the order of the sort
         _reverse = next((header['sort_order'] for header in self.headers if header['shortname'] == self._sort), False)
         if self.DEBUG:
-            util.writeOut("sorting on {0} and reverse is {1}".format(self._sort, _reverse))
+            util.write_out("sorting on {0} and reverse is {1}".format(self._sort, _reverse))
         return sorted(proc_info, key=itemgetter(self._sort), reverse=_reverse)
 
 

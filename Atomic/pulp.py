@@ -44,10 +44,10 @@ def push_image_to_pulp(image, server_url, username, password,
         raise IOError('Failed to create repository: {0}'.format(e))
 
     try:
-        util.writeOut('Uploading image "{0}" to server "{1}"'.format(
+        util.write_out('Uploading image "{0}" to server "{1}"'.format(
             image, server_url))
         pulp.upload_docker_image(image, repo)
-        util.writeOut("")
+        util.write_out("")
     except Exception as e:
         raise IOError('Failed to upload image: {0}'.format(e))
 

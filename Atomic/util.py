@@ -97,14 +97,14 @@ def default_container_context():
     return ""
 
 
-def writeOut(output, lf="\n"):
+def write_out(output, lf="\n"):
     sys.stdout.flush()
     sys.stdout.write(str(output) + lf)
 
 
 def output_json(json_data):
     ''' Pretty print json data '''
-    writeOut(json.dumps(json_data, indent=4, separators=(',', ': ')))
+    write_out(json.dumps(json_data, indent=4, separators=(',', ': ')))
 
 
 def get_mounts_by_path():

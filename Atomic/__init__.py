@@ -1,7 +1,7 @@
 from .pulp import PulpServer, PulpConfig
 from .satellite import SatelliteServer, SatelliteConfig
 from .atomic import Atomic
-from .util import writeOut
+from .util import write_out
 
 #https://bitbucket.org/logilab/pylint/issues/36/
 #pylint: disable=no-member

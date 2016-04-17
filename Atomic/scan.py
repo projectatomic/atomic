@@ -71,7 +71,7 @@ class Scan(Atomic):
         scan_cmd = scan_cmd + [scanner_image_name] + scanner_args
 
         # Show the command being run
-        util.writeOut(" ".join(scan_cmd))
+        util.write_out(" ".join(scan_cmd))
 
         # do the scan
         util.check_call(scan_cmd)
@@ -128,15 +128,15 @@ class Scan(Atomic):
         if not os.path.exists(self.chroot_dir):
             os.makedirs(self.chroot_dir)
         if self.DEBUG:
-            util.writeOut("Created {}".format(self.chroot_dir))
+            util.write_out("Created {}".format(self.chroot_dir))
         for docker_object in scan_list:
             mount_path = os.path.join(self.chroot_dir, docker_object['Id'])
             os.mkdir(mount_path)
             if self.DEBUG:
-                util.writeOut("Created {}".format(mount_path))
+                util.write_out("Created {}".format(mount_path))
             self.mount(mountpoint=mount_path, image=docker_object['Id'])
             if self.DEBUG:
-                util.writeOut("Mounted {} to {}".format(docker_object, mount_path))
+                util.write_out("Mounted {} to {}".format(docker_object, mount_path))
 
     def _umount_rootfs_in_dir(self):
         for _dir in self.get_rootfs_paths():
@@ -149,7 +149,7 @@ class Scan(Atomic):
                 # Remove the temporary container dirs
                 rmtree(rootfs_dir)
             else:
-                util.writeOut("Unmounted {}".format(rootfs_dir))
+                util.write_out("Unmounted {}".format(rootfs_dir))
         if not self.DEBUG:
             rmtree(self.chroot_dir)
 
@@ -184,31 +184,31 @@ class Scan(Atomic):
                     name2 = self._get_repo_names(uuid)
                 else:
                     name2 = uuid[:15]
-            util.writeOut("\n{} ({})\n".format(name1, name2))
+            util.write_out("\n{} ({})\n".format(name1, name2))
             if json_results['Successful'].upper() == "FALSE":
-                util.writeOut("{}{} is not supported for this scan."
+                util.write_out("{}{} is not supported for this scan."
                               .format(' ' * 5, self._get_input_name_for_id(uuid)))
             elif 'Vulnerabilities' in json_results and len(json_results['Vulnerabilities']) > 0:
-                util.writeOut("The following issues were found:\n")
+                util.write_out("The following issues were found:\n")
                 for vul in json_results['Vulnerabilities']:
                     if 'Title' in vul:
-                        util.writeOut("{}{}".format(' ' * 5, vul['Title']))
+                        util.write_out("{}{}".format(' ' * 5, vul['Title']))
                     if 'Severity' in vul:
-                        util.writeOut("{}Severity: {}".format(' ' * 5, vul['Severity']))
+                        util.write_out("{}Severity: {}".format(' ' * 5, vul['Severity']))
                     if 'Custom' in vul.keys() and len(vul['Custom']) > 0:
                         custom_field = vul['Custom']
                         self._output_custom(custom_field, 7)
-                    util.writeOut("")
+                    util.write_out("")
             elif 'Results' in json_results and len(json_results['Results']) > 0:
-                util.writeOut("The following results were found:\n")
+                util.write_out("The following results were found:\n")
                 for result in json_results['Results']:
                     if 'Custom' in result.keys() and len(result['Custom']) > 0:
                         custom_field = result['Custom']
                         self._output_custom(custom_field, 7)
-                util.writeOut("")
+                util.write_out("")
             else:
-                util.writeOut("{} passed the scan".format(self._get_input_name_for_id(uuid)))
-        util.writeOut("\nFiles associated with this scan are in {}.\n".format(self.results_dir))
+                util.write_out("{} passed the scan".format(self._get_input_name_for_id(uuid)))
+        util.write_out("\nFiles associated with this scan are in {}.\n".format(self.results_dir))
 
     def _output_custom(self, value, indent):
         space = ' ' * indent
@@ -216,13 +216,13 @@ class Scan(Atomic):
         if isinstance(value, dict):
             for x in value:
                 if isinstance(value[x], dict):
-                    util.writeOut("{}{}:".format(space, x))
+                    util.write_out("{}{}:".format(space, x))
                     self._output_custom(value[x], next_indent)
                 elif isinstance(value[x], list):
-                    util.writeOut("{}{}:".format(space, x))
+                    util.write_out("{}{}:".format(space, x))
                     self._output_custom(value[x], next_indent)
                 else:
-                    util.writeOut("{}{}: {}".format(space, x, value[x]))
+                    util.write_out("{}{}: {}".format(space, x, value[x]))
         elif isinstance(value, list):
             for x in value:
                 if isinstance(x, dict):
@@ -230,7 +230,7 @@ class Scan(Atomic):
                 elif isinstance(x, list):
                     self._output_custom(x, next_indent)
                 else:
-                    util.writeOut('{}{}'.format(space, x))
+                    util.write_out('{}{}'.format(space, x))
 
     def _get_json_files(self):
         json_files = []
@@ -307,11 +307,11 @@ class Scan(Atomic):
             if default_scan_type is None:
                 raise ValueError("Invalid configuration file: At least one scan type must be "
                                  "declared as the default for {}.".format(scanner_name))
-            util.writeOut("Scanner: {} {}".format(scanner_name, df))
-            util.writeOut("{}Image Name: {}".format(" " * 2, scanner['image_name']))
+            util.write_out("Scanner: {} {}".format(scanner_name, df))
+            util.write_out("{}Image Name: {}".format(" " * 2, scanner['image_name']))
             for scan_type in scanner['scans']:
                 df = '* ' if default_scan_type == scan_type['name'] else ''
-                util.writeOut("{}Scan type: {} {}".format(" " * 5, scan_type['name'], df))
-                util.writeOut("{}Description: {}\n".format(" " * 5, scan_type['description']))
-        util.writeOut("\n* denotes defaults")
+                util.write_out("{}Scan type: {} {}".format(" " * 5, scan_type['name'], df))
+                util.write_out("{}Description: {}\n".format(" " * 5, scan_type['description']))
+        util.write_out("\n* denotes defaults")
         sys.exit(0)
