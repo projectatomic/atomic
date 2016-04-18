@@ -729,12 +729,138 @@ _atomic_storage_import() {
 
 }
 
+_atomic_no_opts() {
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "$main_options_with_args" -- "$cur" ) )
+			;;
+		*)
+			;;
+	esac
+}
+
+_atomic_cluster_create() {
+	_atomic_no_opts
+}
+
+_atomic_cluster_delete() {
+	_atomic_no_opts
+}
+
+_atomic_cluster_get() {
+	_atomic_no_opts
+}
+
+_atomic_cluster_list() {
+	_atomic_no_opts
+}
+
+_atomic_cluster_deploy_start() {
+	_atomic_no_opts
+}
+
+_atomic_cluster_deploy_status() {
+	_atomic_no_opts
+}
+
+_atomic_cluster_restart_start() {
+	_atomic_no_opts
+}
+
+_atomic_cluster_restart_status() {
+	_atomic_no_opts
+}
+
+_atomic_cluster_upgrade_start() {
+	_atomic_no_opts
+}
+
+_atomic_cluster_upgrade_status() {
+	_atomic_no_opts
+}
+
+_atomic_cluster() {
+	local commands=()
+	local completions_func=_atomic_cluster_${prev}
+
+	case "$prev" in
+		cluster)
+			commands=(create delete get list deploy restart upgrade)
+			;;
+		deploy)
+			commands=(start status)
+			;;
+		restart)
+			commands=(start status)
+			;;
+		upgrade)
+			commands=(start status)
+			;;
+		start|status)
+			if [ $cword -gt 2 ]; then
+				local completions_func=_atomic_cluster_${words[$cword-2]}_${prev}
+			fi
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			declare -F $completions_func >/dev/null && $completions_func
+			;;
+		*)
+			COMPREPLY=( $( compgen -W "${commands[*]}" -- "$cur" ) )
+			;;
+	esac
+}
+
+_atomic_rhost_create() {
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "-c --cluster $main_options_with_args" -- "$cur" ) )
+			;;
+		*)
+			;;
+	esac
+}
+
+_atomic_rhost_delete() {
+	_atomic_no_opts
+}
+
+_atomic_rhost_get() {
+	_atomic_no_opts
+}
+
+_atomic_rhost_list() {
+	_atomic_no_opts
+}
+
+_atomic_rhost() {
+	local commands=()
+	local completions_func=_atomic_rhost_${prev}
+
+	case "$prev" in
+		rhost)
+			commands=(create delete get list)
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			declare -F $completions_func >/dev/null && $completions_func
+			;;
+		*)
+			COMPREPLY=( $( compgen -W "${commands[*]}" -- "$cur" ) )
+			;;
+	esac
+}
 
 _atomic() {
 	local previous_extglob_setting=$(shopt -p extglob)
 	shopt -s extglob
 
 	local commands=(
+		cluster
 		host
 		diff
 		info
@@ -743,6 +869,7 @@ _atomic() {
 		storage
 		mount
 		pull
+		rhost
 		run
 		scan
 		stop

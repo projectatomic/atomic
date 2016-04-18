@@ -122,6 +122,15 @@ def create_parser(atomic):
     parser.add_argument('--debug', default=False, action='store_true')
     subparser = parser.add_subparsers(help=_("commands"))
 
+    # atomic cluster (if commctl.cli is available)
+    try:
+        import commctl.cli
+        clusterp = subparser.add_parser(
+            "cluster", help=_("execute cluster management commands"))
+        commctl.cli.add_cluster_commands(clusterp)
+    except ImportError:
+        pass
+
     # atomic diff
     diffp = subparser.add_parser(
     "diff", help=_("Show differences between two container images, file diff or RPMS."),
@@ -392,6 +401,15 @@ def create_parser(atomic):
     #                      default=None,
     #                      dest="org_name",
     #                      help=_("Organization Name"))
+
+    # atomic rhost (if commctl.cli is available)
+    try:
+        import commctl.cli
+        rhostp = subparser.add_parser(
+            "rhost", help=_("execute cluster host management commands"))
+        commctl.cli.add_host_commands(rhostp)
+    except ImportError:
+        pass
 
     # atomic scan
     def bool_detect(myarg):
