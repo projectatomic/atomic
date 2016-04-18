@@ -1,13 +1,13 @@
 type: scanner
 scanner_name: openscap
 image_name: openscap
-default_scan: cve_scan
+default_scan: cve
 scans: [ 
-      { name: cve_scan,
+      { name: cve,
         args: ['oscapd-evaluate', 'scan',  '--no-standard-compliance', '--targets', 'chroots-in-dir:///scanin',  '--output', '/scanout'],
         description: "Performs a CVE scan based on known CVE data"},
-      { name: standards_scan,
-        args: ['oscapd-evaluate', 'scan', '--targets', 'chroots-in-dir:///scanin',  '--output', '/scanout'],
+      { name: standards_compliance,
+        args: ['oscapd-evaluate', 'scan', '--targets', 'chroots-in-dir:///scanin',  '--output', '/scanout', '--no-cve-scan'],
         description: "Performs a standard scan"
       }
 ]
