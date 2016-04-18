@@ -41,6 +41,8 @@ class Scan(Atomic):
         yaml_error = "The image name or scanner arguments for '{}' is not " \
                      "defined in /etc/atomic.conf".format(self.args.scanner)
 
+        if self.args.scanner not in self.scanners:
+            raise ValueError("Unknown scanner '{}' defined in {}".format(self.args.scanner, util.ATOMIC_CONF))
         scanner_image_name, scanner_args, custom_args = get_scan_info(self.args.scanner, scan_type)
 
         if not isinstance(scanner_args, list):
