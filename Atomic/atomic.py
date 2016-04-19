@@ -920,10 +920,13 @@ class Atomic(object):
             return ["docker://" + i.replace("https:", "")]
 
     def _skopeo_get_manifest(self, image):
-        r = util.subp(['skopeo', 'inspect', '--raw'] + Atomic._convert_to_skopeo(image))
-        if r.return_code != 0:
-            raise IOError('Failed to fetch the manifest for: %s.' % image)
-        return r.stdout.decode(sys.getdefaultencoding())
+        try:
+            r = util.subp(['skopeo', 'inspect', '--raw'] + Atomic._convert_to_skopeo(image))
+            if r.return_code != 0:
+                raise ValueError(r.stderr.decode(sys.getdefaultencoding()))
+            return r.stdout.decode('utf-8')
+        except OSError:
+            raise ValueError("skopeo must be installed to perform remote inspections")
 
     def _skopeo_get_layers(self, image, layers):
         temp_dir = tempfile.mkdtemp()
@@ -931,7 +934,9 @@ class Atomic(object):
             args = ['skopeo', 'layers'] + Atomic._convert_to_skopeo(image) + layers
             r = util.subp(args, cwd=temp_dir)
             if r.return_code != 0:
-                raise IOError('Failed to fetch the manifest for: %s.' % image)
+                raise ValueError(r.stderr.decode(sys.getdefaultencoding()))
+        except OSError:
+            raise ValueError("skopeo must be installed to perform remote inspections")
         except Exception as e:
             shutil.rmtree(temp_dir)
             raise e
