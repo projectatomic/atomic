@@ -11,7 +11,6 @@ class Scan(Atomic):
     """
     Scan class that can generically work any scanner
     """
-    DEBUG = False
     results = '/var/lib/atomic'
 
     def __init__(self):
@@ -24,6 +23,7 @@ class Scan(Atomic):
         self.scan_content = {}
         self.atomic_config = util.get_atomic_config()
         self.scanners = util.get_scanners()
+        self.debug = False
 
     def scan(self):
         def get_scan_info(scanner, scan_type):
@@ -32,6 +32,8 @@ class Scan(Atomic):
                     for x in i['scans']:
                         if x['name'] == scan_type:
                             return i['image_name'], x['args'], i.get('custom_args')
+        if self.args.debug:
+            self.debug = True
 
         if self.args.list:
             self.print_scan_list()
@@ -60,9 +62,15 @@ class Scan(Atomic):
         # mount all the rootfs
         self._mount_scan_rootfs(scan_list)
 
+        if self.debug:
+            util.write_out("Creating the output dir at {}".format(self.results_dir))
+
+        # Create the output directory
+        os.mkdir(self.results_dir)
+
         docker_args = ['docker', 'run', '-it', '--rm', '-v', '/etc/localtime:/etc/localtime',
                        '-v', '{}:{}'.format(self.chroot_dir, '/scanin'), '-v',
-                       '{}:{}'.format(self.results_dir, '/scanout')]
+                       '{}:{}:rw,Z'.format(self.results_dir, '/scanout')]
 
         # Assemble the cmd line for the scan
         scan_cmd = docker_args
@@ -127,15 +135,15 @@ class Scan(Atomic):
     def _mount_scan_rootfs(self, scan_list):
         if not os.path.exists(self.chroot_dir):
             os.makedirs(self.chroot_dir)
-        if self.DEBUG:
+        if self.debug:
             util.write_out("Created {}".format(self.chroot_dir))
         for docker_object in scan_list:
             mount_path = os.path.join(self.chroot_dir, docker_object['Id'])
             os.mkdir(mount_path)
-            if self.DEBUG:
+            if self.debug:
                 util.write_out("Created {}".format(mount_path))
             self.mount(mountpoint=mount_path, image=docker_object['Id'])
-            if self.DEBUG:
+            if self.debug:
                 util.write_out("Mounted {} to {}".format(docker_object, mount_path))
 
     def _umount_rootfs_in_dir(self):
@@ -145,12 +153,12 @@ class Scan(Atomic):
 
             # Clean up temporary containers
 
-            if not self.DEBUG:
+            if not self.debug:
                 # Remove the temporary container dirs
                 rmtree(rootfs_dir)
             else:
                 util.write_out("Unmounted {}".format(rootfs_dir))
-        if not self.DEBUG:
+        if not self.debug:
             rmtree(self.chroot_dir)
 
     def get_rootfs_paths(self):
