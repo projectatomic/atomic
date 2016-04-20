@@ -1142,7 +1142,7 @@ class Atomic(object):
             template = Template(data)
             result = template.safe_substitute(values)
             if '$' in result.replace("$$", ""):
-                missing = {x[1] for x in template.pattern.findall(data, template.flags) if len(x[1]) > 0 and x[1] not in values}
+                missing = {x[1] for x in template.pattern.findall(data, template.flags) if len(x[1]) > 0 and x[1] not in values} # pylint: disable=no-member
                 raise ValueError("The template file %s still contains unreplaced values for: %s" % \
                                  (inputfilename, ", ".join(missing)))
 
