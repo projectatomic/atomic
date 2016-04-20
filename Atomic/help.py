@@ -76,7 +76,7 @@ class AtomicHelp(Atomic):
         result = c2.communicate()[0].decode(enc)
         help_file.close()
         if not self.use_pager:
-            util.writeOut("\n{}\n".format(result))
+            util.write_out("\n{}\n".format(result))
         else:
             # Call the pager
             pager(result)

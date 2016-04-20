@@ -94,8 +94,14 @@ __atomic_image_repos_and_tags() {
 }
 
 __atomic_image_repos_and_tags_and_ids() {
-	local images="$(__docker_q images -a --no-trunc | awk 'NR>1 { print $3; if ($1 != "<none>") { print $1; print $1":"$2 } }')"
-	COMPREPLY=( $(compgen -W "$images" -- "$cur") )
+	local images
+	if test $_system == "0"; then
+		images="$(__docker_q images -a --no-trunc | awk 'NR>1 { print $3; if ($1 != "<none>") { print $1; print $1":"$2 } }')"
+	else
+		CHECKOUT_DIR=`test -e /etc/atomic.conf && grep "^checkout_path:" /etc/atomic.conf | cut -d' ' -f2`
+		images="$(ls -1 ${CHECKOUT_DIR:/var/lib/containers/atomic/} | grep -v \.[01]$)"
+	fi
+        COMPREPLY=( $(compgen -W "$images" -- "$cur") )
 	__ltrim_colon_completions "$cur"
 }
 
@@ -245,10 +251,18 @@ _atomic_version() {
 	esac
 }
 
+_atomic_pull() {
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "--storage" -- "$cur" ) )
+			;;
+	esac
+}
+
 _atomic_update() {
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "--force -f" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "--force -f --set --container" -- "$cur" ) )
 			;;
 		*)
 		    __atomic_image_repos_and_tags
@@ -257,7 +271,14 @@ _atomic_update() {
 }
 
 _atomic_uninstall() {
-	__atomic_image_repos_and_tags_and_ids
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W -- "$cur" ) )
+			;;
+		*)
+		    __atomic_image_repos_and_tags_and_ids
+		    ;;
+	esac
 }
 
 
@@ -332,6 +353,8 @@ _atomic_install() {
 	local all_options="$options_with_args
 		--help
                --display
+               --system
+               --set
 	"
 
 	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
@@ -641,6 +664,7 @@ _atomic() {
 		images
 		migrate
 		mount
+		pull
 		run
 		scan
 		stop
@@ -661,15 +685,28 @@ _atomic() {
 
 	COMPREPLY=()
 	local cur prev words cword
+
 	_get_comp_words_by_ref -n : cur prev words cword
 
 	local command='atomic' cpos=0
 	local counter=1
+        _system=0
+	while [ $counter -lt $cword ]; do
+		if test "${words[$counter]}" == "--system"; then
+			_system=1
+			break
+		fi
+		(( counter++ ))
+	done
+
+	counter=1
 	while [ $counter -lt $cword ]; do
 		case "${words[$counter]}" in
 			$main_options_with_args_glob )
 				(( counter++ ))
 				;;
+			"--system")
+				_system=1;;
 			-*)
 				;;
 			*)

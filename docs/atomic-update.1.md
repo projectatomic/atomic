@@ -8,6 +8,8 @@ atomic-update - Pull latest Image from repository
 **atomic update**
 [**-f**|**--force**]
 [**-h**|**--help**]
+[**--set**=*NAME*=*VALUE*]
+[**--update**]
 IMAGE
 
 # DESCRIPTION
@@ -21,6 +23,12 @@ continue to use the old image. Use --force to remove the container.
 
 **-h** **--help**
   Print usage statement
+
+**--set=NAME=VALUE**
+  Set a value that is going to be used by a system container for its configuration and can be specified multiple times.  It is used only by --system.
+
+**--update**
+  Update a container instead of an image.
 
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)

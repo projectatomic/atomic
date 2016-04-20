@@ -25,14 +25,14 @@ def import_docker(graph, import_location):
     #import docker volumes
     import_volumes(graph, import_location)
 
-    util.writeOut("atomic import completed successfully")
-    util.writeOut("Would you like to cleanup (rm -rf {0}) the temporary directory [y/N]"
+    util.write_out("atomic import completed successfully")
+    util.write_out("Would you like to cleanup (rm -rf {0}) the temporary directory [y/N]"
                   .format(import_location))
     choice = sys.stdin.read(1)
     if choice.lower() == 'y':
-        util.writeOut("Deleting {0}".format(import_location))
+        util.write_out("Deleting {0}".format(import_location))
         subprocess.check_call(['/usr/bin/rm', '-rf', import_location])
-    util.writeOut("Please restart docker daemon for the changes to take effect")
+    util.write_out("Please restart docker daemon for the changes to take effect")
 
 def import_images(import_location):
     """
@@ -41,7 +41,7 @@ def import_images(import_location):
     subdir = import_location + '/images'
     images = os.listdir(subdir)
     for image in images:
-        util.writeOut("Importing image: {0}".format(image[:12]))
+        util.write_out("Importing image: {0}".format(image[:12]))
         with open(subdir + '/' + image) as f:
             subprocess.check_call([util.default_docker(), "load"], stdin=f)
 
@@ -53,7 +53,7 @@ def import_containers(graph, import_location):
     containers = os.listdir(subdir)
     for cnt in containers:
         cnt = cnt[8:] # strip off the "migrate-" prefix
-        util.writeOut("Importing container: {0}".format(cnt[:12]))
+        util.write_out("Importing container: {0}".format(cnt[:12]))
         subprocess.check_call([ATOMIC_LIBEXEC + '/migrate.sh',
                                'import',
                                '--container-id=' + cnt,
@@ -71,7 +71,7 @@ def import_volumes(graph, import_location):
 
     volfile = import_location + '/volumes/volumeData.tar.gz'
     if os.path.isfile(volfile):
-        util.writeOut("Importing volumes")
+        util.write_out("Importing volumes")
         tar_extract(srcfile=volfile,
                     destdir=graph + '/volumes')
 

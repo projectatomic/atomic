@@ -69,22 +69,23 @@ def image_by_name(img_name, images=None):
     return valid_images
 
 
-def subp(cmd):
+def subp(cmd, cwd=None):
     """
     Run a command as a subprocess.
     Return a triple of return code, standard out, standard err.
     """
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+    proc = subprocess.Popen(cmd, cwd=cwd,
+                            stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
     out, err = proc.communicate()
     return ReturnTuple(proc.returncode, stdout=out, stderr=err)
 
 
-def check_call(cmd, env=os.environ, stderr=None, stdout=None):
+def check_call(cmd, env=os.environ, stdin=None, stderr=None, stdout=None):
     # Make sure cmd is a list
     if not isinstance(cmd, list):
         cmd = shlex.split(cmd)
-    return subprocess.check_call(cmd, env=env, stderr=stderr, stdout=stdout)
+    return subprocess.check_call(cmd, env=env, stdin=stdin, stderr=stderr, stdout=stdout)
 
 def default_container_context():
     if selinux.is_selinux_enabled() != 0:
@@ -96,14 +97,14 @@ def default_container_context():
     return ""
 
 
-def writeOut(output, lf="\n"):
+def write_out(output, lf="\n"):
     sys.stdout.flush()
     sys.stdout.write(str(output) + lf)
 
 
 def output_json(json_data):
     ''' Pretty print json data '''
-    writeOut(json.dumps(json_data, indent=4, separators=(',', ': ')))
+    write_out(json.dumps(json_data, indent=4, separators=(',', ': ')))
 
 
 def get_mounts_by_path():

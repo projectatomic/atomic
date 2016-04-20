@@ -8,6 +8,14 @@ import pipes
 import getpass
 import argparse
 import subprocess
+import shutil
+import tempfile
+import tarfile
+import stat
+import gi
+from string import Template
+gi.require_version('OSTree', '1.0')
+from gi.repository import Gio, GLib, OSTree
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -30,6 +38,22 @@ from .util import NoDockerDaemon, DockerObjectNotFound
 from docker.errors import NotFound
 
 IMAGES = []
+ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
+
+OSTREE_OCIIMAGE_PREFIX = "ociimage/"
+SYSTEMD_UNIT_FILES_DEST = "/etc/systemd/system"
+SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE = """
+[Unit]
+Description=$NAME
+
+[Service]
+ExecStart=/bin/runc start $NAME
+Restart=on-crash
+WorkingDirectory=$DESTDIR
+
+[Install]
+WantedBy=multi-user.target
+"""
 
 def convert_size(size):
     if size > 0:
@@ -109,6 +133,8 @@ class Atomic(object):
         self.name = None
         self.image = None
         self.spc = False
+        self.system = False
+        self.setvalues = None
         self.inspect = None
         self.force = False
         self._images = []
@@ -123,7 +149,7 @@ class Atomic(object):
             self.docker_cmd = util.default_docker()
         return self.docker_cmd
 
-    def writeOut(self, output, lf="\n"):
+    def write_out(self, output, lf="\n"):
         sys.stdout.flush()
         sys.stdout.write(output + lf)
 
@@ -146,6 +172,13 @@ class Atomic(object):
                     self.d.remove_container(c["Id"], force=True)
 
     def update(self):
+        if self.args.container:
+            if self._system_container_exists(self.args.image):
+                return self._update_system_container(self.args.image)
+            raise ValueError("Container '%s' is not installed" % self.args.image)
+        elif self.setvalues:
+            raise ValueError("--set is valid only when used with --system")
+
         self.ping()
         if self.force:
             self.force_delete_containers()
@@ -157,20 +190,20 @@ class Atomic(object):
             bar = json.loads(line)
             status = bar['status']
             if prevstatus != status:
-                self.writeOut(status, "")
+                self.write_out(status, "")
             if 'id' not in bar:
                 continue
             if status == "Downloading":
-                self.writeOut(bar['progress'] + " ")
+                self.write_out(bar['progress'] + " ")
             elif status == "Extracting":
-                self.writeOut("Extracting: " + bar['id'])
+                self.write_out("Extracting: " + bar['id'])
             elif status == "Pull complete":
                 pass
             elif status.startswith("Pulling"):
-                self.writeOut("Pulling: " + bar['id'])
+                self.write_out("Pulling: " + bar['id'])
 
             prevstatus = status
-        self.writeOut("")
+        self.write_out("")
 
     def Export(self):
         try:
@@ -249,17 +282,69 @@ class Atomic(object):
                 bar = json.loads(line)
                 status = bar['status']
                 if prevstatus != status:
-                    self.writeOut(status, "")
+                    self.write_out(status, "")
                 if 'id' not in bar:
                     continue
                 if status == "Uploading":
-                    self.writeOut(bar['progress'] + " ")
+                    self.write_out(bar['progress'] + " ")
                 elif status == "Push complete":
                     pass
                 elif status.startswith("Pushing"):
-                    self.writeOut("Pushing: " + bar['id'])
+                    self.write_out("Pushing: " + bar['id'])
 
                 prevstatus = status
+
+    def _pull_dockertar_layers(self, repo, imagebranch, temp_dir, input_layers):
+        layers = {}
+        next_layer = {}
+        top_layer = None
+        for i in input_layers:
+            layer = i.replace("/layer.tar", "")
+            layers[layer] = os.path.join(temp_dir, i)
+            with open(os.path.join(temp_dir, layer, "json"), 'r') as f:
+                json_layer = json.loads(f.read())
+                parent = json_layer.get("parent")
+                if not parent:
+                    top_layer = layer
+                next_layer[parent] = layer
+
+        layers_map = {}
+        enc = sys.getdefaultencoding()
+        for k, v in layers.items():
+            out = subprocess.check_output([ATOMIC_LIBEXEC + '/dockertar-sha256-helper',
+           v], stderr=DEVNULL)
+            layers_map[k] = out.decode(enc).replace("\n", "")
+        layers_ordered = []
+
+        it = top_layer
+        while it:
+            layers_ordered.append(layers_map[it])
+            it = next_layer.get(it)
+
+        manifest = json.dumps({"Layers" : layers_ordered})
+
+        layers_to_import = {}
+        for k, v in layers.items():
+            layers_to_import[layers_map[k]] = v
+        Atomic._import_layers_into_ostree(repo, imagebranch, manifest, layers_to_import)
+
+    def _pull_image_to_ostree(self, repo, image, upgrade):
+        if image.startswith("ostree:"):
+            self._check_system_ostree_image(repo, image, upgrade)
+        elif self.args.image.startswith("docker:"):
+            self._pull_docker_image(repo, image.replace("docker:", ""))
+        elif self.args.image.startswith("dockertar:"):
+            self._pull_docker_tar(repo, image.replace("dockertar:", ""))
+        else: # Assume "oci:"
+            self._check_system_oci_image(repo, image, upgrade)
+
+    def pull_image(self):
+        if self.storage == "ostree":
+            repo = self._get_ostree_repo()
+            self._pull_image_to_ostree(repo, self.args.image, True)
+        else:
+            raise ValueError("Destination not known, please choose --storage=ostree")
+        return
 
     def set_args(self, args):
         self.args = args
@@ -278,6 +363,16 @@ class Atomic(object):
             self.spc = False
 
         try:
+            self.system = args.system
+        except:
+            pass
+
+        try:
+            self.setvalues = args.setvalues
+        except:
+            pass
+
+        try:
             self.name = args.name
         except:
             pass
@@ -287,10 +382,20 @@ class Atomic(object):
         except:
             pass
 
+        try:
+            self.storage = args.storage
+        except:
+            self.storage = None
+
+        if not self.storage:
+            self.storage = self.get_atomic_config_item(["default_storage"])
+
         if not self.name and self.image is not None:
             self.name = self.image.split("/")[-1].split(":")[0]
             if self.spc:
                 self.name = self.name + "-spc"
+            if self.system:
+                self.name = self.image.replace(":", "/").split("/")[-1] + "-system"
 
     def _getconfig(self, key, default=None):
         assert self.inspect is not None
@@ -327,7 +432,7 @@ class Atomic(object):
         else:
             if self.command:
                 if self.args.display:
-                    return self.writeOut("docker exec -t -i %s %s" %
+                    return self.write_out("docker exec -t -i %s %s" %
                                          (self.name, self.command))
                 else:
                     return subprocess.check_call(
@@ -335,7 +440,7 @@ class Atomic(object):
                         self.command, stderr=DEVNULL)
             else:
                 if not self.args.display:
-                    self.writeOut("Container is running")
+                    self.write_out("Container is running")
 
     def _start(self):
         if self._interactive():
@@ -499,6 +604,9 @@ class Atomic(object):
         self._ostreeadmin(argv)
 
     def uninstall(self):
+        if self._system_container_exists(self.args.image):
+            return self._uninstall_system_container(self.args.image)
+
         self.inspect = self._inspect_container()
         if self.inspect and self.force:
             self.force_delete_containers()
@@ -522,12 +630,12 @@ class Atomic(object):
             util.check_call(cmd, env=self.cmd_env())
 
         if self.name == self.image:
-            self.writeOut("docker rmi %s" % self.image)
+            self.write_out("docker rmi %s" % self.image)
             subprocess.check_call([self.docker_binary(), "rmi", self.image])
 
     def cmd_env(self):
-        os.environ['NAME'] = self.name
-        os.environ['IMAGE'] = self.image
+        os.environ['NAME'] = self.name or ""
+        os.environ['IMAGE'] = self.image or ""
 
         if hasattr(self.args, 'opt1') and self.args.opt1:
             os.environ['OPT1'] = self.args.opt1
@@ -608,7 +716,7 @@ class Atomic(object):
                     self.image = self.find_remote_image()
                 if self.image is None:
                     self._no_such_image()
-        util.writeOut("Image Name: {}".format(self.image))
+        util.write_out("Image Name: {}".format(self.image))
         inspection = None
         if not self.args.force_remote_info:
             inspection = self._inspect_image(self.image)
@@ -626,7 +734,7 @@ class Atomic(object):
             _no_label()
         if labels is not None and len(labels) is not 0:
             for label in labels:
-                self.writeOut('{0}: {1}'.format(label, labels[label]))
+                self.write_out('{0}: {1}'.format(label, labels[label]))
         else:
             _no_label()
 
@@ -658,25 +766,27 @@ class Atomic(object):
             cmd = "docker images --filter dangling=true -q".split()
             for i in subprocess.check_output(cmd, stderr=DEVNULL).split():
                 self.d.remove_image(i.decode(enc), force=True)
+            self._prune_ostree_images()
             return
 
         _images = self.get_images()
-        if len(_images) == 0:
-            return
-        _max_repo, _max_tag = get_col_lengths(_images)
-        col_out = "{0:" + str(_max_repo) + "} {1:" + str(_max_tag) + \
-                  "} {2:12} {3:19} {4:10}"
-        self.writeOut(col_out.format("REPOSITORY", "TAG", "IMAGE ID",
-                                     "CREATED", "VIRTUAL SIZE"))
-        for image in self.get_images():
-            repo, tag = image["RepoTags"][0].rsplit(":", 1)
-            self.writeOut(col_out.format(self.dangling(repo) + repo,
-                                         tag, image["Id"][:12],
-                 time.strftime("%F %H:%M",
-                               time.localtime(image["Created"])),
-                 convert_size(image["VirtualSize"])))
+        if len(_images) >= 0:
+            _max_repo, _max_tag = get_col_lengths(_images)
+            col_out = "{0:" + str(_max_repo) + "} {1:" + str(_max_tag) + \
+                      "} {2:12} {3:19} {4:10}"
+            self.write_out(col_out.format("REPOSITORY", "TAG", "IMAGE ID",
+                                         "CREATED", "VIRTUAL SIZE"))
+            for image in self.get_images():
+                repo, tag = image["RepoTags"][0].rsplit(":", 1)
+                self.write_out(col_out.format(self.dangling(repo) + repo,
+                                             tag, image["Id"][:12],
+                                             time.strftime("%F %H:%M",
+                                            time.localtime(image["Created"])),
+                                            convert_size(image["VirtualSize"])))
 
-    def install(self):
+            return self._system_images()
+
+    def _check_if_image_present(self):
         self.inspect = self._inspect_image()
         if not self.inspect:
             if self.args.display:
@@ -685,6 +795,16 @@ class Atomic(object):
             self.update()
             self.inspect = self._inspect_image()
 
+    def install(self):
+        if self._container_exists(self.name):
+            raise ValueError("A container '%s' is already present" % self.name)
+
+        if self.system:
+            return self._install_system_container()
+        elif self.setvalues:
+            raise ValueError("--set is valid only when used with --system")
+
+        self._check_if_image_present()
         args = self._get_args("INSTALL")
         if not args:
             return
@@ -695,6 +815,418 @@ class Atomic(object):
 
         if not self.args.display:
             return util.check_call(cmd)
+
+    def _system_images(self):
+        repo = self._get_ostree_repo()
+
+        revs = [x for x in repo.list_refs()[1] if x.startswith(OSTREE_OCIIMAGE_PREFIX) \
+                and len(x) != len(OSTREE_OCIIMAGE_PREFIX) + 64]
+        max_column = max([len(rev) for rev in revs]) + 2
+        col_out = "{0:%d} {1:64}" % max_column
+        if len(revs) == 0:
+            return
+        self.write_out(col_out.format("IMAGE", "COMMIT"))
+
+        for rev in revs:
+            commit = repo.resolve_rev(rev, False)[1]
+            self.write_out(col_out.format(rev, commit))
+
+    def systemctl_command(self, cmd, name):
+        cmd = self.sub_env_strings(self.gen_cmd(["systemctl", cmd, name]))
+        self.display(cmd)
+        if not self.args.display:
+            util.check_call(cmd, env=self.cmd_env())
+
+    def _container_exists(self, name):
+        try:
+            return self._system_container_exists(name) or self._inspect_container(name)
+        except Exception:
+            return False
+
+    def _system_container_exists(self, name):
+        return os.path.exists("%s/%s" % (self._get_system_checkout_path(), name))
+
+    def _uninstall_system_container(self, name):
+        self.args.display = False
+        try:
+            self.systemctl_command("stop", name)
+        except:
+            pass
+        try:
+            self.systemctl_command("disable", name)
+        except:
+            pass
+
+        if os.path.exists(os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)):
+            os.unlink(os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name))
+
+        if os.path.exists("%s/%s" % (self._get_system_checkout_path(), name)):
+            os.unlink("%s/%s" % (self._get_system_checkout_path(), name))
+        for deploy in ["0", "1"]:
+            if os.path.exists("%s/%s.%s" % (self._get_system_checkout_path(), name, deploy)):
+                shutil.rmtree("%s/%s.%s" % (self._get_system_checkout_path(), name, deploy))
+
+    def _prune_ostree_images(self):
+        repo = self._get_ostree_repo()
+        refs = {}
+        app_refs = []
+
+        for i in repo.list_refs()[1]:
+            if i.startswith(OSTREE_OCIIMAGE_PREFIX):
+                if len(i) == len(OSTREE_OCIIMAGE_PREFIX) + 64:
+                    refs[i] = False
+                else:
+                    app_refs.append(i)
+
+        def visit(rev):
+            commit = repo.resolve_rev(rev, False)[1]
+            manifest = Atomic._get_commit_metadata(repo, commit, "docker.manifest")
+            if not manifest:
+                return
+            for layer in Atomic._get_layers_from_manifest(manifest):
+                refs[OSTREE_OCIIMAGE_PREFIX + layer.replace("sha256:", "")] = True
+
+        for app in app_refs:
+            visit(app)
+
+        for k, v in refs.items():
+            if not v:
+                ref = OSTree.parse_refspec(k)
+                self.write_out("Deleting %s" % k)
+                repo.set_ref_immediate(ref[1], ref[2], None)
+        return
+
+    @staticmethod
+    def _parse_imagename(imagename):
+        sep = imagename.find("/")
+        reg, image = imagename[:sep], imagename[sep + 1:]
+        if '.' not in reg:
+            # if the registry doesn't look like a domain, consider it as the
+            # image prefix
+            reg = ""
+            image = imagename
+        sep = image.find(":")
+        if sep > 0:
+            return reg, image[:sep], image[sep + 1:]
+        else:
+            return reg, image, "latest"
+
+    @staticmethod
+    def _convert_to_skopeo(image):
+        i = image.replace("oci:", "")
+        if "http:" in i:
+            return ["--insecure", "docker://" + i.replace("http:", "")]
+        else:
+            return ["docker://" + i.replace("https:", "")]
+
+    def _skopeo_get_manifest(self, image):
+        try:
+            r = util.subp(['skopeo', 'inspect', '--raw'] + Atomic._convert_to_skopeo(image))
+            if r.return_code != 0:
+                raise ValueError(r.stderr.decode(sys.getdefaultencoding()))
+            return r.stdout.decode('utf-8')
+        except OSError:
+            raise ValueError("skopeo must be installed to perform remote inspections")
+
+    def _skopeo_get_layers(self, image, layers):
+        temp_dir = tempfile.mkdtemp()
+        try:
+            args = ['skopeo', 'layers'] + Atomic._convert_to_skopeo(image) + layers
+            r = util.subp(args, cwd=temp_dir)
+            if r.return_code != 0:
+                raise ValueError(r.stderr.decode(sys.getdefaultencoding()))
+        except OSError:
+            raise ValueError("skopeo must be installed to perform remote inspections")
+        except Exception as e:
+            shutil.rmtree(temp_dir)
+            raise e
+        return temp_dir
+
+    @staticmethod
+    def _get_layers_from_manifest(manifest):
+        manifest_json = json.loads(manifest)
+        fs_layers = manifest_json.get("fsLayers")
+        if fs_layers:
+            layers = list(i["blobSum"] for i in fs_layers)
+            layers.reverse()
+        else:
+            layers = manifest_json.get("Layers")
+        return layers
+
+    @staticmethod
+    def _import_layers_into_ostree(repo, imagebranch, manifest, layers):
+        repo.prepare_transaction()
+        for layer, tar in layers.items():
+            mtree = OSTree.MutableTree()
+            repo.write_archive_to_mtree(Gio.File.new_for_path(tar), mtree, None, True)
+            root = repo.write_mtree(mtree)[1]
+            metav = GLib.Variant("a{sv}", {'docker.layer': GLib.Variant('s', layer)})
+            csum = repo.write_commit(None, "", None, metav, root)[1]
+            repo.transaction_set_ref(None, "%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), csum)
+
+        # create a $OSTREE_OCIIMAGE_PREFIX$image-$tag branch
+        metadata = GLib.Variant("a{sv}", {'docker.manifest': GLib.Variant('s', manifest)})
+        mtree = OSTree.MutableTree()
+        file_info = Gio.FileInfo()
+        file_info.set_attribute_uint32("unix::uid", 0);
+        file_info.set_attribute_uint32("unix::gid", 0);
+        file_info.set_attribute_uint32("unix::mode", 0o755 | stat.S_IFDIR);
+
+        dirmeta = OSTree.create_directory_metadata(file_info, None);
+        csum_dirmeta = repo.write_metadata(OSTree.ObjectType.DIR_META, None, dirmeta)[1]
+        mtree.set_metadata_checksum(OSTree.checksum_from_bytes(csum_dirmeta))
+
+        root = repo.write_mtree(mtree)[1]
+        csum = repo.write_commit(None, "", None, metadata, root)[1]
+        repo.transaction_set_ref(None, imagebranch, csum)
+
+        repo.commit_transaction(None)
+
+    def _pull_docker_image(self, repo, image):
+        with tempfile.NamedTemporaryFile(mode="w") as temptar:
+            subprocess.check_call(["docker", "save", "-o", temptar.name, image])
+            return self._pull_docker_tar(repo, temptar.name)
+
+    def _pull_docker_tar(self, repo, image):
+            temp_dir = tempfile.mkdtemp()
+            try:
+                with tarfile.open(image, 'r') as t:
+                    t.extractall(temp_dir)
+                    manifest_file = os.path.join(temp_dir, "manifest.json")
+                    if os.path.exists(manifest_file):
+                        manifest = ""
+                        with open(manifest_file, 'r') as mfile:
+                            manifest = mfile.read()
+                        for m in json.loads(manifest):
+                            regloc, image, tag = Atomic._parse_imagename(m["RepoTags"][0])
+                            imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image.replace("sha256:", ""), tag)
+                            input_layers = m["Layers"]
+                            self._pull_dockertar_layers(repo, imagebranch, temp_dir, input_layers)
+                    else:
+                        repositories = ""
+                        repositories_file = os.path.join(temp_dir, "repositories")
+                        with open(repositories_file, 'r') as rfile:
+                            repositories = rfile.read()
+                        regloc, image, tag = Atomic._parse_imagename(list(json.loads(repositories).keys())[0])
+                        imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image, tag)
+                        input_layers = []
+                        for name in os.listdir(temp_dir):
+                            if name == "repositories":
+                                continue
+                            input_layers.append(name + "/layer.tar")
+                        self._pull_dockertar_layers(repo, imagebranch, temp_dir, input_layers)
+            finally:
+                shutil.rmtree(temp_dir)
+
+    def _check_system_ostree_image(self, repo, img, upgrade):
+        imagebranch = img.replace("ostree:", "")
+        current_rev = repo.resolve_rev(imagebranch, True)
+        if not upgrade and current_rev[1]:
+            return False
+        remote, branch = imagebranch.split(":")
+        return repo.pull(remote, [branch], 0, None)
+
+    def _check_system_oci_image(self, repo, img, upgrade):
+        regloc, image, tag = Atomic._parse_imagename(img.replace("oci:", ""))
+        imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image.replace("sha256:", ""), tag)
+        current_rev = repo.resolve_rev(imagebranch, True)
+        if not upgrade and current_rev[1]:
+            return False
+
+        manifest = self._skopeo_get_manifest(img)
+        layers = Atomic._get_layers_from_manifest(manifest)
+        missing_layers = []
+        for i in layers:
+            layer = i.replace("sha256:", "")
+            if not repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1]:
+                missing_layers.append(layer)
+                self.write_out("Missing layer %s" % layer)
+
+        if len(missing_layers) == 0:
+            return True
+
+        layers_dir = self._skopeo_get_layers(img, missing_layers)
+        try:
+            layers = {}
+            for root, _, files in os.walk(layers_dir):
+                for f in files:
+                    if f.endswith(".tar"):
+                        layer_file = os.path.join(root, f)
+                        layer = f.replace(".tar", "")
+                        if layer in missing_layers:
+                            layers[layer] = layer_file
+
+            if (len(layers)):
+                Atomic._import_layers_into_ostree(repo, imagebranch, manifest, layers)
+        finally:
+            shutil.rmtree(layers_dir)
+        return True
+
+    @staticmethod
+    def _get_commit_metadata(repo, rev, key):
+        commit = repo.load_commit(rev)[1]
+        metadata = commit.get_child_value(0)
+        if key not in metadata.keys():
+            return None
+        return metadata[key]
+
+    def _checkout_system_container(self, repo, name, img, deployment, upgrade, values={}):
+        if "ostree:" in img:
+            imagebranch = img.replace("ostree:", "")
+        else: # assume "oci:" image
+            regloc, image, tag = Atomic._parse_imagename(img.replace("oci:", "").replace("docker:", ""))
+            imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image.replace("sha256:", ""), tag)
+
+        destination = "%s/%s.%d" % (self._get_system_checkout_path(), name, deployment)
+        exports = os.path.join(destination, "rootfs/exports")
+        unitfile = os.path.join(exports, "service.template")
+        unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
+
+        if not upgrade and os.path.exists(unitfileout):
+            raise ValueError("The file %s already exists." % unitfileout)
+
+        if os.path.exists(destination):
+            shutil.rmtree(destination)
+
+        self.write_out("Extracting to %s" % destination)
+
+        if self.args.display:
+            return True
+
+        rootfs = os.path.join(destination, "rootfs")
+
+        # Under Atomic, get the real deployment location.  It is needed to create the hard links.
+        try:
+            sysroot = OSTree.Sysroot()
+            sysroot.load()
+            osname = sysroot.get_booted_deployment().get_osname()
+            rootfs = os.path.join("/ostree/deploy/", osname, os.path.relpath(rootfs, "/"))
+        except:
+            pass
+
+        os.makedirs(rootfs)
+        revs = []
+
+        rev = repo.resolve_rev(imagebranch, False)[1]
+
+        manifest = Atomic._get_commit_metadata(repo, rev, "docker.manifest")
+        options = OSTree.RepoCheckoutOptions()
+        options.overwrite_mode = OSTree.RepoCheckoutOverwriteMode.UNION_FILES
+
+        rootfs_fd = None
+        try:
+            rootfs_fd = os.open(rootfs, os.O_DIRECTORY)
+            if manifest is None:
+                repo.checkout_tree_at(options, rootfs_fd, rootfs, rev)
+            else:
+                layers = Atomic._get_layers_from_manifest(manifest)
+                for layer in layers:
+                    rev_layer = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer.replace("sha256:", "")), False)[1]
+                    repo.checkout_tree_at(options, rootfs_fd, rootfs, rev_layer)
+        finally:
+            if rootfs_fd:
+                os.close(rootfs_fd)
+
+        values["DESTDIR"] = destination
+        values["NAME"] = name
+
+        if self.args.setvalues is not None:
+            for i in self.args.setvalues:
+                split = i.find("=")
+                if split < 0:
+                    raise ValueError("Invalid value '%s'.  Expected form NAME=VALUE" % i)
+                key, val = i[:split], i[split+1:]
+                values[key] = val
+
+        def _write_template(inputfilename, data, values, outfile):
+            template = Template(data)
+            result = template.safe_substitute(values)
+            if '$' in result.replace("$$", ""):
+                missing = {x[1] for x in template.pattern.findall(data, template.flags) if len(x[1]) > 0 and x[1] not in values}
+                raise ValueError("The template file %s still contains unreplaced values for: %s" % \
+                                 (inputfilename, ", ".join(missing)))
+
+            outfile.write(result)
+
+        for i in ["config.json", "runtime.json"]:
+            src = os.path.join(exports, i)
+            if os.path.exists(src):
+                shutil.copyfile(src, os.path.join(destination, i))
+            elif os.path.exists(src + ".template"):
+                with open(src + ".template", 'r') as infile, open(os.path.join(destination, i), "w") as outfile:
+                        _write_template(src + ".template", infile.read(), values, outfile)
+            else:
+                args = ['runc', 'spec']
+                r = util.subp(args, cwd=destination)
+
+        with open(os.path.join(destination, "info"), 'w') as info_file:
+            info = {"image" : img,
+                    "values" : values}
+            info_file.write(json.dumps(info))
+
+        if os.path.exists(unitfile):
+            with open(unitfile, 'r') as infile:
+                systemd_template = infile.read()
+        else:
+            systemd_template = SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE
+
+        with open(unitfileout, "w") as outfile:
+            _write_template(unitfile, systemd_template, values, outfile)
+
+        sym = "%s/%s" % (self._get_system_checkout_path(), name)
+        if os.path.exists(sym):
+            os.unlink(sym)
+        os.symlink(destination, sym)
+
+        self.systemctl_command("enable", name)
+        if upgrade:
+            self.systemctl_command("restart", name)
+        else:
+            self.systemctl_command("start", name)
+        return True
+
+    def _get_system_checkout_path(self):
+        return self.get_atomic_config_item(["checkout_path"]) or "/var/lib/containers/atomic"
+
+    def _get_ostree_repo(self):
+        repo = OSTree.Repo.new(Gio.File.new_for_path(self.get_atomic_config_item(["ostree_repository"]) or "/ostree/repo"))
+        repo.open(None)
+        return repo
+
+    def _install_system_container(self):
+        repo = self._get_ostree_repo()
+
+        self._pull_image_to_ostree(repo, self.image, False)
+
+        if self._system_container_exists(self.name):
+            self.write_out("%s already present" % (self.name))
+            return
+
+        return self._checkout_system_container(repo, self.name, self.image, 0, False)
+
+    def _update_system_container(self, name):
+        self.args.display = False
+
+        repo = self._get_ostree_repo()
+
+        path = os.path.join(self._get_system_checkout_path(), name)
+
+        next_deployment = 0
+        if os.path.realpath(path).endswith(".0"):
+            next_deployment = 1
+        else:
+            next_deployment = 0
+
+        if os.path.exists("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment)):
+            shutil.rmtree("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment))
+
+        with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
+            info = json.loads(info_file.read())
+
+        image = info["image"]
+        values = info["values"]
+
+        self._checkout_system_container(repo, name, image, next_deployment, True, values)
 
     def help(self):
         if os.path.exists("/usr/bin/rpm-ostree"):
@@ -829,10 +1361,10 @@ class Atomic(object):
             version = layer["Version"]
             if layer["Version"] == '':
                 version = "None"
-            self.writeOut("%s %s %s" % (layer["Id"], version, layer["Tag"]))
+            self.write_out("%s %s %s" % (layer["Id"], version, layer["Tag"]))
 
     def display(self, cmd):
-        util.writeOut(self.sub_env_strings(cmd))
+        util.write_out(self.sub_env_strings(cmd))
 
     def sub_env_strings(self, in_string):
         """

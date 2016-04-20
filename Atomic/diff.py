@@ -46,7 +46,7 @@ class Diff(Atomic):
             if self.args.json:
                 util.output_json(helpers.json_out)
         except KeyboardInterrupt:
-            util.writeOut("Quitting...")
+            util.write_out("Quitting...")
             helpers._cleanup(image_list)
 
 class DiffHelpers(object):
@@ -94,7 +94,7 @@ class DiffHelpers(object):
 
         if not self.args.json:
             file_diff.print_results(images[0], images[1])
-            util.writeOut("\n")
+            util.write_out("\n")
 
     def output_rpms(self, rpm_image_list):
         """
@@ -107,7 +107,7 @@ class DiffHelpers(object):
             if ip.has_diff:
                 ip._print_diff(self.args.verbose)
             else:
-                util.writeOut("\n{} and {} have no different RPMs".format(ip.i1.name, ip.i2.name))
+                util.write_out("\n{} and {} have no different RPMs".format(ip.i1.name, ip.i2.name))
 
         # Output JSON content
         else:
@@ -229,19 +229,19 @@ class RpmPrint(object):
         Outputs the diff information in columns
         :return: None
         """
-        util.writeOut("")
-        util.writeOut(self.two_col.format(self.i1.name, self.i2.name))
-        util.writeOut(self.two_col.format("-"*self._max, "-"*self._max))
+        util.write_out("")
+        util.write_out(self.two_col.format(self.i1.name, self.i2.name))
+        util.write_out(self.two_col.format("-"*self._max, "-"*self._max))
         self._print_release()
-        util.writeOut(self.two_col.format("-"*self._max, "-"*self._max))
+        util.write_out(self.two_col.format("-"*self._max, "-"*self._max))
         for rpm in self.all_rpms:
             if (rpm in self.i1.rpms) and (rpm in self.i2.rpms):
                 if be_verbose:
-                    util.writeOut(self.two_col.format(rpm, rpm))
+                    util.write_out(self.two_col.format(rpm, rpm))
             elif (rpm in self.i1.rpms) and not (rpm in self.i2.rpms):
-                util.writeOut(self.two_col.format(rpm, ""))
+                util.write_out(self.two_col.format(rpm, ""))
             elif not (rpm in self.i1.rpms) and (rpm in self.i2.rpms):
-                util.writeOut(self.two_col.format("", rpm))
+                util.write_out(self.two_col.format("", rpm))
 
     def _print_release(self):
         """
@@ -254,7 +254,7 @@ class RpmPrint(object):
         for n in list(range(max(len(r1_split), len(r2_split)))):
             col1 = r1_split[n] if 0 <= n < len(r1_split) else ""
             col2 = r2_split[n] if 0 <= n < len(r2_split) else ""
-            util.writeOut(self.two_col.format(col1, col2))
+            util.write_out(self.two_col.format(col1, col2))
 
     def _rpm_json(self):
         """
@@ -360,18 +360,18 @@ class DiffFS(object):
         """
         def _print_diff(file_list):
             for _file in file_list:
-                util.writeOut("{0}{1}".format(5*" ", _file))
+                util.write_out("{0}{1}".format(5*" ", _file))
 
         if all([len(self.left) == 0, len(self.right) == 0,
                 len(self.common_diff) == 0]):
-            util.writeOut("\nThere are no file differences between {0} "
+            util.write_out("\nThere are no file differences between {0} "
                           "and {1}".format(left_docker_obj, right_docker_obj))
         if len(self.left) > 0:
-            util.writeOut("\nFiles only in {}:".format(left_docker_obj))
+            util.write_out("\nFiles only in {}:".format(left_docker_obj))
             _print_diff(self.left)
         if len(self.right) > 0:
-            util.writeOut("\nFiles only in {}:".format(right_docker_obj))
+            util.write_out("\nFiles only in {}:".format(right_docker_obj))
             _print_diff(self.right)
         if len(self.common_diff):
-            util.writeOut("\nCommon files that are different:")
+            util.write_out("\nCommon files that are different:")
             _print_diff(self.common_diff)

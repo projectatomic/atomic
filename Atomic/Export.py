@@ -21,10 +21,10 @@ def export_docker(graph, export_location):
 
     dangling_images = get_docker_client().images(filters={"dangling":True}, quiet=True)
     if any(dangling_images):
-        util.writeOut("There are dangling images in your system. Would you like atomic to prune them [y/N]")
+        util.write_out("There are dangling images in your system. Would you like atomic to prune them [y/N]")
         choice = sys.stdin.read(1)
         if choice.lower() == 'y':
-            util.writeOut("Deleting dangling images")
+            util.write_out("Deleting dangling images")
             subprocess.check_call([util.default_docker(), "rmi", "-f"]+dangling_images)
         else:
             raise ValueError("Please delete dangling images before running atomic migrate export")
@@ -42,7 +42,7 @@ def export_docker(graph, export_location):
     #export docker volumes
     export_volumes(graph, export_location)
 
-    util.writeOut("atomic export completed successfully")
+    util.write_out("atomic export completed successfully")
 
 def export_images(export_location):
     """
@@ -63,7 +63,7 @@ def export_images(export_location):
 
     for id in images:
         tags = " ".join(images[id])
-        util.writeOut("Exporting image: {0}".format(id[:12]))
+        util.write_out("Exporting image: {0}".format(id[:12]))
         with open(export_location + '/images/' + id, 'w') as f:
             subprocess.check_call([util.default_docker(), "save", tags], stdout=f)
 
@@ -77,7 +77,7 @@ def export_containers(graph, export_location):
     for container in get_docker_client().containers(all=True):
         id = container["Id"]
 
-        util.writeOut("Exporting container: {0}".format(id[:12]))
+        util.write_out("Exporting container: {0}".format(id[:12]))
         subprocess.check_call([ATOMIC_LIBEXEC + '/migrate.sh',
                                'export',
                                '--container-id=' + id[:12],
@@ -96,7 +96,7 @@ def export_volumes(graph, export_location):
     if not os.path.isdir(export_location + "/volumes"):
         os.makedirs(export_location + "/volumes")
 
-    util.writeOut("Exporting volumes")
+    util.write_out("Exporting volumes")
     tar_create(srcdir=graph + '/volumes',
                destfile=export_location + '/volumes/volumeData.tar.gz')
 

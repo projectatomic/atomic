@@ -45,10 +45,10 @@ and try again, or input a different ID.""".format(repo_id).replace('\n', ' '))
     org_id = keyData.get("org_id")
     product_id = keyData.get("product_id")
     try:
-        util.writeOut('Uploading image "{0}" to server "{1}"'.format(
+        util.write_out('Uploading image "{0}" to server "{1}"'.format(
                       image, server_url))
         sat.upload_docker_image(image, repo_id)
-        util.writeOut("")
+        util.write_out("")
     except Exception as e:
         raise IOError('Failed to upload image: {0}'.format(e))
     sat.publish_view(content_view_id, repo_id)

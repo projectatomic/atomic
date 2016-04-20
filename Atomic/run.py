@@ -104,13 +104,13 @@ class Run(Atomic):
         for sec_arg in security_args:
             if sec_arg in cmd:
                 if not found_sec_arg:
-                    util.writeOut("\nThis container uses privileged "
+                    util.write_out("\nThis container uses privileged "
                                   "security switches:")
-                util.writeOut("\n\033[1mINFO: {}\033[0m "
+                util.write_out("\n\033[1mINFO: {}\033[0m "
                               "\n{}{}".format(sec_arg, " " * 6,
                                               security_args[sec_arg]))
                 found_sec_arg = True
         if found_sec_arg:
-            util.writeOut("\nFor more information on these switches and their "
+            util.write_out("\nFor more information on these switches and their "
                           "security implications, consult the manpage for "
                           "'docker run'.\n")

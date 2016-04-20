@@ -5,11 +5,12 @@ PROFILEDIR ?= $(DESTDIR)/etc/profile.d
 PYTHON ?= /usr/bin/python
 PYLINT ?= /usr/bin/pylint
 GO_MD2MAN ?= /usr/bin/go-md2man
+GO ?= /usr/bin/go
 PYTHONSITELIB=$(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(0))")
 VERSION=$(shell $(PYTHON) setup.py --version)
 
 .PHONY: all
-all: python-build docs pylint-check
+all: python-build docs pylint-check dockertar-sha256-helper
 
 .PHONY: test
 test:
@@ -31,6 +32,9 @@ docs/%.1: docs/%.1.md
 .PHONY: docs
 docs: $(MANPAGES_MD:%.md=%)
 
+dockertar-sha256-helper:
+	$(GO) build dockertar-sha256-helper.go
+
 .PHONY: clean
 clean:
 	$(PYTHON) setup.py clean
@@ -46,7 +50,7 @@ install-only:
 	ln -fs ../share/atomic/atomic $(DESTDIR)/usr/bin/atomic
 
 	install -d -m 0755 $(DESTDIR)/usr/libexec/atomic
-	install -m 0755 migrate.sh gotar $(DESTDIR)/usr/libexec/atomic
+	install -m 0755 dockertar-sha256-helper migrate.sh gotar $(DESTDIR)/usr/libexec/atomic
 
 	[ -d $(SYSCONFDIR) ] || mkdir -p $(SYSCONFDIR)
 	install -m 644 atomic.sysconfig $(SYSCONFDIR)/atomic
