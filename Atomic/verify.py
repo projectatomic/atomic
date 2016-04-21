@@ -154,7 +154,7 @@ class Verify(Atomic):
         for repo_ in similar:
             (reg, repo, tag) = util._decompose(repo_)
             results.append(self.is_registry_local(reg))
-        return False if not all(results) else True
+        return all(results)
 
     def is_registry_local(self, registry):
         """
@@ -162,7 +162,7 @@ class Verify(Atomic):
         :param registry: str registry name
         :return: bool
         """
-        return False if registry in self.get_registries() else True
+        return registry not in self.get_registries()
 
     def get_registries(self):
         """
