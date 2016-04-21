@@ -264,7 +264,7 @@ class Verify(Atomic):
         return "{}-Version unavailable".format(name)
 
     def get_latest_remote_version(self, tag, name=None):
-        r_inspect = util.skopeo(tag)
+        r_inspect = util.skopeo_inspect("docker://" + tag)
         if 'Labels' in r_inspect['Config'] \
                 and r_inspect['Config']['Labels'] is not None:
             latest_version = self.assemble_nvr(r_inspect['Config'], image_name=name)
