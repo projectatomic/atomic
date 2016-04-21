@@ -104,7 +104,9 @@ class Verify(Atomic):
                         if self.is_repo_from_local_registry(iid):
                             # Inspect again by tag in case the image isnt the latest
                             try:
-                                latest_version = self.d.inspect_image(tag)['Version']
+                                image = self.d.inspect_image(tag)
+                                labels = image.get('Config', []).get('Labels', [])
+                                latest_version = labels['Version']
                             except NotFound:
                                 latest_version = layer['Version']
                         else:
@@ -152,7 +154,7 @@ class Verify(Atomic):
         for repo_ in similar:
             (reg, repo, tag) = util._decompose(repo_)
             results.append(self.is_registry_local(reg))
-        return False if not all(results) else True
+        return all(results)
 
     def is_registry_local(self, registry):
         """
@@ -160,7 +162,7 @@ class Verify(Atomic):
         :param registry: str registry name
         :return: bool
         """
-        return False if registry in self.get_registries() else True
+        return registry not in self.get_registries()
 
     def get_registries(self):
         """
@@ -237,7 +239,7 @@ class Verify(Atomic):
             try:
                 _match = (x for x in layers if x["Id"] == _id).__next__()
             except:
-                _match = (x for x in layers if x["Id"] == _id).next()
+                _match = (x for x in layers if x["Id"] == _id).__next__()
         except StopIteration:
             # We were unable to associate IDs due to the local image being set
             # to intermediate by docker bc it is outdated. Therefore we find
@@ -245,7 +247,7 @@ class Verify(Atomic):
             try:
                 _match = (x for x in layers if x["Name"] == name).__next__()
             except:
-                _match = (x for x in layers if x["Name"] == name).next()
+                _match = (x for x in layers if x["Name"] == name).__next__()
         return _match['index']
 
     def get_local_latest_version(self, name):
@@ -264,10 +266,10 @@ class Verify(Atomic):
         return "{}-Version unavailable".format(name)
 
     def get_latest_remote_version(self, tag, name=None):
-        r_inspect = util.skopeo(tag)
-        if 'Labels' in r_inspect['Config'] \
-                and r_inspect['Config']['Labels'] is not None:
-            latest_version = self.assemble_nvr(r_inspect['Config'], image_name=name)
+        r_inspect = util.skopeo_inspect("docker://" + tag)
+        if 'Labels' in r_inspect \
+                and r_inspect['Labels'] is not None:
+            latest_version = self.assemble_nvr(r_inspect, image_name=name)
         else:
             latest_version = "Version unavailable"
         return latest_version

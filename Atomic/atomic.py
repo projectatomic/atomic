@@ -725,13 +725,15 @@ class Atomic(object):
             # Shut up pylint in case we're on a machine with upstream
             # docker-py, which lacks the remote keyword arg.
             #pylint: disable=unexpected-keyword-arg
-            inspection = util.skopeo(self.image)
+            inspection = util.skopeo_inspect("docker://" + self.image)
             # image does not exist on any configured registry
-        try:
+        if 'Config' in inspection and 'Labels' in inspection['Config']:
             labels = inspection['Config']['Labels']
-        except TypeError:  # pragma: no cover
-            # Some images may not have a 'Labels' key.
+        elif 'Labels' in inspection:
+            labels = inspection['Labels']
+        else:
             _no_label()
+
         if labels is not None and len(labels) is not 0:
             for label in labels:
                 self.write_out('{0}: {1}'.format(label, labels[label]))
@@ -915,42 +917,26 @@ class Atomic(object):
     def _convert_to_skopeo(image):
         i = image.replace("oci:", "")
         if "http:" in i:
-            return ["--insecure", "docker://" + i.replace("http:", "")]
+            return ["--insecure"], "docker://" + i.replace("http:", "")
         else:
-            return ["docker://" + i.replace("https:", "")]
+            return [], "docker://" + i.replace("https:", "")
 
     def _skopeo_get_manifest(self, image):
-        try:
-            r = util.subp(['skopeo', 'inspect', '--raw'] + Atomic._convert_to_skopeo(image))
-            if r.return_code != 0:
-                raise ValueError(r.stderr.decode(sys.getdefaultencoding()))
-            return r.stdout.decode('utf-8')
-        except OSError:
-            raise ValueError("skopeo must be installed to perform remote inspections")
+        args, img = Atomic._convert_to_skopeo(image)
+        return util.skopeo_inspect(img, args)
 
     def _skopeo_get_layers(self, image, layers):
-        temp_dir = tempfile.mkdtemp()
-        try:
-            args = ['skopeo', 'layers'] + Atomic._convert_to_skopeo(image) + layers
-            r = util.subp(args, cwd=temp_dir)
-            if r.return_code != 0:
-                raise ValueError(r.stderr.decode(sys.getdefaultencoding()))
-        except OSError:
-            raise ValueError("skopeo must be installed to perform remote inspections")
-        except Exception as e:
-            shutil.rmtree(temp_dir)
-            raise e
-        return temp_dir
+        args, img = Atomic._convert_to_skopeo(image)
+        return util.skopeo_layers(img, args, layers)
 
     @staticmethod
     def _get_layers_from_manifest(manifest):
-        manifest_json = json.loads(manifest)
-        fs_layers = manifest_json.get("fsLayers")
+        fs_layers = manifest.get("fsLayers")
         if fs_layers:
             layers = list(i["blobSum"] for i in fs_layers)
             layers.reverse()
         else:
-            layers = manifest_json.get("Layers")
+            layers = manifest.get("Layers")
         return layers
 
     @staticmethod
@@ -965,7 +951,7 @@ class Atomic(object):
             repo.transaction_set_ref(None, "%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), csum)
 
         # create a $OSTREE_OCIIMAGE_PREFIX$image-$tag branch
-        metadata = GLib.Variant("a{sv}", {'docker.manifest': GLib.Variant('s', manifest)})
+        metadata = GLib.Variant("a{sv}", {'docker.manifest': GLib.Variant('s', json.dumps(manifest))})
         mtree = OSTree.MutableTree()
         file_info = Gio.FileInfo()
         file_info.set_attribute_uint32("unix::uid", 0);
@@ -1119,7 +1105,7 @@ class Atomic(object):
             if manifest is None:
                 repo.checkout_tree_at(options, rootfs_fd, rootfs, rev)
             else:
-                layers = Atomic._get_layers_from_manifest(manifest)
+                layers = Atomic._get_layers_from_manifest(json.loads(manifest))
                 for layer in layers:
                     rev_layer = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer.replace("sha256:", "")), False)[1]
                     repo.checkout_tree_at(options, rootfs_fd, rootfs, rev_layer)

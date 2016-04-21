@@ -8,6 +8,8 @@ import os
 import selinux
 from .client import get_docker_client
 from yaml import load as yaml_load
+import tempfile
+import shutil
 
 """Atomic Utility Module"""
 
@@ -165,14 +167,15 @@ def urllib3_disable_warnings():
                 urllib3.disable_warnings()
 
 
-def skopeo(image):
+def skopeo_inspect(image, args=[]):
     """
     Performs remote inspection of an image on a registry
-    :param image:  fully qualified name
+    :param image: fully qualified name
+    :param args: additional parameters to pass to Skopeo
     :return: Returns json formatted data
     """
 
-    cmd = ['/usr/bin/skopeo', image]
+    cmd = ['skopeo', 'inspect'] + args + [image]
     try:
         results = subp(cmd)
     except OSError:
@@ -181,6 +184,28 @@ def skopeo(image):
         raise ValueError(results.stderr)
     else:
         return json.loads(results.stdout.decode('utf-8'))
+
+
+def skopeo_layers(image, args=[], layers=[]):
+    """
+    Fetch image layers through Skopeo
+    :param image: fully qualified name
+    :param args: additional parameters to pass to Skopeo
+    :param layers: if set, specify what layers must be downloaded
+    :return: Returns the temporary directory with the layers
+    """
+    temp_dir = tempfile.mkdtemp()
+    try:
+        args = ['skopeo', 'layers'] + args + [image] + layers
+        r = subp(args, cwd=temp_dir)
+        if r.return_code != 0:
+            raise ValueError(r.stderr.decode(sys.getdefaultencoding()))
+    except OSError:
+        raise ValueError("skopeo must be installed to perform remote inspections")
+    except Exception as e:
+        shutil.rmtree(temp_dir)
+        raise e
+    return temp_dir
 
 
 class NoDockerDaemon(Exception):
