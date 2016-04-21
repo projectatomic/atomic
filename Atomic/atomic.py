@@ -725,13 +725,15 @@ class Atomic(object):
             # Shut up pylint in case we're on a machine with upstream
             # docker-py, which lacks the remote keyword arg.
             #pylint: disable=unexpected-keyword-arg
-            inspection = util.skopeo_inspect(self.image)
+            inspection = util.skopeo_inspect("docker://" + self.image)
             # image does not exist on any configured registry
-        try:
+        if 'Config' in inspection and 'Labels' in inspection['Config']:
             labels = inspection['Config']['Labels']
-        except TypeError:  # pragma: no cover
-            # Some images may not have a 'Labels' key.
+        elif 'Labels' in inspection:
+            labels = inspection['Labels']
+        else:
             _no_label()
+
         if labels is not None and len(labels) is not 0:
             for label in labels:
                 self.write_out('{0}: {1}'.format(label, labels[label]))

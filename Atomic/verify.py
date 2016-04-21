@@ -104,7 +104,9 @@ class Verify(Atomic):
                         if self.is_repo_from_local_registry(iid):
                             # Inspect again by tag in case the image isnt the latest
                             try:
-                                latest_version = self.d.inspect_image(tag)['Version']
+                                image = self.d.inspect_image(tag)
+                                labels = image.get('Config', []).get('Labels', [])
+                                latest_version = labels['Version']
                             except NotFound:
                                 latest_version = layer['Version']
                         else:
@@ -265,9 +267,9 @@ class Verify(Atomic):
 
     def get_latest_remote_version(self, tag, name=None):
         r_inspect = util.skopeo_inspect("docker://" + tag)
-        if 'Labels' in r_inspect['Config'] \
-                and r_inspect['Config']['Labels'] is not None:
-            latest_version = self.assemble_nvr(r_inspect['Config'], image_name=name)
+        if 'Labels' in r_inspect \
+                and r_inspect['Labels'] is not None:
+            latest_version = self.assemble_nvr(r_inspect, image_name=name)
         else:
             latest_version = "Version unavailable"
         return latest_version
