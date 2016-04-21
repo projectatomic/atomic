@@ -237,7 +237,7 @@ class Verify(Atomic):
             try:
                 _match = (x for x in layers if x["Id"] == _id).__next__()
             except:
-                _match = (x for x in layers if x["Id"] == _id).next()
+                _match = (x for x in layers if x["Id"] == _id).__next__()
         except StopIteration:
             # We were unable to associate IDs due to the local image being set
             # to intermediate by docker bc it is outdated. Therefore we find
@@ -245,7 +245,7 @@ class Verify(Atomic):
             try:
                 _match = (x for x in layers if x["Name"] == name).__next__()
             except:
-                _match = (x for x in layers if x["Name"] == name).next()
+                _match = (x for x in layers if x["Name"] == name).__next__()
         return _match['index']
 
     def get_local_latest_version(self, name):
