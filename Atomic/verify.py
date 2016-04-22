@@ -6,7 +6,9 @@ from operator import itemgetter
 from .atomic import AtomicError
 
 class Verify(Atomic):
-    DEBUG = False
+    def __init__(self):
+        super(Verify, self).__init__()
+        self.debug = False
 
     def verify(self):
         """
@@ -27,6 +29,9 @@ class Verify(Atomic):
                     layer['Name'] = layer['Tag']
             return layers
 
+        # Set debug bool
+        self.set_debug()
+
         # Check if the input is an image id associated with more than one
         # repotag.  If so, error out.
         if self.is_iid(self.image):
@@ -40,12 +45,12 @@ class Verify(Atomic):
                 self._no_such_image()
 
         layers = fix_layers(self.get_layers())
-        if self.DEBUG:
+        if self.debug:
             for l in layers:
                 util.output_json(l)
         uniq_names = list(set(x['Name'] for x in layers if x['Name'] != ''))
         base_images = self.get_tagged_images(uniq_names, layers)
-        if self.DEBUG:
+        if self.debug:
             for b in base_images:
                 util.output_json(b)
         if self.args.verbose:

@@ -15,7 +15,6 @@ class Top(Atomic):
     Class to support atomic top; based on the Atomic class
     """
     # Set to true to output debug information
-    DEBUG = False
 
     def __init__(self):
         super(Top, self).__init__()
@@ -24,6 +23,7 @@ class Top(Atomic):
         self.name_id = {}
         self.optional = None
         self.titles = None
+        self.debug = False
         # To add a new column to the output, create a new dict inside self.headers
         # The fields are as follows:
         # shortname: <str> a unique key used to describe the dict
@@ -95,6 +95,8 @@ class Top(Atomic):
         """
         # Make sure the docker daemon is running
         self.ping()
+        # Set debug bool
+        self.set_debug()
         # Activate optional columns
         self._activate_optionals()
         # Do we have a tty?
@@ -122,7 +124,7 @@ class Top(Atomic):
             for cid in con_ids:
                 proc_info += self.get_pids_by_container(cid)
             # Reset screen
-            if not self.DEBUG and has_tty:
+            if not self.debug and has_tty:
                 util.write_out("\033c")
             sorted_info = self.reformat_ps_info(proc_info)
             self._set_dynamic_column_widths(sorted_info)
@@ -222,7 +224,7 @@ class Top(Atomic):
         """
         # Determine if the sort field needs to reverse the order of the sort
         _reverse = next((header['sort_order'] for header in self.headers if header['shortname'] == self._sort), False)
-        if self.DEBUG:
+        if self.debug:
             util.write_out("sorting on {0} and reverse is {1}".format(self._sort, _reverse))
         return sorted(proc_info, key=itemgetter(self._sort), reverse=_reverse)
 

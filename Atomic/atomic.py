@@ -143,6 +143,7 @@ class Atomic(object):
         self.active_containers = []
         self.atomic_config = None
         self.docker_cmd = None
+        self.debug = False
 
     def docker_binary(self):
         if not self.docker_cmd:
@@ -1543,6 +1544,10 @@ class Atomic(object):
         if self.atomic_config is None:
             self.atomic_config = util.get_atomic_config()
         return _recursive_get(config_items)
+
+    def set_debug(self):
+        if self.args.debug:
+            self.debug = True
 
 class AtomicError(Exception):
     pass

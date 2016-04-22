@@ -11,6 +11,7 @@ class Scan(Atomic):
     """
     Scan class that can generically work any scanner
     """
+
     results = '/var/lib/atomic'
 
     def __init__(self):
@@ -34,6 +35,9 @@ class Scan(Atomic):
                             return i['image_name'], x['args'], i.get('custom_args')
         if self.args.debug:
             self.debug = True
+
+        # Set debug bool
+        self.set_debug()
 
         if self.args.list:
             self.print_scan_list()
