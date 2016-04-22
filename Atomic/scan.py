@@ -85,8 +85,11 @@ class Scan(Atomic):
         # Show the command being run
         util.write_out(" ".join(scan_cmd))
 
+        # Show stdout from container if --debug or --verbose
+        stdout = None if (self.args.verbose or self.args.debug) else open(os.devnull, 'w')
+
         # do the scan
-        util.check_call(scan_cmd)
+        util.check_call(scan_cmd, stdout=stdout)
 
         # umount all the rootfs
         self._umount_rootfs_in_dir()
