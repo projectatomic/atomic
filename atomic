@@ -38,6 +38,7 @@ from Atomic.run import Run
 from Atomic.atomic import NoDockerDaemon
 from Atomic.util import get_atomic_config, get_scanners, default_docker_lib
 import traceback
+from Atomic.mount import MountError
 
 PROGNAME = "atomic"
 gettext.bindtextdomain(PROGNAME, "/usr/share/locale")
@@ -106,6 +107,11 @@ def check_negative(value):
         raise argparse.ArgumentTypeError("%s must be a positive integer value greater than 0." % value)
     return ivalue
 
+
+def need_root():
+    sub_function = sys.argv[1] if sys.argv[1] not in ['--debug'] else sys.argv[2]
+    exit("Some operations for '%s' require root access." % sub_function)
+    sys.exit(1)
 
 if __name__ == '__main__':
     atomic_config = get_atomic_config()
@@ -572,7 +578,7 @@ if __name__ == '__main__':
     except (ValueError, IOError, docker.errors.DockerException, NoDockerDaemon) as e:
         sys.stderr.write("%s\n" % str(e))
         if os.geteuid() != 0:
-            exit("Some operations for %s require root access." % sys.argv[0] )
+            need_root()
         sys.exit(1)
     except subprocess.CalledProcessError as e:
         sys.stderr.write("\n")
@@ -581,6 +587,9 @@ if __name__ == '__main__':
         # python3 throws exception on no args to atomic
         parser.print_usage()
         sys.exit(1)
+    except (OSError, MountError) as e:
+        if str(e).find("Permission denied"):
+            need_root()
     except Exception as e:
         if args.debug:
             traceback.print_exc(file=sys.stdout)
