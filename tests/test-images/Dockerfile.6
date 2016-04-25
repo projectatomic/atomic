@@ -1,0 +1,5 @@
+FROM centos
+COPY install.sh /bin/
+RUN chmod +x /bin/install.sh
+LABEL INSTALL 'docker run --rm=true --net=host -v /:/host -e NAME=${NAME} -e IMAGE=${IMAGE} -e HOST=/host ${IMAGE} /bin/install.sh'
+LABEL "Name"="atomic-test-6"
