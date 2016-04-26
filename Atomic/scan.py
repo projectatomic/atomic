@@ -70,7 +70,7 @@ class Scan(Atomic):
             util.write_out("Creating the output dir at {}".format(self.results_dir))
 
         # Create the output directory
-        os.mkdir(self.results_dir)
+        os.makedirs(self.results_dir)
 
         docker_args = ['docker', 'run', '-it', '--rm', '-v', '/etc/localtime:/etc/localtime',
                        '-v', '{}:{}'.format(self.chroot_dir, '/scanin'), '-v',
