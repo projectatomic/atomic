@@ -21,7 +21,7 @@ _default_docker=None
 _default_docker_lib=None
 
 if sys.version_info[0] < 3:
-    input = raw_input
+    input = raw_input # pylint: disable=undefined-variable
 else:
     input = input
 
