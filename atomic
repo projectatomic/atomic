@@ -595,7 +595,8 @@ if __name__ == '__main__':
         sys.stderr.write("%sn" % str(e))
     except SystemExit:
         # Overriding debug args to avoid a traceback from sys.exit()
-        args.debug = False
+        if 'args' in locals():
+            args.debug = False
     finally:
-        if args.debug:
+        if 'args' in locals() and args.debug:
             traceback.print_exc(file=sys.stdout)
