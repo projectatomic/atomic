@@ -886,7 +886,7 @@ class Atomic(object):
             manifest = Atomic._get_commit_metadata(repo, commit, "docker.manifest")
             if not manifest:
                 return
-            for layer in Atomic._get_layers_from_manifest(manifest):
+            for layer in Atomic._get_layers_from_manifest(json.loads(manifest)):
                 refs[OSTREE_OCIIMAGE_PREFIX + layer.replace("sha256:", "")] = True
 
         for app in app_refs:
@@ -952,7 +952,7 @@ class Atomic(object):
             repo.transaction_set_ref(None, "%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), csum)
 
         # create a $OSTREE_OCIIMAGE_PREFIX$image-$tag branch
-        metadata = GLib.Variant("a{sv}", {'docker.manifest': GLib.Variant('s', json.dumps(manifest))})
+        metadata = GLib.Variant("a{sv}", {'docker.manifest': GLib.Variant('s', manifest)})
         mtree = OSTree.MutableTree()
         file_info = Gio.FileInfo()
         file_info.set_attribute_uint32("unix::uid", 0);
