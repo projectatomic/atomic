@@ -13,7 +13,7 @@ VERSION=$(shell $(PYTHON) setup.py --version)
 all: python-build docs pylint-check dockertar-sha256-helper
 
 .PHONY: test
-test:
+test: all
 	./test.sh
 
 .PHONY: python-build

@@ -1,4 +1,5 @@
 from . import Atomic
+from . import mount
 from . import util
 from datetime import datetime
 import os
@@ -91,8 +92,8 @@ class Scan(Atomic):
         # do the scan
         util.check_call(scan_cmd, stdout=stdout)
 
-        # umount all the rootfs
-        self._umount_rootfs_in_dir()
+        # unmount all the rootfs
+        self._unmount_rootfs_in_dir()
 
         # output results
         self.output_results()
@@ -153,7 +154,7 @@ class Scan(Atomic):
             if self.debug:
                 util.write_out("Mounted {} to {}".format(docker_object, mount_path))
 
-    def _umount_rootfs_in_dir(self):
+    def _unmount_rootfs_in_dir(self):
         for _dir in self.get_rootfs_paths():
             rootfs_dir = os.path.join(self.chroot_dir, _dir)
             self.unmount(rootfs_dir)
@@ -330,3 +331,15 @@ class Scan(Atomic):
                 util.write_out("{}Description: {}\n".format(" " * 5, scan_type['description']))
         util.write_out("\n* denotes defaults")
         sys.exit(0)
+
+    def mount(self, mountpoint, image):
+        m = mount.Mount()
+        m.mountpoint = mountpoint
+        m.image=image
+        m.shared=True
+        m.mount()
+
+    def unmount(self, mountpoint):
+        m = mount.Mount()
+        m.mountpoint = mountpoint
+        m.unmount()

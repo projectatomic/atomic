@@ -8,7 +8,7 @@ class TestAtomicMount(unittest.TestCase):
         def mock_info():
             return {'Driver': 'foobardriver'}
         m = mount.DockerMount('foobar')
-        m.client.info = mock_info
+        m.d.info = mock_info
         exp = 'Atomic mount is not supported on the foobardriver docker ' \
               'storage backend.'
         self.assertRaisesRegexp(mount.MountError, exp, m.mount, 'fedora:22')
@@ -32,12 +32,6 @@ class TestAtomicMount(unittest.TestCase):
         o = m._default_options(['ro', 'context="foobang_context"'],
                                default_con='foobar_context')
         self.assertEqual(o, ['ro', 'context="foobang_context"'])
-
-    def test_not_implemented_container_backend(self):
-        m = mount.Mount('foobar')
-        self.assertRaises(NotImplementedError, m.mount, '')
-        self.assertRaises(NotImplementedError, m.unmount)
-
 
 if __name__ == '__main__':
     unittest.main()

@@ -20,6 +20,7 @@
 #    02110-1301 USA.
 #
 
+from . import Atomic
 import os
 import sys
 import json
@@ -54,27 +55,64 @@ class SelectionMatchError(MountError):
                     '{1}'.format(i, '\n'.join(['\t' + m for m in matches])))
 
 
-class Mount:
+class Mount(Atomic):
 
     """
     A class which contains backend-independent methods useful for mounting and
     unmounting containers.
     """
-    def __init__(self, mountpoint, live=False):
+    def __init__(self):
         """
         Constructs the Mount class with a mountpoint.
         Optional: mount a running container live (read/write)
         """
-        self.mountpoint = mountpoint
-        self.live = live
+        super(Mount, self).__init__()
+        self.mountpoint = ""
+        self.live = False
+        self.shared = False
+        self.options = ""
 
-    def mount(self, identifier, options=[]):
-        raise NotImplementedError('Mount subclass does not implement mount() '
-                                  'method.')
+    def set_args(self, args):
+        if "mountpoint" in args:
+            self.mountpoint = args.mountpoint
+        if "live" in args:
+            self.live = args.live
+        if "shared" in args:
+            self.shared = args.shared
+        if "options" in args:
+            self.options = [opt for opt in args.options.split(',') if opt]
+        if "image" in args:
+            self.image = args.image
+
+    def mount(self):
+        try:
+            d = DockerMount(self.mountpoint, self.live)
+            d.shared = self.shared
+            d.mount(self.image, self.live)
+
+            # only need to bind-mount on the devicemapper driver
+            if self.d.info()['Driver'] == 'devicemapper':
+                Mount.mount_path(os.path.join(self.mountpoint, "rootfs"),
+                                 self.mountpoint,
+                                 bind=True)
+
+        except (MountError, NoDockerDaemon) as dme:
+            raise ValueError(str(dme))
 
     def unmount(self):
-        raise NotImplementedError('Mount subclass does not implement unmount()'
-                                  ' method.')
+
+        try:
+            dev = Mount.get_dev_at_mountpoint(self.mountpoint)
+
+            # If there's a bind-mount over the directory, unbind it.
+            if dev.rsplit('[', 1)[-1].strip(']') == '/rootfs' \
+                    and self.d.info()['Driver'] == 'devicemapper':
+                Mount.unmount_path(self.mountpoint)
+
+            return DockerMount(self.mountpoint).unmount()
+
+        except MountError as dme:
+            raise ValueError(str(dme))
 
     # LVM DeviceMapper Utility Methods
     @staticmethod
@@ -163,7 +201,7 @@ class Mount:
 
         # Added this timeout loop because it seems openscap/openscap-daemon
         # still has a left over process running that causes the mount path
-        # to be busy and therefore causes the umount to fail.
+        # to be busy and therefore causes the unmount to fail.
         #
         # When that is fixed, this can revert to a simple command executed
         # by subp.
@@ -188,8 +226,9 @@ class DockerMount(Mount):
     """
 
     def __init__(self, mountpoint, live=False, mnt_mkdir=False):
-        Mount.__init__(self, mountpoint, live)
-        self.client = get_docker_client()
+        Mount.__init__(self)
+        self.mountpoint = mountpoint
+        self.live = live
         self.mnt_mkdir = mnt_mkdir
         self.tmp_image = None
 
@@ -201,7 +240,7 @@ class DockerMount(Mount):
         variable so that they can be cleaned on unmount.
         """
         try:
-            return self.client.create_container(
+            return self.d.create_container(
                 image=iid, command='/bin/true',
                 environment=['_ATOMIC_TEMP_CONTAINER'],
                 detach=True, network_disabled=True)['Id']
@@ -222,7 +261,7 @@ class DockerMount(Mount):
                  in which case it returns the image cloned image id.
         """
         try:
-            iid = self.client.commit(
+            iid = self.d.commit(
                 container=cid,
                 conf={
                     'Labels': {
@@ -239,7 +278,7 @@ class DockerMount(Mount):
             return self._create_temp_container(iid)
 
     def _is_container_running(self, cid):
-        cinfo = self.client.inspect_container(cid)
+        cinfo = self.d.inspect_container(cid)
         return cinfo['State']['Running']
 
     def _identifier_as_cid(self, identifier):
@@ -254,7 +293,7 @@ class DockerMount(Mount):
                         if matches(n, '/' + identifier)])
 
         # Determine if identifier is a container
-        containers = [c['Id'] for c in self.client.containers(all=True)
+        containers = [c['Id'] for c in self.d.containers(all=True)
                       if (__cname_matches(c, identifier) or
                           matches(c['Id'], identifier + '*'))]
 
@@ -265,7 +304,7 @@ class DockerMount(Mount):
             return c if self.live else self._clone(c)
 
         # Determine if identifier is an image UUID
-        images = [i for i in set(self.client.images(all=True, quiet=True))
+        images = [i for i in set(self.d.images(all=True, quiet=True))
                   if i.startswith(identifier)]
 
         if len(images) > 1:
@@ -316,7 +355,7 @@ class DockerMount(Mount):
             pass
 
         try:
-            driver = self.client.info()['Driver']
+            driver = self.d.info()['Driver']
         except requests.exceptions.ConnectionError:
             raise NoDockerDaemon()
 
@@ -330,7 +369,7 @@ class DockerMount(Mount):
     def _unsupported_backend(self, identifier='', options=[]):
         raise MountError('Atomic mount is not supported on the {} docker '
                          'storage backend.'
-                         ''.format(self.client.info()['Driver']))
+                         ''.format(self.d.info()['Driver']))
 
     def _default_options(self, options, default_con=None, default_options=[]):
         """
@@ -354,7 +393,7 @@ class DockerMount(Mount):
             raise MountError('Cannot set mount options for live container '
                              'mount.')
 
-        info = self.client.info()
+        info = self.d.info()
 
         cid = self._identifier_as_cid(identifier)
 
@@ -370,14 +409,19 @@ class DockerMount(Mount):
             except Exception as e:
                 raise MountError(e)
 
-        cinfo = self.client.inspect_container(cid)
+        cinfo = self.d.inspect_container(cid)
 
         if self.live and not cinfo['State']['Running']:
             self._cleanup_container(cinfo)
             raise MountError('Cannot live mount non-running container.')
 
+        if self.shared:
+            defcon=util.default_ro_container_context()
+        else:
+            defcon=cinfo['MountLabel']
+
         options = self._default_options(
-            options, default_con=cinfo['MountLabel'],
+            options, default_con=defcon,
             default_options=[] if self.live else ['ro', 'nosuid', 'nodev'])
 
         dm_dev_name, dm_dev_id, dm_dev_size = '', '', ''
@@ -427,7 +471,7 @@ class DockerMount(Mount):
                              'writeable mounts.')
 
         cid = self._identifier_as_cid(identifier)
-        cinfo = self.client.inspect_container(cid)
+        cinfo = self.d.inspect_container(cid)
 
         ld, ud, wd = '', '', ''
         try:
@@ -458,14 +502,14 @@ class DockerMount(Mount):
             return
 
         iid = cinfo['Image']
-        self.client.remove_container(cinfo['Id'])
+        self.d.remove_container(cinfo['Id'])
         try:
-            labels = self.client.inspect_image(iid)['Config']['Labels']
+            labels = self.d.inspect_image(iid)['Config']['Labels']
         except TypeError:
             labels = {}
         if labels and 'io.projectatomic.Temporary' in labels:
             if labels['io.projectatomic.Temporary'] == 'true':
-                self.client.remove_image(iid)
+                self.d.remove_image(iid)
 
         # If we are creating temporary dirs for mount points
         # based on the cid, then we should rmdir them while
@@ -480,13 +524,13 @@ class DockerMount(Mount):
         # If a temporary image is created with commit,
         # clean up that too
         if self.tmp_image is not None:
-            self.client.remove_image(self.tmp_image, noprune=True)
+            self.d.remove_image(self.tmp_image, noprune=True)
 
     def unmount(self, path=None):
         """
         Unmounts and cleans-up after a previous mount().
         """
-        driver = self.client.info()['Driver']
+        driver = self.d.info()['Driver']
         driver_unmount_fn = getattr(self, "_unmount_" + driver,
                                     self._unsupported_backend)
         if path is not None:
@@ -499,7 +543,7 @@ class DockerMount(Mount):
         Simple function that returns a list of the container
         IDs.
         '''
-        return [x['Id'] for x in self.client.containers(all=True)]
+        return [x['Id'] for x in self.d.containers(all=True)]
 
     def _get_cid_from_mountpoint(self, mountpoint):
         dev = Mount.get_dev_at_mountpoint(mountpoint)
@@ -507,7 +551,7 @@ class DockerMount(Mount):
 
         cid = None
         for c in self._get_all_cids():
-            graph = self.client.inspect_container(c)["GraphDriver"]
+            graph = self.d.inspect_container(c)["GraphDriver"]
             if graph["Name"] != "devicemapper":
                 continue
             if dev_name == graph["Data"]["DeviceName"]:
@@ -525,7 +569,7 @@ class DockerMount(Mount):
             raise MountError('Device mounted at {} is not a docker container.'
                              ''.format(mountpoint))
         Mount.unmount_path(mountpoint)
-        cinfo = self.client.inspect_container(cid)
+        cinfo = self.d.inspect_container(cid)
 
         # Was the container live mounted? If so, done.
         # TODO: Container.Config.Env should be {} (iterable) not None.
@@ -564,12 +608,10 @@ class DockerMount(Mount):
             raise MountError('Device mounted at {} is not an atomic mount.'.format(mountpoint))
         cid = self._get_overlay_mount_cid()
         Mount.unmount_path(mountpoint)
-        self._cleanup_container(self.client.inspect_container(cid))
+        self._cleanup_container(self.d.inspect_container(cid))
 
     def _clean_temp_container_by_path(self, path):
         short_cid = os.path.basename(path)
         if not self.live:
-            self.client.remove_container(short_cid)
+            self.d.remove_container(short_cid)
         self._clean_tmp_image()
-
-
