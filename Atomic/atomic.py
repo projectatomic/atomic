@@ -652,7 +652,9 @@ class Atomic(object):
 
         default_uid = "0"
         with open("/proc/self/loginuid") as f:
-            default_uid = f.readline()
+            val = f.readline()
+            if int(val) <= 2147483647:
+                default_uid = val
 
         if "SUDO_UID" not in os.environ:
             os.environ["SUDO_UID"] = default_uid
