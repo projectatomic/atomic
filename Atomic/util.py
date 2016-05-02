@@ -98,6 +98,10 @@ def default_container_context():
                 return context.strip("\n\" ")
     return ""
 
+def default_ro_container_context():
+    if selinux.is_selinux_enabled() != 0:
+        return selinux.getfilecon("/usr")[1]
+    return ""
 
 def write_out(output, lf="\n"):
     sys.stdout.flush()

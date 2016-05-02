@@ -26,7 +26,6 @@ import dbus
 import docker
 import requests
 
-from . import mount
 from . import util
 from . import satellite
 from . import pulp
@@ -1287,44 +1286,6 @@ class Atomic(object):
             self._images.append(self._get_image_infos(image))
 
         return self._images
-
-
-    def mount(self, mountpoint=None, image=None, live=False):
-        try:
-            if mountpoint is None:
-                mountpoint = self.args.mountpoint
-            if image is None:
-                image = self.args.image
-            if 'live' in self.args:
-                live = self.args.live
-
-            options = [opt for opt in self.args.options.split(',') if opt] if 'options' in self.args else ""
-            mount.DockerMount(mountpoint, live).mount(image, options)
-
-            # only need to bind-mount on the devicemapper driver
-            if self.d.info()['Driver'] == 'devicemapper':
-                mount.Mount.mount_path(os.path.join(mountpoint, "rootfs"),
-                                       mountpoint,
-                                       bind=True)
-
-        except (mount.MountError, mount.NoDockerDaemon) as dme:
-            raise ValueError(str(dme))
-
-    def unmount(self, mountpoint=None):
-        if mountpoint is None:
-            mountpoint = self.args.mountpoint
-        try:
-            dev = mount.Mount.get_dev_at_mountpoint(mountpoint)
-
-            # If there's a bind-mount over the directory, unbind it.
-            if dev.rsplit('[', 1)[-1].strip(']') == '/rootfs' \
-                    and self.d.info()['Driver'] == 'devicemapper':
-                mount.Mount.unmount_path(mountpoint)
-
-            return mount.DockerMount(mountpoint).unmount()
-
-        except mount.MountError as dme:
-            raise ValueError(str(dme))
 
     def version(self):
         def get_label(label):
