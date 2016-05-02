@@ -77,7 +77,13 @@ class DiffHelpers(object):
         """
         image_list = []
         for image in images:
-            image_list.append(DiffObj(image))
+            try:
+                image_list.append(DiffObj(image))
+            except mount.SelectionMatchError as e:
+                if len(image_list) > 0:
+                    DiffHelpers._cleanup(image_list)
+                sys.stderr.write("{}\n".format(e))
+                sys.exit(1)
         return image_list
 
     def output_files(self, images, image_list):

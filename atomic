@@ -39,7 +39,7 @@ from Atomic.run import Run
 from Atomic.atomic import NoDockerDaemon
 from Atomic.util import get_atomic_config, get_scanners, default_docker_lib
 import traceback
-from Atomic.mount import MountError
+from Atomic.mount import MountError, SelectionMatchError
 
 PROGNAME = "atomic"
 gettext.bindtextdomain(PROGNAME, "/usr/share/locale")
