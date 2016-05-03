@@ -3,7 +3,6 @@ export docker images, containers and volumes into a filesystem directory.
 """
 import os
 import sys
-import subprocess
 
 from .client import get_docker_client
 from . import util
@@ -25,7 +24,7 @@ def export_docker(graph, export_location):
         choice = sys.stdin.read(1)
         if choice.lower() == 'y':
             util.write_out("Deleting dangling images")
-            subprocess.check_call([util.default_docker(), "rmi", "-f"]+dangling_images)
+            util.check_call([util.default_docker(), "rmi", "-f"]+dangling_images)
         else:
             raise ValueError("Please delete dangling images before running atomic migrate export")
 
@@ -65,7 +64,7 @@ def export_images(export_location):
         tags = " ".join(images[id])
         util.write_out("Exporting image: {0}".format(id[:12]))
         with open(export_location + '/images/' + id, 'w') as f:
-            subprocess.check_call([util.default_docker(), "save", tags], stdout=f)
+            util.check_call([util.default_docker(), "save", tags], stdout=f)
 
 def export_containers(graph, export_location):
     """
@@ -78,14 +77,14 @@ def export_containers(graph, export_location):
         id = container["Id"]
 
         util.write_out("Exporting container: {0}".format(id[:12]))
-        subprocess.check_call([ATOMIC_LIBEXEC + '/migrate.sh',
+        util.check_call([ATOMIC_LIBEXEC + '/migrate.sh',
                                'export',
                                '--container-id=' + id[:12],
                                '--graph=' + graph,
                                '--export-location=' + export_location])
 
 def tar_create(srcdir, destfile):
-    subprocess.check_call(['/usr/bin/tar', '--create', '--gzip', '--selinux',
+    util.check_call(['/usr/bin/tar', '--create', '--gzip', '--selinux',
                            '--file', destfile, '--directory', srcdir, '.'])
 
 

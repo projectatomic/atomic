@@ -3,7 +3,6 @@ import docker images, containers and volumes from a filesystem directory.
 """
 import os
 import sys
-import subprocess
 
 from . import util
 
@@ -31,7 +30,7 @@ def import_docker(graph, import_location):
     choice = sys.stdin.read(1)
     if choice.lower() == 'y':
         util.write_out("Deleting {0}".format(import_location))
-        subprocess.check_call(['/usr/bin/rm', '-rf', import_location])
+        util.check_call(['/usr/bin/rm', '-rf', import_location])
     util.write_out("Please restart docker daemon for the changes to take effect")
 
 def import_images(import_location):
@@ -43,7 +42,7 @@ def import_images(import_location):
     for image in images:
         util.write_out("Importing image: {0}".format(image[:12]))
         with open(subdir + '/' + image) as f:
-            subprocess.check_call([util.default_docker(), "load"], stdin=f)
+            util.check_call([util.default_docker(), "load"], stdin=f)
 
 def import_containers(graph, import_location):
     """
@@ -54,14 +53,14 @@ def import_containers(graph, import_location):
     for cnt in containers:
         cnt = cnt[8:] # strip off the "migrate-" prefix
         util.write_out("Importing container: {0}".format(cnt[:12]))
-        subprocess.check_call([ATOMIC_LIBEXEC + '/migrate.sh',
+        util.check_call([ATOMIC_LIBEXEC + '/migrate.sh',
                                'import',
                                '--container-id=' + cnt,
                                '--graph=' + graph,
                                '--import-location=' + import_location])
 
 def tar_extract(srcfile, destdir):
-    subprocess.check_call(['/usr/bin/tar', '--extract', '--gzip', '--selinux',
+    util.check_call(['/usr/bin/tar', '--extract', '--gzip', '--selinux',
                            '--file', srcfile, '--directory', destdir])
 
 def import_volumes(graph, import_location):

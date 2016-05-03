@@ -78,16 +78,30 @@ def subp(cmd, cwd=None):
     """
     proc = subprocess.Popen(cmd, cwd=cwd,
                             stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
+                            stderr=subprocess.PIPE, close_fds=True)
     out, err = proc.communicate()
     return ReturnTuple(proc.returncode, stdout=out, stderr=err)
 
-
+# Wrappers for Python's subprocess which override the default for close_fds,
+# since we are a privileged process, and we don't want to leak things like
+# the docker socket into child processes by default
 def check_call(cmd, env=os.environ, stdin=None, stderr=None, stdout=None):
     # Make sure cmd is a list
     if not isinstance(cmd, list):
         cmd = shlex.split(cmd)
-    return subprocess.check_call(cmd, env=env, stdin=stdin, stderr=stderr, stdout=stdout)
+    return subprocess.check_call(cmd, env=env, stdin=stdin, stderr=stderr, stdout=stdout, close_fds=True)
+
+def check_output(cmd, env=os.environ, stdin=None, stderr=None, stdout=None):
+    # Make sure cmd is a list
+    if not isinstance(cmd, list):
+        cmd = shlex.split(cmd)
+    return subprocess.check_output(cmd, env=env, stdin=stdin, stderr=stderr, stdout=stdout, close_fds=True)
+
+def call(cmd, env=os.environ, stdin=None, stderr=None, stdout=None):
+    # Make sure cmd is a list
+    if not isinstance(cmd, list):
+        cmd = shlex.split(cmd)
+    return subprocess.call(cmd, env=env, stdin=stdin, stderr=stderr, stdout=stdout, close_fds=True)
 
 def default_container_context():
     if selinux.is_selinux_enabled() != 0:

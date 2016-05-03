@@ -72,7 +72,7 @@ class AtomicHelp(Atomic):
             raise ValueError("Unable to find help file for {}".format(self.docker_object))
 
         cmd2 = ['groff', '-man', '-Tascii']
-        c2 = subprocess.Popen(cmd2, stdin=help_file, stdout=subprocess.PIPE)
+        c2 = subprocess.Popen(cmd2, stdin=help_file, stdout=subprocess.PIPE, close_fds=True)
         result = c2.communicate()[0].decode(enc)
         help_file.close()
         if not self.use_pager:

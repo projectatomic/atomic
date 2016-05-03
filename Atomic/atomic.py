@@ -7,7 +7,6 @@ import math
 import pipes
 import getpass
 import argparse
-import subprocess
 import shutil
 import tempfile
 import tarfile
@@ -182,7 +181,7 @@ class Atomic(object):
         self.ping()
         if self.force:
             self.force_delete_containers()
-        return subprocess.check_call([self.docker_binary(), "pull", self.image])
+        return util.check_call([self.docker_binary(), "pull", self.image])
 
     def pull(self):
         prevstatus = ""
@@ -311,8 +310,8 @@ class Atomic(object):
         layers_map = {}
         enc = sys.getdefaultencoding()
         for k, v in layers.items():
-            out = subprocess.check_output([ATOMIC_LIBEXEC + '/dockertar-sha256-helper',
-           v], stderr=DEVNULL)
+            out = util.check_output([ATOMIC_LIBEXEC + '/dockertar-sha256-helper', v], 
+                                    stderr=DEVNULL)
             layers_map[k] = out.decode(enc).replace("\n", "")
         layers_ordered = []
 
@@ -428,14 +427,14 @@ class Atomic(object):
             if self.args.display:
                 return self.display(cmd)
             else:
-                return subprocess.check_call(cmd, stderr=DEVNULL)
+                return util.check_call(cmd, stderr=DEVNULL)
         else:
             if self.command:
                 if self.args.display:
                     return self.write_out("docker exec -t -i %s %s" %
                                          (self.name, self.command))
                 else:
-                    return subprocess.check_call(
+                    return util.check_call(
                         [self.docker_binary(), "exec", "-t", "-i", self.name] +
                         self.command, stderr=DEVNULL)
             else:
@@ -445,26 +444,26 @@ class Atomic(object):
     def _start(self):
         if self._interactive():
             if self.command:
-                subprocess.check_call(
+                util.check_call(
                     [self.docker_binary(), "start", self.name],
                     stderr=DEVNULL)
-                return subprocess.check_call(
+                return util.check_call(
                     [self.docker_binary(), "exec", "-t", "-i", self.name] +
                     self.command)
             else:
-                return subprocess.check_call(
+                return util.check_call(
                     [self.docker_binary(), "start", "-i", "-a", self.name],
                     stderr=DEVNULL)
         else:
             if self.command:
-                subprocess.check_call(
+                util.check_call(
                     [self.docker_binary(), "start", self.name],
                     stderr=DEVNULL)
-                return subprocess.check_call(
+                return util.check_call(
                     [self.docker_binary(), "exec", "-t", "-i", self.name] +
                     self.command)
             else:
-                return subprocess.check_call(
+                return util.check_call(
                     [self.docker_binary(), "start", self.name],
                     stderr=DEVNULL)
 
@@ -631,7 +630,7 @@ class Atomic(object):
 
         if self.name == self.image:
             self.write_out("docker rmi %s" % self.image)
-            subprocess.check_call([self.docker_binary(), "rmi", self.image])
+            util.check_call([self.docker_binary(), "rmi", self.image])
 
     def cmd_env(self):
         os.environ['NAME'] = self.name or ""
@@ -768,7 +767,7 @@ class Atomic(object):
         enc = sys.getdefaultencoding()
         if self.args.prune:
             cmd = "docker images --filter dangling=true -q".split()
-            for i in subprocess.check_output(cmd, stderr=DEVNULL).split():
+            for i in util.check_output(cmd, stderr=DEVNULL).split():
                 self.d.remove_image(i.decode(enc), force=True)
             self._prune_ostree_images()
             return
@@ -972,7 +971,7 @@ class Atomic(object):
 
     def _pull_docker_image(self, repo, image):
         with tempfile.NamedTemporaryFile(mode="w") as temptar:
-            subprocess.check_call(["docker", "save", "-o", temptar.name, image])
+            util.check_call(["docker", "save", "-o", temptar.name, image])
             return self._pull_docker_tar(repo, temptar.name)
 
     def _pull_docker_tar(self, repo, image):
