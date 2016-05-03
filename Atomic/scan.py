@@ -201,29 +201,31 @@ class Scan(Atomic):
                 else:
                     name2 = uuid[:15]
             util.write_out("\n{} ({})\n".format(name1, name2))
-            if json_results['Successful'].upper() == "FALSE":
-                util.write_out("{}{} is not supported for this scan."
-                              .format(' ' * 5, self._get_input_name_for_id(uuid)))
-            elif 'Vulnerabilities' in json_results and len(json_results['Vulnerabilities']) > 0:
-                util.write_out("The following issues were found:\n")
-                for vul in json_results['Vulnerabilities']:
-                    if 'Title' in vul:
-                        util.write_out("{}{}".format(' ' * 5, vul['Title']))
-                    if 'Severity' in vul:
-                        util.write_out("{}Severity: {}".format(' ' * 5, vul['Severity']))
-                    if 'Custom' in vul.keys() and len(vul['Custom']) > 0:
-                        custom_field = vul['Custom']
-                        self._output_custom(custom_field, 7)
-                    util.write_out("")
-            elif 'Results' in json_results and len(json_results['Results']) > 0:
-                util.write_out("The following results were found:\n")
-                for result in json_results['Results']:
-                    if 'Custom' in result.keys() and len(result['Custom']) > 0:
-                        custom_field = result['Custom']
-                        self._output_custom(custom_field, 7)
-                util.write_out("")
-            else:
+            if json_results['Successful'].upper() == "TRUE":
                 util.write_out("{} passed the scan".format(self._get_input_name_for_id(uuid)))
+                if 'Custom' in json_results:
+                    self._output_custom(json_results['Custom'], 3)
+                if 'Vulnerabilities' in json_results and len(json_results['Vulnerabilities']) > 0:
+                    util.write_out("The following issues were found:\n")
+                    for vul in json_results['Vulnerabilities']:
+                        if 'Title' in vul:
+                            util.write_out("{}{}".format(' ' * 5, vul['Title']))
+                        if 'Severity' in vul:
+                            util.write_out("{}Severity: {}".format(' ' * 5, vul['Severity']))
+                        if 'Custom' in vul.keys() and len(vul['Custom']) > 0:
+                            custom_field = vul['Custom']
+                            self._output_custom(custom_field, 7)
+                        util.write_out("")
+                elif 'Results' in json_results and len(json_results['Results']) > 0:
+                    util.write_out("The following results were found:\n")
+                    for result in json_results['Results']:
+                        if 'Custom' in result.keys() and len(result['Custom']) > 0:
+                            custom_field = result['Custom']
+                            self._output_custom(custom_field, 7)
+                    util.write_out("")
+            else:
+                util.write_out("{}{} is not supported for this scan."
+                               .format(' ' * 5, self._get_input_name_for_id(uuid)))
         util.write_out("\nFiles associated with this scan are in {}.\n".format(self.results_dir))
 
     def _output_custom(self, value, indent):
@@ -332,14 +334,16 @@ class Scan(Atomic):
         util.write_out("\n* denotes defaults")
         sys.exit(0)
 
-    def mount(self, mountpoint, image):
+    @staticmethod
+    def mount(mountpoint, image):
         m = mount.Mount()
         m.mountpoint = mountpoint
-        m.image=image
-        m.shared=True
+        m.image = image
+        m.shared = True
         m.mount()
 
-    def unmount(self, mountpoint):
+    @staticmethod
+    def unmount(mountpoint):
         m = mount.Mount()
         m.mountpoint = mountpoint
         m.unmount()
