@@ -36,6 +36,7 @@ from Atomic.mount import Mount
 from Atomic.verify import Verify
 from Atomic.help import AtomicHelp
 from Atomic.run import Run
+from Atomic.storage import Storage
 from Atomic.atomic import NoDockerDaemon
 from Atomic.util import get_atomic_config, get_scanners, default_docker_lib
 import traceback
@@ -303,40 +304,6 @@ if __name__ == '__main__':
     imagesp.add_argument("--prune", action="store_true",
                          help=_("prune dangling images"))
 
-    # atomic migrate
-    migratep = subparser.add_parser("migrate", help=_("migrate container's content from one backend storage "
-                                                    "to another"))
-    migrate_subparser = migratep.add_subparsers(help=_("migrate commands"))
-
-   # atomic export
-    exportp = migrate_subparser.add_parser(
-        "export", help=_("export containers and it's associated contents into a filesystem directory"),
-        epilog="export container's content. "
-        "The export command would export images, "
-        "containers and volumes into a filesystem directory.")
-    exportp.set_defaults(func='Export')
-    exportp.add_argument("--graph", dest="graph",
-                         default=default_docker_lib(),
-                         help=_("Root of the Docker runtime (Default: %s)" % default_docker_lib()))
-    exportp.add_argument("--dir", dest="export_location",
-                         default="/var/lib/atomic/migrate",
-                         help=_("Path for exporting container's content (Default: /var/lib/atomic/migrate)"))
-
-    # atomic import
-    importp = migrate_subparser.add_parser(
-         "import", help=_("import containers and it's associated contents from a filesystem directory"),
-         epilog="import container's content."
-         "The import command would import images,"
-         "containers and volumes from a filesystem directory.")
-    importp.set_defaults(func='Import')
-    importp.add_argument("--graph", dest="graph",
-                         default=default_docker_lib(),
-                         help=_("Root of the Docker runtime (Default: %s)" % default_docker_lib()))
-
-    importp.add_argument("--dir", dest="import_location",
-                         default="/var/lib/atomic/migrate",
-                         help=_("Path for importing container's content (Default: /var/lib/atomic/migrate)"))
-
     # atomic mount
     mountp = subparser.add_parser(
         "mount", help=_("mount container image to a specified directory"),
@@ -366,7 +333,7 @@ if __name__ == '__main__':
     # atomic pull
     pullp = subparser.add_parser("pull", help=_("pull latest image from a repository"),
         epilog="pull the latest specified image from a repository.")
-    pullp.add_argument("--storage", dest="storage", help=_("Specify the storage."))
+    pullp.add_argument("--storage", dest="backend", help=_("Specify the storage."))
     pullp.add_argument("image", help=_("image id"))
     pullp.set_defaults(func='pull_image')
 
@@ -489,6 +456,49 @@ if __name__ == '__main__':
         default=False,
         action="store_true",
         help=_("preview the command that %s would execute") % sys.argv[0])
+
+    # atomic storagewd
+    storagep = subparser.add_parser(
+        "storage", aliases=['migrate'], help=_("manage container storage"),
+        epilog="atomic storage command allows you to setup/reset "
+        "container storage")
+    storage_subparser = storagep.add_subparsers(help=_("storage commands"))
+    # atomic storage export
+    exportp = storage_subparser.add_parser("export",
+                                           help=_("export containers and it's associated contents into a filesystem directory"),
+                                           epilog="export container's content. "
+                                           "The export command would export images, "
+                                           "containers and volumes into a filesystem directory.")
+    exportp.set_defaults(_class=Storage, func='Export')
+    exportp.add_argument("--graph", dest="graph",
+                         default=default_docker_lib(),
+                         help=_("Root of the Docker runtime (Default: %s)" % default_docker_lib()))
+    exportp.add_argument("--dir", dest="export_location",
+                         default="/var/lib/atomic/migrate",
+                         help=_("Path for exporting container's content (Default: /var/lib/atomic/migrate)"))
+    exportp.add_argument("-f", "--force", default=False, dest="force",
+                         action="store_true",
+                         help=_("Force removal of dangling images"))
+
+    # atomic storage import
+    importp = storage_subparser.add_parser("import", help=_("import containers and it's associated contents from a filesystem directory"),
+                                           epilog="import container's content."
+                                           "The import command would import images,"
+                                           "containers and volumes from a filesystem directory.")
+    importp.set_defaults(_class=Storage, func='Import')
+    importp.set_defaults(func='Import')
+    importp.add_argument("--graph", dest="graph",
+                         default=default_docker_lib(),
+                         help=_("Root of the Docker runtime (Default: %s)" % default_docker_lib()))
+
+    importp.add_argument("--dir", dest="import_location",
+                         default="/var/lib/atomic/migrate",
+                         help=_("Path for importing container's content (Default: /var/lib/atomic/migrate)"))
+    # atomic storage reset
+    resetp = storage_subparser.add_parser("reset",
+                                          help=_("delete all containers/images from your system. Reset storage to its initial configuration."))
+    resetp.set_defaults(_class=Storage, func='reset')
+
 
     # atomic top
     topp = subparser.add_parser(

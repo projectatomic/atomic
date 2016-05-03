@@ -600,19 +600,20 @@ _atomic_host() {
 	return 0
 }
 
-_atomic_migrate() {
+_atomic_storage() {
 	local commands=(
 		export
 		import
+		reset
 	)
 
-	local completions_func=_atomic_migrate_${prev}
+	local completions_func=_atomic_storage_${prev}
         declare -F $completions_func >/dev/null && $completions_func
 
 	return 0
 }
 
-_atomic_migrate_migrate() {
+_atomic_storage_storage() {
         local boolean_options="
                 --help -h
         "
@@ -633,7 +634,7 @@ _atomic_migrate_migrate() {
 }
 
 
-_atomic_migrate_export() {
+_atomic_storage_export() {
 	case "$cur" in
                 -*)
                         COMPREPLY=( $( compgen -W "--graph --dir -h --help" -- "$cur" ) )
@@ -643,7 +644,7 @@ _atomic_migrate_export() {
         esac
 }
 
-_atomic_migrate_import() {
+_atomic_storage_import() {
 	case "$cur" in
                 -*)
                         COMPREPLY=( $( compgen -W "--graph --dir -h --help" -- "$cur" ) )
@@ -665,7 +666,7 @@ _atomic() {
 		info
 		install
 		images
-		migrate
+		storage
 		mount
 		pull
 		run

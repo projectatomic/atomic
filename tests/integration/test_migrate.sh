@@ -3,25 +3,25 @@ set -euo pipefail
 IFS=$'\n\t'
 
 #With the inclusion of this PR (https://github.com/projectatomic/atomic/pull/294)
-#atomic migrate will only work with docker 1.10 support.
+#atomic storage export/import will only work with docker 1.10 support.
 #Skip this test, until we move to docker 1.10.
 
 echo "WARNING: skipping test_migrate.sh since it is only supported with docker 1.10 onwards."
 exit 0
 
 #
-# 'atomic migrate' integration tests (non-live)
+# 'atomic storage' integration tests (non-live)
 # AUTHOR: Shishir Mahajan <shishir dot mahajan at redhat dot com>
 #
 
 if [[ "$(id -u)" -ne "0" ]]; then
-    echo "Atomic migrate tests require root access. Please try again."
+    echo "Atomic storage tests require root access. Please try again."
     exit 1
 fi
 
 init=$(ps -q 1 -o comm=)
 if [ "$init" != "systemd" ];then
-    echo "Systemd init system is required to run atomic migrate tests. Skipping these tests."
+    echo "Systemd init system is required to run atomic storage tests. Skipping these tests."
     exit 0
 fi
 
@@ -33,12 +33,12 @@ if [[ $dockerCmdline =~ "-g=" ]] || [[ $dockerCmdline =~ "-g/" ]] || [[ $dockerC
 fi
 
 if [ ! -f /etc/sysconfig/docker ];then
-   echo "Atomic migrate tests require /etc/sysconfig/docker to exist. Skipping these tests."
+   echo "Atomic storage tests require /etc/sysconfig/docker to exist. Skipping these tests."
    exit 0
 fi
 
 if [ ! -f /etc/sysconfig/docker-storage ];then
-   echo "Atomic migrate tests require /etc/sysconfig/docker-storage to exist. Skipping these tests."
+   echo "Atomic storage tests require /etc/sysconfig/docker-storage to exist. Skipping these tests."
    exit 0
 fi
 
@@ -75,13 +75,13 @@ cleanup () {
 
 trap cleanup EXIT
 
-# Test for atomic migrate export and import using the default graph
+# Test for atomic storage export and import using the default graph
 # at /var/lib/docker
-atomic_migrate () {
+atomic_storage_migrate () {
 	setup
-	echo 'y'|${ATOMIC} migrate export --dir "$(pwd)/migrate-dir"
+	echo 'y'|${ATOMIC} storage export --dir "$(pwd)/migrate-dir"
 	switch_docker_storage
-	echo 'y'|${ATOMIC} migrate import --dir "$(pwd)/migrate-dir"
+	echo 'y'|${ATOMIC} storage import --dir "$(pwd)/migrate-dir"
 	systemctl restart docker
 
 	# check that the containers were actually migrated (this implicitly also
@@ -111,4 +111,4 @@ switch_docker_storage () {
 	systemctl start docker
 }
 
-atomic_migrate
+atomic_storage_migrate

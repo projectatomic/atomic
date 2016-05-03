@@ -9,7 +9,7 @@ from . import util
 
 ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
 
-def export_docker(graph, export_location):
+def export_docker(graph, export_location, force):
     """
     This is a wrapper function for exporting docker images, containers
     and volumes.
@@ -20,13 +20,13 @@ def export_docker(graph, export_location):
 
     dangling_images = get_docker_client().images(filters={"dangling":True}, quiet=True)
     if any(dangling_images):
-        util.write_out("There are dangling images in your system. Would you like atomic to prune them [y/N]")
-        choice = sys.stdin.read(1)
-        if choice.lower() == 'y':
-            util.write_out("Deleting dangling images")
-            util.check_call([util.default_docker(), "rmi", "-f"]+dangling_images)
-        else:
-            raise ValueError("Please delete dangling images before running atomic migrate export")
+        if not force:
+            util.write_out("There are dangling images in your system. Would you like atomic to prune them [y/N]")
+            choice = sys.stdin.read(1)
+            if choice.lower() == 'n':
+                raise ValueError("Please delete dangling images before running atomic storage export")
+        util.write_out("Deleting dangling images")
+        util.check_call([util.default_docker(), "rmi", "-f"]+dangling_images)
 
     #Save the docker storage driver
     storage_driver = get_docker_client().info()["Driver"]

@@ -28,8 +28,6 @@ import requests
 from . import util
 from . import satellite
 from . import pulp
-from .Export import export_docker
-from .Import import import_docker
 import re
 from .client import get_docker_client
 from .util import NoDockerDaemon, DockerObjectNotFound
@@ -204,19 +202,6 @@ class Atomic(object):
             prevstatus = status
         self.write_out("")
 
-    def Export(self):
-        try:
-            export_docker(self.args.graph, self.args.export_location)
-        except requests.exceptions.ConnectionError:
-            raise NoDockerDaemon()
-
-    def Import(self):
-        self.ping()
-        try:
-            import_docker(self.args.graph, self.args.import_location)
-        except requests.exceptions.ConnectionError:
-            raise NoDockerDaemon()
-
     def push(self):
         self.ping()
         prevstatus = ""
@@ -338,11 +323,11 @@ class Atomic(object):
             self._check_system_oci_image(repo, image, upgrade)
 
     def pull_image(self):
-        if self.storage == "ostree":
+        if self.backend == "ostree":
             repo = self._get_ostree_repo()
             self._pull_image_to_ostree(repo, self.args.image, True)
         else:
-            raise ValueError("Destination not known, please choose --storage=ostree")
+            raise ValueError("Destination not known, please choose --backend=ostree")
         return
 
     def set_args(self, args):
@@ -382,12 +367,12 @@ class Atomic(object):
             pass
 
         try:
-            self.storage = args.storage
+            self.backend = args.backend
         except:
-            self.storage = None
+            self.backend = None
 
-        if not self.storage:
-            self.storage = self.get_atomic_config_item(["default_storage"])
+        if not self.backend:
+            self.backend = self.get_atomic_config_item(["default_storage"])
 
         if not self.name and self.image is not None:
             self.name = self.image.split("/")[-1].split(":")[0]
