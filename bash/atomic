@@ -173,11 +173,14 @@ _atomic_scan() {
 	"
 	local all_options="$options_with_args
 		--help -h
-		--json
-		--detail
 		--all
 		--images
 		--containers
+		--rootfs
+		--list
+		--scanner
+		--scan_type
+		--verbose
 	"
 	[ "$command" = "scan" ] && all_options="$all_options"
 

@@ -6,24 +6,37 @@ atomic-scan - Scan for CVEs in a container or image
 # SYNOPSIS
 **atomic scan**
 [**-h**|**--help**]
-[**--fetch_cves=True|False**][**--json** | **--detail**] [**--all** | **--images** | **--containers** |
-IMAGE or CONTAINER name ...]
+[**--list**]
+[**--scanner**]
+[**--scan_type**]
+[**--verbose**]
+[**--all** | **--images** | **--containers** | **--rootfs** rootfs path to scan|
+IMAGE or CONTAINER names ...]
 
 # DESCRIPTION
-**atomic scan** will scan the a container or image looking for known Common Vulnerabilities and Exposures(CVEs).  By default, atomic scan will summarize the findings by containers or images.
+**atomic scan** will scan the a container or image looking for known Common Vulnerabilities and Exposures(CVEs) by default.  It can also scan
+paths on the host filesystem as well using the _--rootfs_ option.
+
+The architecture for _atomic scan_ is very plug-in friendly.  You can define additional scanners to use via the plug-in interface.  To list the
+available scanners setup on your system, you can use _--list_.  To use a different scanner, you simple pass its name with the _--scanner_ switch.
+You can also select a different scan type using the _--scan_type_ switch.
+
 
 # OPTIONS
 **-h** **--help**
   Print usage statement
 
-**--fetch_cves=True|False**
-  Override the fetch-cve (fetch the latest CVE input data from Red Hat over the network) setting in /etc/oscapd/config.ini. Values can  be True or False.
+**--verbose**
+Show more verbose output.  Specifically the stdout from the image scanner itself.
 
-**--json**
-  Output in the form of JSON.
+**--list**
+Show all scanners configured for atomic and their scan types.
 
-**--detail**
-  Report in greater detail which contains information like the CVE number and name as well as the URL that describes the CVE in greater detail.  Also provided is the RHSA ID and a URL that describes the RHSA in greater detail.
+**--scanner**
+Select as scanner other than the default.
+
+**--scan_type**
+Select a scan_type other than the default.
 
 **--all**
   Instead of providing image or container names, scan all images (excluding intermediate image layers) and containers
@@ -34,18 +47,21 @@ IMAGE or CONTAINER name ...]
 **--containers**
   Scan all containers.  Similar to the results of `docker ps -a`
 
+**--rootfs**
+  Rootfs path to scan.  Can provide _--rootfs_ multiple times.
+
 # EXAMPLES
+List all the scanners atomic knows about and display their default scan types.
+
+    atomic scan --list
+
 Scan an image named 'foo1'.
 
     atomic scan foo1
 
-Scan an image named 'foo1' with only the files in the openscap-daemon.
-
-    atomic scan --fetch_cves=False foo1
-
 Scan images named 'foo1' and 'foo2' and produce a detailed report.
 
-    atomic scan --detail foo1 foo2
+    atomic scan foo1 foo2
 
 Scan all containers and output the results in JSON format.
 
@@ -53,7 +69,20 @@ Scan all containers and output the results in JSON format.
 
 Scan all containers and images and create a detailed report.
 
-    atomic scan --all --detail
+    atomic scan --all
+
+Scan a rootfs mounted at /tmp/chroot
+
+    atomic scan --rootfs /tmp/chroot
+
+Scan an image called 'foo1' with a scanner called 'custom_scanner' and its default scan_type
+
+    atomic scan --scanner custom_scanner foo1
+
+Scan an image called 'foo1' with a scanner called 'custom_scanner' and a scan type of 'list_rpms'
+
+    atomic scan --scanner custom_scanner --scan_type list_rpms foo1
 
 # HISTORY
 Initial revision by Brent Baude (bbaude at redhat dot com) September 2015
+Updated for new atomic scan architecture by Brent Baude (bbaude at redhat dot com) May 2016

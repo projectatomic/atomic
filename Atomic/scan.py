@@ -7,7 +7,6 @@ from shutil import rmtree
 import json
 import sys
 
-
 class Scan(Atomic):
     """
     Scan class that can generically work any scanner
@@ -26,6 +25,7 @@ class Scan(Atomic):
         self.atomic_config = util.get_atomic_config()
         self.scanners = util.get_scanners()
         self.debug = False
+        self.rootfs_mappings = {}
 
     def scan(self):
         def get_scan_info(scanner, scan_type):
@@ -60,15 +60,30 @@ class Scan(Atomic):
             raise ValueError(yaml_error)
 
         self.results_dir = os.path.join(self.results, self.args.scanner, self.cur_time)
-        scan_list = self._get_scan_list()
-        for i in scan_list:
-            self.scan_content[i['Id']] = i.get('input')
 
-        # mount all the rootfs
-        self._mount_scan_rootfs(scan_list)
-
+        # Create the input directory
+        if not os.path.exists(self.chroot_dir):
+            os.makedirs(self.chroot_dir)
         if self.debug:
-            util.write_out("Creating the output dir at {}".format(self.results_dir))
+            util.write_out("Created {}".format(self.chroot_dir))
+
+        if len(self.args.rootfs) == 0:
+            scan_list = self._get_scan_list()
+            for i in scan_list:
+                self.scan_content[i['Id']] = i.get('input')
+
+            # mount all the rootfs
+            self._mount_scan_rootfs(scan_list)
+
+            if self.debug:
+                util.write_out("Creating the output dir at {}".format(self.results_dir))
+
+        else:
+            # Check to make sure all the chroots provided are legit
+            for _path in self.args.rootfs:
+                if not os.path.exists(_path):
+                    raise ValueError("The path {} does not exist".format(_path))
+            self.setup_rootfs_dirs()
 
         # Create the output directory
         os.makedirs(self.results_dir)
@@ -82,15 +97,16 @@ class Scan(Atomic):
         if custom_args is not None:
             scan_cmd = scan_cmd + custom_args
         scan_cmd = scan_cmd + [scanner_image_name] + scanner_args
+        scan_cmd = self.sub_env_strings(" ".join(scan_cmd))
 
         # Show the command being run
-        util.write_out(" ".join(scan_cmd))
+        util.write_out(scan_cmd)
 
         # Show stdout from container if --debug or --verbose
         stdout = None if (self.args.verbose or self.args.debug) else open(os.devnull, 'w')
 
         # do the scan
-        util.check_call(scan_cmd, stdout=stdout)
+        util.check_call(scan_cmd, stdout=stdout, env=self.cmd_env())
 
         # unmount all the rootfs
         self._unmount_rootfs_in_dir()
@@ -141,10 +157,6 @@ class Scan(Atomic):
         return scan_list
 
     def _mount_scan_rootfs(self, scan_list):
-        if not os.path.exists(self.chroot_dir):
-            os.makedirs(self.chroot_dir)
-        if self.debug:
-            util.write_out("Created {}".format(self.chroot_dir))
         for docker_object in scan_list:
             mount_path = os.path.join(self.chroot_dir, docker_object['Id'])
             os.mkdir(mount_path)
@@ -157,10 +169,14 @@ class Scan(Atomic):
     def _unmount_rootfs_in_dir(self):
         for _dir in self.get_rootfs_paths():
             rootfs_dir = os.path.join(self.chroot_dir, _dir)
-            self.unmount(rootfs_dir)
+            if len(self.args.rootfs) == 0:
+                self.unmount(rootfs_dir)
+            else:
+                # Clean up bind mounts if the chroot feature is used
+                mcmd = ['umount', rootfs_dir]
+                util.check_call(mcmd)
 
             # Clean up temporary containers
-
             if not self.debug:
                 # Remove the temporary container dirs
                 rmtree(rootfs_dir)
@@ -178,7 +194,7 @@ class Scan(Atomic):
         def _get_rootfs_paths():
             return next(os.walk(self.chroot_dir))[1]
 
-        if len(self.rootfs_paths) < 1:
+        if len(self.rootfs_paths) == 0:
             self.rootfs_paths = _get_rootfs_paths()
         return self.rootfs_paths
 
@@ -187,22 +203,28 @@ class Scan(Atomic):
         Write results of the scan to stdout
         :return: None
         """
+        def _get_roots_path_from_bind_name(in_bind_name):
+            for _path, bind_path in self.rootfs_mappings.items():
+                if bind_path == os.path.basename(os.path.split(in_bind_name)[0]):
+                    return _path
+
         json_files = self._get_json_files()
         for json_file in json_files:
             json_results = json.load(open(json_file))
-            uuid = os.path.basename(json_results['UUID'])
-            name1 = self._get_input_name_for_id(uuid)
-            if not self._is_iid(uuid):
+
+            uuid = os.path.basename(json_results['UUID']) if len(self.args.rootfs) == 0 \
+                else _get_roots_path_from_bind_name(json_file)
+            name1 = uuid if len(self.args.rootfs) > 1 else self._get_input_name_for_id(uuid)
+            if len(self.args.rootfs) == 0 and not self._is_iid(uuid):
                 name2 = uuid[:15]
             else:
                 # Containers do not have repo names
-                if uuid not in [x['Id'] for x in self.get_containers()]:
+                if len(self.args.rootfs) == 0 and uuid not in [x['Id'] for x in self.get_containers()]:
                     name2 = self._get_repo_names(uuid)
                 else:
                     name2 = uuid[:15]
             util.write_out("\n{} ({})\n".format(name1, name2))
             if json_results['Successful'].upper() == "TRUE":
-                util.write_out("{} passed the scan".format(self._get_input_name_for_id(uuid)))
                 if 'Custom' in json_results:
                     self._output_custom(json_results['Custom'], 3)
                 if 'Vulnerabilities' in json_results and len(json_results['Vulnerabilities']) > 0:
@@ -223,6 +245,8 @@ class Scan(Atomic):
                             custom_field = result['Custom']
                             self._output_custom(custom_field, 7)
                     util.write_out("")
+                else:
+                    util.write_out("{} passed the scan".format(self._get_input_name_for_id(uuid)))
             else:
                 util.write_out("{}{} is not supported for this scan."
                                .format(' ' * 5, self._get_input_name_for_id(uuid)))
@@ -259,7 +283,10 @@ class Scan(Atomic):
         return json_files
 
     def _get_input_name_for_id(self, iid):
-        return self.scan_content[iid]
+        if len(self.args.rootfs) > 0:
+            return iid
+        else:
+            return self.scan_content[iid]
 
     def _is_iid(self, input_name):
         if input_name.startswith(self.scan_content[input_name]):
@@ -347,3 +374,12 @@ class Scan(Atomic):
         m = mount.Mount()
         m.mountpoint = mountpoint
         m.unmount()
+
+    def setup_rootfs_dirs(self):
+        for _dir in self.args.rootfs:
+            bind_dir = _dir.replace("/", "_")
+            chroot_scan_dir = os.path.join(self.chroot_dir, bind_dir)
+            os.mkdir(chroot_scan_dir)
+            mcmd = ['mount', '-o', 'ro,bind', _dir, chroot_scan_dir]
+            util.check_call(mcmd)
+            self.rootfs_mappings[_dir] = bind_dir

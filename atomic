@@ -444,6 +444,7 @@ if __name__ == '__main__':
     scanp.add_argument("--scan_type", default=None, help=_("define the intended scanner"))
     scanp.add_argument("--list", action='store_true', default=False, help=_("List available scanners"))
     scanp.add_argument("--verbose", action='store_true', default=False, help=_("Show more output from scanning container"))
+    scan_group.add_argument("--rootfs", nargs='?', default=[], action='append', help=_("Rootfs path to scan"))
     scan_group.add_argument("--all", default=False, action='store_true', help=_("scan all images (excluding intermediate layers) and containers"))
     scan_group.add_argument("--images", default=False, action='store_true', help=_("scan all images (excluding intermediate layers)"))
     scan_group.add_argument("--containers", default=False, action='store_true', help=_("scan all containers"))
