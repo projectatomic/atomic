@@ -77,13 +77,15 @@ class Scan(Atomic):
 
             if self.debug:
                 util.write_out("Creating the output dir at {}".format(self.results_dir))
-
+            security_args = []
         else:
             # Check to make sure all the chroots provided are legit
             for _path in self.args.rootfs:
                 if not os.path.exists(_path):
                     raise ValueError("The path {} does not exist".format(_path))
             self.setup_rootfs_dirs()
+            # Have to disable SELinux checking of scanning not docker images
+            security_args = [ "--security-opt", "label:disable" ]
 
         # Create the output directory
         os.makedirs(self.results_dir)
@@ -93,7 +95,7 @@ class Scan(Atomic):
                        '{}:{}:rw,Z'.format(self.results_dir, '/scanout')]
 
         # Assemble the cmd line for the scan
-        scan_cmd = docker_args
+        scan_cmd = docker_args + security_args
         if custom_args is not None:
             scan_cmd = scan_cmd + custom_args
         scan_cmd = scan_cmd + [scanner_image_name] + scanner_args

@@ -49,6 +49,8 @@ Select a scan_type other than the default.
 
 **--rootfs**
   Rootfs path to scan.  Can provide _--rootfs_ multiple times.
+  Note: SELinux separation will be disabled for --rootfs scans, but all other container
+  separation will still be in place.
 
 # EXAMPLES
 List all the scanners atomic knows about and display their default scan types.
