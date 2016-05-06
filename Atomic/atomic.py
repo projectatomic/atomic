@@ -952,6 +952,9 @@ class Atomic(object):
             repo.transaction_set_ref(None, "%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), csum)
 
         # create a $OSTREE_OCIIMAGE_PREFIX$image-$tag branch
+        if not isinstance(manifest, str):
+            manifest = json.dumps(manifest)
+
         metadata = GLib.Variant("a{sv}", {'docker.manifest': GLib.Variant('s', manifest)})
         mtree = OSTree.MutableTree()
         file_info = Gio.FileInfo()
