@@ -20,10 +20,12 @@ ATOMIC_CONFD = os.environ.get('ATOMIC_CONFD', '/etc/atomic.d/')
 _default_docker=None
 _default_docker_lib=None
 
-if sys.version_info[0] < 3:
+if int(sys.version_info[0]) < 3:
     input = raw_input # pylint: disable=undefined-variable
+    is_python2 = True
 else:
     input = input
+    is_python2 = False
 
 
 def _decompose(compound_name):
@@ -86,9 +88,13 @@ def subp(cmd, cwd=None):
 # since we are a privileged process, and we don't want to leak things like
 # the docker socket into child processes by default
 def check_call(cmd, env=os.environ, stdin=None, stderr=None, stdout=None):
-    # Make sure cmd is a list
+    # Make sure cmd is a list; break if needed
     if not isinstance(cmd, list):
-        cmd = shlex.split(cmd)
+        if is_python2:
+            # The command contains a non-ascii character
+            cmd = shlex.split(" ".join([x.encode('utf-8') for x in cmd.split()]))
+        else:
+            cmd = shlex.split(cmd)
     return subprocess.check_call(cmd, env=env, stdin=stdin, stderr=stderr, stdout=stdout, close_fds=True)
 
 def check_output(cmd, env=os.environ, stdin=None, stderr=None):
@@ -119,7 +125,10 @@ def default_ro_container_context():
 
 def write_out(output, lf="\n"):
     sys.stdout.flush()
-    sys.stdout.write(str(output) + lf)
+    if is_python2:
+        sys.stdout.write(output.encode('utf-8') + lf)
+    else:
+        sys.stdout.write(output + str(lf))
 
 
 def output_json(json_data):

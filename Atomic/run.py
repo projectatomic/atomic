@@ -41,6 +41,7 @@ class Run(Atomic):
                 args = [self.docker_binary()] + self.SPC_ARGS + self._get_cmd()
 
             cmd = self.gen_cmd(args)
+            cmd = self.sub_env_strings(cmd)
             self.display(cmd)
             if self.args.display:
                 return

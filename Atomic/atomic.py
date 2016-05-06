@@ -140,6 +140,7 @@ class Atomic(object):
         self.atomic_config = None
         self.docker_cmd = None
         self.debug = False
+        self.is_python2 = (int(sys.version[0])) < 3
 
     def docker_binary(self):
         if not self.docker_cmd:
@@ -662,7 +663,10 @@ class Atomic(object):
                 args.append(self.name)
                 continue
             args.append(c)
-        return " ".join(args)
+        if self.is_python2:
+            return " ".join([x.decode('utf-8') for x in args])
+        else:
+            return " ".join(args)
 
     def get_fq_name(self, image_info):
         if len(image_info['RepoTags']) > 1:
@@ -1301,7 +1305,7 @@ class Atomic(object):
             self.write_out("%s %s %s" % (layer["Id"], version, layer["Tag"]))
 
     def display(self, cmd):
-        util.write_out(self.sub_env_strings(cmd))
+        util.write_out(cmd)
 
     def sub_env_strings(self, in_string):
         """

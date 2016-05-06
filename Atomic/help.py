@@ -90,6 +90,7 @@ class AtomicHelp(Atomic):
         :return: None
         """
         cmd = self.gen_cmd(self.alt_help_cmd.split(" "))
+        cmd = self.sub_env_strings(cmd)
         self.display(cmd)
         util.check_call(cmd, env=self.cmd_env())
 
