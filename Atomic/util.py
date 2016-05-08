@@ -91,11 +91,11 @@ def check_call(cmd, env=os.environ, stdin=None, stderr=None, stdout=None):
         cmd = shlex.split(cmd)
     return subprocess.check_call(cmd, env=env, stdin=stdin, stderr=stderr, stdout=stdout, close_fds=True)
 
-def check_output(cmd, env=os.environ, stdin=None, stderr=None, stdout=None):
+def check_output(cmd, env=os.environ, stdin=None, stderr=None):
     # Make sure cmd is a list
     if not isinstance(cmd, list):
         cmd = shlex.split(cmd)
-    return subprocess.check_output(cmd, env=env, stdin=stdin, stderr=stderr, stdout=stdout, close_fds=True)
+    return subprocess.check_output(cmd, env=env, stdin=stdin, stderr=stderr, close_fds=True)
 
 def call(cmd, env=os.environ, stdin=None, stderr=None, stdout=None):
     # Make sure cmd is a list
