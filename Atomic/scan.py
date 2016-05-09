@@ -107,17 +107,18 @@ class Scan(Atomic):
         # Show stdout from container if --debug or --verbose
         stdout = None if (self.args.verbose or self.args.debug) else open(os.devnull, 'w')
 
-        # do the scan
-        util.check_call(scan_cmd, stdout=stdout, env=self.cmd_env())
+        try:
+            # do the scan
+            util.check_call(scan_cmd, stdout=stdout, env=self.cmd_env())
 
-        # unmount all the rootfs
-        self._unmount_rootfs_in_dir()
+            # output results
+            self.output_results()
 
-        # output results
-        self.output_results()
-
-        # record environment
-        self.record_environment()
+            # record environment
+            self.record_environment()
+        finally:
+            # unmount all the rootfs
+            self._unmount_rootfs_in_dir()
 
     def _get_scan_list(self):
 
