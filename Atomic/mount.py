@@ -31,6 +31,7 @@ from .client import get_docker_client
 from . import util
 import requests
 from .util import NoDockerDaemon
+import shutil
 
 """ Module for mounting and unmounting containerized applications. """
 
@@ -86,6 +87,10 @@ class Mount(Atomic):
 
     def mount(self):
         try:
+            d = OSTreeMount(self.mountpoint, live=self.live, shared=self.shared)
+            if d.mount(self.image, self.live):
+                return
+
             d = DockerMount(self.mountpoint, self.live)
             d.shared = self.shared
             d.mount(self.image, self.live)
@@ -102,6 +107,9 @@ class Mount(Atomic):
     def unmount(self):
 
         try:
+            if OSTreeMount(self.mountpoint).unmount():
+                return
+
             dev = Mount.get_dev_at_mountpoint(self.mountpoint)
 
             # If there's a bind-mount over the directory, unbind it.
@@ -615,3 +623,100 @@ class DockerMount(Mount):
         if not self.live:
             self.d.remove_container(short_cid)
         self._clean_tmp_image()
+
+setxattr = None
+getxattr = None
+removexattr = None
+
+def _initxattr():
+    # Python 3 has support for extended attributes in the os module, while
+    # Python 2 needs the xattr library.  Detect if any is available.
+    global setxattr, getxattr, removeattr
+    module = None
+    if setxattr:
+        return
+    if getattr(os, 'setxattr', None):
+        module = os
+    else:
+        try:
+            import xattr
+            module = xattr
+        except:
+            pass
+
+    if module:
+        setxattr = getattr(module, 'setxattr')
+        getxattr = getattr(module, 'getxattr')
+        removexattr = getattr(module, 'removexattr')
+
+class OSTreeMount(Mount):
+
+    """
+    A class which can be used to mount and unmount containers and
+    images managed through OSTree on a filesystem location.
+    """
+
+    def __init__(self, mountpoint, live=False, mnt_mkdir=False, shared=False):
+        global _initxattr, setxattr
+        Mount.__init__(self)
+        self.args = {}
+        self.mountpoint = mountpoint
+        if live:
+            raise MountError('Containers and images managed through OSTree do not support --live.')
+        self.mnt_mkdir = mnt_mkdir
+        self.tmp_image = None
+        _initxattr()
+        if setxattr is None:
+            raise MountError('xattr required to mount OSTree images.')
+
+    def has_container(self, container_id):
+        return self.get_system_container_checkout(container_id)
+
+    def has_image(self, image_id):
+        return self.has_system_container_image(image_id)
+
+    def has_identifier(self, _id):
+        return self.has_container(_id) or self.has_image(_id)
+
+    def mount(self, identifier, options=[]):
+        global setxattr, getxattr, removeattr
+        options = ['remount', 'ro', 'nosuid', 'nodev']
+        if self.has_container(identifier):
+            typ = "container"
+            source = os.path.join(self.get_system_container_checkout(identifier), "rootfs")
+            Mount.mount_path(source, self.mountpoint, bind=True)
+        elif self.has_image(identifier):
+            typ = "image"
+            if len(os.listdir(self.mountpoint)):
+                raise MountError('The destination path is not empty.')
+            self.extract_system_container(identifier, self.mountpoint)
+            Mount.mount_path(self.mountpoint, self.mountpoint, bind=True)
+        else:
+            return False
+
+        setxattr(self.mountpoint, "user.atomic.type", ("ostree-%s" % typ).encode()) # pylint: disable=not-callable
+        Mount.mount_path(self.mountpoint, self.mountpoint, bind=True, optstring=(','.join(options)))
+        return True
+
+    def unmount(self, path=None):
+        global setxattr, getxattr, removeattr
+        typ = None
+        if not self.mountpoint:
+            return False
+
+        try:
+            typ = getxattr(self.mountpoint, "user.atomic.type") # pylint: disable=not-callable
+        except:
+            pass
+
+        if not typ or "ostree" not in typ.decode():
+            return False
+
+        Mount.unmount_path(self.mountpoint)
+
+        if "-image" in typ.decode():
+            for i in os.listdir(self.mountpoint):
+                shutil.rmtree(os.path.join(self.mountpoint, i))
+            removexattr(self.mountpoint, "user.atomic.type") # pylint: disable=not-callable
+
+        return True

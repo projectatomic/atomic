@@ -171,7 +171,7 @@ class Atomic(object):
 
     def update(self):
         if 'container' in self.args and self.args.container:
-            if self._system_container_exists(self.args.image):
+            if self.get_system_container_checkout(self.args.image):
                 return self._update_system_container(self.args.image)
             raise ValueError("Container '%s' is not installed" % self.args.image)
         elif self.setvalues:
@@ -589,7 +589,7 @@ class Atomic(object):
         self._ostreeadmin(argv)
 
     def uninstall(self):
-        if self._system_container_exists(self.args.image):
+        if self.get_system_container_checkout(self.args.image):
             return self._uninstall_system_container(self.args.image)
 
         self.inspect = self._inspect_container()
@@ -819,6 +819,7 @@ class Atomic(object):
             return
         self.write_out(col_out.format("IMAGE", "COMMIT"))
 
+        repo = self._get_ostree_repo()
         for rev in revs:
             commit = repo.resolve_rev(rev, False)[1]
             self.write_out(col_out.format(rev, commit))
@@ -831,12 +832,16 @@ class Atomic(object):
 
     def _container_exists(self, name):
         try:
-            return self._system_container_exists(name) or self._inspect_container(name)
+            return self.get_system_container_checkout(name) or self._inspect_container(name)
         except Exception:
             return False
 
-    def _system_container_exists(self, name):
-        return os.path.exists("%s/%s" % (self._get_system_checkout_path(), name))
+    def get_system_container_checkout(self, name):
+        path = "%s/%s" % (self._get_system_checkout_path(), name)
+        if os.path.exists(path):
+            return path
+        else:
+            return None
 
     def _uninstall_system_container(self, name):
         self.args.display = False
@@ -1049,14 +1054,28 @@ class Atomic(object):
             return None
         return metadata[key]
 
-    def _checkout_system_container(self, repo, name, img, deployment, upgrade, values={}):
+    def extract_system_container(self, img, destination):
+        repo = self._get_ostree_repo()
+        return self._checkout_system_container(repo, img, img, 0, False, destination=destination, extract_only=True)
+
+    @staticmethod
+    def _get_ostree_image_branch(img):
         if "ostree:" in img:
             imagebranch = img.replace("ostree:", "")
         else: # assume "oci:" image
             regloc, image, tag = Atomic._parse_imagename(img.replace("oci:", "").replace("docker:", ""))
             imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image.replace("sha256:", ""), tag)
+        return imagebranch
 
-        destination = "%s/%s.%d" % (self._get_system_checkout_path(), name, deployment)
+    def has_system_container_image(self, img):
+        repo = self._get_ostree_repo()
+        imagebranch = Atomic._get_ostree_image_branch(img)
+        return repo.resolve_rev(imagebranch, False)[0]
+
+    def _checkout_system_container(self, repo, name, img, deployment, upgrade, values={}, destination=None, extract_only=False):
+        imagebranch = Atomic._get_ostree_image_branch(img)
+
+        destination = destination or "%s/%s.%d" % (self._get_system_checkout_path(), name, deployment)
         exports = os.path.join(destination, "rootfs/exports")
         unitfile = os.path.join(exports, "service.template")
         unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
@@ -1064,24 +1083,26 @@ class Atomic(object):
         if not upgrade and os.path.exists(unitfileout):
             raise ValueError("The file %s already exists." % unitfileout)
 
-        if os.path.exists(destination):
-            shutil.rmtree(destination)
-
         self.write_out("Extracting to %s" % destination)
 
-        if self.args.display:
+        if 'display' in self.args and self.args.display:
             return True
 
-        rootfs = os.path.join(destination, "rootfs")
+        if extract_only:
+            rootfs = destination
+        else:
+            # Under Atomic, get the real deployment location.  It is needed to create the hard links.
+            try:
+                sysroot = OSTree.Sysroot()
+                sysroot.load()
+                osname = sysroot.get_booted_deployment().get_osname()
+                destination = os.path.join("/ostree/deploy/", osname, os.path.relpath(destination, "/"))
+            except:
+                pass
+            rootfs = os.path.join(destination, "rootfs")
 
-        # Under Atomic, get the real deployment location.  It is needed to create the hard links.
-        try:
-            sysroot = OSTree.Sysroot()
-            sysroot.load()
-            osname = sysroot.get_booted_deployment().get_osname()
-            rootfs = os.path.join("/ostree/deploy/", osname, os.path.relpath(rootfs, "/"))
-        except:
-            pass
+        if os.path.exists(destination):
+            shutil.rmtree(destination)
 
         os.makedirs(rootfs)
         revs = []
@@ -1105,6 +1126,9 @@ class Atomic(object):
         finally:
             if rootfs_fd:
                 os.close(rootfs_fd)
+
+        if extract_only:
+            return True
 
         values["DESTDIR"] = destination
         values["NAME"] = name
@@ -1177,7 +1201,7 @@ class Atomic(object):
 
         self._pull_image_to_ostree(repo, self.image, False)
 
-        if self._system_container_exists(self.name):
+        if self.get_system_container_checkout(self.name):
             self.write_out("%s already present" % (self.name))
             return
 
