@@ -808,11 +808,20 @@ class Atomic(object):
         if not self.args.display:
             return util.check_call(cmd)
 
-    def _system_images(self):
-        repo = self._get_ostree_repo()
+    def get_system_containers(self):
+        checkouts = self._get_system_checkout_path()
+        return [x for x in os.listdir(checkouts) if os.path.islink(os.path.join(checkouts, x))]
 
+    def get_system_images(self, raw=False):
+        repo = self._get_ostree_repo()
         revs = [x for x in repo.list_refs()[1] if x.startswith(OSTREE_OCIIMAGE_PREFIX) \
                 and len(x) != len(OSTREE_OCIIMAGE_PREFIX) + 64]
+        if raw:
+            return revs
+        return [x.replace("ociimage/", "").replace("-latest", "") for x in revs]
+
+    def _system_images(self):
+        revs = self.get_system_images()
         max_column = max([len(rev) for rev in revs]) + 2
         col_out = "{0:%d} {1:64}" % max_column
         if len(revs) == 0:
@@ -1069,8 +1078,11 @@ class Atomic(object):
 
     def has_system_container_image(self, img):
         repo = self._get_ostree_repo()
-        imagebranch = Atomic._get_ostree_image_branch(img)
-        return repo.resolve_rev(imagebranch, False)[0]
+        try:
+            imagebranch = Atomic._get_ostree_image_branch(img)
+            return repo.resolve_rev(imagebranch, False)[0]
+        except:
+            return False
 
     def _checkout_system_container(self, repo, name, img, deployment, upgrade, values={}, destination=None, extract_only=False):
         imagebranch = Atomic._get_ostree_image_branch(img)
@@ -1457,6 +1469,13 @@ class Atomic(object):
             return self._is_container(identifier)
         except AtomicError:
             pass
+
+        if self.has_system_container_image(identifier):
+            return identifier
+
+        if self.get_system_container_checkout(identifier):
+            return identifier
+
         raise DockerObjectNotFound(identifier)
 
     def get_images(self):
@@ -1471,7 +1490,7 @@ class Atomic(object):
                 raise NoDockerDaemon()
             if images:
                 self.images_cache = images
-        return self.images_cache
+        return self.images_cache + [{'Id' : x, 'RepoTags' : x, 'Names' : x} for x in self.get_system_images()]
 
     def get_containers(self):
         '''
@@ -1481,7 +1500,7 @@ class Atomic(object):
         if not self.containers:
             self.containers = self.d.containers(all=True)
 
-        return self.containers
+        return self.containers + [{'Id' : x, 'RepoTags' : x, 'Names' : x} for x in self.get_system_containers()]
 
     def get_active_containers(self, refresh=False):
         '''
