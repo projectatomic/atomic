@@ -115,9 +115,7 @@ def need_root():
     exit("Some operations for '%s' require root access." % sub_function)
     sys.exit(1)
 
-if __name__ == '__main__':
-    atomic_config = get_atomic_config()
-    atomic = Atomic.Atomic()
+def create_parser(atomic):
     parser = HelpByDefaultArgumentParser(description=atomic.help())
     parser.register('action', 'parsers', AliasedSubParsersAction)
     parser.add_argument('-v', '--version', action='version', version=Atomic.__version__)
@@ -396,6 +394,7 @@ if __name__ == '__main__':
         return True if myarg.lower() in \
             ('yes', 'true', 't', 'y', '1') else False
     scanners = get_scanners()
+    atomic_config = get_atomic_config()
     if atomic_config is None or atomic_config.get('default_scanner') is None:
         sys.stderr.write("You must have a default scanner defined in /etc/atomic.conf\n")
         sys.exit(1)
@@ -583,8 +582,12 @@ if __name__ == '__main__':
     verifyp.add_argument("-v", "--verbose", default=False,
                           action="store_true",
                           help=_("Report status of each layer"))
+    return parser
 
+if __name__ == '__main__':
     try:
+        atomic = Atomic.Atomic()
+        parser = create_parser(atomic)
         args = parser.parse_args()
         _class = atomic if '_class' not in args else args._class()
         _class.set_args(args)
