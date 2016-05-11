@@ -396,7 +396,8 @@ def create_parser(atomic):
     scanners = get_scanners()
     atomic_config = get_atomic_config()
     if atomic_config is None or atomic_config.get('default_scanner') is None:
-        sys.stderr.write("You must have a default scanner defined in /etc/atomic.conf\n")
+        sys.stderr.write("\nYou must have a default scanner defined in /etc/atomic.conf. Use --list to see "
+                         "what scanners are available for your system.\n")
         sys.exit(1)
 
     default_scanner = atomic_config.get('default_scanner')

@@ -344,6 +344,9 @@ class Scan(Atomic):
                              format(self.args.scan_type, self.args.scanner))
 
     def print_scan_list(self):
+        if len(self.scanners) == 0:
+            util.write_out("There are no scanners configured for this system.")
+            sys.exit(0)
         default_scanner = self.atomic_config.get('default_scanner')
         if default_scanner is None:
             default_scanner = ''
