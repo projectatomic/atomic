@@ -14,8 +14,9 @@ atomic-diff - show the differences between two images|containers RPMs
 image|container image|container ...]
 
 # DESCRIPTION
-**atomic diff** will compare the RPMs found in two different images or containers and output to stdout or as JSON.
-By default, the comparison is done by name and version of the RPMs.
+**atomic diff** will compare the RPMs found in two different images or containers
+and output to stdout or as JSON. By default,  the comparison is done by name and
+version of the RPMs.
 
 # OPTIONS
 **-h** **--help**
@@ -29,7 +30,7 @@ By default, the comparison is done by name and version of the RPMs.
   when performing an RPM-based diff to restrict output.
 
 **--names-only**
-  Only show the RPM names and not versions.
+  When performing the diff, only compare package names and not their versions.
 
 **-r** **--rpms**
   Show the where the two docker objects have different RPMs.
@@ -57,4 +58,5 @@ Compare the files and RPMs (without versions) in images 'foo1' and 'foo2' and ou
     atomic diff -r --json foo1 foo2
 
 # HISTORY
+Updated by Brent Baude (bbaude at redhat dot com) May 2016
 Initial revision by Brent Baude (bbaude at redhat dot com) November 2015

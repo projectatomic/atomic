@@ -113,7 +113,11 @@ class DiffHelpers(object):
             if ip.has_diff:
                 ip._print_diff(self.args.verbose)
             else:
-                util.write_out("\n{} and {} have no different RPMs".format(ip.i1.name, ip.i2.name))
+                if self.args.names_only:
+                    util.write_out("\n{} and {} has the same RPMs.  Versions may differ.  Remove --names-only"
+                                   " to see if there are version differences.".format(ip.i1.name, ip.i2.name))
+                else:
+                    util.write_out("\n{} and {} have no different RPMs".format(ip.i1.name, ip.i2.name))
 
         # Output JSON content
         else:

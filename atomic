@@ -134,7 +134,7 @@ def create_parser(atomic):
     diffp.add_argument("-n", "--no-files", default=False, action='store_true',
                        help=_("Do not perform a file diff between the docker objects"))
     diffp.add_argument("--names-only", default=False,
-                       action='store_true', help=_("Only show RPM names and not versions"))
+                       action='store_true', help=_("Only compare RPM names and not versions"))
     diffp.add_argument("-r", "--rpms", default=False, action='store_true',
                        help=_("List different rpms between the container images."))
     diffp.add_argument("-v", "--verbose", default=False, action='store_true',
