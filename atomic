@@ -394,20 +394,13 @@ def create_parser(atomic):
         return True if myarg.lower() in \
             ('yes', 'true', 't', 'y', '1') else False
     scanners = get_scanners()
-    atomic_config = get_atomic_config()
-    if atomic_config is None or atomic_config.get('default_scanner') is None:
-        sys.stderr.write("\nYou must have a default scanner defined in /etc/atomic.conf. Use --list to see "
-                         "what scanners are available for your system.\n")
-        sys.exit(1)
-
-    default_scanner = atomic_config.get('default_scanner')
     scanp = subparser.add_parser(
         "scan", help=_("scan an image or container for CVEs"),
         epilog="atomic scan <input> scans a container or image for CVEs")
     scanp.set_defaults(_class=Scan, func='scan')
     scan_group = scanp.add_mutually_exclusive_group()
     scanp.add_argument("scan_targets", nargs='*', help=_("container image"))
-    scanp.add_argument("--scanner", choices=[x['scanner_name'] for x in scanners], default=default_scanner, help=_("define the intended scanner"))
+    scanp.add_argument("--scanner", choices=[x['scanner_name'] for x in scanners], default=None, help=_("define the intended scanner"))
     scanp.add_argument("--scan_type", default=None, help=_("define the intended scanner"))
     scanp.add_argument("--list", action='store_true', default=False, help=_("List available scanners"))
     scanp.add_argument("--verbose", action='store_true', default=False, help=_("Show more output from scanning container"))

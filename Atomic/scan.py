@@ -26,6 +26,7 @@ class Scan(Atomic):
         self.scanners = util.get_scanners()
         self.debug = False
         self.rootfs_mappings = {}
+        self.scanner = None
 
     def scan(self):
         def get_scan_info(scanner, scan_type):
@@ -34,11 +35,33 @@ class Scan(Atomic):
                     for x in i['scans']:
                         if x['name'] == scan_type:
                             return i['image_name'], x['args'], i.get('custom_args')
+
+        def set_scanner():
+            # If no scanners are defined
+            if len(self.scanners) == 0:
+                raise ValueError("No scanners are configured for your system.")
+
+            if len(self.scanners) == 1:
+                self.scanner = self.scanners[0]['scanner_name']
+
+            # If a scanner is defined in parseargs
+            if self.args.scanner:
+                    self.scanner = self.args.scanner
+
+            if self.scanner is None:
+                raise ValueError("You must specify a scanner")
+
+            # Check if the scanner name is valid
+            if self.scanner not in [x['scanner_name'] for x in self.scanners]:
+                raise ValueError("Unknown scanner '{}' defined in {}".format(self.scanner, util.ATOMIC_CONF))
+
         if self.args.debug:
             self.debug = True
 
         # Set debug bool
         self.set_debug()
+
+        set_scanner()
 
         if self.args.list:
             self.print_scan_list()
@@ -46,20 +69,18 @@ class Scan(Atomic):
         scan_type = self.get_scan_type()
         # Load the atomic config file and check scanner settings
         yaml_error = "The image name or scanner arguments for '{}' is not " \
-                     "defined in /etc/atomic.conf".format(self.args.scanner)
+                     "defined in /etc/atomic.conf".format(self.scanner)
 
-        if self.args.scanner not in [x['scanner_name'] for x in self.scanners]:
-            raise ValueError("Unknown scanner '{}' defined in {}".format(self.args.scanner, util.ATOMIC_CONF))
-        scanner_image_name, scanner_args, custom_args = get_scan_info(self.args.scanner, scan_type)
+        scanner_image_name, scanner_args, custom_args = get_scan_info(self.scanner, scan_type)
 
         if not isinstance(scanner_args, list):
             raise ValueError("The scanner arguments for {} must be in list"
-                             " ([]) form.".format(self.args.scanner))
+                             " ([]) form.".format(self.scanner))
 
         if None in [scanner_image_name, scanner_args]:
             raise ValueError(yaml_error)
 
-        self.results_dir = os.path.join(self.results, self.args.scanner, self.cur_time)
+        self.results_dir = os.path.join(self.results, self.scanner, self.cur_time)
 
         # Create the input directory
         if not os.path.exists(self.chroot_dir):
@@ -330,7 +351,7 @@ class Scan(Atomic):
         default_scan_type = None
         scan_types = []
         for i in self.scanners:
-            if i['scanner_name'] == self.args.scanner:
+            if i['scanner_name'] == self.scanner:
                 default_scan_type = i.get('default_scan')
                 if self.args.scan_type is None and default_scan_type is None:
                     raise ValueError("No scan type was given and there is no "
@@ -343,13 +364,13 @@ class Scan(Atomic):
             return self.args.scan_type
         else:
             raise ValueError("Unable to find the scan type '{}' for '{}'.".
-                             format(self.args.scan_type, self.args.scanner))
+                             format(self.args.scan_type, self.scanner))
 
     def print_scan_list(self):
         if len(self.scanners) == 0:
             util.write_out("There are no scanners configured for this system.")
             sys.exit(0)
-        default_scanner = self.atomic_config.get('default_scanner')
+        default_scanner = self.atomic_config['default_scanner']
         if default_scanner is None:
             default_scanner = ''
         for scanner in self.scanners:
