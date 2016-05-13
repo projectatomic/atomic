@@ -328,7 +328,7 @@ class Atomic(object):
             repo = self._get_ostree_repo()
             self._pull_image_to_ostree(repo, self.args.image, True)
         else:
-            raise ValueError("Destination not known, please choose --backend=ostree")
+            raise ValueError("Destination not known, please choose --storage=ostree")
         return
 
     def set_args(self, args):
@@ -373,7 +373,7 @@ class Atomic(object):
             self.backend = None
 
         if not self.backend:
-            self.backend = self.get_atomic_config_item(["default_storage"])
+            self.backend = self.get_atomic_config_item(["default_storage"]) or "ostree"
 
         if not self.name and self.image is not None:
             self.name = self.image.split("/")[-1].split(":")[0]
