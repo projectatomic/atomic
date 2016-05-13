@@ -10,6 +10,7 @@ from .client import get_docker_client
 from yaml import load as yaml_load
 import tempfile
 import shutil
+import re
 
 """Atomic Utility Module"""
 
@@ -283,3 +284,31 @@ def default_docker_lib():
     if not _default_docker_lib:
         _default_docker_lib = "/var/lib/%s" % default_docker()
     return _default_docker_lib
+
+# Utilities for dealing with config files that use bourne shell
+# syntax, such as /etc/sysconfig/docker-storage-setup
+
+def sh_modify_var_in_text(text, var, modifier, default=""):
+    pattern = '^[ \t]*%s[ \t]*=[ \t]*"(.*)"[ \t]*$' % re.escape(var)
+    def sub(match):
+        return var + '="' + modifier(match.group(1)) + '"'
+    (new_text, n_subs) = re.subn(pattern, sub, text, flags=re.MULTILINE)
+    if n_subs != 0:
+        return new_text
+    else:
+        return text + '\n' + var + '="' + modifier(default) + '"\n'
+
+def sh_modify_var_in_file(path, var, modifier, default=""):
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            text = f.read()
+    else:
+        text = ""
+    with open(path, "w") as f:
+        f.write(sh_modify_var_in_text(text, var, modifier, default))
+
+def sh_set_add(a, b):
+    return " ".join(list(set(a.split()) | set(b)))
+
+def sh_set_del(a, b):
+    return " ".join(list(set(a.split()) - set(b)))
