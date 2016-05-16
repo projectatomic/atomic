@@ -20,6 +20,9 @@ except ImportError:
     from atomic import Atomic
 
 class Storage(Atomic):
+    dss_conf = "/etc/sysconfig/docker-storage-setup"
+    dss_conf_bak = dss_conf + ".bkp"
+
     def reset(self):
         root = "/var/lib/docker"
         try:
@@ -37,6 +40,33 @@ class Storage(Atomic):
             selinux.restorecon(root.encode("utf-8"))
         except:
             selinux.restorecon(root)
+
+    def modify(self):
+        try:
+            shutil.copyfile(self.dss_conf, self.dss_conf_bak)
+            if len(self.args.devices) > 0:
+                self._add_device(self.args.devices)
+            if self.args.driver:
+                self._driver(self.args.driver)
+            if util.call(["docker-storage-setup"]) != 0:
+                os.rename(self.dss_conf_bak, self.dss_conf)
+                util.call(["docker-storage-setup"])
+                raise ValueError("docker-storage-setup failed")
+        except:
+            if os.path.exists(self.dss_conf_bak):
+                os.rename(self.dss_conf_bak, self.dss_conf)
+            raise
+        finally:
+            if os.path.exists(self.dss_conf_bak):
+                os.remove(self.dss_conf_bak)
+
+    def _add_device(self, devices):
+        util.sh_modify_var_in_file(self.dss_conf, "DEVS",
+                                   lambda old: util.sh_set_add(old, devices))
+
+    def _driver(self, driver):
+        util.sh_modify_var_in_file(self.dss_conf, "STORAGE_DRIVER",
+                                   lambda old: driver)
 
     def Export(self):
         try:

@@ -29,6 +29,9 @@
 # This order should be applied to lists, alternatives and code blocks.
 
 
+__atomic_previous_extglob_setting=$(shopt -p extglob)
+shopt -s extglob
+
 __docker_q() {
 	docker=$(awk -F ": " '/^default_docker/ {print $2}' /etc/atomic.conf 2>/dev/null || echo docker)
 	docker 2>/dev/null "$@"
@@ -167,6 +170,36 @@ _atomic_info() {
 		    ;;
 	esac
 }
+
+# Subcommand processing.
+# Locates the first occurrence of any of the subcommands contained in the
+# first argument. In case of a match, calls the corresponding completion
+# function and returns 0.
+# If no match is found, 1 is returned. The calling function can then
+# continue processing its completion.
+#
+# TODO if the preceding command has options that accept arguments and an
+# argument is equal ot one of the subcommands, this is falsely detected as
+# a match.
+__atomic_subcommands() {
+	local subcommands="$1"
+
+	local counter=$(($command_pos + 1))
+	while [ $counter -lt $cword ]; do
+		case "${words[$counter]}" in
+			$(__atomic_to_extglob "$subcommands") )
+				subcommand_pos=$counter
+				local subcommand=${words[$counter]}
+				local completions_func=_atomic_${command}_${subcommand}
+				declare -F $completions_func >/dev/null && $completions_func
+				return 0
+				;;
+		esac
+		(( counter++ ))
+	done
+	return 1
+}
+
 _atomic_scan() {
     local options_with_args="
 		--fetch_cves
@@ -601,16 +634,55 @@ _atomic_host() {
 }
 
 _atomic_storage() {
-	local commands=(
+	local subcommands="
 		export
 		import
 		reset
-	)
+		modify
+	"
 
-	local completions_func=_atomic_storage_${prev}
-        declare -F $completions_func >/dev/null && $completions_func
+	__atomic_subcommands "$subcommands" && return
 
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "--help" -- "$cur" ) )
+			;;
+		*)
+			COMPREPLY=( $( compgen -W "$subcommands" -- "$cur" ) )
+			;;
+	esac
 	return 0
+}
+
+_atomic_storage_modify() {
+	local options_with_args="
+		--driver
+		--add-device
+	"
+	local all_options="$options_with_args
+		--help
+		-h
+	"
+
+	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
+
+	case "$prev" in
+		--add-device)
+			COMPREPLY=( $( compgen -f "/dev/" ) )
+			return 0
+			;;
+
+		--driver)
+			COMPREPLY=( $( compgen -W "devicemapper overlay" -- "$cur" ) )
+			return 0
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+			;;
+	esac
 }
 
 _atomic_storage_storage() {

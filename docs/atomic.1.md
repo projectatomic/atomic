@@ -6,7 +6,7 @@ atomic \- Atomic Management Tool
 
 # SYNOPSIS
 **atomic** [OPTIONS] COMMAND [arg...]
-  {diff,host,images,info,install,mount,run,scan,stop,uninstall,unmount,update,upload,verify,version}
+  {diff,host,images,info,install,mount,run,scan,stop,storage,uninstall,unmount,update,upload,verify,version}
 [**-h**|**-help**]
 
 # DESCRIPTION
@@ -50,6 +50,9 @@ execute image run method (default)
 
 **atomic-scan(1)**
 scan an image or container for CVEs
+
+**atomic-storage(1)**
+manage the container storage on the system
 
 **atomic-stop(1)**
 execute container image stop method
