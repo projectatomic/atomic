@@ -613,10 +613,11 @@ if __name__ == '__main__':
             need_root()
     except Exception as e:
         sys.stderr.write("%sn" % str(e))
-    except SystemExit:
+    except SystemExit as e:
         # Overriding debug args to avoid a traceback from sys.exit()
         if 'args' in locals():
             args.debug = False
+        sys.exit(e.code)
     finally:
         if 'args' in locals() and args.debug:
             traceback.print_exc(file=sys.stdout)
