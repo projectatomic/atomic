@@ -11,6 +11,10 @@ export DOCKER=${DOCKER:-"/usr/bin/docker"}
 export SECRET=`dd if=/dev/urandom bs=4096 count=1 2> /dev/null | sha256sum`
 export ATOMIC_LIBEXEC="$(pwd)"
 
+mkdir $WORK_DIR/ostree-repo
+ostree --repo=$WORK_DIR/ostree-repo init --mode=archive-z2
+export ATOMIC_OSTREE_REPO=$WORK_DIR/ostree-repo
+
 # This image contains the secret, so it needs to be rebuilt each time.
 cat > tests/test-images/Dockerfile.secret <<EOF
 FROM scratch

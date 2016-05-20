@@ -1204,7 +1204,10 @@ class Atomic(object):
         return self.get_atomic_config_item(["checkout_path"]) or "/var/lib/containers/atomic"
 
     def _get_ostree_repo(self):
-        repo = OSTree.Repo.new(Gio.File.new_for_path(self.get_atomic_config_item(["ostree_repository"]) or "/ostree/repo"))
+        repo_location = os.environ.get("ATOMIC_OSTREE_REPO") or \
+                        self.get_atomic_config_item(["ostree_repository"]) or \
+                        "/ostree/repo"
+        repo = OSTree.Repo.new(Gio.File.new_for_path(repo_location))
         repo.open(None)
         return repo
 
