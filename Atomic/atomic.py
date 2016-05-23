@@ -1142,8 +1142,18 @@ class Atomic(object):
         if extract_only:
             return True
 
-        values["DESTDIR"] = destination
-        values["NAME"] = name
+        # When installing a new system container, set values in this order:
+        #
+        # 1) What comes from manifest.json, if present, as default value.
+        # 2) What the user sets explictly as --set
+        # 3) Values for DESTDIR and NAME
+        manifest_file = os.path.join(exports, "manifest.json")
+        if os.path.exists(manifest_file):
+            with open(manifest_file, "r") as f:
+                manifest = json.loads(f.read())
+                if "defaultValues" in manifest:
+                    for key, val in manifest["defaultValues"].items():
+                        values[key] = val
 
         if self.args.setvalues is not None:
             for i in self.args.setvalues:
@@ -1152,6 +1162,9 @@ class Atomic(object):
                     raise ValueError("Invalid value '%s'.  Expected form NAME=VALUE" % i)
                 key, val = i[:split], i[split+1:]
                 values[key] = val
+
+        values["DESTDIR"] = destination
+        values["NAME"] = name
 
         def _write_template(inputfilename, data, values, outfile):
             template = Template(data)
