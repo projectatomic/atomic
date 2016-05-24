@@ -814,6 +814,8 @@ class Atomic(object):
 
     def get_system_images(self, raw=False):
         repo = self._get_ostree_repo()
+        if not repo:
+            return []
         revs = [x for x in repo.list_refs()[1] if x.startswith(OSTREE_OCIIMAGE_PREFIX) \
                 and len(x) != len(OSTREE_OCIIMAGE_PREFIX) + 64]
         if raw:
@@ -822,13 +824,15 @@ class Atomic(object):
 
     def _system_images(self):
         revs = self.get_system_images()
-        max_column = max([len(rev) for rev in revs]) + 2
-        col_out = "{0:%d} {1:64}" % max_column
         if len(revs) == 0:
             return
+        max_column = max([len(rev) for rev in revs]) + 2
+        col_out = "{0:%d} {1:64}" % max_column
         self.write_out(col_out.format("IMAGE", "COMMIT"))
 
         repo = self._get_ostree_repo()
+        if not repo:
+            return
         for rev in revs:
             commit = repo.resolve_rev(rev, False)[1]
             self.write_out(col_out.format(rev, commit))
@@ -874,6 +878,8 @@ class Atomic(object):
 
     def _prune_ostree_images(self):
         repo = self._get_ostree_repo()
+        if not repo:
+            return
         refs = {}
         app_refs = []
 
@@ -1065,6 +1071,8 @@ class Atomic(object):
 
     def extract_system_container(self, img, destination):
         repo = self._get_ostree_repo()
+        if not repo:
+            return False
         return self._checkout_system_container(repo, img, img, 0, False, destination=destination, extract_only=True)
 
     @staticmethod
@@ -1078,6 +1086,8 @@ class Atomic(object):
 
     def has_system_container_image(self, img):
         repo = self._get_ostree_repo()
+        if not repo:
+            return False
         try:
             imagebranch = Atomic._get_ostree_image_branch(img)
             return repo.resolve_rev(imagebranch, False)[0]
@@ -1220,12 +1230,16 @@ class Atomic(object):
         repo_location = os.environ.get("ATOMIC_OSTREE_REPO") or \
                         self.get_atomic_config_item(["ostree_repository"]) or \
                         "/ostree/repo"
+        if not os.path.exists(repo_location):
+            return None
         repo = OSTree.Repo.new(Gio.File.new_for_path(repo_location))
         repo.open(None)
         return repo
 
     def _install_system_container(self):
         repo = self._get_ostree_repo()
+        if not repo:
+            raise ValueError("Cannot find a configured OSTree repo")
 
         self._pull_image_to_ostree(repo, self.image, False)
 
@@ -1239,6 +1253,8 @@ class Atomic(object):
         self.args.display = False
 
         repo = self._get_ostree_repo()
+        if not repo:
+            raise ValueError("Cannot find a configured OSTree repo")
 
         path = os.path.join(self._get_system_checkout_path(), name)
 
