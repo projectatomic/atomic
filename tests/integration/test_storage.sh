@@ -60,7 +60,7 @@ echo $OUTPUT | grep -q "No such file or directory"
 # it to /e/s/d-s-s.
 
 if [ -n "$VGROUP" ]; then
-    echo >/etc/sysconfig/docker-storage-setup <<EOF
+    cat >/etc/sysconfig/docker-storage-setup <<EOF
 MIN_DATA_SIZE=0G
 DEVS=""
 EOF
