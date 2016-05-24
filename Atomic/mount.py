@@ -631,7 +631,7 @@ removexattr = None
 def _initxattr():
     # Python 3 has support for extended attributes in the os module, while
     # Python 2 needs the xattr library.  Detect if any is available.
-    global setxattr, getxattr, removeattr
+    global setxattr, getxattr, removexattr
     module = None
     if setxattr:
         return
@@ -679,7 +679,7 @@ class OSTreeMount(Mount):
         return self.has_container(_id) or self.has_image(_id)
 
     def mount(self, identifier, options=[]):
-        global setxattr, getxattr, removeattr
+        global setxattr, getxattr, removexattr
         options = ['remount', 'ro', 'nosuid', 'nodev']
         if self.has_container(identifier):
             typ = "container"
@@ -699,7 +699,7 @@ class OSTreeMount(Mount):
         return True
 
     def unmount(self, path=None):
-        global setxattr, getxattr, removeattr
+        global setxattr, getxattr, removexeattr
         typ = None
         if not self.mountpoint:
             return False
