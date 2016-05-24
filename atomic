@@ -511,7 +511,7 @@ def create_parser(atomic):
 
     # atomic top
     topp = subparser.add_parser(
-    "top", help=_("Show top-like stastics about processes running in containers"))
+    "top", help=_("Show top-like stats about processes running in containers"))
     topp.set_defaults(_class=Top, func='atomic_top')
     topp.add_argument("-d", type=int, default=1, help=_("Interval (secs) to refresh process information"))
     topp.add_argument("-o", "--optional", help=_("Additional fields to display"), nargs='*', choices=['time', 'stime', 'ppid', 'uid', 'gid', 'user', 'group'])
