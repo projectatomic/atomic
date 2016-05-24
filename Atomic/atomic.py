@@ -771,13 +771,21 @@ class Atomic(object):
                                          "CREATED", "VIRTUAL SIZE"))
             for image in self.get_images():
                 repo, tag = image["RepoTags"][0].rsplit(":", 1)
-                self.write_out(col_out.format(self.dangling(repo) + repo,
-                                             tag, image["Id"][:12],
-                                             time.strftime("%F %H:%M",
-                                            time.localtime(image["Created"])),
-                                            convert_size(image["VirtualSize"])))
+                if "Created" in image:
+                    created = time.strftime("%F %H:%M", time.localtime(image["Created"]))
+                else:
+                    created = ""
+                if "VirtualSize" in image:
+                    virtual_size = convert_size(image["VirtualSize"])
+                else:
+                    virtual_size = ""
 
-            return self._system_images()
+                self.write_out(col_out.format(self.dangling(repo) + repo,
+                                              tag, image["Id"][:12],
+                                              created,
+                                              virtual_size))
+
+            return True
 
     def _check_if_image_present(self):
         self.inspect = self._inspect_image()
@@ -813,30 +821,23 @@ class Atomic(object):
         checkouts = self._get_system_checkout_path()
         return [x for x in os.listdir(checkouts) if os.path.islink(os.path.join(checkouts, x))]
 
-    def get_system_images(self, raw=False):
-        repo = self._get_ostree_repo()
-        if not repo:
-            return []
+    def get_system_images(self, repo=None):
+        if repo is None:
+            repo = self._get_ostree_repo()
+            if repo is None:
+                return []
         revs = [x for x in repo.list_refs()[1] if x.startswith(OSTREE_OCIIMAGE_PREFIX) \
                 and len(x) != len(OSTREE_OCIIMAGE_PREFIX) + 64]
-        if raw:
-            return revs
-        return [x.replace("ociimage/", "").replace("-latest", "") for x in revs]
 
-    def _system_images(self):
-        revs = self.get_system_images()
-        if len(revs) == 0:
-            return
-        max_column = max([len(rev) for rev in revs]) + 2
-        col_out = "{0:%d} {1:64}" % max_column
-        self.write_out(col_out.format("IMAGE", "COMMIT"))
+        def get_system_image(rev):
+            commit_rev = repo.resolve_rev(rev, False)[1]
+            commit = repo.load_commit(commit_rev)[1]
 
-        repo = self._get_ostree_repo()
-        if not repo:
-            return
-        for rev in revs:
-            commit = repo.resolve_rev(rev, False)[1]
-            self.write_out(col_out.format(rev, commit))
+            tag = ":".join(rev.replace("ociimage/", "").rsplit('-', 1))
+            timestamp = OSTree.commit_get_timestamp(commit)
+            return {'Id' : tag, 'RepoTags' : [tag], 'Names' : [], 'Created': timestamp }
+
+        return [get_system_image(x) for x in revs]
 
     def systemctl_command(self, cmd, name):
         cmd = self.sub_env_strings(self.gen_cmd(["systemctl", cmd, name]))
@@ -1523,7 +1524,8 @@ class Atomic(object):
                 raise NoDockerDaemon()
             if images:
                 self.images_cache = images
-        return self.images_cache + [{'Id' : x, 'RepoTags' : x, 'Names' : x} for x in self.get_system_images()]
+
+        return self.images_cache + self.get_system_images()
 
     def get_containers(self):
         '''
@@ -1533,7 +1535,8 @@ class Atomic(object):
         if not self.containers:
             self.containers = self.d.containers(all=True)
 
-        return self.containers + [{'Id' : x, 'RepoTags' : x, 'Names' : x} for x in self.get_system_containers()]
+        system_images = [{'Id' : name, 'RepoTags' : [name], 'Names' : name} for name in self.get_system_containers()]
+        return self.containers + system_images
 
     def get_active_containers(self, refresh=False):
         '''

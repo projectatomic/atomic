@@ -70,6 +70,7 @@ class Scan(Atomic):
         if len(self.args.rootfs) == 0:
             scan_list = self._get_scan_list()
             for i in scan_list:
+                i['Id'] = i['Id'].replace(":", "-")
                 self.scan_content[i['Id']] = i.get('input')
 
             # mount all the rootfs
