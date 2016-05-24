@@ -819,6 +819,8 @@ class Atomic(object):
 
     def get_system_containers(self):
         checkouts = self._get_system_checkout_path()
+        if not os.path.exists(checkouts):
+            return []
         return [x for x in os.listdir(checkouts) if os.path.islink(os.path.join(checkouts, x))]
 
     def get_system_images(self, repo=None):
