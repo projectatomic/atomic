@@ -43,7 +43,8 @@ SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE = """
 Description=$NAME
 
 [Service]
-ExecStart=/bin/runc start $NAME
+ExecStart=/bin/runc start '$NAME'
+ExecStop=/bin/runc kill '$NAME'
 Restart=on-crash
 WorkingDirectory=$DESTDIR
 
