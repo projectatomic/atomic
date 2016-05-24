@@ -716,7 +716,11 @@ class OSTreeMount(Mount):
 
         if "-image" in typ.decode():
             for i in os.listdir(self.mountpoint):
-                shutil.rmtree(os.path.join(self.mountpoint, i))
+                path = os.path.join(self.mountpoint, i)
+                if os.path.islink(path):
+                    os.unlink(path)
+                else:
+                    shutil.rmtree(path)
             removexattr(self.mountpoint, "user.atomic.type") # pylint: disable=not-callable
 
         return True
