@@ -1,3 +1,30 @@
+## 1.10 (2016-5-25)
+Improve Error Handling
+- Unify error messages for no docker daemon (BZ #1300187)
+
+Add atomic storage command
+- Modify docker-storage-setup to reset storage
+- Move atomic migrate to atomic storage
+atomic diff improvements
+- Improve docs and output messages for diff
+atomic scan improvements
+- Allow specification of rootfs
+- Implement generic scanning in Atomic
+- Do standard compliance scan without CVEs using openscap
+atomic install|run
+- Set PWD environment if not currently set
+- Fix handling of unicode names
+- Fix shell expansion on commands.
+atomic hosts unlock
+- Remove r/o bind mount on atomic host /usr. Replace it with writable overlay filesystem.
+Support for system containers
+- Add install/uninstall/update/images --system command
+- Use OSTree to store layers and do containers checkouts
+- Store system containers on ostree in /var/lib/containers/atomic/
+- Use Skopeo to retrieve manifest and layers
+- atomic pull --storage
+Allow atomic command to run as non root for certain commands
+
 ## 1.9 (2016-2-22)
 Use Skopeo for remote inspection
 Use docker.AutoVersionClient to avoid API version mismatch
