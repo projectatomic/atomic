@@ -13,6 +13,9 @@ set -euo pipefail
 # In addition, the test harness creates some images for use in testing.
 #   See tests/test-images/
 
+# run only when ENABLE_DESTRUCTIVE is set
+# :destructive-test
+
 # This can copy non-existing files
 #
 smarter_copy() {

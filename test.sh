@@ -167,13 +167,24 @@ for tf in `find ./tests/integration/ -name test_*.sh`; do
         fi
     fi
 
+    # If it is not running with ENABLE_DESTRUCTIVE and the test has
+    # not the :test-destructive tag, skip it silently.
+    if test -z "${ENABLE_DESTRUCTIVE-}" && grep ":destructive-test" ${tf} &> /dev/null; then
+        continue
+    fi
+
     printf "Running test $(basename ${tf})...\t\t"
     printf "\n==== ${tf} ====\n" >> ${LOG}
+
     if ${tf} &>> ${LOG}; then
         printf "PASS\n";
     else
-        printf "FAIL\n";
-        let "failures += 1"
+        if test $? = 77; then
+            printf "SKIP\n";
+        else
+            printf "FAIL\n";
+            let "failures += 1"
+        fi
     fi
 done
 

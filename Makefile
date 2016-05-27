@@ -16,6 +16,9 @@ all: python-build docs pylint-check dockertar-sha256-helper
 test: all
 	./test.sh
 
+test-destructive: all
+	ENABLE_DESTRUCTIVE=1 ./test.sh
+
 .PHONY: python-build
 python-build:
 	$(PYTHON) setup.py build
