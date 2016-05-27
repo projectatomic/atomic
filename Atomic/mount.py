@@ -87,13 +87,16 @@ class Mount(Atomic):
 
     def mount(self):
         try:
-            d = OSTreeMount(self.mountpoint, live=self.live, shared=self.shared)
-            if d.mount(self.image, self.live):
-                return
+            try:
+                d = OSTreeMount(self.mountpoint, live=self.live, shared=self.shared)
+                if d.mount(self.image, self.options):
+                    return
+            except (MountError,NoDockerDaemon):
+                pass
 
             d = DockerMount(self.mountpoint, self.live)
             d.shared = self.shared
-            d.mount(self.image, self.live)
+            d.mount(self.image, self.options)
 
             # only need to bind-mount on the devicemapper driver
             if self.d.info()['Driver'] == 'devicemapper':
@@ -107,8 +110,11 @@ class Mount(Atomic):
     def unmount(self):
 
         try:
-            if OSTreeMount(self.mountpoint).unmount():
-                return
+            try:
+                if OSTreeMount(self.mountpoint).unmount():
+                    return
+            except MountError as dme:
+                pass
 
             dev = Mount.get_dev_at_mountpoint(self.mountpoint)
 
