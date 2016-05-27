@@ -173,7 +173,7 @@ for tf in `find ./tests/integration/ -name test_*.sh`; do
         continue
     fi
 
-    printf "Running test $(basename ${tf})...\t\t"
+    printf "Running test %-40.40s" "$(basename ${tf})...."
     printf "\n==== ${tf} ====\n" >> ${LOG}
 
     if ${tf} &>> ${LOG}; then
