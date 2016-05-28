@@ -731,12 +731,22 @@ class Atomic(object):
         else:
             _no_label()
 
-    def dangling(self, image):
+    def is_dangling(self, image):
         if image == "<none>":
-            return "*"
-        return " "
+            return True
+        return False
 
     def images(self):
+        def split_repo_tags(_images):
+            sub_list = [item.split(":") for sublist in _images for item
+                         in sublist['RepoTags']]
+            repo_tags = []
+            for repo in sub_list:
+                if len(repo) > 2:
+                    repo = [repo[0] + repo[1], repo[2]]
+                repo_tags.append(repo)
+            return repo_tags
+
         def get_col_lengths(_images):
             '''
             Determine the max length of the repository and tag names
@@ -745,12 +755,12 @@ class Atomic(object):
 
             If there are no images, return 1, 1
             '''
-            repo_tags = [item.split(":") for sublist in _images for item
-                         in sublist['RepoTags']]
-            # We add the 1 to the repo max length for self.dangling(repo)
+            repo_tags = split_repo_tags(_images)
+            # Integer additions below are for column padding
+            # 7 == 1 for dangling, 2 for spacing, 4 for highlighting
             if repo_tags:
-                return max([len(x[0]) for x in repo_tags]) + 1,\
-                       max([len(x[1]) for x in repo_tags])
+                return max([len(x[0]) for x in repo_tags]) + 2,\
+                       max([len(x[1]) for x in repo_tags]) + 2
             else:
                 return 1, 1
 
@@ -763,13 +773,21 @@ class Atomic(object):
             return
 
         _images = self.get_images()
+
+        used_image_ids = [x['ImageID'] for x in self.get_containers()]
+
         if len(_images) >= 0:
             _max_repo, _max_tag = get_col_lengths(_images)
-            col_out = "{0:" + str(_max_repo) + "} {1:" + str(_max_tag) + \
-                      "} {2:12} {3:19} {4:10}"
+            col_out = "{0:1} {1:" + str(_max_repo) + "} {2:" + str(_max_tag) + \
+                      "} {3:14} {4:18} {5:14}"
+            self.write_out("")
             if self.args.heading:
-                self.write_out(col_out.format("REPOSITORY", "TAG", "IMAGE ID",
-                                              "CREATED", "VIRTUAL SIZE"))
+                self.write_out(col_out.format(" ",
+                                              "REPOSITORY",
+                                              "TAG",
+                                              "IMAGE ID",
+                                              "CREATED",
+                                              "VIRTUAL SIZE"))
             for image in self.get_images():
                 repo, tag = image["RepoTags"][0].rsplit(":", 1)
                 if "Created" in image:
@@ -781,11 +799,18 @@ class Atomic(object):
                 else:
                     virtual_size = ""
 
-                self.write_out(col_out.format(self.dangling(repo) + repo,
+                if self.is_dangling(repo):
+                    indicator = "*"
+                elif image['Id'] in used_image_ids:
+                    indicator = ">"
+                else:
+                    indicator = ""
+
+                self.write_out(col_out.format(indicator, repo,
                                               tag, image["Id"][:12],
                                               created,
                                               virtual_size))
-
+            self.write_out("")
             return True
 
     def _check_if_image_present(self):
@@ -1594,3 +1619,4 @@ def SetFunc(function):
         def __call__(self, parser, namespace, values, option_string=None):
             setattr(namespace, self.dest, function)
     return customAction
+
