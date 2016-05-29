@@ -301,6 +301,9 @@ def create_parser(atomic):
     imagesp.set_defaults(func='images')
     imagesp.add_argument("--prune", action="store_true",
                          help=_("prune dangling images"))
+    imagesp.add_argument("-n", "--noheading", dest="heading", default=True,
+                         action="store_false",
+                         help=_("do not print heading when listing the images"))
 
     # atomic mount
     mountp = subparser.add_parser(
