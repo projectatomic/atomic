@@ -1124,6 +1124,7 @@ class Atomic(object):
                 sysroot.load()
                 osname = sysroot.get_booted_deployment().get_osname()
                 destination = os.path.join("/ostree/deploy/", osname, os.path.relpath(destination, "/"))
+                destination = os.path.realpath(destination)
             except:
                 pass
             rootfs = os.path.join(destination, "rootfs")
