@@ -7,6 +7,7 @@ atomic-images - list locally installed container images
 # SYNOPSIS
 **atomic images**
 [**-h|--help**]
+[**-n|--noheading**]
 [**--prune**]
 
 # DESCRIPTION
@@ -26,6 +27,9 @@ A `*` in the first column indicates a dangling image.
 # OPTIONS:
 **-h** **--help**
   Print usage statement
+
+**-n** **--noheading**
+  Do not print heading when listing the images
 
 **--prune**
   Prune (remove) all dangling images

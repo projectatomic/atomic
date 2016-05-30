@@ -415,6 +415,7 @@ _atomic_images() {
 	local all_options="
 		--prune
 		--help -h
+		--noheading -n
 	"
 
 	case "$cur" in

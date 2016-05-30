@@ -767,8 +767,9 @@ class Atomic(object):
             _max_repo, _max_tag = get_col_lengths(_images)
             col_out = "{0:" + str(_max_repo) + "} {1:" + str(_max_tag) + \
                       "} {2:12} {3:19} {4:10}"
-            self.write_out(col_out.format("REPOSITORY", "TAG", "IMAGE ID",
-                                         "CREATED", "VIRTUAL SIZE"))
+            if self.args.heading:
+                self.write_out(col_out.format("REPOSITORY", "TAG", "IMAGE ID",
+                                              "CREATED", "VIRTUAL SIZE"))
             for image in self.get_images():
                 repo, tag = image["RepoTags"][0].rsplit(":", 1)
                 if "Created" in image:
