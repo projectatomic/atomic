@@ -37,7 +37,7 @@ from Atomic.verify import Verify
 from Atomic.help import AtomicHelp
 from Atomic.run import Run
 from Atomic.storage import Storage
-from Atomic.atomic import NoDockerDaemon
+from Atomic.atomic import NoDockerDaemon, OSTREE_PRESENT
 from Atomic.util import get_atomic_config, get_scanners, default_docker_lib
 import traceback
 from Atomic.mount import MountError, SelectionMatchError
@@ -280,13 +280,14 @@ def create_parser(atomic):
         action="store_true",
         help=_("preview the command that %s would execute") % sys.argv[0])
     installp.add_argument("image", help=_("container image"))
-    installp.add_argument("--system", dest="system",
-                          action='store_true', default=False,
-                          help=_('install a system container'))
-    installp.add_argument("--set", dest="setvalues",
-                          action='append',
-                          help=_("Specify a variable in the VARIABLE=VALUE "
-                                 "form for a system container"))
+    if Atomic.atomic.OSTREE_PRESENT:
+        installp.add_argument("--system", dest="system",
+                              action='store_true', default=False,
+                              help=_('install a system container'))
+        installp.add_argument("--set", dest="setvalues",
+                              action='append',
+                              help=_("Specify a variable in the VARIABLE=VALUE "
+                                     "form for a system container"))
     installp.add_argument("args", nargs=argparse.REMAINDER,
                           help=_("Additional arguments appended to the image "
                                  "install method"))
@@ -556,10 +557,11 @@ def create_parser(atomic):
     updatep.add_argument("-f", "--force", default=False, dest="force",
                          action="store_true",
                          help=_("remove all containers based on this image"))
-    updatep.add_argument("--set", dest="setvalues",
-                         action='append',
-                         help=_("Specify a variable in the VARIABLE=VALUE "
-                                "form for a system container"))
+    if Atomic.atomic.OSTREE_PRESENT:
+        updatep.add_argument("--set", dest="setvalues",
+                             action='append',
+                             help=_("Specify a variable in the VARIABLE=VALUE "
+                                    "form for a system container"))
     updatep.add_argument("--container", dest="container",
                          action='store_true', default=False,
                          help=_('update an installed container'))

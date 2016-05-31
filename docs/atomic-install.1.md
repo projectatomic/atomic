@@ -54,10 +54,10 @@ If --display is not specified the install command will execute.
 NAME will default to the IMAGENAME if it is not specified.
 
 **--set=NAME=VALUE**
-  Set a value that is going to be used by a system container for its configuration and can be specified multiple times.  It is used only by --system.
+  Set a value that is going to be used by a system container for its configuration and can be specified multiple times.  It is used only by --system.  OSTree is required for this feature to be available.
 
 **--system**
-  Install a system container.  A system container is a container that is executed out of an systemd unit file early in boot, using runc.
+  Install a system container.  A system container is a container that is executed out of an systemd unit file early in boot, using runc.  OSTree is required for this feature to be available.
 
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)

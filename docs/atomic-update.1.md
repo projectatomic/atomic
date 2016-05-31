@@ -25,7 +25,7 @@ continue to use the old image. Use --force to remove the container.
   Print usage statement
 
 **--set=NAME=VALUE**
-  Set a value that is going to be used by a system container for its configuration and can be specified multiple times.  It is used only by --system.
+  Set a value that is going to be used by a system container for its configuration and can be specified multiple times.  It is used only by --system.  OSTree is required for this feature to be available.
 
 **--update**
   Update a container instead of an image.

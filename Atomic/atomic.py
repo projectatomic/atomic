@@ -11,10 +11,15 @@ import shutil
 import tempfile
 import tarfile
 import stat
-import gi
 from string import Template
-gi.require_version('OSTree', '1.0')
-from gi.repository import Gio, GLib, OSTree
+
+try:
+    import gi
+    gi.require_version('OSTree', '1.0')
+    from gi.repository import Gio, GLib, OSTree
+    OSTREE_PRESENT = True
+except ImportError:
+    OSTREE_PRESENT = False
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
