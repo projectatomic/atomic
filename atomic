@@ -551,8 +551,7 @@ def create_parser(atomic):
         epilog="atomic update downloads the latest container image. If a "
         "previously created  container based on this image exists, "
         "the container will continue to use the old image.  Use "
-        "--force to remove the outdated container.  Use --system to "
-        "update a running system container")
+        "--force to remove the outdated container.")
     updatep.set_defaults(func='update')
     updatep.add_argument("-f", "--force", default=False, dest="force",
                          action="store_true",
