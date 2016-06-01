@@ -11,6 +11,11 @@ from yaml import load as yaml_load
 import tempfile
 import shutil
 import re
+import requests
+try:
+    from urlparse import urlparse
+except:
+    from urllib.parse import urlparse #pylint: disable=no-name-in-module,import-error
 
 """Atomic Utility Module"""
 
@@ -209,7 +214,9 @@ def skopeo_inspect(image, args=[]):
     except OSError:
         raise ValueError("skopeo must be installed to perform remote inspections")
     if results.return_code is not 0:
-        raise ValueError(results.stderr)
+        # Need to check if we are dealing with a v1 registry
+        check_v1_registry(image)
+        raise ValueError("Unable to interact with this registry: {}".format(results.stderr))
     else:
         return json.loads(results.stdout.decode('utf-8'))
 
@@ -227,7 +234,8 @@ def skopeo_layers(image, args=[], layers=[]):
         args = ['skopeo', 'layers'] + args + [image] + layers
         r = subp(args, cwd=temp_dir)
         if r.return_code != 0:
-            raise ValueError(r.stderr.decode(sys.getdefaultencoding()))
+            check_v1_registry(image)
+            raise ValueError("Unable to interact with this registry: {}".format(r.stderr))
     except OSError:
         raise ValueError("skopeo must be installed to perform remote inspections")
     except Exception as e:
@@ -235,6 +243,13 @@ def skopeo_layers(image, args=[], layers=[]):
         raise e
     return temp_dir
 
+
+def check_v1_registry(image):
+    # Skopeo cannot interact with a v1 registry
+    netloc = (urlparse(image)).netloc
+    v1_url = "https://{}/v1/_ping".format(netloc)
+    if requests.get(v1_url).status_code == 200:
+        raise ValueError("\nUnable to interact with a V1 registry.")
 
 class NoDockerDaemon(Exception):
     def __init__(self):
