@@ -1213,7 +1213,8 @@ class Atomic(object):
                 manifest = json.loads(f.read())
                 if "defaultValues" in manifest:
                     for key, val in manifest["defaultValues"].items():
-                        values[key] = val
+                        if key not in values:
+                            values[key] = val
 
         if self.args.setvalues is not None:
             for i in self.args.setvalues:
