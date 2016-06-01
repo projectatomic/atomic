@@ -1274,7 +1274,9 @@ class Atomic(object):
         return True
 
     def _get_system_checkout_path(self):
-        return self.get_atomic_config_item(["checkout_path"]) or "/var/lib/containers/atomic"
+        return os.environ.get("ATOMIC_OSTREE_CHECKOUT_PATH") or \
+            self.get_atomic_config_item(["checkout_path"]) or \
+            "/var/lib/containers/atomic"
 
     def _get_ostree_repo(self):
         repo_location = os.environ.get("ATOMIC_OSTREE_REPO") or \
