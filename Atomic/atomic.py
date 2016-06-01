@@ -389,7 +389,7 @@ class Atomic(object):
             if self.spc:
                 self.name = self.name + "-spc"
             if self.system:
-                self.name = self.image.replace(":", "/").split("/")[-1] + "-system"
+                self.name = Atomic._get_default_system_name(self.image)
 
     def _getconfig(self, key, default=None):
         assert self.inspect is not None
@@ -945,6 +945,17 @@ class Atomic(object):
                 self.write_out("Deleting %s" % k)
                 repo.set_ref_immediate(ref[1], ref[2], None)
         return
+
+    @staticmethod
+    def _get_default_system_name(image):
+        image = image.replace("oci:", "").replace("docker:", "")
+        regloc, image, tag = Atomic._parse_imagename(image)
+        if tag == "latest":
+            name = image.replace("/", "-")
+        else:
+            name = "%s-%s" % (image.replace("/", "-"), tag)
+
+        return "%s-%s" % (name.strip("-"), "system")
 
     @staticmethod
     def _parse_imagename(imagename):
