@@ -1282,9 +1282,14 @@ class Atomic(object):
         repo_location = os.environ.get("ATOMIC_OSTREE_REPO") or \
                         self.get_atomic_config_item(["ostree_repository"]) or \
                         "/ostree/repo"
-        if not os.path.exists(repo_location):
-            return None
+
         repo = OSTree.Repo.new(Gio.File.new_for_path(repo_location))
+
+        # If the repository doesn't exist at the specified location, create it
+        if not os.path.exists(os.path.join(repo_location, "config")):
+            os.makedirs(repo_location)
+            repo.create(OSTree.RepoMode.BARE)
+
         repo.open(None)
         return repo
 
