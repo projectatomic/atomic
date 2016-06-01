@@ -1157,7 +1157,7 @@ class Atomic(object):
         self.write_out("Extracting to %s" % destination)
 
         if 'display' in self.args and self.args.display:
-            return True
+            return
 
         if extract_only:
             rootfs = destination
@@ -1200,7 +1200,7 @@ class Atomic(object):
                 os.close(rootfs_fd)
 
         if extract_only:
-            return True
+            return
 
         # When installing a new system container, set values in this order:
         #
@@ -1271,7 +1271,7 @@ class Atomic(object):
             self.systemctl_command("restart", name)
         else:
             self.systemctl_command("start", name)
-        return True
+        return
 
     def _get_system_checkout_path(self):
         return os.environ.get("ATOMIC_OSTREE_CHECKOUT_PATH") or \
