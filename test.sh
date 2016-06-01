@@ -100,6 +100,11 @@ make_docker_images () {
             cp ./tests/test-images/install.sh ${WORK_DIR}
         fi
 
+        # Copy install.sh into atomic-test-system
+        if [[ ${iname} = "atomic-test-system" ]]; then
+            cp ./tests/test-images/system-container-files/* ${WORK_DIR}
+        fi
+
         # Remove the old image... Though there may not be one.
         set +e
         ${DOCKER} rmi ${iname} &>> ${LOG}

@@ -1,0 +1,9 @@
+FROM fedora
+RUN dnf install -y nmap-ncat && dnf clean all
+
+LABEL "Name"="atomic-test-system"
+
+ADD run.sh greet.sh /usr/bin/
+
+# Export the files used for the system container
+ADD manifest.json service.template config.json.template /exports/
