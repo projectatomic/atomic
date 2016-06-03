@@ -6,7 +6,7 @@ atomic-mount - Mount Images/Containers to Filesystem
 
 # SYNOPSIS
 **atomic mount**
-[**--live** | [**-o**|**--options** *OPTIONS*]]
+[**--live** | **--shared** | [**-o**|**--options** *OPTIONS*]]
 [REGISTRY/]REPO[:TAG]|UUID|NAME
 DIRECTORY
 
@@ -40,6 +40,9 @@ to modify the container's contents as it runs or update the container's
 software without rebuilding the container. If live mode is used, no mount
 options may be provided. Live mode is *not* supported on the OverlayFS docker
 storage driver.
+
+**--shared**
+Mount a container with a shared SELinux label
 
 # HISTORY
 June 2015, Originally compiled by William Temple (wtemple at redhat dot com)
