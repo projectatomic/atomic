@@ -32,6 +32,7 @@ from . import util
 import requests
 from .util import NoDockerDaemon
 import shutil
+from .atomic import OSTREE_PRESENT as OSTREE_PRESENT
 
 """ Module for mounting and unmounting containerized applications. """
 
@@ -87,12 +88,9 @@ class Mount(Atomic):
 
     def mount(self):
         try:
-            try:
-                d = OSTreeMount(self.mountpoint, live=self.live, shared=self.shared)
-                if d.mount(self.image, self.options):
-                    return
-            except (MountError,NoDockerDaemon):
-                pass
+            d = OSTreeMount(self.mountpoint, live=self.live, shared=self.shared)
+            if d.mount(self.image, self.options):
+                return
 
             d = DockerMount(self.mountpoint, self.live)
             d.shared = self.shared
@@ -110,11 +108,8 @@ class Mount(Atomic):
     def unmount(self):
 
         try:
-            try:
-                if OSTreeMount(self.mountpoint).unmount():
-                    return
-            except MountError as dme:
-                pass
+            if OSTreeMount(self.mountpoint).unmount():
+                return
 
             dev = Mount.get_dev_at_mountpoint(self.mountpoint)
 
@@ -667,8 +662,8 @@ class OSTreeMount(Mount):
         Mount.__init__(self)
         self.args = {}
         self.mountpoint = mountpoint
-        if live:
-            raise MountError('Containers and images managed through OSTree do not support --live.')
+        self.live = live
+        self.shared = shared
         self.mnt_mkdir = mnt_mkdir
         self.tmp_image = None
         _initxattr()
@@ -686,12 +681,25 @@ class OSTreeMount(Mount):
 
     def mount(self, identifier, options=[]):
         global setxattr, getxattr, removexattr
+
+        if not OSTREE_PRESENT:
+            return False
+
         options = ['remount', 'ro', 'nosuid', 'nodev']
-        if self.has_container(identifier):
+        has_container = self.has_container(identifier)
+        has_image = self.has_image(identifier)
+
+        if has_container or has_image:
+            if self.live:
+                raise MountError('Containers and images managed through OSTree do not support --live.')
+            if self.shared:
+                raise MountError('Containers and images managed through OSTree do not support --shared.')
+
+        if has_container:
             typ = "container"
             source = os.path.join(self.get_system_container_checkout(identifier), "rootfs")
             Mount.mount_path(source, self.mountpoint, bind=True)
-        elif self.has_image(identifier):
+        elif has_image:
             typ = "image"
             if len(os.listdir(self.mountpoint)):
                 raise MountError('The destination path is not empty.')
@@ -707,6 +715,10 @@ class OSTreeMount(Mount):
     def unmount(self, path=None):
         global setxattr, getxattr, removexeattr
         typ = None
+
+        if not OSTREE_PRESENT:
+            return False
+
         if not self.mountpoint:
             return False
 
