@@ -62,7 +62,14 @@ grep -q 8082 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/config.json
 mkdir ${WORK_DIR}/mount
 
 # Test that mount and umount work
+
+# mount a container
 ${ATOMIC} mount ${NAME} ${WORK_DIR}/mount
+test -e ${WORK_DIR}/mount/usr/bin/greet.sh
+${ATOMIC} umount ${WORK_DIR}/mount
+
+# mount an image
+${ATOMIC} mount atomic-test-system ${WORK_DIR}/mount
 test -e ${WORK_DIR}/mount/usr/bin/greet.sh
 ${ATOMIC} umount ${WORK_DIR}/mount
 
