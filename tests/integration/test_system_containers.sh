@@ -82,3 +82,11 @@ ${ATOMIC} umount ${WORK_DIR}/mount
 
 ${ATOMIC} uninstall ${NAME}
 test \! -e /etc/systemd/system/${NAME}.service
+
+# check that there are not any "ociimage/" prefixed branch left after images --prune
+ostree --repo=${ATOMIC_OSTREE_REPO} refs --delete "ociimage/atomic-test-system-latest"
+${ATOMIC} images --prune
+OUTPUT=$(! ostree --repo=${ATOMIC_OSTREE_REPO} refs | grep -c ociimage)
+if test $OUTPUT \!= 0; then
+    exit 1
+fi
