@@ -1,6 +1,6 @@
 type: scanner
 scanner_name: openscap
-image_name: openscap
+image_name: rhel7/openscap
 default_scan: cve
 scans: [ 
       { name: cve,
