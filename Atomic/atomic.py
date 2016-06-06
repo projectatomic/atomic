@@ -12,6 +12,7 @@ import tempfile
 import tarfile
 import stat
 from string import Template
+import calendar
 
 try:
     import gi
@@ -1250,6 +1251,8 @@ class Atomic(object):
 
         with open(os.path.join(destination, "info"), 'w') as info_file:
             info = {"image" : img,
+                    "revision" : rev,
+                    'created' : calendar.timegm(time.gmtime()),
                     "values" : values}
             info_file.write(json.dumps(info))
 
