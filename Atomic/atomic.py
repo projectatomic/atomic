@@ -820,7 +820,7 @@ class Atomic(object):
                                               created,
                                               virtual_size))
             self.write_out("")
-            return True
+            return
 
     def _check_if_image_present(self):
         self.inspect = self._inspect_image()

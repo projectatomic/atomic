@@ -31,6 +31,8 @@ ${ATOMIC} pull dockertar:/${WORK_DIR}/atomic-test-system.tar
 # Check that the branch is created in the OSTree repository
 ostree --repo=${ATOMIC_OSTREE_REPO} refs | grep -q "ociimage/atomic-test-system-latest"
 
+${ATOMIC} images | grep -q "atomic-test-system"
+
 export NAME="test-system-container-$$"
 
 teardown () {
