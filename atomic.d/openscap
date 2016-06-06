@@ -2,6 +2,7 @@ type: scanner
 scanner_name: openscap
 image_name: rhel7/openscap
 default_scan: cve
+custom_args: ['-v', '/etc/oscapd:/etc/oscapd:ro']
 scans: [ 
       { name: cve,
         args: ['oscapd-evaluate', 'scan',  '--no-standard-compliance', '--targets', 'chroots-in-dir:///scanin',  '--output', '/scanout'],
