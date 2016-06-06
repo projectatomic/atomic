@@ -856,7 +856,21 @@ class Atomic(object):
         checkouts = self._get_system_checkout_path()
         if not os.path.exists(checkouts):
             return []
-        return [x for x in os.listdir(checkouts) if os.path.islink(os.path.join(checkouts, x))]
+        ret = []
+        for x in os.listdir(checkouts):
+            fullpath = os.path.join(checkouts, x)
+            if not os.path.islink(fullpath):
+                continue
+
+            with open(os.path.join(fullpath, "info"), "r") as info_file:
+                info = json.loads(info_file.read())
+                revision = info["revision"] if "revision" in info else ""
+                created = info["created"] if "created" in info else ""
+                image = info["image"] if "image" in info else ""
+
+            container = {'Image' : image, 'ImageID' : revision, 'Id' : x, 'Created' : created, 'Names' : [x]}
+            ret.append(container)
+        return ret
 
     def get_system_images(self, repo=None):
         if repo is None:
@@ -872,7 +886,7 @@ class Atomic(object):
 
             tag = ":".join(rev.replace("ociimage/", "").rsplit('-', 1))
             timestamp = OSTree.commit_get_timestamp(commit)
-            return {'Id' : tag, 'RepoTags' : [tag], 'Names' : [], 'Created': timestamp }
+            return {'Id' : commit_rev, 'RepoTags' : [tag], 'Names' : [], 'Created': timestamp }
 
         return [get_system_image(x) for x in revs]
 
@@ -1594,8 +1608,7 @@ class Atomic(object):
         if not self.containers:
             self.containers = self.d.containers(all=True)
 
-        system_images = [{'Id' : name, 'RepoTags' : [name], 'Names' : name} for name in self.get_system_containers()]
-        return self.containers + system_images
+        return self.containers + self.get_system_containers()
 
     def get_active_containers(self, refresh=False):
         '''
