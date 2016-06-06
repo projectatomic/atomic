@@ -17,7 +17,7 @@ try:
     import gi
     try:
         gi.require_version('OSTree', '1.0')
-        from gi.repository import Gio, GLib, OSTree
+        from gi.repository import Gio, GLib, OSTree  # pylint: disable=no-name-in-module
         OSTREE_PRESENT = True
     except ValueError:
         OSTREE_PRESENT = False
