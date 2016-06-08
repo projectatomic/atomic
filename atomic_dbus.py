@@ -6,9 +6,7 @@ import dbus.mainloop.glib
 from gi.repository import GLib # pylint: disable=no-name-in-module
 import slip.dbus.service
 from slip.dbus import polkit
-
-from . import Atomic
-
+from Atomic import Atomic
 
 class atomic_dbus(slip.dbus.service.Object):
     default_polkit_auth_required = "org.atomic.readwrite"
@@ -19,7 +17,7 @@ class atomic_dbus(slip.dbus.service.Object):
             self.recurse = False
 
     def __init__(self, *p, **k):
-        slip.dbus.service.Object.__init__(*p, **k)
+	super(atomic_dbus, self).__init__(*p, **k)
         self.atomic = Atomic()
 
     """
@@ -51,7 +49,7 @@ class atomic_dbus(slip.dbus.service.Object):
             args = self.Args(str(image))
             self.atomic.set_args(args)
             verifications.append({"Image": image,
-                                  "Verification": self.atomic.verify()})
+                                  "Verification": self.atomic.verify()}) #pylint: disable=no-member
         return verifications
 
 
