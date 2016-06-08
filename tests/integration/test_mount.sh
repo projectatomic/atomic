@@ -49,6 +49,19 @@ ${ATOMIC} mount ${INAME} --live ${MNT_WORK}/image
 if [ "$?" -eq "0" ]; then
     exit 1
 fi
+
+cleanup_mount () {
+    ${ATOMIC} unmount ${MNT_WORK}/container
+    cleanup_container
+}
+trap cleanup_container_mount EXIT
+
+${ATOMIC} unmount ${MNT_WORK}/container
+${ATOMIC} mount ${id} --live ${MNT_WORK}/container
+
+${ATOMIC} unmount ${MNT_WORK}/container
+${ATOMIC} mount ${id} --shared ${MNT_WORK}/container
+
 set -e
 
 cleanup_mount () {

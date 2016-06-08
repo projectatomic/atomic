@@ -27,7 +27,7 @@ class Storage(Atomic):
         root = "/var/lib/docker"
         try:
             self.d.info()
-            raise ValueError("Docker daemon must be stop before resetting storage")
+            raise ValueError("Docker daemon must be stopped before resetting storage")
         except requests.exceptions.ConnectionError as e:
             pass
 

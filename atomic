@@ -462,10 +462,10 @@ def create_parser(atomic):
     storage_subparser = storagep.add_subparsers(help=_("storage commands"))
     # atomic storage export
     exportp = storage_subparser.add_parser("export",
-                                           help=_("export containers and it's associated contents into a filesystem directory"),
-                                           epilog="export container's content. "
-                                           "The export command would export images, "
-                                           "containers and volumes into a filesystem directory.")
+                                           help=_("export containers and associated contents into a filesystem directory"),
+                                           epilog="Export containers. "
+                                           "The export command exports images, "
+                                           "containers, and volumes into a filesystem directory.")
     exportp.set_defaults(_class=Storage, func='Export')
     exportp.add_argument("--graph", dest="graph",
                          default=default_docker_lib(),
@@ -478,10 +478,10 @@ def create_parser(atomic):
                          help=_("Force removal of dangling images"))
 
     # atomic storage import
-    importp = storage_subparser.add_parser("import", help=_("import containers and it's associated contents from a filesystem directory"),
-                                           epilog="import container's content."
-                                           "The import command would import images,"
-                                           "containers and volumes from a filesystem directory.")
+    importp = storage_subparser.add_parser("import", help=_("import containers associated contents from a filesystem directory"),
+                                           epilog="Import containers. "
+                                           "The import command imports images,"
+                                           "containers, and volumes from a filesystem directory.")
     importp.set_defaults(_class=Storage, func='Import')
     importp.set_defaults(func='Import')
     importp.add_argument("--graph", dest="graph",

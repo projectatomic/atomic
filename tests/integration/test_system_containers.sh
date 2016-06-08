@@ -31,6 +31,8 @@ ${ATOMIC} pull dockertar:/${WORK_DIR}/atomic-test-system.tar
 # Check that the branch is created in the OSTree repository
 ostree --repo=${ATOMIC_OSTREE_REPO} refs | grep -q "ociimage/atomic-test-system-latest"
 
+${ATOMIC} images | grep -q "atomic-test-system"
+
 export NAME="test-system-container-$$"
 
 teardown () {
@@ -62,9 +64,31 @@ grep -q 8082 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/config.json
 mkdir ${WORK_DIR}/mount
 
 # Test that mount and umount work
+
+# Check that --live and --shared fail
+OUTPUT=$(! ${ATOMIC} mount --live ${NAME} ${WORK_DIR}/mount 2>&1)
+grep "do not support --live" <<< $OUTPUT
+
+OUTPUT=$(! ${ATOMIC} mount --shared ${NAME} ${WORK_DIR}/mount 2>&1)
+grep "do not support --shared" <<< $OUTPUT
+
+# mount a container
 ${ATOMIC} mount ${NAME} ${WORK_DIR}/mount
+test -e ${WORK_DIR}/mount/usr/bin/greet.sh
+${ATOMIC} umount ${WORK_DIR}/mount
+
+# mount an image
+${ATOMIC} mount atomic-test-system ${WORK_DIR}/mount
 test -e ${WORK_DIR}/mount/usr/bin/greet.sh
 ${ATOMIC} umount ${WORK_DIR}/mount
 
 ${ATOMIC} uninstall ${NAME}
 test \! -e /etc/systemd/system/${NAME}.service
+
+# check that there are not any "ociimage/" prefixed branch left after images --prune
+ostree --repo=${ATOMIC_OSTREE_REPO} refs --delete "ociimage/atomic-test-system-latest"
+${ATOMIC} images --prune
+OUTPUT=$(! ostree --repo=${ATOMIC_OSTREE_REPO} refs | grep -c ociimage)
+if test $OUTPUT \!= 0; then
+    exit 1
+fi
