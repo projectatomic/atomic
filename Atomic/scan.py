@@ -41,15 +41,15 @@ class Scan(Atomic):
             if len(self.scanners) == 0:
                 raise ValueError("No scanners are configured for your system.")
 
-            if len(self.scanners) == 1:
-                self.scanner = self.scanners[0]['scanner_name']
-            # If a scanner is defined in parseargs
-            elif self.args.scanner:
+            if self.args.scanner:
                 self.scanner = self.args.scanner
+            elif len(self.scanners) == 1:
+                self.scanner = self.scanners[0]['scanner_name']
             # Use default
-            elif default_scanner is not None:
-                self.scanner = default_scanner
-            elif self.scanner is None:
+            else:
+                self.scanner = self.atomic_config['default_scanner']
+
+            if self.scanner is None:
                 raise ValueError("You must specify a scanner (--scanner) or set a default in /etc/atomic.conf")
 
             # Check if the scanner name is valid
@@ -66,7 +66,6 @@ class Scan(Atomic):
         if self.args.list:
             self.print_scan_list()
 
-        default_scanner = self.atomic_config['default_scanner']
         set_scanner()
 
 
