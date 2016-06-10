@@ -323,11 +323,13 @@ def default_docker_lib():
 # Utilities for dealing with config files that use bourne shell
 # syntax, such as /etc/sysconfig/docker-storage-setup
 
+def sh_make_var_pattern(var):
+    return '^[ \t]*%s[ \t]*=[ \t]*"(.*)"[ \t]*$' % re.escape(var)
+
 def sh_modify_var_in_text(text, var, modifier, default=""):
-    pattern = '^[ \t]*%s[ \t]*=[ \t]*"(.*)"[ \t]*$' % re.escape(var)
     def sub(match):
         return var + '="' + modifier(match.group(1)) + '"'
-    (new_text, n_subs) = re.subn(pattern, sub, text, flags=re.MULTILINE)
+    (new_text, n_subs) = re.subn(sh_make_var_pattern(var), sub, text, flags=re.MULTILINE)
     if n_subs != 0:
         return new_text
     else:
@@ -341,6 +343,22 @@ def sh_modify_var_in_file(path, var, modifier, default=""):
         text = ""
     with open(path, "w") as f:
         f.write(sh_modify_var_in_text(text, var, modifier, default))
+
+def sh_get_var_in_text(text, var, default=""):
+    match = None
+    for match in re.finditer(sh_make_var_pattern(var), text, flags=re.MULTILINE):
+        pass
+    if match:
+        return match.group(1)
+    else:
+        return default
+
+def sh_get_var_in_file(path, var, default=""):
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            return sh_get_var_in_text(f.read(), var, default)
+    else:
+        return default
 
 def sh_set_add(a, b):
     return " ".join(list(set(a.split()) | set(b)))
