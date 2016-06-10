@@ -40,7 +40,7 @@ setup () {
 teardown () {
     # Cleanup your test data.
     set -e
-    [ -n "$VGROUP" ] && vgreduce $VGROUP "$TEST_DEV_1_pvs"
+    [ -n "$VGROUP" ] && (vgreduce $VGROUP "$TEST_DEV_1_pvs" || true)
     losetup -d "$TEST_DEV_1"
     smarter_copy /etc/sysconfig/docker-storage-setup.atomic-tests-backup /etc/sysconfig/docker-storage-setup
 }
@@ -59,15 +59,55 @@ fi
 set -e
 echo $OUTPUT | grep -q "No such file or directory"
 
-# Adding a device should put it into the volume group and should add
-# it to /e/s/d-s-s.
-
 if [ -n "$VGROUP" ]; then
     cat >/etc/sysconfig/docker-storage-setup <<EOF
 MIN_DATA_SIZE=0G
 DEVS=""
 EOF
+
+    # Adding a device should put it into the volume group and should add
+    # it to /e/s/d-s-s.
+
     ${ATOMIC} storage modify --add-device $TEST_DEV_1
     [ $(pvs --noheadings -o vg_name $TEST_DEV_1_pvs) == $VGROUP ]
     grep -q "^DEVS=\"$TEST_DEV_1\"$" /etc/sysconfig/docker-storage-setup
+
+    # Removing it should undo all that.
+
+    ${ATOMIC} storage modify --remove-device $TEST_DEV_1
+    ! (pvs --noheadings -o pv_name | grep -q $TEST_DEV_1_pvs)
+    ! grep -q "^DEVS=\"$TEST_DEV_1\"$" /etc/sysconfig/docker-storage-setup
+
+    # Adding it again straight away should work.
+
+    ${ATOMIC} storage modify --add-device $TEST_DEV_1
+    [ $(pvs --noheadings -o vg_name $TEST_DEV_1_pvs) == $VGROUP ]
+    grep -q "^DEVS=\"$TEST_DEV_1\"$" /etc/sysconfig/docker-storage-setup
+
+    # Now it should be unused.
+
+    ${ATOMIC} storage modify --remove-unused-devices
+    ! (pvs --noheadings -o pv_name | grep -q $TEST_DEV_1_pvs)
+    ! grep -q "^DEVS=\"$TEST_DEV_1\"$" /etc/sysconfig/docker-storage-setup
+
+    # Removing a device that is not in the pool should fail
+
+    set +e
+    OUTPUT=$(${ATOMIC} storage modify --remove-device $TEST_DEV_1 2>&1)
+    if [[ $? -eq 0 ]]; then
+        exit 1
+    fi
+    set -e
+    echo $OUTPUT | grep -q "Not part of the storage pool: $TEST_DEV_1"
+
+    # Removing a non-exitsing device should fail
+
+    set +e
+    OUTPUT=$(${ATOMIC} storage modify --remove-device /dev/nonexisting 2>&1)
+    if [[ $? -eq 0 ]]; then
+        exit 1
+    fi
+    set -e
+    echo $OUTPUT | grep -q "Not part of the storage pool: /dev/nonexisting"
+
 fi

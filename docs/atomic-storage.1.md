@@ -73,6 +73,13 @@ the directory must be present for the import to happen successfully.
 Add block devices to storage pool. This command will expand your devicemapper
 storage pool by adding the block device. Only works with devicemapper driver.
 
+**--remove-device**
+Remove block devices from the storage pool.  If a device is not empty, this
+command will try to first move its data to some other device in the pool.
+
+**--remove-unused-devices**
+Remove all block devices from the storage pool that are currently unused.
+
 **--driver**
 Backend storage driver for containers.  This options the storage driver.
 Drivers supported: devicemapper, overlay

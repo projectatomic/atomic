@@ -18,6 +18,43 @@ try:
 except ImportError:
     from atomic import Atomic
 
+def query_lvs(lvol, vgroup, fields):
+    return util.check_output([ "lvs", "--noheadings", "-o",  fields, "--unit", "b", vgroup + "/" + lvol ]).split()
+
+def query_pvs(pv, fields):
+    return util.check_output([ "pvs", "--noheadings", "-o",  fields, "--unit", "b", pv ]).split()
+
+def list_pvs(vgroup):
+    res = [ ]
+    for l in util.check_output([ "pvs", "--noheadings", "-o",  "vg_name,pv_name" ]).splitlines():
+        fields = l.split()
+        if len(fields) == 2 and fields[0] == vgroup:
+            res.append(fields[1])
+    return res
+
+def list_lvs(vgroup):
+    return map(lambda s: s.strip(),
+               util.check_output([ "lvs", "--noheadings", "-o", "name", vgroup ]).splitlines())
+
+def list_parents(dev):
+    return util.check_output([ "lsblk", "-snlp", "-o", "NAME", dev ]).splitlines()[1:]
+
+def list_children(dev):
+    return util.check_output([ "lsblk", "-nlp", "-o", "NAME", dev ]).splitlines()[1:]
+
+def get_dss_vgroup(conf):
+    vgroup = util.sh_get_var_in_file(conf, "VG", "")
+    if vgroup == "":
+        root_dev = None
+        for l in open("/proc/mounts", "r").readlines():
+            fields = l.split()
+            if fields[1] == "/" and fields[0].startswith("/dev"):
+                vgroup = util.check_output([ "lvs", "--noheadings", "-o",  "vg_name", fields[0]]).strip()
+    return vgroup
+
+def get_dss_devs(conf):
+    return util.sh_get_var_in_file(conf, "DEVS", "").split()
+
 class Storage(Atomic):
     dss_conf = "/etc/sysconfig/docker-storage-setup"
     dss_conf_bak = dss_conf + ".bkp"
@@ -45,6 +82,10 @@ class Storage(Atomic):
             shutil.copyfile(self.dss_conf, self.dss_conf_bak)
             if len(self.args.devices) > 0:
                 self._add_device(self.args.devices)
+            if len(self.args.remove_devices) > 0:
+                self._remove_devices(self.args.remove_devices, only_unused=False)
+            if self.args.remove_unused_devices:
+                self._remove_devices(get_dss_devs(self.dss_conf), only_unused=True)
             if self.args.driver:
                 self._driver(self.args.driver)
             if util.call(["docker-storage-setup"]) != 0:
@@ -62,6 +103,39 @@ class Storage(Atomic):
     def _add_device(self, devices):
         util.sh_modify_var_in_file(self.dss_conf, "DEVS",
                                    lambda old: util.sh_set_add(old, devices))
+
+    def _remove_devices(self, devices, only_unused):
+        vgroup = get_dss_vgroup(self.dss_conf)
+        pvs = list_pvs(vgroup)
+        lvs = list_lvs(vgroup)
+        n_pvs = len(pvs)
+        devices = set(devices)
+        for pv in pvs:
+            parents = list_parents(pv)
+            if set(parents).isdisjoint(devices):
+                continue
+            devices -= set(parents)
+
+            if query_pvs(pv, "pv_used")[0][:-1] != '0':
+                if only_unused:
+                    continue
+                else:
+                    util.check_call([ "pvmove", pv ])
+
+            if n_pvs > 1:
+                util.check_call([ "vgreduce", vgroup, pv ])
+            elif len(lvs) == 0:
+                util.check_call([ "vgremove", vgroup ])
+            n_pvs -= 1
+            util.check_call([ "wipefs", "-a", pv ])
+            util.sh_modify_var_in_file(self.dss_conf, "DEVS",
+                                       lambda old: util.sh_set_del(old, parents))
+            if len(parents) == 1:
+                children = list_children(parents[0])
+                if len(children) == 1 and children[0] == pv:
+                    util.check_call([ "wipefs", "-a", parents[0] ])
+        if len(devices) > 0:
+            raise ValueError("Not part of the storage pool: {}".format(", ".join(devices)))
 
     def _driver(self, driver):
         util.sh_modify_var_in_file(self.dss_conf, "STORAGE_DRIVER",
