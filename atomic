@@ -512,8 +512,7 @@ def create_parser(atomic):
 
     # atomic storage modify
     modifyp = storage_subparser.add_parser("modify",help='modify default storage setup')
-    modifyp.add_argument('--add-device', dest="devices", default=[], nargs='?',
-                         action='append',
+    modifyp.add_argument('--add-device', metavar="DEVICE", dest="devices", default=[], action='append',
                          help=_("add block devices to storage pool"))
     modifyp.add_argument('--driver', dest="driver", default=None, help='The storage backend driver', choices=['devicemapper', 'overlay'])
     modifyp.set_defaults(_class=Storage, func='modify')
