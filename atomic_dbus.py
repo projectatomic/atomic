@@ -7,14 +7,23 @@ from gi.repository import GLib # pylint: disable=no-name-in-module
 import slip.dbus.service
 from slip.dbus import polkit
 from Atomic import Atomic
+from Atomic.verify import Verify
+from Atomic.storage import Storage
 
 class atomic_dbus(slip.dbus.service.Object):
     default_polkit_auth_required = "org.atomic.readwrite"
 
     class Args():
-        def __init__(self, image):
-            self.image = image
+        def __init__(self):
+            self.image = None
             self.recurse = False
+            self.debug = False
+            self.devices = None
+            self.driver = None
+            self.graph = None
+            self.force = None
+            self.import_location = None
+            self.export_location = None
 
     def __init__(self, *p, **k):
 	super(atomic_dbus, self).__init__(*p, **k)
@@ -30,7 +39,8 @@ class atomic_dbus(slip.dbus.service.Object):
     def version(self, images, recurse=False):
         versions = []
         for image in images:
-            args = self.Args(str(image))
+            args = self.Args()
+            args.image = image
             args.recurse = recurse
             self.atomic.set_args(args)
             versions.append({"Image": image,
@@ -45,13 +55,66 @@ class atomic_dbus(slip.dbus.service.Object):
     @dbus.service.method("org.atomic", in_signature='as', out_signature='av')
     def verify(self, images):
         verifications = []
+        verify = Verify()
         for image in images:
-            args = self.Args(str(image))
-            self.atomic.set_args(args)
+            args = self.Args()
+            args.image = image
+            verify.set_args(args)
             verifications.append({"Image": image,
-                                  "Verification": self.atomic.verify()}) #pylint: disable=no-member
+                                  "Verification": verify.verify()}) #pylint: disable=no-member
         return verifications
 
+        """
+        The storage_reset method deletes all containers and images from a system. Resets storage to its initial configuration.
+        """
+    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @dbus.service.method("org.atomic", in_signature='', out_signature='')
+    def storage_reset(self):
+        storage = Storage()
+        # No arguments are passed for storage_reset function
+        args = self.Args()
+        storage.set_args(args)
+        storage.reset()
+        
+    """
+    The storage_import method imports all containers and their associated contents from a filesystem directory.
+    """
+    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @dbus.service.method("org.atomic", in_signature='ss', out_signature='')
+    def storage_import(self, graph="/var/lib/docker", import_location="/var/lib/atomic/migrate"):
+        storage = Storage()
+        args = self.Args()
+        args.graph = graph
+        args.import_loc = import_loc
+        storage.set_args(args)
+        storage.Import()
+        
+    """
+    The storage_export method exports all containers and their associated contents into a filesystem directory.
+    """
+    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @dbus.service.method("org.atomic", in_signature='ssb', out_signature='')
+    def storage_export(self, graph="/var/lib/docker", export_location="/var/lib/atomic/migrate", force = False):
+        storage = Storage()
+        args = self.Args()
+        args.graph = graph
+        args.export_location = export_location
+        args.force = force
+        storage.set_args(args)
+        storage.Export()
+        
+    """
+    The storage_modify method modifies the default storage setup.
+    """
+    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @dbus.service.method("org.atomic", in_signature='asv', out_signature='')
+    def storage_modify(self, devices=[], driver = None):
+        storage = Storage()
+        args = self.Args()
+        args.devices = devices
+        args.driver = driver
+        storage.set_args(args)
+        storage.modify()
 
 if __name__ == "__main__":
         mainloop = GLib.MainLoop()
