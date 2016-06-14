@@ -85,7 +85,7 @@ class atomic_dbus(slip.dbus.service.Object):
         storage = Storage()
         args = self.Args()
         args.graph = graph
-        args.import_loc = import_loc
+        args.import_loc = import_location
         storage.set_args(args)
         storage.Import()
         
