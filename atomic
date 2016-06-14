@@ -36,6 +36,7 @@ from Atomic.mount import Mount
 from Atomic.verify import Verify
 from Atomic.help import AtomicHelp
 from Atomic.run import Run
+from Atomic.ps import Ps
 from Atomic.storage import Storage
 from Atomic.atomic import NoDockerDaemon, OSTREE_PRESENT
 from Atomic.util import get_atomic_config, get_scanners, default_docker_lib
@@ -430,6 +431,20 @@ def create_parser(atomic):
     scan_group.add_argument("--all", default=False, action='store_true', help=_("scan all images (excluding intermediate layers) and containers"))
     scan_group.add_argument("--images", default=False, action='store_true', help=_("scan all images (excluding intermediate layers)"))
     scan_group.add_argument("--containers", default=False, action='store_true', help=_("scan all containers"))
+
+    # atomic ps
+    pss = subparser.add_parser(
+        "ps", help=_("list the containers"),
+        epilog="By default this shows only the running containers.")
+    pss.set_defaults(_class=Ps, func='ps')
+    pss.add_argument("-n", "--noheading", dest="heading", default=True,
+                     action="store_false",
+                     help=_("do not print heading when listing the containers"))
+    pss.add_argument("-a", "--all", action='store_true',dest="all", default=False,
+                     help=_("show all containers"))
+    pss.add_argument("--json", action='store_true',dest="json", default=False,
+                     help=_("print in a machine parseable form"))
+    add_opt(pss)
 
     # atomic stop
     stopp = subparser.add_parser(
