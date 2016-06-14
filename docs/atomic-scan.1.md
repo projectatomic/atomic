@@ -65,9 +65,9 @@ Scan images named 'foo1' and 'foo2' and produce a detailed report.
 
     atomic scan foo1 foo2
 
-Scan all containers and output the results in JSON format.
+Scan all containers.
 
-    atomic scan --containers --json
+    atomic scan --containers
 
 Scan all containers and images and create a detailed report.
 
