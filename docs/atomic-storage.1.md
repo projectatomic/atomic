@@ -8,8 +8,8 @@ atomic-storage - Manage container storage.
 **atomic storage COMMAND [OPTIONS]**
 
 atomic storage allows the user to easily
-anage container storage.
-You can reset your container enviorment back to its initial state as well
+manage container storage.
+You can reset your container environment back to its initial state as well
 as migrate all images, volumes, and containers from one version of atomic
 to another. With this command, users can quickly save all their data from
 the current atomic instance, change the container's content storage backend,
