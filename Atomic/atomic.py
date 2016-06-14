@@ -789,7 +789,6 @@ class Atomic(object):
             _max_repo, _max_tag = get_col_lengths(_images)
             col_out = "{0:1} {1:" + str(_max_repo) + "} {2:" + str(_max_tag) + \
                       "} {3:14} {4:18} {5:14}"
-            self.write_out("")
             if self.args.heading:
                 self.write_out(col_out.format(" ",
                                               "REPOSITORY",
