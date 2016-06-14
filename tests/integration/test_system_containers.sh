@@ -55,6 +55,10 @@ trap teardown EXIT
 
 ${ATOMIC} --debug install --name=${NAME} --set=RECEIVER=${SECRET} --system oci:atomic-test-system
 
+${ATOMIC} ps | grep -q "test-system"
+${ATOMIC} ps --json | grep -q "test-system"
+${ATOMIC} ps --all | grep -q "test-system"
+
 test -e /etc/systemd/system/${NAME}.service
 
 # The value we set is exported into the config file
