@@ -295,6 +295,14 @@ _atomic_pull() {
 	esac
 }
 
+_atomic_ps() {
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "-a --all -n --noheading --json" -- "$cur" ) )
+			;;
+	esac
+}
+
 _atomic_update() {
 	case "$cur" in
 		-*)
@@ -869,6 +877,7 @@ _atomic() {
 		storage
 		mount
 		pull
+		ps
 		rhost
 		run
 		scan
