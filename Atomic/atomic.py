@@ -1297,6 +1297,9 @@ class Atomic(object):
             "/var/lib/containers/atomic"
 
     def _get_ostree_repo(self):
+        if not OSTREE_PRESENT:
+            return None
+
         repo_location = os.environ.get("ATOMIC_OSTREE_REPO") or \
                         self.get_atomic_config_item(["ostree_repository"]) or \
                         "/ostree/repo"
