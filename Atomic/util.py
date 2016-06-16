@@ -26,13 +26,16 @@ ATOMIC_CONFD = os.environ.get('ATOMIC_CONFD', '/etc/atomic.d/')
 _default_docker=None
 _default_docker_lib=None
 
-if int(sys.version_info[0]) < 3:
-    input = raw_input # pylint: disable=undefined-variable
-    is_python2 = True
-else:
-    input = input
-    is_python2 = False
 
+def check_if_python2():
+    if int(sys.version_info[0]) < 3:
+        _input = raw_input # pylint: disable=undefined-variable
+        return _input, True
+    else:
+        _input = input
+        return _input, False
+
+input, is_python2 = check_if_python2()
 
 def _decompose(compound_name):
     """ '[reg/]repo[:tag]' -> (reg, repo, tag) """
