@@ -34,7 +34,7 @@ show help associated with a container or image
 execute Atomic commands
 
 **atomic-images(1)**
-list locally installed container images
+operations on locally installed container images
 
 **atomic-info(1)**
 execute Atomic commands

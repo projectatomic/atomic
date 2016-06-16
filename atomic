@@ -30,6 +30,7 @@ import subprocess
 import docker
 import Atomic
 from Atomic.diff import Diff
+from Atomic.delete import Delete
 from Atomic.top import Top
 from Atomic.scan import Scan
 from Atomic.mount import Mount
@@ -306,18 +307,48 @@ def create_parser(help_text):
                                  "install method"))
 
     # atomic images
-    imagesp = subparser.add_parser(
-        "images", help=_("list container images on your system"),
-        epilog="atomic images by default will list all installed "
-        "container images on your system.  Using the --prune "
-        "option, will free up disk space deleting unused "
-        "'dangling' images")
-    imagesp.set_defaults(func='images')
-    imagesp.add_argument("--prune", action="store_true",
-                         help=_("prune dangling images"))
-    imagesp.add_argument("-n", "--noheading", dest="heading", default=True,
-                         action="store_false",
-                         help=_("do not print heading when listing the images"))
+    imagesp = subparser.add_parser("images")
+    images_subparser = imagesp.add_subparsers(title='images subcommands',
+                                              description="operate on images",
+                                              help='additional help')
+
+    # atomic images list
+    list_parser = images_subparser.add_parser("list",
+                                              help=_("list container images on your system"),
+                                              epilog="atomic images by default will list all installed "
+                                                     "container images on your system.  Using the --prune "
+                                                     "option, will free up disk space deleting unused "
+                                                     "'dangling' images")
+    list_parser.set_defaults(func='images')
+
+    list_parser.add_argument("--prune", action="store_true",
+                             help=_("prune dangling images"))
+
+    list_parser.add_argument("-n", "--noheading", dest="heading", default=True,
+                             action="store_false",
+                             help=_("do not print heading when listing the images"))
+
+    list_parser.add_argument("--no-trunc", dest="truncate", default=True,
+                             action="store_false",
+                             help=_("Don't truncate output"))
+
+    # atomic images delete
+    delete_parser = images_subparser.add_parser("delete",
+                                                help=_("mark image for deletion"),
+                                                epilog="Marks image. registry garbage-collection "
+                                                "when invoked will recover used disk space")
+    delete_parser.set_defaults(_class=Delete, func='delete_image')
+
+    delete_parser.add_argument("-f", "--force", default=False, dest="force_delete",
+                               action="store_true",
+                               help=_("Delete image without user confirmation"))
+
+    delete_parser.add_argument("--remote", default=False, dest="remote_delete",
+                               action="store_true",
+                               help=_("Delete image from remote repository"))
+
+    delete_parser.add_argument("delete_targets", nargs=argparse.ONE_OR_MORE,
+                               help=_("container image(s)"))
 
     # atomic mount
     mountp = subparser.add_parser(
@@ -487,7 +518,7 @@ def create_parser(help_text):
         action="store_true",
         help=_("preview the command that %s would execute") % sys.argv[0])
 
-    # atomic storagewd
+    # atomic storage
     storagep = subparser.add_parser(
         "storage", aliases=['migrate'], help=_("manage container storage"),
         epilog="atomic storage command allows you to setup/reset "

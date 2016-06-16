@@ -702,8 +702,14 @@ class Atomic(object):
         if len(_images) >= 0:
             vuln_ids = self.get_vulnerable_ids()
             _max_repo, _max_tag = get_col_lengths(_images)
+            if self.args.truncate:
+                _max_id = 14
+            else:
+                _max_id = 65
+
             col_out = "{0:2} {1:" + str(_max_repo) + "} {2:" + str(_max_tag) + \
-                      "} {3:14} {4:18} {5:14} {6:10}"
+                      "} {3:" + str(_max_id) + "} {4:18} {5:14} {6:10}"
+
             if self.args.heading:
                 util.write_out(col_out.format(" ",
                                               "REPOSITORY",
@@ -734,9 +740,10 @@ class Atomic(object):
                     space = " " if len(indicator) < 1 else ""
                     indicator = indicator + self.skull + space
 
+                image_id = image["Id"][:12] if self.args.truncate else image["Id"]
                 image_type = image['ImageType']
                 util.write_out(col_out.format(indicator, repo,
-                                              tag, image["Id"][:12],
+                                              tag, image_id,
                                               created,
                                               virtual_size,
                                               image_type))

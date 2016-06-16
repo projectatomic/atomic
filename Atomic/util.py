@@ -218,6 +218,28 @@ def skopeo_inspect(image, args=None):
         return json.loads(results.stdout.decode('utf-8'))
 
 
+def skopeo_delete(image, args=None):
+    """
+    Performs remote delete of an image on a registry
+    :param image: fully qualified name
+    :param args: additional parameters to pass to Skopeo
+    :return: True if image marked for deletion
+    """
+    if not args:
+        args=[]
+
+    cmd = ['skopeo', 'delete'] + args + [image]
+    try:
+        results = subp(cmd)
+    except OSError:
+        raise ValueError("skopeo must be installed to perform remote operations")
+    if results.return_code is not 0:
+        # Only v2 registries supported
+        check_v1_registry(image)
+        raise ValueError("Unable to interact with this registry: {}".format(results.stderr))
+    else:
+        return True
+
 def skopeo_layers(image, args=None, layers=None):
     """
     Fetch image layers through Skopeo

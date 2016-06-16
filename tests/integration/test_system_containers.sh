@@ -33,7 +33,7 @@ ${ATOMIC} pull docker.io/busybox
 # Check that the branch is created in the OSTree repository
 ostree --repo=${ATOMIC_OSTREE_REPO} refs | grep -q "ociimage/atomic-test-system-latest"
 
-${ATOMIC} images > ${WORK_DIR}/images
+${ATOMIC} images list > ${WORK_DIR}/images
 grep -q "atomic-test-system" ${WORK_DIR}/images
 
 export NAME="test-system-container-$$"
@@ -101,7 +101,7 @@ test \! -e /etc/systemd/system/${NAME}.service
 # check that there are not any "ociimage/" prefixed branch left after images --prune
 ostree --repo=${ATOMIC_OSTREE_REPO} refs --delete "ociimage/atomic-test-system-latest"
 ostree --repo=${ATOMIC_OSTREE_REPO} refs --delete "ociimage/busybox-latest"
-${ATOMIC} images --prune
+${ATOMIC} images list --prune
 OUTPUT=$(! ostree --repo=${ATOMIC_OSTREE_REPO} refs | grep -c ociimage)
 if test $OUTPUT \!= 0; then
     exit 1

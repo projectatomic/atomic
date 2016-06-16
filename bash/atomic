@@ -24,7 +24,7 @@
 # must have access to the socket for the completions to function correctly
 #
 # Note for developers:
-# Please arrange options sorted alphabetically by long name with the short 
+# Please arrange options sorted alphabetically by long name with the short
 # options immediately following their corresponding long form.
 # This order should be applied to lists, alternatives and code blocks.
 
@@ -444,17 +444,54 @@ _atomic_install() {
 }
 
 _atomic_images() {
-	local all_options="
-		--prune
-		--help -h
-		--noheading -n
-	"
+  local subcommands="
+    list
+    delete
+  "
 
-	case "$cur" in
-		-*)
-			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
-			;;
-	esac
+  __atomic_subcommands "$subcommands" && return
+
+  case "$cur" in
+    -*)
+      COMPREPLY=( $( compgen -W "--help" -- "$cur" ) )
+      ;;
+    *)
+      COMPREPLY=( $( compgen -W "$subcommands" -- "$cur" ) )
+      ;;
+  esac
+  return 0
+}
+
+_atomic_images_list() {
+  local all_options="
+    --prune
+    --help -h
+    --noheading -n
+    --no-trunc
+  "
+
+  case "$cur" in
+    -*)
+      COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+      ;;
+  esac
+}
+
+_atomic_images_delete() {
+  local all_options="
+    --force -f
+    --help -h
+    --remote
+  "
+
+  case "$cur" in
+      -*)
+        COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+        ;;
+      *)
+        __atomic_image_repos_and_tags
+        ;;
+  esac
 }
 
 _atomic_mount() {
@@ -658,7 +695,7 @@ _atomic_host() {
 	        rollback
 		status
 		upgrade
-	        unlock	
+	        unlock
 	)
 
 	local completions_func=_atomic_host_${prev}
