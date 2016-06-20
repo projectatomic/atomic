@@ -565,6 +565,7 @@ class DockerMount(Mount):
                 continue
             if dev_name == graph["Data"]["DeviceName"]:
                 cid=c
+                break
 
         return cid, dev_name
 
