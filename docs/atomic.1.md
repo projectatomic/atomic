@@ -78,6 +78,36 @@ verify image is fully updated
 **atomic-version(1)**
 display image 'Name Version Release' label
 
+
+# CONNECTING TO DOCKER ENGINE
+
+By default, `atomic` command connects to docker engine via UNIX domain socket
+located at `/var/run/docker.sock`. You can use different connection method via
+setting several environment variables:
+
+**DOCKER_HOST** — this variable specifies connection string. If your engine
+listens on UNIX domain socket, you can specify the path via
+`http+unix://<path>`, e.g. `http+unix://var/run/docker2.sock`. For TCP the
+string has this form: `tcp://<ip>:<port>`, e.g. `tcp://127.0.0.1:2375`
+
+**DOCKER_TLS_VERIFY** — enables TLS verification if it contains any value,
+otherwise it disables the verification
+
+**DOCKER_CERT_PATH** — path to directory with TLS certificates, files in the
+directory need to have specific names:
+
+**cert.pem** — client certificate
+
+**key.pem** — client key
+
+**ca.pem** — CA certificate
+
+For more info, please visit upstream docs:
+
+**https://docs.docker.com/engine/security/https/**  
+**https://docs.docker.com/machine/reference/env/**
+
+
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)
 November, 2015 Addition of scan and diff by Brent Baude (bbaude at dot com)
