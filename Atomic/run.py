@@ -14,7 +14,6 @@ except ImportError:
 
 class Run(Atomic):
     def run(self):
-        missing_RUN = False
         self.inspect = self._inspect_container()
 
         if self.inspect:
@@ -39,35 +38,21 @@ class Run(Atomic):
                 args = [self.docker_binary()] + self.SPC_ARGS + self.command
             else:
                 args = [self.docker_binary()] + self.SPC_ARGS + self._get_cmd()
-
-            cmd = self.gen_cmd(args)
-            cmd = self.sub_env_strings(cmd)
-            self.display(cmd)
-            if self.args.display:
-                return
         else:
             args = self._get_args("RUN")
             if args:
                 args += self.command
             else:
-                missing_RUN = True
                 if self.command:
                     args = [self.docker_binary()] + self.RUN_ARGS + self.command
                 else:
                     args = [self.docker_binary()] + self.RUN_ARGS + self._get_cmd()
 
-            cmd = self.gen_cmd(args)
-            cmd = self.sub_env_strings(cmd)
-            self.display(cmd)
-            if self.args.display:
-                return
-
-            if missing_RUN:
-                util.check_call(cmd,
-                                env=self.cmd_env(),
-                                stderr=DEVNULL,
-                                stdout=DEVNULL)
-                return self._start()
+        cmd = self.gen_cmd(args)
+        cmd = self.sub_env_strings(cmd)
+        self.display(cmd)
+        if self.args.display:
+            return
 
         if not self.args.quiet:
             self.check_args(cmd)

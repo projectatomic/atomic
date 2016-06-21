@@ -128,7 +128,7 @@ class Atomic(object):
                 "-e", "IMAGE=${IMAGE}",
                 "${IMAGE}"]
 
-    RUN_ARGS = ["create",
+    RUN_ARGS = ["run",
                 "-t",
                 "-i",
                 "--name", "${NAME}",
