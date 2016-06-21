@@ -69,7 +69,7 @@ class Run(Atomic):
                                 stdout=DEVNULL)
                 return self._start()
 
-        if self.args.quiet:
+        if not self.args.quiet:
             self.check_args(cmd)
         if not self.args.display:
             util.check_call(self.sub_env_strings(cmd), env=self.cmd_env())

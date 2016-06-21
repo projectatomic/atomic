@@ -463,7 +463,7 @@ def create_parser(atomic):
                       help=_("command to execute within the container. "
                              "If container is not running, command is appended"
                              "to the image run method"))
-    run_group.add_argument("--quiet", "-q", default=True, action="store_false",
+    run_group.add_argument("--quiet", "-q", action="store_true",
                       help=_("Be less verbose."))
 
     run_group.add_argument(
