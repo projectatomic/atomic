@@ -636,7 +636,7 @@ if __name__ == '__main__':
         if str(e).find("Permission denied") > 0:
             need_root()
     except Exception as e:
-        sys.stderr.write("%sn" % str(e))
+        sys.stderr.write("%s\n" % str(e))
     except SystemExit as e:
         # Overriding debug args to avoid a traceback from sys.exit()
         if 'args' in locals():
