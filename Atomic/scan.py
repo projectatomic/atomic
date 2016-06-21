@@ -176,8 +176,9 @@ class Scan(Atomic):
                                        if item['Id'] == self.get_input_id(scan_input)), None))
                 docker_object = docker_object if docker_object is not None \
                     else (next((item for item in images if item['Id'] == self.get_input_id(scan_input)), None))
-                docker_object['input'] = scan_input
-                scan_list.append(docker_object)
+                if docker_object is not None:
+                    docker_object['input'] = scan_input
+                    scan_list.append(docker_object)
             if len(scan_list) < 1:
                 raise ValueError("You must provide at least one container or image for atomic "
                                  "scan. See 'atomic scan --help' for more information")
