@@ -987,20 +987,24 @@ class Atomic(object):
         else:
             return reg, image, "latest"
 
-    @staticmethod
-    def _convert_to_skopeo(image):
-        i = image.replace("oci:", "")
-        if "http:" in i:
-            return ["--insecure"], "docker://" + i.replace("http:", "")
+    def _convert_to_skopeo(self, image):
+        insecure = "http:" in image
+
+        for i in ["oci:", "http:", "https:"]:
+            image = image.replace(i, "")
+
+        fqn_image = self.find_remote_image(image)
+        if insecure:
+            return ["--insecure"], "docker://" + fqn_image
         else:
-            return [], "docker://" + i.replace("https:", "")
+            return [], "docker://" + fqn_image
 
     def _skopeo_get_manifest(self, image):
-        args, img = Atomic._convert_to_skopeo(image)
+        args, img = self._convert_to_skopeo(image)
         return util.skopeo_inspect(img, args)
 
     def _skopeo_get_layers(self, image, layers):
-        args, img = Atomic._convert_to_skopeo(image)
+        args, img = self._convert_to_skopeo(image)
         return util.skopeo_layers(img, args, layers)
 
     @staticmethod
@@ -1623,15 +1627,18 @@ class Atomic(object):
 
         return self.active_containers
 
-    def find_remote_image(self):
+    def find_remote_image(self, image=None):
         """
         Based on the user's input, see if we can associate the input with a remote
         registry and image.
         :return: str(fq name)
         """
-        results = self.d.search(self.image)
+        if image == None:
+            image = self.image
+
+        results = self.d.search(image)
         for x in results:
-            if x['name'] == self.image:
+            if x['name'] == image:
                 return '{}/{}'.format(x['registry_name'], x['name'])
         return None
 
