@@ -8,6 +8,12 @@ from . import mount
 from . import Atomic
 
 class Diff(Atomic):
+
+    def diff_tty(self):
+        diff_dict = self.diff()
+        if self.args.json:
+            util.output_json(diff_dict)
+
     def diff(self):
         '''
         Allows you to 'diff' the RPMs between two different docker images|containers.
@@ -43,8 +49,8 @@ class Diff(Atomic):
             # Clean up
             helpers._cleanup(image_list)
 
-            if self.args.json:
-                util.output_json(helpers.json_out)
+            return str(helpers.json_out)
+
         except KeyboardInterrupt:
             util.write_out("Quitting...")
             helpers._cleanup(image_list)

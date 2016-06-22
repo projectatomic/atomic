@@ -135,7 +135,7 @@ def create_parser(atomic):
     diffp = subparser.add_parser(
     "diff", help=_("Show differences between two container images, file diff or RPMS."),
     epilog="atomic diff 'image1|container1' 'image2|container2'")
-    diffp.set_defaults(_class=Diff, func='diff')
+    diffp.set_defaults(_class=Diff, func='diff_tty')
     diffp.add_argument("compares", nargs=2,
                        help=_("Container images to compare"))
     diffp.add_argument("--json", default=False, action='store_true',
@@ -512,7 +512,7 @@ def create_parser(atomic):
 
     # atomic storage modify
     modifyp = storage_subparser.add_parser("modify",help='modify default storage setup')
-    modifyp.add_argument('--add-device', dest="devices", default=[], nargs='?', 
+    modifyp.add_argument('--add-device', dest="devices", default=[], nargs='?',
                          action='append',
                          help=_("add block devices to storage pool"))
     modifyp.add_argument('--driver', dest="driver", default=None, help='The storage backend driver', choices=['devicemapper', 'overlay'])

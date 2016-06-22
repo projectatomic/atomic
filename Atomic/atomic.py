@@ -306,7 +306,7 @@ class Atomic(object):
         layers_map = {}
         enc = sys.getdefaultencoding()
         for k, v in layers.items():
-            out = util.check_output([ATOMIC_LIBEXEC + '/dockertar-sha256-helper', v], 
+            out = util.check_output([ATOMIC_LIBEXEC + '/dockertar-sha256-helper', v],
                                     stderr=DEVNULL)
             layers_map[k] = out.decode(enc).replace("\n", "")
         layers_ordered = []
@@ -1672,4 +1672,3 @@ def SetFunc(function):
         def __call__(self, parser, namespace, values, option_string=None):
             setattr(namespace, self.dest, function)
     return customAction
-

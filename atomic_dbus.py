@@ -9,6 +9,7 @@ from slip.dbus import polkit
 from Atomic import Atomic
 from Atomic.verify import Verify
 from Atomic.storage import Storage
+from Atomic.diff import Diff
 
 class atomic_dbus(slip.dbus.service.Object):
     default_polkit_auth_required = "org.atomic.readwrite"
@@ -24,6 +25,13 @@ class atomic_dbus(slip.dbus.service.Object):
             self.force = None
             self.import_location = None
             self.export_location = None
+            self.compares = []
+            self.json = False
+            self.no_files = False
+            self.names_only = False
+            self.rpms = False
+            self.verbose = False
+            self.tty = True
 
     def __init__(self, *p, **k):
 	super(atomic_dbus, self).__init__(*p, **k)
@@ -75,7 +83,7 @@ class atomic_dbus(slip.dbus.service.Object):
         args = self.Args()
         storage.set_args(args)
         storage.reset()
-        
+
     """
     The storage_import method imports all containers and their associated contents from a filesystem directory.
     """
@@ -88,7 +96,7 @@ class atomic_dbus(slip.dbus.service.Object):
         args.import_loc = import_location
         storage.set_args(args)
         storage.Import()
-        
+
     """
     The storage_export method exports all containers and their associated contents into a filesystem directory.
     """
@@ -102,7 +110,7 @@ class atomic_dbus(slip.dbus.service.Object):
         args.force = force
         storage.set_args(args)
         storage.Export()
-        
+
     """
     The storage_modify method modifies the default storage setup.
     """
@@ -115,6 +123,24 @@ class atomic_dbus(slip.dbus.service.Object):
         args.driver = driver
         storage.set_args(args)
         storage.modify()
+
+    """
+    The diff method shows differences between two container images, file diff or RPMS.
+    """
+    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @dbus.service.method("org.atomic", in_signature='ss',
+                         out_signature='s')
+    def diff(self, first, second):
+        diff = Diff()
+        args = self.Args()
+        args.compares = [first, second]
+        args.json = True
+        args.no_files = False
+        args.names_only = False
+        args.rpms = True
+        args.verbose = True
+        diff.set_args(args)
+        return diff.diff()
 
 if __name__ == "__main__":
         mainloop = GLib.MainLoop()
