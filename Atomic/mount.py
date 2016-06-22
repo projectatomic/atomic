@@ -382,7 +382,7 @@ class DockerMount(Mount):
         # Return mount path so it can be later unmounted by path
         return self.mountpoint
 
-    def _unsupported_backend(self, identifier='', options=None): # pylint: disable=unused-argument
+    def _unsupported_backend(self, identifier='', options=None, path=None): # pylint: disable=unused-argument
         if not options:
             options=[]
         raise MountError('Atomic mount is not supported on the {} docker '
@@ -556,10 +556,7 @@ class DockerMount(Mount):
         driver = self._info()['Driver']
         driver_unmount_fn = getattr(self, "_unmount_" + driver,
                                     self._unsupported_backend)
-        if path is not None:
-            driver_unmount_fn(path=path)
-        else:
-            driver_unmount_fn()
+        driver_unmount_fn(path=path)
 
     def _get_all_cids(self):
         '''
