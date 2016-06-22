@@ -97,11 +97,6 @@ class Scan(Atomic):
             for i in scan_list:
                 self.scan_content[i['Id']] = i.get('input')
 
-            # mount all the rootfs
-            self._mount_scan_rootfs(scan_list)
-
-            if self.debug:
-                util.write_out("Creating the output dir at {}".format(self.results_dir))
             security_args = []
         else:
             # Check to make sure all the chroots provided are legit
@@ -133,6 +128,13 @@ class Scan(Atomic):
         stdout = None if (self.args.verbose or self.args.debug) else open(os.devnull, 'w')
 
         try:
+            if len(self.args.rootfs) == 0:
+                # mount all the rootfs
+                self._mount_scan_rootfs(scan_list)
+
+                if self.debug:
+                    util.write_out("Creating the output dir at {}".format(self.results_dir))
+
             # do the scan
             util.check_call(scan_cmd, stdout=stdout, env=self.cmd_env())
 
@@ -199,7 +201,8 @@ class Scan(Atomic):
         for _dir in self.get_rootfs_paths():
             rootfs_dir = os.path.join(self.chroot_dir, _dir)
             if len(self.args.rootfs) == 0:
-                self.unmount(rootfs_dir)
+                if os.path.ismount(rootfs_dir):
+                    self.unmount(rootfs_dir)
             else:
                 # Clean up bind mounts if the chroot feature is used
                 mcmd = ['umount', rootfs_dir]
