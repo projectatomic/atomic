@@ -40,7 +40,7 @@ Monitor processes with default fields.
 
     atomic top
 
-Monitor processes with default fields on a 5 second interval for 3 interations
+Monitor processes with default fields on a 5 second interval for 3 iterations
 
     atomic top -d 5 -n 3
 

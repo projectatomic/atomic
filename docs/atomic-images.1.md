@@ -14,7 +14,7 @@ atomic-images - list locally installed container images
 **atomic images**, by default, will list all installed container images on your
 system.
 
-A `>` preceeding the image name indicates that the image is used by a container.
+A `>` preceding the image name indicates that the image is used by a container.
 
 Using the `--prune` option will free wasted disk space by deleting unused
 `dangling` images.
