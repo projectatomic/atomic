@@ -680,6 +680,9 @@ class Atomic(object):
 
     def get_fq_name(self, image_info):
         if len(image_info['RepoTags']) > 1:
+            if self.image in image_info['RepoTags']:
+                return self.image
+
             raise ValueError("\n{} is tagged with multiple repositories. "
                              "Please use a repository name instead.\n".format(self.image))
         else:
