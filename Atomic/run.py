@@ -48,6 +48,9 @@ class Run(Atomic):
                 else:
                     args = [self.docker_binary()] + self.RUN_ARGS + self._get_cmd()
 
+        if len(args) > 0 and args[0] == "docker":
+            args[0] = self.docker_binary()
+
         cmd = self.gen_cmd(args)
         cmd = self.sub_env_strings(cmd)
         self.display(cmd)
