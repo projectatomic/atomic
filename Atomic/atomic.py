@@ -115,7 +115,6 @@ class Atomic(object):
     SPC_ARGS = ["run",
                 "-t",
                 "-i",
-                "--rm",
                 "--privileged",
                 "-v", "/:/host",
                 "-v", "/run:/run",
@@ -126,6 +125,7 @@ class Atomic(object):
                 "-e", "HOST=/host",
                 "-e", "NAME=${NAME}",
                 "-e", "IMAGE=${IMAGE}",
+                "--name", "${NAME}",
                 "${IMAGE}"]
 
     RUN_ARGS = ["run",
