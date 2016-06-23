@@ -1,8 +1,8 @@
 import os
 import sys
 import rpm
+import json
 from filecmp import dircmp
-
 from . import util
 from . import mount
 from . import Atomic
@@ -49,7 +49,7 @@ class Diff(Atomic):
             # Clean up
             helpers._cleanup(image_list)
 
-            return str(helpers.json_out)
+            return json.dumps(helpers.json_out)
 
         except KeyboardInterrupt:
             util.write_out("Quitting...")

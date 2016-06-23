@@ -1,5 +1,5 @@
 import sys
-
+import json
 import dbus
 import dbus.service
 import dbus.mainloop.glib
@@ -76,7 +76,7 @@ if __name__ == "__main__":
 
         elif(sys.argv[1] == "diff"):
             #case where rpms flag is passed in
-            resp = dbus_proxy.diff(sys.argv[2], sys.argv[3])
-            print str(resp)
+            resp = json.loads(dbus_proxy.diff(sys.argv[2], sys.argv[3]))
+            print resp
     except dbus.DBusException as e:
         print (e)
