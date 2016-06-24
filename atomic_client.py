@@ -3,6 +3,7 @@ import json
 import dbus
 import dbus.service
 import dbus.mainloop.glib
+from Atomic import util
 from slip.dbus import polkit
 
 
@@ -42,6 +43,34 @@ class AtomicDBus (object):
         ret = self.dbus_object.diff(first, second, dbus_interface="org.atomic")
         return ret
 
+    @polkit.enable_proxy
+    def scan_list(self):
+        ret = self.dbus_object.scan_list(dbus_interface="org.atomic")
+        return ret
+
+#For outputting the list of scanners
+def print_scan_list(all_scanners):
+    if len(all_scanners) == 0:
+        util.write_out("There are no scanners configured for this system.")
+        sys.exit(0)
+    default_scanner = (util.get_atomic_config())['default_scanner']
+    if default_scanner is None:
+        default_scanner = ''
+    for scanner in all_scanners:
+        scanner_name = scanner['scanner_name']
+        df = '* ' if scanner_name == default_scanner else ''
+        default_scan_type = scanner.get('default_scan')
+        if default_scan_type is None:
+            raise ValueError("Invalid configuration file: At least one scan type must be "
+                                 "declared as the default for {}.".format(scanner_name))
+        util.write_out("Scanner: {} {}".format(scanner_name, df))
+        util.write_out("{}Image Name: {}".format(" " * 2, scanner['image_name']))
+        for scan_type in scanner['scans']:
+            df = '* ' if default_scan_type == scan_type['name'] else ''
+            util.write_out("{}Scan type: {} {}".format(" " * 5, scan_type['name'], df))
+            util.write_out("{}Description: {}\n".format(" " * 5, scan_type['description']))
+        util.write_out("\n* denotes defaults")
+        sys.exit(0)
 
 if __name__ == "__main__":
     try:
@@ -78,5 +107,10 @@ if __name__ == "__main__":
             #case where rpms flag is passed in
             resp = json.loads(dbus_proxy.diff(sys.argv[2], sys.argv[3]))
             print resp
+
+        elif(sys.argv[1] == "scan"):
+            if(sys.argv[2] == "list"):
+                all_scanners = json.loads(dbus_proxy.scan_list())
+                print_scan_list(all_scanners)
     except dbus.DBusException as e:
         print (e)

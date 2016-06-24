@@ -10,6 +10,7 @@ from Atomic import Atomic
 from Atomic.verify import Verify
 from Atomic.storage import Storage
 from Atomic.diff import Diff
+from Atomic.scan import Scan
 
 class atomic_dbus(slip.dbus.service.Object):
     default_polkit_auth_required = "org.atomic.readwrite"
@@ -141,6 +142,18 @@ class atomic_dbus(slip.dbus.service.Object):
         args.verbose = True
         diff.set_args(args)
         return diff.diff()
+
+    """
+    The get_scan_list method will return a list of all scanners.
+    """
+    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @dbus.service.method("org.atomic", in_signature='',
+                         out_signature= 's')
+    def scan_list(self):
+        scan_list = Scan()
+        args = self.Args()
+        scan_list.set_args(args)
+        return scan_list.get_scanners_list()
 
 if __name__ == "__main__":
         mainloop = GLib.MainLoop()
