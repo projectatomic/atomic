@@ -31,16 +31,22 @@ ${ATOMIC} pull dockertar:/${WORK_DIR}/atomic-test-system.tar
 # Check that the branch is created in the OSTree repository
 ostree --repo=${ATOMIC_OSTREE_REPO} refs | grep -q "ociimage/atomic-test-system-latest"
 
-${ATOMIC} images | grep -q "atomic-test-system"
+${ATOMIC} images > ${WORK_DIR}/images
+grep -q "atomic-test-system" ${WORK_DIR}/images
 
 export NAME="test-system-container-$$"
 
 teardown () {
+    set +o pipefail
+
+    # Do not leave the runc container in any case
+    runc kill $NAME 9 &> /dev/null || true
+    runc delete $NAME &> /dev/null  || true
+
     # Ensure there is no systemd service left running
-    if test -e /etc/systemd/system/test-system-container.service; then
-        (systemctl stop $NAME) &> /dev/null
-        rm -rf /etc/systemd/system/test-system-container.service
-    fi
+    systemctl stop $NAME &> /dev/null || true
+    systemctl disable $NAME &> /dev/null || true
+    rm -rf /etc/systemd/system/${NAME}.service || true
 }
 
 trap teardown EXIT
