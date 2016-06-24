@@ -28,6 +28,9 @@ class Scan(Atomic):
         self.rootfs_mappings = {}
         self.scanner = None
 
+    def get_scanners_list(self):
+        return json.dumps(self.scanners)
+
     def scan(self):
         def get_scan_info(scanner, scan_type):
             for i in self.scanners:
