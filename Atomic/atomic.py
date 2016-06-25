@@ -995,7 +995,7 @@ class Atomic(object):
         for i in ["oci:", "http:", "https:"]:
             image = image.replace(i, "")
 
-        fqn_image = self.find_remote_image(image)
+        fqn_image = self.find_remote_image(image) or image
         if insecure:
             return ["--insecure"], "docker://" + fqn_image
         else:
