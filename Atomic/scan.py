@@ -162,7 +162,10 @@ class Scan(Atomic):
         def gen_containers():
             slist = []
             for con in self.get_containers():
-                con['input'] = con['Id']
+                if con['Status'].upper() != 'DEAD':
+                    con['input'] = con['Id']
+                else:
+                    raise ValueError("The container ID {} is Dead and therefor cannot be scanned.".format(con['Id'][:12]))
                 slist.append(con)
             return slist
 
