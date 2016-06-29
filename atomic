@@ -634,8 +634,12 @@ if __name__ == '__main__':
     except (OSError, MountError) as e:
         if str(e).find("Permission denied") > 0:
             need_root()
+        else:
+            sys.stderr.write("%s\n" % str(e))
+        sys.exit(1)
     except Exception as e:
         sys.stderr.write("%s\n" % str(e))
+        sys.exit(1)
     except SystemExit as e:
         # Overriding debug args to avoid a traceback from sys.exit()
         if 'args' in locals():
