@@ -1,0 +1,12 @@
+{
+    "version": 0,
+
+    "tools": {
+        "timezone": {
+            "label": "Atomic",
+            "path": "atomicClient.html"
+        }
+    },
+
+    "content-security-policy": "default-src 'self' 'unsafe-inline' 'unsafe-eval'"
+}

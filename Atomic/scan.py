@@ -71,7 +71,6 @@ class Scan(Atomic):
 
         set_scanner()
 
-
         scan_type = self.get_scan_type()
 
         # Load the atomic config file and check scanner settings
@@ -125,7 +124,8 @@ class Scan(Atomic):
         scan_cmd = self.sub_env_strings(" ".join(scan_cmd))
 
         # Show the command being run
-        util.write_out(scan_cmd)
+        if self.useTTY:
+            util.write_out(scan_cmd)
 
         # Show stdout from container if --debug or --verbose
         stdout = None if (self.args.verbose or self.args.debug) else open(os.devnull, 'w')
@@ -142,13 +142,16 @@ class Scan(Atomic):
             util.check_call(scan_cmd, stdout=stdout, env=self.cmd_env())
 
             # output results
-            self.output_results()
+            if self.useTTY:
+                self.output_results()
 
             # record environment
             self.record_environment()
         finally:
             # unmount all the rootfs
             self._unmount_rootfs_in_dir()
+            if not self.useTTY:
+                return (json.dumps(self.get_scan_data()))
 
     def _get_scan_list(self):
 
@@ -192,6 +195,13 @@ class Scan(Atomic):
                                  "scan. See 'atomic scan --help' for more information")
 
         return scan_list
+
+    def get_scan_data(self):
+        results = []
+        json_files = self._get_json_files()
+        for json_file in json_files:
+            results.append(json.load(open(json_file)))
+        return results
 
     def _mount_scan_rootfs(self, scan_list):
         for docker_object in scan_list:

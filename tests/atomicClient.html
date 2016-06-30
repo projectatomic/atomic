@@ -1,0 +1,249 @@
+<head>
+    <title>Atomic Client</title>
+    <meta charset="utf-8">
+    <link href="../base1/cockpit.css" type="text/css" rel="stylesheet">
+    <script src="../base1/jquery.js"></script>
+    <script src="../base1/cockpit.js"></script>
+</head>
+<body hidden>
+    <div id="ui" class="container-fluid" style='max-width: 400px'>
+        <table class="cockpit-form-table">
+            <tr>
+                <td><label class="control-label">Atomic</label></td>
+                <td><span id="current"></span></td>
+            </tr>
+            <tr>
+                <td><label class="control-label" for="new">Feature</label></td>
+                <td><input class="form-control" id="new" value=""></td>
+            </tr>
+            <tr>
+                <td><button class="btn btn-default btn-primary" id="Run">Run</button></td>
+		<td><span id="failure"></span></td>
+            </tr>
+        </table>
+    </div>
+
+    <div id="curtain" hidden>
+        Atomic D-Bus API not available.
+    </div>
+
+    <script>
+            var input = $("#new");
+            var service = cockpit.dbus("org.atomic");
+            var proxy = service.proxy("org.atomic", "/org/atomic/object");
+
+            proxy.wait(function () {
+                if (!proxy.valid) {
+                    $('#ui').hide();
+                    $('#curtain').show();
+                }
+                $('body').show();
+            });
+
+            $("#Run").on("click", run_command);
+
+            function run_version(command) {
+              var call;
+              if(command[2] == "-r") {
+                call = proxy.Version([command[1]], true);
+              }
+
+              else {
+                call = proxy.Version([command[1]], false);
+              }
+
+              call.done(function(result) {
+                console.log(JSON.stringify(result));
+              });
+
+              call.fail(function(error) {
+                  console.warn(error);
+                });
+
+              }
+
+            function run_scan_list() {
+              var call = proxy.ScanList();
+              call.done(function(result) {
+                response = JSON.parse(result);
+                console.log(JSON.stringify(result));
+              });
+
+              call.fail(function(error) {
+                console.warn(error);
+              });
+
+            }
+
+            function run_storage_reset() {
+              var call = proxy.StorageReset();
+              call.done(function() {
+                console.log("Success!");
+              });
+
+              call.fail(function(error) {
+                console.warn(error);
+              });
+            }
+
+            function run_storage_import(command) {
+              var graph = "/var/lib/docker";
+              var import_location = "/var/lib/atomic/migrate";
+              if(command.indexOf("--graph") != -1) {
+                graph = command[command.indexOf("--graph") + 1];
+              }
+
+              if (command.indexOf("--import_location") != -1) {
+                import_location = command[command.indexOf("--import_location") + 1];
+              }
+
+              var call = proxy.StorageImport(graph, import_location);
+              call.done(function() {
+                  console.log("Success!");
+                });
+
+                call.fail(function(error) {
+                  console.warn(error);
+                });
+              }
+
+            function run_storage_export(command) {
+              var graph = "/var/lib/docker";
+              var import_location = "/var/lib/atomic/migrate";
+              var force = false;
+              if(command.indexOf("--graph") != -1) {
+                graph = command[command.indexOf("--graph") + 1];
+                console.log(graph);
+              }
+
+              if (command.indexOf("--import_location") != -1) {
+                import_location = command[command.indexOf("--inport_location") + 1];
+                console.log(import_location);
+              }
+
+              if(command.indexOf("--force") != -1) {
+                force = true;
+              }
+
+              var call = proxy.StorageExport(graph, import_location, force);
+              call.done(function() {
+                console.log("Success!");
+              });
+
+              call.fail(function(error) {
+                console.warn(error);
+              });
+            }
+
+            function run_scan_async(command) {
+              var scan_targets = [];
+              var scanner = '';
+              var scan_type = '';
+              var rootfs = [];
+              var call;
+              if(command.indexOf("--all") != -1) {
+                call = proxy.ScheduleScan(scan_targets, scanner, scan_type, rootfs, true, false, false);
+              }
+
+              else if(command.indexOf("--images") != -1) {
+                call = proxy.ScheduleScan(scan_targets, scanner, scan_type, rootfs, false, true, false);
+              }
+
+              else if(command.indexOf("--containers") != -1) {
+                call = proxy.ScheduleScan(scan_targets, scanner, scan_type, rootfs, false, false, true);
+              }
+              call.done(function(result) {
+                while(true){
+                  NewCall = proxy.GetScanResults(result);
+                  NewCall.done(function(data) {
+                    if(data.length > 0) {
+                      console.log(data);
+                    }
+                  });
+                }
+              });
+
+              call.fail(function(error) {
+                console.warn(error);
+              });
+
+            }
+
+            function run_scan(command) {
+              var scan_targets = [];
+              var scanner = '';
+              var scan_type = '';
+              var rootfs = [];
+              var call;
+              if(command.indexOf("--all") == 1) {
+                call = proxy.Scan(scan_targets, scanner, scan_type, rootfs, true, false, false);
+              }
+
+              else if(command.indexOf("--images") == 1) {
+                call = proxy.Scan(scan_targets, scanner, scan_type, rootfs, false, true, false);
+              }
+
+              else if(command.indexOf("--containers") == 1) {
+                call = proxy.Scan(scan_targets, scanner, scan_type, rootfs, false, false, true);
+              }
+
+              call.done(function(result) {
+                console.log(JSON.stringify(result));
+              });
+
+              call.fail(function(error) {
+                console.warn(error);
+              });
+            }
+
+            function run_diff(command) {
+              var call = proxy.Diff(command[1], command[2]);
+              call.done(function(result) {
+                console.log(JSON.stringify(result));
+              });
+
+              call.fail(function(error) {
+                console.warn(error);
+              });
+            }
+
+            //Depending on what is entered, it will send the command to the appropriate function to be parsed.
+            function run_command() {
+              var command = (input.val()).split(" ");
+              var call;
+              if(command[0].toLowerCase() == "version") {
+                run_version(command);
+              }
+
+              else if(command[0].toLowerCase() == "scan") {
+                if(command.indexOf("--list") != -1) {
+                  run_scan_list();
+                }
+                else {
+                  run_scan(command);
+                }
+              }
+
+              else if(command[0].toLowerCase() == "storage") {
+                if(command.indexOf("--reset") != -1) {
+                  run_storage_reset()
+                }
+
+                else if(command.indexOf("--import") != -1) {
+                  run_storage_import(command)
+                }
+
+                else if(command.indexOf("--export") != -1) {
+                  run_storage_export(command)
+                }
+
+              }
+
+              else if(command[0].toLowerCase() == "diff") {
+                run_diff(command)
+              }
+            }
+
+    </script>
+</body>
+</html>

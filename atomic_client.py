@@ -1,6 +1,7 @@
 import sys
 import json
 import dbus
+import time
 import dbus.service
 import dbus.mainloop.glib
 from Atomic import util
@@ -14,38 +15,54 @@ class AtomicDBus (object):
 
     @polkit.enable_proxy
     def version(self, image, recurse):
-        ret = self.dbus_object.version(image, recurse, dbus_interface="org.atomic")
+        ret = self.dbus_object.Version(image, recurse, dbus_interface="org.atomic")
         return ret
 
     @polkit.enable_proxy
     def verify(self, image):
-        ret = self.dbus_object.verify(image, dbus_interface="org.atomic")
+        ret = self.dbus_object.Verify(image, dbus_interface="org.atomic")
         return ret
 
     @polkit.enable_proxy
     def storage_reset(self):
-        self.dbus_object.storage_reset(dbus_interface="org.atomic")
+        self.dbus_object.StorageReset(dbus_interface="org.atomic")
 
     @polkit.enable_proxy
     def storage_import(self, graph, import_location):
-        self.dbus_object.storage_import(graph, import_location, dbus_interface="org.atomic")
+        self.dbus_object.StorageImport(graph, import_location, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
     def storage_export(self, graph, export_location, force):
-        self.dbus_object.storage_export(graph, export_location, force, dbus_interface="org.atomic")
+        self.dbus_object.StorageExport(graph, export_location, force, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
     def storage_modify(self, devices, driver):
-        self.dbus_object.storage_import(devices, driver, dbus_interface="org.atomic")
+        self.dbus_object.StorageModify(devices, driver, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
     def diff(self, first, second):
-        ret = self.dbus_object.diff(first, second, dbus_interface="org.atomic")
+        ret = self.dbus_object.Diff(first, second, dbus_interface="org.atomic", timeout = 2147400)
         return ret
 
     @polkit.enable_proxy
     def scan_list(self):
-        ret = self.dbus_object.scan_list(dbus_interface="org.atomic")
+        ret = self.dbus_object.ScanList(dbus_interface="org.atomic")
+        return ret
+
+    @polkit.enable_proxy
+    def async_scan(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):
+        token = self.dbus_object.ScheduleScan(scan_targets, scanner, scan_type, rootfs, _all, images, containers, dbus_interface="org.atomic", timeout = 2147400)
+        while(True):
+            ret = self.dbus_object.GetScanResults(token, dbus_interface="org.atomic")
+            if ret:
+                break
+            time.sleep(1)
+
+        return ret
+
+    @polkit.enable_proxy
+    def scan(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):
+        ret = self.dbus_object.Scan(scan_targets, scanner, scan_type, rootfs, _all, images, containers, dbus_interface="org.atomic", timeout = 2147400)
         return ret
 
 #For outputting the list of scanners
@@ -109,8 +126,20 @@ if __name__ == "__main__":
             print(resp)
 
         elif(sys.argv[1] == "scan"):
-            if(sys.argv[2] == "list"):
+            if(sys.argv[2] == "--list"):
                 all_scanners = json.loads(dbus_proxy.scan_list())
                 print_scan_list(all_scanners)
+
+            elif(sys.argv[2] == "--all"):
+                print (json.loads(dbus_proxy.scan([], '', '', [], True, False, False)))
+
+            elif(sys.argv[2] == "--images"):
+                print (json.loads(dbus_proxy.scan([], '', '', [], False, True, False)))
+
+            elif(sys.argv[2] == "--containers"):
+                print (json.loads(dbus_proxy.scan([], '', '', [], False, False, True)))
+
+            else:
+                print (json.loads(dbus_proxy.scan(['registry.access.redhat.com/rhel7'], '', '', [], False, False, False)))
     except dbus.DBusException as e:
         print (e)

@@ -1,6 +1,8 @@
 #!/usr/bin/python -Es
 
 import dbus
+import time
+import threading
 import dbus.service
 import dbus.mainloop.glib
 from gi.repository import GLib # pylint: disable=no-name-in-module
@@ -31,11 +33,43 @@ class atomic_dbus(slip.dbus.service.Object):
             self.names_only = False
             self.rpms = False
             self.verbose = False
-            self.tty = True
+            self.scan_targets = []
+            self.scanner = None
+            self.scan_type = None
+            self.list = False
+            self.rootfs = []
+            self.all = False
+            self.images = False
+            self.containers = False
 
     def __init__(self, *p, **k):
         super(atomic_dbus, self).__init__(*p, **k)
         self.atomic = Atomic()
+        self.tasks = []
+        self.tasks_lock = threading.Lock()
+        self.last_token = 0
+        self.scheduler_thread = threading.Thread(target = self.Scheduler)
+        self.scheduler_thread.daemon = True
+        self.scheduler_thread.start()
+        self.results = dict()
+        self.results_lock = threading.Lock()
+
+    def Scheduler(self):
+        while True:
+            current_task = None
+            with self.tasks_lock:
+                if(len(self.tasks) > 0):
+                    current_task = self.tasks.pop(0)
+            if current_task is not None:
+                result = current_task[1].scan()
+                with self.results_lock:
+                    self.results[current_task[0]] = result
+            time.sleep(1)
+
+    def AllocateToken(self):
+        with self.tasks_lock:
+            self.last_token += 1
+            return self.last_token
 
     """
     The version method takes in an image name and returns its version
@@ -44,7 +78,7 @@ class atomic_dbus(slip.dbus.service.Object):
     @slip.dbus.polkit.require_auth("org.atomic.read")
     @dbus.service.method("org.atomic", in_signature='asb',
                          out_signature='aa{sv}')
-    def version(self, images, recurse=False):
+    def Version(self, images, recurse=False):
         versions = []
         for image in images:
             args = self.Args()
@@ -61,7 +95,7 @@ class atomic_dbus(slip.dbus.service.Object):
     """
     @slip.dbus.polkit.require_auth("org.atomic.read")
     @dbus.service.method("org.atomic", in_signature='as', out_signature='av')
-    def verify(self, images):
+    def Verify(self, images):
         verifications = []
         verify = Verify()
         for image in images:
@@ -77,7 +111,7 @@ class atomic_dbus(slip.dbus.service.Object):
         """
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     @dbus.service.method("org.atomic", in_signature='', out_signature='')
-    def storage_reset(self):
+    def StorageReset(self):
         storage = Storage()
         # No arguments are passed for storage_reset function
         args = self.Args()
@@ -89,7 +123,7 @@ class atomic_dbus(slip.dbus.service.Object):
     """
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     @dbus.service.method("org.atomic", in_signature='ss', out_signature='')
-    def storage_import(self, graph="/var/lib/docker", import_location="/var/lib/atomic/migrate"):
+    def StorageImport(self, graph, import_location):
         storage = Storage()
         args = self.Args()
         args.graph = graph
@@ -102,7 +136,7 @@ class atomic_dbus(slip.dbus.service.Object):
     """
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     @dbus.service.method("org.atomic", in_signature='ssb', out_signature='')
-    def storage_export(self, graph="/var/lib/docker", export_location="/var/lib/atomic/migrate", force = False):
+    def StorageExport(self, graph="/var/lib/docker", export_location="/var/lib/atomic/migrate", force = False):
         storage = Storage()
         args = self.Args()
         args.graph = graph
@@ -116,7 +150,7 @@ class atomic_dbus(slip.dbus.service.Object):
     """
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     @dbus.service.method("org.atomic", in_signature='asv', out_signature='')
-    def storage_modify(self, devices=[], driver = None):
+    def StorageModify(self, devices=[], driver = None):
         storage = Storage()
         args = self.Args()
         args.devices = devices
@@ -130,7 +164,7 @@ class atomic_dbus(slip.dbus.service.Object):
     @slip.dbus.polkit.require_auth("org.atomic.read")
     @dbus.service.method("org.atomic", in_signature='ss',
                          out_signature='s')
-    def diff(self, first, second):
+    def Diff(self, first, second):
         diff = Diff()
         args = self.Args()
         args.compares = [first, second]
@@ -148,11 +182,71 @@ class atomic_dbus(slip.dbus.service.Object):
     @slip.dbus.polkit.require_auth("org.atomic.read")
     @dbus.service.method("org.atomic", in_signature='',
                          out_signature= 's')
-    def scan_list(self):
+    def ScanList(self):
         scan_list = Scan()
         args = self.Args()
         scan_list.set_args(args)
         return scan_list.get_scanners_list()
+
+    """
+    The SyncScan method will return a string.
+    """
+    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @dbus.service.method("org.atomic", in_signature='asssasbbb',
+                         out_signature= 's')
+    def Scan(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):
+        scan = Scan()
+        args = self.Args()
+        scan.useTTY = False
+        if scanner:
+            args.scanner = scanner
+        if scan_type:
+            args.scan_type = scan_type
+        args.rootfs = rootfs
+        args.all = _all
+        args.images = images
+        args.containers = containers
+        scan.set_args(args)
+        return scan.scan()
+
+    """
+    The ScheduleScan method will return a token.
+    """
+    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @dbus.service.method("org.atomic", in_signature='asssasbbb',
+                         out_signature= 'x')
+    def ScheduleScan(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):
+        scan = Scan()
+        args = self.Args()
+        scan.useTTY = False
+        if scanner:
+            args.scanner = scanner
+        if scan_type:
+            args.scan_type = scan_type
+        args.rootfs = rootfs
+        args.all = _all
+        args.images = images
+        args.containers = containers
+        scan.set_args(args)
+        token = self.AllocateToken()
+        with self.tasks_lock:
+            self.tasks.append((token, scan))
+        return token
+
+    """
+    The GetScanResults method will determine whether or not the results for the token are ready.
+    """
+    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @dbus.service.method("org.atomic", in_signature='x',
+                         out_signature= 's')
+    def GetScanResults(self, token):
+        with self.results_lock:
+            if token in self.results:
+                ret = self.results[token]
+                del self.results[token]
+                return ret
+            else:
+                return ""
 
 if __name__ == "__main__":
         mainloop = GLib.MainLoop()
