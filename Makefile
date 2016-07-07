@@ -4,6 +4,7 @@ SYSCONFDIR ?= $(DESTDIR)/etc/sysconfig
 PROFILEDIR ?= $(DESTDIR)/etc/profile.d
 PYTHON ?= /usr/bin/python
 PYLINT ?= /usr/bin/pylint
+PYTHON3_PYLINT ?= /usr/bin/python3-pylint
 GO_MD2MAN ?= /usr/bin/go-md2man
 GO ?= /usr/bin/go
 PYTHONSITELIB=$(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(0))")
@@ -12,8 +13,12 @@ VERSION=$(shell $(PYTHON) setup.py --version)
 .PHONY: all
 all: python-build docs pylint-check dockertar-sha256-helper
 
+.PHONY: test-python3-pylint
+test-python3-pylint: 
+	$(PYTHON3_PYLINT) -E --additional-builtins=_ *.py atomic Atomic tests/unit/*.py
+
 .PHONY: test
-test: all
+test: all test-python3-pylint
 	./test.sh
 
 test-destructive: all

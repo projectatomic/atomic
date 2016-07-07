@@ -35,7 +35,7 @@ class atomic_dbus(slip.dbus.service.Object):
             self.tty = True
 
     def __init__(self, *p, **k):
-	super(atomic_dbus, self).__init__(*p, **k)
+        super(atomic_dbus, self).__init__(*p, **k)
         self.atomic = Atomic()
 
     """

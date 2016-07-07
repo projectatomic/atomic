@@ -81,7 +81,7 @@ def iter_subs(tree, key=None):
         if str(tree).startswith(DockerImageID.ALGO) and key in SUB_KEYS:
             return DockerImageID(str(tree))
     # In py2, it is unicode and not str
-    elif is_python2 and isinstance(tree, unicode) and key in SUB_KEYS:
+    elif is_python2 and isinstance(tree, unicode) and key in SUB_KEYS: # pylint: disable=undefined-variable
         if str(tree).startswith(DockerImageID.ALGO):
             return DockerImageID(str(tree))
     elif isinstance(tree, dict):

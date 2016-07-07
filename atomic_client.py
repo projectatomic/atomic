@@ -88,7 +88,7 @@ if __name__ == "__main__":
         elif(sys.argv[1] == "verify"):
             resp = dbus_proxy.verify(sys.argv[2:])
             for r in resp:
-                print r
+                print(r)
 
         elif(sys.argv[1] == "storage"):
             #handles atomic storage export
@@ -106,7 +106,7 @@ if __name__ == "__main__":
         elif(sys.argv[1] == "diff"):
             #case where rpms flag is passed in
             resp = json.loads(dbus_proxy.diff(sys.argv[2], sys.argv[3]))
-            print resp
+            print(resp)
 
         elif(sys.argv[1] == "scan"):
             if(sys.argv[2] == "list"):
