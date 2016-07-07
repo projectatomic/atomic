@@ -121,6 +121,7 @@ class Atomic(object):
                 "-v", "/:/host",
                 "-v", "/run:/run",
                 "-v", "/etc/localtime:/etc/localtime",
+                "-v", "/sys/fs/selinux:/sys/fs/selinux:ro",
                 "--net=host",
                 "--ipc=host",
                 "--pid=host",
