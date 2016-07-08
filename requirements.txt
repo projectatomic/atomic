@@ -5,3 +5,4 @@ websocket-client>=0.11.0
 six>=1.3.0
 gi
 xattr
+python-dateutil
