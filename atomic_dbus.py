@@ -76,7 +76,7 @@ class atomic_dbus(slip.dbus.service.Object):
         """
         The storage_reset method deletes all containers and images from a system. Resets storage to its initial configuration.
         """
-    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     @dbus.service.method("org.atomic", in_signature='', out_signature='')
     def storage_reset(self):
         storage = Storage()
@@ -88,7 +88,7 @@ class atomic_dbus(slip.dbus.service.Object):
     """
     The storage_import method imports all containers and their associated contents from a filesystem directory.
     """
-    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     @dbus.service.method("org.atomic", in_signature='ss', out_signature='')
     def storage_import(self, graph="/var/lib/docker", import_location="/var/lib/atomic/migrate"):
         storage = Storage()
@@ -101,7 +101,7 @@ class atomic_dbus(slip.dbus.service.Object):
     """
     The storage_export method exports all containers and their associated contents into a filesystem directory.
     """
-    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     @dbus.service.method("org.atomic", in_signature='ssb', out_signature='')
     def storage_export(self, graph="/var/lib/docker", export_location="/var/lib/atomic/migrate", force = False):
         storage = Storage()
@@ -115,7 +115,7 @@ class atomic_dbus(slip.dbus.service.Object):
     """
     The storage_modify method modifies the default storage setup.
     """
-    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     @dbus.service.method("org.atomic", in_signature='asv', out_signature='')
     def storage_modify(self, devices=[], driver = None):
         storage = Storage()
