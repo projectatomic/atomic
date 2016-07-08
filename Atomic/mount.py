@@ -27,7 +27,6 @@ import json
 from fnmatch import fnmatch as matches
 import time
 import docker
-from .client import get_docker_client
 from . import util
 import requests
 from .util import NoDockerDaemon

@@ -4,7 +4,7 @@ export docker images, containers and volumes into a filesystem directory.
 import os
 import sys
 
-from .client import get_docker_client
+from .client import AtomicDocker
 from . import util
 
 ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
@@ -18,7 +18,7 @@ def export_docker(graph, export_location, force):
     if not os.path.isdir(export_location):
         os.makedirs(export_location)
 
-    dangling_images = get_docker_client().images(filters={"dangling":True}, quiet=True)
+    dangling_images = AtomicDocker().images(filters={"dangling":True}, quiet=True)
     if any(dangling_images):
         if not force:
             util.write_out("There are dangling images in your system. Would you like atomic to prune them [y/N]")
@@ -29,7 +29,7 @@ def export_docker(graph, export_location, force):
         util.check_call([util.default_docker(), "rmi", "-f"]+dangling_images)
 
     #Save the docker storage driver
-    storage_driver = get_docker_client().info()["Driver"]
+    storage_driver = AtomicDocker().info()["Driver"]
     filed = open(export_location+"/info.txt", "w")
     filed.write(storage_driver)
     filed.close()
@@ -51,7 +51,7 @@ def export_images(export_location):
         os.makedirs(export_location + "/images")
 
     images = {}
-    for image in get_docker_client().images():
+    for image in AtomicDocker().images():
         id, tags = image["Id"], image["RepoTags"]
 
         if '<none>:<none>' in tags:
@@ -73,7 +73,7 @@ def export_containers(graph, export_location):
     if not os.path.isdir(export_location + "/containers"):
         os.makedirs(export_location + "/containers")
 
-    for container in get_docker_client().containers(all=True):
+    for container in AtomicDocker().containers(all=True):
         id = container["Id"]
 
         util.write_out("Exporting container: {0}".format(id[:12]))

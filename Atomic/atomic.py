@@ -1,6 +1,5 @@
 import os
 import sys
-import pwd
 import json
 import time
 import math
@@ -13,9 +12,7 @@ import tarfile
 import stat
 from string import Template
 import calendar
-from Atomic.dockerimageid import DockerImageID
-from Atomic.dockerimageid import iter_subs
-
+from .client import AtomicDocker
 try:
     import gi
     try:
@@ -33,14 +30,12 @@ except ImportError:
     DEVNULL = open(os.devnull, 'wb')
 
 import dbus
-import docker
 import requests
 
 from . import util
 from . import satellite
 from . import pulp
 import re
-from .client import get_docker_client
 from .util import NoDockerDaemon, DockerObjectNotFound
 from docker.errors import NotFound
 
@@ -138,7 +133,7 @@ class Atomic(object):
                 "${IMAGE}"]
 
     def __init__(self):
-        self.d = get_docker_client()
+        self.d = AtomicDocker()
         self.name = None
         self.image = None
         self.spc = False
@@ -1681,29 +1676,3 @@ def SetFunc(function):
     return customAction
 
 
-class AtomicDocker():
-    def __init__(self):
-        self._dockerclient = get_docker_client()
-
-    def __dir__(self):
-        return dir(self._dockerclient)
-
-    def __repr__(self):
-        return self._dockerclient.__repr__()
-
-    def __getattr__(self, name):
-        return self.__getattribute__(name)
-
-    def __getattribute__(self, name):
-        # Avoid recursion for self._dockerclient
-        if name == "_dockerclient":
-            return object.__getattribute__(self, name)
-        obj = self._dockerclient
-        attr = docker.AutoVersionClient.__getattribute__(obj, name)
-        if hasattr(attr, '__call__'):
-            def newfunc(*args, **kwargs):
-                result = attr(*args, **kwargs)
-                return iter_subs(result)
-            return newfunc
-        else:
-            return attr

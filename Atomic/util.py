@@ -6,7 +6,7 @@ import collections
 from fnmatch import fnmatch as matches
 import os
 import selinux
-from .client import get_docker_client
+from .client import AtomicDocker
 from yaml import load as yaml_load
 import tempfile
 import shutil
@@ -62,7 +62,7 @@ def image_by_name(img_name, images=None):
 
     # If the images were not passed in, go get them.
     if images is None:
-        c = get_docker_client()
+        c = AtomicDocker()
         images = c.images(all=False)
 
     valid_images = []
