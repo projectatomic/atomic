@@ -131,7 +131,7 @@ class Top(Atomic):
             self.output_top(sorted_info)
             if has_tty:
                 tty.setraw(sys.stdin.fileno())
-            i, ii, iii = select.select([sys.stdin], [], [], self.args.d)
+            i, _, _ = select.select([sys.stdin], [], [], self.args.d)
             if i and has_tty:
                 ch = sys.stdin.read(1)
                 # Detect 'q' or Cntrl-c

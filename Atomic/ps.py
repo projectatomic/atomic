@@ -1,11 +1,6 @@
-import os
-import sys
-import rpm
-from filecmp import dircmp
 import json
 
 from . import util
-from . import mount
 from . import Atomic
 from dateutil.parser import parse as dateparse
 

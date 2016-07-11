@@ -38,10 +38,10 @@ from Atomic.help import AtomicHelp
 from Atomic.run import Run
 from Atomic.ps import Ps
 from Atomic.storage import Storage
-from Atomic.atomic import NoDockerDaemon, OSTREE_PRESENT
-from Atomic.util import get_atomic_config, get_scanners, default_docker_lib
+from Atomic.atomic import NoDockerDaemon
+from Atomic.util import get_scanners, default_docker_lib
 import traceback
-from Atomic.mount import MountError, SelectionMatchError
+from Atomic.mount import MountError
 
 PROGNAME = "atomic"
 gettext.bindtextdomain(PROGNAME, "/usr/share/locale")
@@ -233,7 +233,7 @@ def create_parser(atomic):
         deployp = host_subparser.add_parser(
             "deploy", help=_("deploy a specific commit"))
         deployp.set_defaults(func='host_deploy')
-        deployp.add_argument("revision", help=_("Checksum or version to deploy"));
+        deployp.add_argument("revision", help=_("Checksum or version to deploy"))
         deployp.add_argument("-r", "--reboot", dest="reboot",
                              action="store_true",
                              help=_("Reboot after deployment is complete"))
@@ -413,9 +413,6 @@ def create_parser(atomic):
         pass
 
     # atomic scan
-    def bool_detect(myarg):
-        return True if myarg.lower() in \
-            ('yes', 'true', 't', 'y', '1') else False
     scanners = get_scanners()
     scanp = subparser.add_parser(
         "scan", help=_("scan an image or container for CVEs"),

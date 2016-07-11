@@ -1,7 +1,6 @@
 import os
 import sys
 import json
-import base64
 try:
     import ConfigParser as configparser
 except ImportError:  # py3 compat
@@ -42,8 +41,6 @@ def push_image_to_satellite(image, server_url, username, password,
 and try again, or input a different ID.""".format(repo_id).replace('\n', ' '))
     keyData = sat.get_data(repo_id, activation_key)
     content_view_id = keyData.get("content_view_id")
-    org_id = keyData.get("org_id")
-    product_id = keyData.get("product_id")
     try:
         util.write_out('Uploading image "{0}" to server "{1}"'.format(
                       image, server_url))
@@ -72,8 +69,7 @@ class SatelliteServer(object):
         self._chunk_size = 1048576  # 1 MB per upload call
         self._debug = debug
 
-    def _call_satellite(self, url, req_type='get', payload=None,
-                        filePayload=None):
+    def _call_satellite(self, url, req_type='get', payload=None):
         """This function handles requests to the Satellite Server"""
         if req_type == 'get':
             if (self._debug):
@@ -134,7 +130,7 @@ class SatelliteServer(object):
             print(r)
         try:
             r_json = r.json()
-        except Exception as e:
+        except Exception:
             # some requests don't return a json object
             return None
 

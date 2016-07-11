@@ -1,8 +1,7 @@
-import errno
 import shutil
 import selinux
 import requests
-import os, sys
+import os
 
 from . import util
 from .Export import export_docker
@@ -28,7 +27,7 @@ class Storage(Atomic):
         try:
             self.d.info()
             raise ValueError("Docker daemon must be stopped before resetting storage")
-        except requests.exceptions.ConnectionError as e:
+        except requests.exceptions.ConnectionError:
             pass
 
         util.check_call(["docker-storage-setup", "--reset"], stdout=DEVNULL)

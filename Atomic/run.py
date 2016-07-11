@@ -1,16 +1,9 @@
-import os
 from . import util
 
 try:
     from . import Atomic
 except ImportError:
     from atomic import Atomic
-
-try:
-    from subprocess import DEVNULL  # pylint: disable=no-name-in-module
-except ImportError:
-    DEVNULL = open(os.devnull, 'wb')
-
 
 class Run(Atomic):
     def run(self):

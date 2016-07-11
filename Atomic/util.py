@@ -195,7 +195,7 @@ def urllib3_disable_warnings():
             if not 'urllib3' in sys.modules:
                 import urllib3
                 have_urllib3 = True
-        except ImportError as e:
+        except ImportError:
             pass
         if have_urllib3:
             # Except only call disable-warnings if it exists
@@ -241,9 +241,9 @@ def skopeo_layers(image, args=[], layers=[]):
             raise ValueError("Unable to interact with this registry: {}".format(r.stderr))
     except OSError:
         raise ValueError("skopeo must be installed to perform remote inspections")
-    except Exception as e:
+    finally:
         shutil.rmtree(temp_dir)
-        raise e
+
     return temp_dir
 
 

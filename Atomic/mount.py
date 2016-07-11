@@ -355,7 +355,7 @@ class DockerMount(Mount):
         try:
             # Check if a container/image is already mounted at the
             # desired mount point.
-            cid, dev_name = self._get_cid_from_mountpoint(self.mountpoint)
+            cid, _ = self._get_cid_from_mountpoint(self.mountpoint)
             if cid:
                 raise ValueError("container/image '{0}' already mounted at '{1}'"
                                  .format(cid, self.mountpoint))
@@ -374,7 +374,7 @@ class DockerMount(Mount):
         # Return mount path so it can be later unmounted by path
         return self.mountpoint
 
-    def _unsupported_backend(self, identifier='', options=[]):
+    def _unsupported_backend(self, identifier='', options=[]): # pylint: disable=unused-argument
         raise MountError('Atomic mount is not supported on the {} docker '
                          'storage backend.'
                          ''.format(self.d.info()['Driver']))

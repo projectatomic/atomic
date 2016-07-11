@@ -29,7 +29,6 @@ try:
 except ImportError:
     DEVNULL = open(os.devnull, 'wb')
 
-import dbus
 import requests
 
 from . import util
@@ -480,7 +479,7 @@ class Atomic(object):
             return self.d.inspect_container(name)
         except NotFound:
             pass
-        except requests.exceptions.ConnectionError as e:
+        except requests.exceptions.ConnectionError:
             raise NoDockerDaemon()
         return None
 
@@ -688,7 +687,7 @@ class Atomic(object):
         else:
             return image_info['RepoTags'][0]
 
-    def is_iid(self, input):
+    def is_iid(self):
         for i in self.get_images():
             if i['Id'].startswith(self.image):
                 return True
@@ -707,7 +706,7 @@ class Atomic(object):
                              .format(self.args.image))
         # Check if the input is an image id associated with more than one
         # repotag.  If so, error out.
-        if self.is_iid(self.image):
+        if self.is_iid():
             self.get_fq_name(self._inspect_image())
         # The input is not an image id
         else:
@@ -966,7 +965,7 @@ class Atomic(object):
     @staticmethod
     def _get_default_system_name(image):
         image = image.replace("oci:", "").replace("docker:", "")
-        regloc, image, tag = Atomic._parse_imagename(image)
+        _, image, tag = Atomic._parse_imagename(image)
         if tag == "latest":
             name = image.replace("/", "-")
         else:
@@ -1037,11 +1036,11 @@ class Atomic(object):
         metadata = GLib.Variant("a{sv}", {'docker.manifest': GLib.Variant('s', manifest)})
         mtree = OSTree.MutableTree()
         file_info = Gio.FileInfo()
-        file_info.set_attribute_uint32("unix::uid", 0);
-        file_info.set_attribute_uint32("unix::gid", 0);
-        file_info.set_attribute_uint32("unix::mode", 0o755 | stat.S_IFDIR);
+        file_info.set_attribute_uint32("unix::uid", 0)
+        file_info.set_attribute_uint32("unix::gid", 0)
+        file_info.set_attribute_uint32("unix::mode", 0o755 | stat.S_IFDIR)
 
-        dirmeta = OSTree.create_directory_metadata(file_info, None);
+        dirmeta = OSTree.create_directory_metadata(file_info, None)
         csum_dirmeta = repo.write_metadata(OSTree.ObjectType.DIR_META, None, dirmeta)[1]
         mtree.set_metadata_checksum(OSTree.checksum_from_bytes(csum_dirmeta))
 
@@ -1067,7 +1066,7 @@ class Atomic(object):
                         with open(manifest_file, 'r') as mfile:
                             manifest = mfile.read()
                         for m in json.loads(manifest):
-                            regloc, image, tag = Atomic._parse_imagename(m["RepoTags"][0])
+                            _, image, tag = Atomic._parse_imagename(m["RepoTags"][0])
                             imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image.replace("sha256:", ""), tag)
                             input_layers = m["Layers"]
                             self._pull_dockertar_layers(repo, imagebranch, temp_dir, input_layers)
@@ -1076,7 +1075,7 @@ class Atomic(object):
                         repositories_file = os.path.join(temp_dir, "repositories")
                         with open(repositories_file, 'r') as rfile:
                             repositories = rfile.read()
-                        regloc, image, tag = Atomic._parse_imagename(list(json.loads(repositories).keys())[0])
+                        _, image, tag = Atomic._parse_imagename(list(json.loads(repositories).keys())[0])
                         imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image, tag)
                         input_layers = []
                         for name in os.listdir(temp_dir):
@@ -1096,7 +1095,7 @@ class Atomic(object):
         return repo.pull(remote, [branch], 0, None)
 
     def _check_system_oci_image(self, repo, img, upgrade):
-        regloc, image, tag = Atomic._parse_imagename(img.replace("oci:", ""))
+        _, image, tag = Atomic._parse_imagename(img.replace("oci:", ""))
         imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image.replace("sha256:", ""), tag)
         current_rev = repo.resolve_rev(imagebranch, True)
         if not upgrade and current_rev[1]:
@@ -1150,7 +1149,7 @@ class Atomic(object):
         if "ostree:" in img:
             imagebranch = img.replace("ostree:", "")
         else: # assume "oci:" image
-            regloc, image, tag = Atomic._parse_imagename(img.replace("oci:", "").replace("docker:", ""))
+            _, image, tag = Atomic._parse_imagename(img.replace("oci:", "").replace("docker:", ""))
             imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image.replace("sha256:", ""), tag)
         return imagebranch
 
@@ -1198,7 +1197,6 @@ class Atomic(object):
             shutil.rmtree(destination)
 
         os.makedirs(rootfs)
-        revs = []
 
         rev = repo.resolve_rev(imagebranch, False)[1]
 
@@ -1267,7 +1265,7 @@ class Atomic(object):
                         _write_template(src + ".template", infile.read(), values, outfile)
             else:
                 args = ['runc', 'spec']
-                r = util.subp(args, cwd=destination)
+                util.subp(args, cwd=destination)
 
         with open(os.path.join(destination, "info"), 'w') as info_file:
             info = {"image" : img,
@@ -1431,12 +1429,6 @@ class Atomic(object):
         return self._images
 
     def version(self):
-        def get_label(label):
-            val = self._get_args(label)
-            if val:
-                return val[0]
-            return ""
-
         try:
             self.inspect = self.d.inspect_image(self.image)
         except NotFound:

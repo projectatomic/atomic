@@ -34,7 +34,7 @@ class Verify(Atomic):
 
         # Check if the input is an image id associated with more than one
         # repotag.  If so, error out.
-        if self.is_iid(self.image):
+        if self.is_iid():
             self.get_fq_name(self._inspect_image())
         # The input is not an image id
         else:
@@ -157,7 +157,7 @@ class Verify(Atomic):
                                        if x['Id'] == iid] for _repo in repos]
         results = []
         for repo_ in similar:
-            (reg, repo, tag) = util._decompose(repo_)
+            (reg, _, _) = util._decompose(repo_)
             results.append(self.is_registry_local(reg))
         return all(results)
 

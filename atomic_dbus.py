@@ -5,7 +5,6 @@ import dbus.service
 import dbus.mainloop.glib
 from gi.repository import GLib # pylint: disable=no-name-in-module
 import slip.dbus.service
-from slip.dbus import polkit
 from Atomic import Atomic
 from Atomic.verify import Verify
 from Atomic.storage import Storage
