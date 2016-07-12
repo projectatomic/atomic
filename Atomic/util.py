@@ -232,6 +232,7 @@ def skopeo_layers(image, args=[], layers=[]):
     :param layers: if set, specify what layers must be downloaded
     :return: Returns the temporary directory with the layers
     """
+    success = False
     temp_dir = tempfile.mkdtemp()
     try:
         args = ['skopeo', 'layers'] + args + [image] + layers
@@ -239,10 +240,12 @@ def skopeo_layers(image, args=[], layers=[]):
         if r.return_code != 0:
             check_v1_registry(image)
             raise ValueError("Unable to interact with this registry: {}".format(r.stderr))
+        success = True
     except OSError:
         raise ValueError("skopeo must be installed to perform remote inspections")
     finally:
-        shutil.rmtree(temp_dir)
+        if not success:
+            shutil.rmtree(temp_dir)
 
     return temp_dir
 
