@@ -263,7 +263,6 @@ class DockerObjectNotFound(ValueError):
     def __init__(self, msg):
         Exception.__init__(self, "Unable to associate '{}' with an image or container".format(msg))
 
-
 def get_atomic_config():
     """
     Returns the atomic configuration file (/etc/atomic.conf)
@@ -274,6 +273,24 @@ def get_atomic_config():
         raise ValueError("{} does not exist".format(ATOMIC_CONF))
     with open(ATOMIC_CONF, 'r') as conf_file:
         return yaml_load(conf_file)
+
+def get_atomic_config_item(config_items, atomic_config=None):
+    """
+    Lookup and return the atomic configuration file value
+    for a given structure. Returns None if the option
+    cannot be found.
+    """
+    def _recursive_get(atomic_config, items):
+        yaml_struct = atomic_config
+        try:
+            for i in items:
+                yaml_struct = yaml_struct[i]
+        except KeyError:
+            return None
+        return yaml_struct
+    if atomic_config is None:
+        atomic_config = get_atomic_config()
+    return _recursive_get(atomic_config, config_items)
 
 def get_scanners():
     scanners = []
@@ -330,3 +347,15 @@ def sh_set_add(a, b):
 
 def sh_set_del(a, b):
     return " ".join(list(set(a.split()) - set(b)))
+
+def find_remote_image(client, image):
+    """
+    Based on the user's input, see if we can associate the input with a remote
+    registry and image.
+    :return: str(fq name)
+    """
+    results = client.search(image)
+    for x in results:
+        if x['name'] == image:
+            return '{}/{}'.format(x['registry_name'], x['name'])
+    return None

@@ -31,7 +31,7 @@ from . import util
 import requests
 from .util import NoDockerDaemon
 import shutil
-from .atomic import OSTREE_PRESENT as OSTREE_PRESENT
+from .syscontainers import OSTREE_PRESENT as OSTREE_PRESENT
 
 """ Module for mounting and unmounting containerized applications. """
 
@@ -74,6 +74,7 @@ class Mount(Atomic):
         self.options = ""
 
     def set_args(self, args):
+        Atomic.set_args(self, args)
         if "mountpoint" in args:
             self.mountpoint = args.mountpoint
         if "live" in args:
@@ -87,7 +88,7 @@ class Mount(Atomic):
 
     def mount(self):
         try:
-            d = OSTreeMount(self.mountpoint, live=self.live, shared=self.shared)
+            d = OSTreeMount(self.args, self.mountpoint, live=self.live, shared=self.shared)
             if d.mount(self.image, self.options):
                 return
 
@@ -107,7 +108,7 @@ class Mount(Atomic):
     def unmount(self):
 
         try:
-            if OSTreeMount(self.mountpoint).unmount():
+            if OSTreeMount(self.args, self.mountpoint).unmount():
                 return
 
             dev = Mount.get_dev_at_mountpoint(self.mountpoint)
@@ -657,10 +658,11 @@ class OSTreeMount(Mount):
     images managed through OSTree on a filesystem location.
     """
 
-    def __init__(self, mountpoint, live=False, mnt_mkdir=False, shared=False):
+    def __init__(self, args, mountpoint, live=False, mnt_mkdir=False, shared=False):
         global _initxattr, setxattr
         Mount.__init__(self)
-        self.args = {}
+        self.args = args
+        self.syscontainers.set_args(args)
         self.mountpoint = mountpoint
         self.live = live
         self.shared = shared
@@ -671,10 +673,10 @@ class OSTreeMount(Mount):
             raise MountError('xattr required to mount OSTree images.')
 
     def has_container(self, container_id):
-        return self.get_system_container_checkout(container_id)
+        return self.syscontainers.get_system_container_checkout(container_id)
 
     def has_image(self, image_id):
-        return self.has_system_container_image(image_id)
+        return self.syscontainers.has_system_container_image(image_id)
 
     def has_identifier(self, _id):
         return self.has_container(_id) or self.has_image(_id)
@@ -697,13 +699,13 @@ class OSTreeMount(Mount):
 
         if has_container:
             typ = "container"
-            source = os.path.join(self.get_system_container_checkout(identifier), "rootfs")
+            source = os.path.join(self.syscontainers.get_system_container_checkout(identifier), "rootfs")
             Mount.mount_path(source, self.mountpoint, bind=True)
         elif has_image:
             typ = "image"
             if len(os.listdir(self.mountpoint)):
                 raise MountError('The destination path is not empty.')
-            self.extract_system_container(identifier, self.mountpoint)
+            self.syscontainers.extract_system_container(identifier, self.mountpoint)
             Mount.mount_path(self.mountpoint, self.mountpoint, bind=True)
         else:
             return False

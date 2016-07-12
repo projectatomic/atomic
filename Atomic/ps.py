@@ -9,7 +9,7 @@ class Ps(Atomic):
         all_containers = []
 
         # Collect the system containers
-        for i in self.get_system_containers():
+        for i in self.syscontainers.get_system_containers():
             container = i["Id"]
             inspect_stdout = util.check_output(["runc", "state", container])
             ret = json.loads(inspect_stdout)
