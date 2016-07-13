@@ -560,7 +560,7 @@ _atomic_host_rollback() {
 _atomic_host_status() {
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "-p --pretty -h --help" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "-j --json -p --pretty -h --help" -- "$cur" ) )
 			;;
 		*)
 			;;

@@ -464,6 +464,8 @@ class Atomic(object):
         argv = ["status"]
         if self.args.pretty:
             argv.append("--pretty")
+        if self.args.json:
+            argv.append("--json")
         self._rpmostree(argv)
 
     def host_upgrade(self):
