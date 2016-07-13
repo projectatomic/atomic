@@ -96,15 +96,28 @@ __atomic_image_repos_and_tags() {
 	__ltrim_colon_completions "$cur"
 }
 
+__atomic_system_containers_images() {
+	local images
+	REPO_DIR=`test -e /etc/atomic.conf && grep "^ostree_repository:" /etc/atomic.conf | cut -d' ' -f2`
+	images="$(ostree --repo=${REPO_DIR:-/ostree/repo} refs | sed -n  -e '/ociimage/ { /-/ { s|ociimage/||;s|\(.*\)-|\1:|;p }}')"
+        COMPREPLY+=( $(compgen -W "$images" -- "$cur") )
+}
+
+__atomic_system_containers_containers() {
+	local containers
+	CHECKOUT_DIR=`test -e /etc/atomic.conf && grep "^checkout_path:" /etc/atomic.conf | cut -d' ' -f2`
+	containers="$(ls -1 ${CHECKOUT_DIR:-/var/lib/containers/atomic/} | grep -v \.[01]$)"
+        COMPREPLY+=( $(compgen -W "$containers" -- "$cur") )
+}
+
 __atomic_image_repos_and_tags_and_ids() {
 	local images
 	if test $_system == "0"; then
 		images="$(__docker_q images -a --no-trunc | awk 'NR>1 { print $3; if ($1 != "<none>") { print $1; print $1":"$2 } }')"
+		COMPREPLY=( $(compgen -W "$images" -- "$cur") )
 	else
-		CHECKOUT_DIR=`test -e /etc/atomic.conf && grep "^checkout_path:" /etc/atomic.conf | cut -d' ' -f2`
-		images="$(ls -1 ${CHECKOUT_DIR:/var/lib/containers/atomic/} | grep -v \.[01]$)"
+		__atomic_system_containers_images
 	fi
-        COMPREPLY=( $(compgen -W "$images" -- "$cur") )
 	__ltrim_colon_completions "$cur"
 }
 
@@ -113,6 +126,8 @@ __atomic_containers_and_images() {
 	local containers=( "${COMPREPLY[@]}" )
 	__atomic_image_repos_and_tags_and_ids
 	COMPREPLY+=( "${containers[@]}" )
+	__atomic_system_containers_images
+	__atomic_system_containers_containers
 }
 
 __atomic_pos_first_nonflag() {
@@ -309,7 +324,11 @@ _atomic_update() {
 			COMPREPLY=( $( compgen -W "--force -f --set --container" -- "$cur" ) )
 			;;
 		*)
-		    __atomic_image_repos_and_tags
+		    if test $_container == "0"; then
+			__atomic_image_repos_and_tags
+		    else
+		    	__atomic_system_containers_containers
+		    fi
 		    ;;
 	esac
 }
@@ -320,7 +339,8 @@ _atomic_uninstall() {
 			COMPREPLY=( $( compgen -W -- "$cur" ) )
 			;;
 		*)
-		    __atomic_image_repos_and_tags_and_ids
+		    __atomic_containers_all
+		    __atomic_system_containers_containers
 		    ;;
 	esac
 }
@@ -414,7 +434,11 @@ _atomic_install() {
 			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
 			;;
 		*)
-		    __atomic_image_repos_and_tags_and_ids
+		    if test $_system == "0"; then
+		    	__atomic_image_repos_and_tags_and_ids
+		    else
+		    	__atomic_system_containers_images
+		    fi
 			;;
 	esac
 }
@@ -905,9 +929,14 @@ _atomic() {
 	local command='atomic' cpos=0
 	local counter=1
         _system=0
+        _container=0
 	while [ $counter -lt $cword ]; do
 		if test "${words[$counter]}" == "--system"; then
 			_system=1
+			break
+		fi
+		if test "${words[$counter]}" == "--container"; then
+			_container=1
 			break
 		fi
 		(( counter++ ))
