@@ -412,17 +412,17 @@ class Scan(Atomic):
         util.write_out("\n* denotes defaults")
         sys.exit(0)
 
-    @staticmethod
-    def mount(mountpoint, image):
+    def mount(self, mountpoint, image):
         m = mount.Mount()
+        m.set_args(self.args)
         m.mountpoint = mountpoint
         m.image = image
         m.shared = True
         m.mount()
 
-    @staticmethod
-    def unmount(mountpoint):
+    def unmount(self, mountpoint):
         m = mount.Mount()
+        m.set_args(self.args)
         m.mountpoint = mountpoint
         m.unmount()
 
