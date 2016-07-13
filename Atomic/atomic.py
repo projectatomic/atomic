@@ -99,6 +99,9 @@ class Atomic(object):
                 "--name", "${NAME}",
                 "${IMAGE}"]
 
+    results = '/var/lib/atomic'
+    skull = (u"\u2620").encode('utf-8')
+
     def __init__(self):
         self.d = AtomicDocker()
         self.name = None
@@ -698,8 +701,9 @@ class Atomic(object):
         used_image_ids = [x['ImageID'] for x in self.get_containers()]
 
         if len(_images) >= 0:
+            vuln_ids = self.get_vulnerable_ids()
             _max_repo, _max_tag = get_col_lengths(_images)
-            col_out = "{0:1} {1:" + str(_max_repo) + "} {2:" + str(_max_tag) + \
+            col_out = "{0:2} {1:" + str(_max_repo) + "} {2:" + str(_max_tag) + \
                       "} {3:14} {4:18} {5:14}"
             if self.args.heading:
                 self.write_out(col_out.format(" ",
@@ -725,6 +729,10 @@ class Atomic(object):
                     indicator = ">"
                 else:
                     indicator = ""
+
+                if image['Id'] in vuln_ids:
+                    space = " " if len(indicator) < 1 else ""
+                    indicator = indicator + self.skull + space
 
                 self.write_out(col_out.format(indicator, repo,
                                               tag, image["Id"][:12],
@@ -1037,6 +1045,19 @@ class Atomic(object):
     def set_debug(self):
         if self.args.debug:
             self.debug = True
+
+    def get_vulnerable_ids(self):
+        """
+        Reads in /var/lib/atomic/scan_summary.json and returns a list of all
+        the uuids that are vulnerable
+        :return:
+        """
+        summary_results = json.loads(open(os.path.join(self.results, "scan_summary.json"), "r").read())
+        vuln_ids = []
+        for uuid in summary_results.keys():
+            if summary_results[uuid]['Vulnerable']:
+                vuln_ids.append(uuid)
+        return vuln_ids
 
 class AtomicError(Exception):
     pass

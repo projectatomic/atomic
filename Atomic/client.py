@@ -50,7 +50,7 @@ class AtomicDocker():
 is_python2 = check_if_python2()[1]
 
 # Known keys that contain sha26: preceding value
-SUB_KEYS = ['Parent', 'Id', 'Image']
+SUB_KEYS = ['Parent', 'Id', 'Image', 'ImageID']
 ALGO = "sha256:"
 
 

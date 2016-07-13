@@ -12,7 +12,6 @@ class Scan(Atomic):
     Scan class that can generically work any scanner
     """
 
-    results = '/var/lib/atomic'
 
     def __init__(self):
         super(Scan, self).__init__()
@@ -256,12 +255,17 @@ class Scan(Atomic):
                 if bind_path == os.path.basename(os.path.split(in_bind_name)[0]):
                     return _path
 
+        persistent_data = {}
         json_files = self._get_json_files()
         for json_file in json_files:
             json_results = json.load(open(json_file))
 
             uuid = os.path.basename(json_results['UUID']) if len(self.args.rootfs) == 0 \
                 else _get_roots_path_from_bind_name(json_file)
+
+            # Get data from the results for persistent use
+            persistent_data[uuid] = self.get_persist_data(json_results, json_file)
+
             name1 = uuid if len(self.args.rootfs) > 1 else self._get_input_name_for_id(uuid)
             if len(self.args.rootfs) == 0 and not self._is_iid(uuid):
                 name2 = uuid[:15]
@@ -299,6 +303,9 @@ class Scan(Atomic):
                 util.write_out("{}{} is not supported for this scan."
                                .format(' ' * 5, self._get_input_name_for_id(uuid)))
         util.write_out("\nFiles associated with this scan are in {}.\n".format(self.results_dir))
+
+        self.write_persistent_data(persistent_data)
+
 
     def _output_custom(self, value, indent):
         space = ' ' * indent
@@ -434,3 +441,41 @@ class Scan(Atomic):
             mcmd = ['mount', '-o', 'ro,bind', _dir, chroot_scan_dir]
             util.check_call(mcmd)
             self.rootfs_mappings[_dir] = bind_dir
+
+    def get_persist_data(self, json_results, json_file):
+        persist = {}
+        if json_results.get('Successful').upper() == "FALSE":
+            return {}
+        persist['UUID'] = json_results['UUID'].replace("/scanin/", "")
+        persist['Scanner'] = json_results['Scanner']
+        persist['Time'] = json_results['Time']
+        persist['Scan Type'] = json_results['Scan Type']
+        if 'Vulnerabilities' in json_results and len(json_results['Vulnerabilities']) > 0:
+            persist["Vulnerable"] =  True
+        elif json_results.get('Vulnerable') is True:
+            persist["Vulnerable"] =  True
+        else:
+            persist["Vulnerable"] =  False
+        persist['json_file'] = json_file
+        return persist
+
+    def write_persistent_data(self, new_data):
+        summary_file = os.path.join(self.results, "scan_summary.json")
+        if not os.path.exists(summary_file):
+            persistent_data = new_data
+        else:
+            persistent_data = json.loads(open(summary_file, "r").read())
+            iids = [x['Id'] for x in self.get_images()]
+            cids = [x['Id'] for x in self.get_containers()]
+            for uuid in new_data.keys():
+                if len(new_data[uuid]) > 0:
+                    persistent_data[uuid] = new_data[uuid]
+
+            # Clean up old data
+            for uuid in persistent_data.keys():
+                if uuid not in iids and uuid not in cids:
+                    del persistent_data[uuid]
+
+        with open(summary_file, 'w') as f:
+            json.dump(persistent_data, f, indent=4)
+
