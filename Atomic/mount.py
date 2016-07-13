@@ -75,15 +75,15 @@ class Mount(Atomic):
 
     def set_args(self, args):
         Atomic.set_args(self, args)
-        if "mountpoint" in args:
+        if hasattr(args, "mountpoint"):
             self.mountpoint = args.mountpoint
-        if "live" in args:
+        if hasattr(args, "live"):
             self.live = args.live
-        if "shared" in args:
+        if hasattr(args, "shared"):
             self.shared = args.shared
-        if "options" in args:
+        if hasattr(args, "options"):
             self.options = [opt for opt in args.options.split(',') if opt]
-        if "image" in args:
+        if hasattr(args, "image"):
             self.image = args.image
 
     def mount(self):
