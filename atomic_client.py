@@ -127,8 +127,7 @@ if __name__ == "__main__":
 
         elif(sys.argv[1] == "scan"):
             if(sys.argv[2] == "--list"):
-                all_scanners = json.loads(dbus_proxy.scan_list())
-                print_scan_list(all_scanners)
+                print_scan_list(json.loads(dbus_proxy.scan_list()))
 
             elif(sys.argv[2] == "--all"):
                 print (json.loads(dbus_proxy.scan([], '', '', [], True, False, False)))

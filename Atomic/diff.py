@@ -35,9 +35,9 @@ class Diff(Atomic):
                 for image in image_list:
                     rpmimage = RpmDiff(image.chroot, image.name, self.args.names_only)
                     if not rpmimage.is_rpm:
-                        helpers._cleanup(image_list)
+                        helpers.cleanup(image_list)
                         raise ValueError("{0} is not RPM based.".format(rpmimage.name))
-                    rpmimage._get_rpm_content()
+                    rpmimage.get_rpm_content()
                     rpm_image_list.append(rpmimage)
 
             if not self.args.no_files:
@@ -47,13 +47,13 @@ class Diff(Atomic):
                 helpers.output_rpms(rpm_image_list)
 
             # Clean up
-            helpers._cleanup(image_list)
+            helpers.cleanup(image_list)
 
             return json.dumps(helpers.json_out)
 
         except KeyboardInterrupt:
             util.write_out("Quitting...")
-            helpers._cleanup(image_list)
+            helpers.cleanup(image_list)
 
 class DiffHelpers(object):
     """
@@ -64,14 +64,14 @@ class DiffHelpers(object):
         self.json_out = {}
 
     @staticmethod
-    def _cleanup(image_list):
+    def cleanup(image_list):
         """
         Class the cleanup def
         :param image_list:
         :return: None
         """
         for image in image_list:
-            image._remove()
+            image.remove()
 
     @staticmethod
     def create_image_list(images):
@@ -87,7 +87,7 @@ class DiffHelpers(object):
                 image_list.append(DiffObj(image))
             except mount.SelectionMatchError as e:
                 if len(image_list) > 0:
-                    DiffHelpers._cleanup(image_list)
+                    DiffHelpers.cleanup(image_list)
                 sys.stderr.write("{}\n".format(e))
                 sys.exit(1)
         return image_list
@@ -101,7 +101,7 @@ class DiffHelpers(object):
         """
         file_diff = DiffFS(image_list[0].chroot, image_list[1].chroot)
         for image in image_list:
-            self.json_out[image.name] = {'{}_only'.format(image.name): file_diff._get_only(image.chroot)}
+            self.json_out[image.name] = {'{}_only'.format(image.name): file_diff.get_only(image.chroot)}
         self.json_out['files_differ'] = file_diff.common_diff
 
         if not self.args.json:
@@ -117,7 +117,7 @@ class DiffHelpers(object):
         ip = RpmPrint(rpm_image_list)
         if not self.args.json:
             if ip.has_diff:
-                ip._print_diff(self.args.verbose)
+                ip.print_diff(self.args.verbose)
             else:
                 if self.args.names_only:
                     util.write_out("\n{} and {} has the same RPMs.  Versions may differ.  Remove --names-only"
@@ -127,7 +127,7 @@ class DiffHelpers(object):
 
         # Output JSON content
         else:
-            rpm_json = ip._rpm_json()
+            rpm_json = ip.rpm_json()
             for image in rpm_json.keys():
                 if image not in self.json_out:
                     self.json_out[image] = rpm_json[image]
@@ -143,7 +143,7 @@ class DiffObj(object):
         self.root_path = self.dm.mount(self.name)
         self.chroot = os.path.join(self.root_path, "rootfs")
 
-    def _remove(self):
+    def remove(self):
         """
         Stub to unmount, remove the devmapper device (if needed), and
         remove any temporary containers used
@@ -165,7 +165,7 @@ class RpmDiff(object):
         self.release = None
         self.names_only = names_only
 
-    def _get_rpm_content(self):
+    def get_rpm_content(self):
         """
         Populates the release and RPM information
         :return: None
@@ -190,7 +190,7 @@ class RpmDiff(object):
         :return: sorted list pf RPM NVRs
         """
         ts = rpm.TransactionSet(chroot_os)
-        ts.setVSFlags((rpm._RPMVSF_NOSIGNATURES | rpm._RPMVSF_NODIGESTS))
+        ts.setVSFlags((rpm._RPMVSF_NOSIGNATURES | rpm._RPMVSF_NODIGESTS)) # pylint: disable=protected-access
         image_rpms = []
         enc=sys.getdefaultencoding()
         for hdr in ts.dbMatch():  # No sorting  # pylint: disable=no-member
@@ -240,7 +240,7 @@ class RpmPrint(object):
         self.has_diff = False if set(self.i1.rpms) == set(self.i2.rpms) \
             else True
 
-    def _print_diff(self, be_verbose):
+    def print_diff(self, be_verbose):
         """
         Outputs the diff information in columns
         :return: None
@@ -250,14 +250,14 @@ class RpmPrint(object):
         util.write_out(self.two_col.format("-"*self._max, "-"*self._max))
         self._print_release()
         util.write_out(self.two_col.format("-"*self._max, "-"*self._max))
-        for rpm in self.all_rpms:
-            if (rpm in self.i1.rpms) and (rpm in self.i2.rpms):
+        for r in self.all_rpms:
+            if (r in self.i1.rpms) and (r in self.i2.rpms):
                 if be_verbose:
-                    util.write_out(self.two_col.format(rpm, rpm))
-            elif (rpm in self.i1.rpms) and not (rpm in self.i2.rpms):
-                util.write_out(self.two_col.format(rpm, ""))
-            elif not (rpm in self.i1.rpms) and (rpm in self.i2.rpms):
-                util.write_out(self.two_col.format("", rpm))
+                    util.write_out(self.two_col.format(r, r))
+            elif (r in self.i1.rpms) and not (r in self.i2.rpms):
+                util.write_out(self.two_col.format(r, ""))
+            elif not (r in self.i1.rpms) and (r in self.i2.rpms):
+                util.write_out(self.two_col.format("", r))
 
     def _print_release(self):
         """
@@ -272,7 +272,7 @@ class RpmPrint(object):
             col2 = r2_split[n] if 0 <= n < len(r2_split) else ""
             util.write_out(self.two_col.format(col1, col2))
 
-    def _rpm_json(self):
+    def rpm_json(self):
         """
         Pretty prints the output in json format
         :return: None
@@ -306,7 +306,7 @@ class DiffFS(object):
         self.chroot_right = chroot_right
         self.delta(self.compare)
 
-    def _get_only(self, _chroot):
+    def get_only(self, _chroot):
         """
         Simple function to return the right diff using the chroot path
         as a key

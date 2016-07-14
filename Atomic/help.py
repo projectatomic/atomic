@@ -17,6 +17,8 @@ class AtomicHelp(Atomic):
         self.is_container = True
         self.use_pager = True
         self.alt_help_cmd = None
+        self.image = None
+        self.inspect = None
 
     def help(self):
         """
@@ -93,4 +95,3 @@ class AtomicHelp(Atomic):
         cmd = self.sub_env_strings(cmd)
         self.display(cmd)
         util.check_call(cmd, env=self.cmd_env())
-

@@ -50,25 +50,25 @@ class TestAtomicUtilSh(unittest.TestCase):
         self.assertEqual(util.sh_modify_var_in_text('VAR=OLD\n', "VAR", uppercasify),
                          'VAR=OLD\n\nVAR=""\n')
 
-    def assertFileEqual(self, file, content):
-        self.assertEqual(open(file, "r").read(), content)
+    def assertFileEqual(self, path, content):
+        self.assertEqual(open(path, "r").read(), content)
 
     def test_util_sh_modify_file(self):
-        file = os.path.join(os.environ["WORK_DIR"], "sh.conf")
+        path = os.path.join(os.environ["WORK_DIR"], "sh.conf")
 
         def uppercasify(old):
             return old.upper()
 
         # Non-existing file is treated as empty
-        self.assertFalse(os.path.exists(file))
-        util.sh_modify_var_in_file(file, "VAR", uppercasify, "def")
-        self.assertFileEqual(file, '\nVAR="DEF"\n')
+        self.assertFalse(os.path.exists(path))
+        util.sh_modify_var_in_file(path, "VAR", uppercasify, "def")
+        self.assertFileEqual(path, '\nVAR="DEF"\n')
 
         # Existing file is modified in place as expected
-        with open(file, "w") as f:
+        with open(path, "w") as f:
             f.write('VAR="val"\n')
-        util.sh_modify_var_in_file(file, "VAR", uppercasify)
-        self.assertFileEqual(file, 'VAR="VAL"\n')
+        util.sh_modify_var_in_file(path, "VAR", uppercasify)
+        self.assertFileEqual(path, 'VAR="VAL"\n')
 
 if __name__ == '__main__':
     unittest.main()

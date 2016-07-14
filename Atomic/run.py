@@ -3,9 +3,12 @@ from . import util
 try:
     from . import Atomic
 except ImportError:
-    from atomic import Atomic
+    from atomic import Atomic # pylint: disable=relative-import
 
 class Run(Atomic):
+    def __init__(self):
+        super(Run, self).__init__()
+
     def run(self):
         self.inspect = self._inspect_container()
 

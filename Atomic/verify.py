@@ -157,7 +157,7 @@ class Verify(Atomic):
                                        if x['Id'] == iid] for _repo in repos]
         results = []
         for repo_ in similar:
-            (reg, _, _) = util._decompose(repo_)
+            (reg, _, _) = util.decompose(repo_)
             results.append(self.is_registry_local(reg))
         return all(results)
 
@@ -243,16 +243,16 @@ class Verify(Atomic):
         try:
             try:
                 _match = (x for x in layers if x["Id"] == _id).__next__()
-            except:
-                _match = (x for x in layers if x["Id"] == _id).next()
+            except AttributeError:
+                _match = (x for x in layers if x["Id"] == _id).next() # pylint: disable=next-method-called
         except StopIteration:
             # We were unable to associate IDs due to the local image being set
             # to intermediate by docker bc it is outdated. Therefore we find
             # the first instance by name for the index
             try:
                 _match = (x for x in layers if x["Name"] == name).__next__()
-            except:
-                _match = (x for x in layers if x["Name"] == name).next()
+            except AttributeError:
+                _match = (x for x in layers if x["Name"] == name).next() # pylint: disable=next-method-called
         return _match['index']
 
     def get_local_latest_version(self, name):

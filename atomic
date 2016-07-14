@@ -38,8 +38,7 @@ from Atomic.help import AtomicHelp
 from Atomic.run import Run
 from Atomic.ps import Ps
 from Atomic.storage import Storage
-from Atomic.atomic import NoDockerDaemon
-from Atomic.util import get_scanners, default_docker_lib
+from Atomic.util import get_scanners, default_docker_lib, NoDockerDaemon
 import traceback
 from Atomic.mount import MountError
 
@@ -53,7 +52,7 @@ except TypeError:
     # Failover to python3 install
     gettext.install(PROGNAME, codeset='utf-8')
 except IOError:
-    import builtins
+    import builtins # pylint: disable=import-error
     builtins.__dict__['_'] = str
 
 
@@ -68,14 +67,14 @@ class HelpByDefaultArgumentParser(argparse.ArgumentParser):
 # Code for python2 copied from Adrian Sampson hack
 # https://gist.github.com/sampsyo/471779
 #
-class AliasedSubParsersAction(argparse._SubParsersAction):
-    class _AliasedPseudoAction(argparse.Action):
-        def __init__(self, name, aliases, help):
+class AliasedSubParsersAction(argparse._SubParsersAction): # pylint: disable=protected-access
+    class _AliasedPseudoAction(argparse.Action): # pylint: disable=abstract-method
+        def __init__(self, name, aliases, help_text):
             dest = name
             if aliases:
                 dest += ' (%s)' % ','.join(aliases)
-            sup = super(AliasedSubParsersAction._AliasedPseudoAction, self)
-            sup.__init__(option_strings=[], dest=dest, help=help)
+            sup = super(AliasedSubParsersAction._AliasedPseudoAction, self) #pylint: disable=protected-access
+            sup.__init__(option_strings=[], dest=dest, help=help_text)
 
     def add_parser(self, name, **kwargs):
         if 'aliases' in kwargs:
@@ -91,7 +90,7 @@ class AliasedSubParsersAction(argparse._SubParsersAction):
             self._name_parser_map[alias] = parser
         # Make the help text reflect them, first removing old help entry.
         if 'help' in kwargs:
-            help = kwargs.pop('help')
+            help = kwargs.pop('help') # pylint: disable=redefined-builtin
             self._choices_actions.pop()
             pseudo_action = self._AliasedPseudoAction(name, aliases, help)
             self._choices_actions.append(pseudo_action)
@@ -116,8 +115,8 @@ def need_root():
     exit("Some operations for '%s' require root access." % sub_function)
     sys.exit(1)
 
-def create_parser(atomic):
-    parser = HelpByDefaultArgumentParser(description=atomic.help())
+def create_parser(help_text):
+    parser = HelpByDefaultArgumentParser(description=help_text)
     parser.register('action', 'parsers', AliasedSubParsersAction)
     parser.add_argument('-v', '--version', action='version', version=Atomic.__version__)
     parser.add_argument('--debug', default=False, action='store_true')
@@ -631,9 +630,9 @@ def create_parser(atomic):
 if __name__ == '__main__':
     try:
         atomic = Atomic.Atomic()
-        parser = create_parser(atomic)
-        args = parser.parse_args()
-        _class = atomic if '_class' not in args else args._class()
+        aparser = create_parser(atomic.help())
+        args = aparser.parse_args()
+        _class = atomic if '_class' not in args else args._class() # pylint: disable=protected-access
         _class.set_args(args)
         _func = getattr(_class, args.func)
         sys.exit(_func())
@@ -649,15 +648,15 @@ if __name__ == '__main__':
         sys.exit(e.returncode)
     except AttributeError:
         # python3 throws exception on no args to atomic
-        parser.print_usage()
+        aparser.print_usage()
         sys.exit(1)
-    except (OSError, MountError) as e:
+    except MountError as e:
         if str(e).find("Permission denied") > 0:
             need_root()
         else:
             sys.stderr.write("%s\n" % str(e))
         sys.exit(1)
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
         sys.stderr.write("%s\n" % str(e))
         sys.exit(1)
     except SystemExit as e:

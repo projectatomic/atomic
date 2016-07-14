@@ -4,7 +4,7 @@ import json
 try:
     import ConfigParser as configparser
 except ImportError:  # py3 compat
-    import configparser
+    import configparser # pylint: disable=import-error
 
 import requests
 
@@ -34,7 +34,7 @@ def push_image_to_satellite(image, server_url, username, password,
         sat = SatelliteServer(server_url=server_url, username=username,
                               password=password, verify_ssl=verify_ssl,
                               docker_client=docker_client, debug=debug)
-    except Exception as e:
+    except IOError as e:
         raise IOError('Failed to initialize Satellite: {0}'.format(e))
     if not sat.is_repo(repo_id):
         raise IOError("""Invalid Repository ID: {0}.  Please create that repository
@@ -46,14 +46,14 @@ and try again, or input a different ID.""".format(repo_id).replace('\n', ' '))
                       image, server_url))
         sat.upload_docker_image(image, repo_id)
         util.write_out("")
-    except Exception as e:
+    except IOError as e:
         raise IOError('Failed to upload image: {0}'.format(e))
     sat.publish_view(content_view_id, repo_id)
     print("Push Complete")
 
 
 class SatelliteServer(object):
-    """Interact with Satellite API"""
+    # Interact with Satellite API
     def __init__(self, server_url, username, password, verify_ssl,
                  docker_client, debug=False):
         self._server_url = server_url
@@ -124,13 +124,13 @@ class SatelliteServer(object):
             r = requests.delete(url, auth=(self._username, self._password),
                                 headers=header, verify=self._verify_ssl)
         else:
-            raise ValueError('Invalid value of "req_type" parameter: {0}'
+            raise IOError('Invalid value of "req_type" parameter: {0}'
                              .format(req_type))
         if self._debug:
             print(r)
         try:
             r_json = r.json()
-        except Exception:
+        except IOError:
             # some requests don't return a json object
             return None
 
@@ -194,7 +194,7 @@ class SatelliteServer(object):
             self._server_url, repo_id)
         r_json = self._call_satellite(url, "post-nodata")
         if 'error' in r_json:
-            raise Exception('Unable to get a satellite upload ID')
+            raise IOError('Unable to get a satellite upload ID')
         return r_json.get('upload_id')
 
     def upload_docker_image(self, image, repo_id):
@@ -228,7 +228,7 @@ class SatelliteServer(object):
             r_json = self._call_satellite(url, "put-multi-part", payload)
             if (r_json is not None):
                 if ('errors' in r_json):
-                    raise Exception("Unable to upload image.  Error:{0}"
+                    raise IOError("Unable to upload image.  Error:{0}"
                                     .format(r_json.get("errors")))
             offset += self._chunk_size
         image_stream.close()
@@ -256,7 +256,7 @@ class SatelliteServer(object):
         r_json = self._call_satellite(url, "put-jsonHead", payload)
         if (r_json is not None):
             if ('errors' in r_json):
-                raise Exception('Unable to import satellite content into {0}'
+                raise IOError('Unable to import satellite content into {0}'
                                 .format(repo_id))
 
     def publish_view(self, content_id, repo_id):
@@ -266,7 +266,7 @@ class SatelliteServer(object):
         r_json = self._call_satellite(url, "post-nodata")
         if (r_json is not None):
             if ('errors' in r_json):
-                raise Exception('Unable to publish satellite repo "{0}"'
+                raise IOError('Unable to publish satellite repo "{0}"'
                                 .format(repo_id))
 
 
@@ -279,26 +279,24 @@ class SatelliteConfig(object):
         self.username = self._get("auth", "username")
         self.password = self._get("auth", "password")
         self.verify_ssl = self._getboolean("server", "verify_ssl")
-    """
-    Satellite configuration file [optional]:
-    1. look in (or create) ~/.satellite/admin.conf
-    configuration contents:
-    [server]
-    host = <satellite-server-hostname.example.com>
-    verify_ssl = false
-
-    # optional auth section
-    [auth]
-    username: <user>
-    password: <pass>
-    """
+    # Satellite configuration file [optional]:
+    # 1. look in (or create) ~/.satellite/admin.conf
+    # configuration contents:
+    # [server]
+    # host = <satellite-server-hostname.example.com>
+    # verify_ssl = false
+    #
+    # # optional auth section
+    # [auth]
+    # username: <user>
+    # password: <pass>
     def _get(self, section, val):
         try:
             return self.c.get(section, val)
         except (configparser.NoSectionError, configparser.NoOptionError):
             return None
-        except ValueError as e:
-            raise ValueError("Satellite Bad Value for {0} in {1}. {2}".format(
+        except IOError as e:
+            raise IOError("Satellite Bad Value for {0} in {1}. {2}".format(
                 val, self.config_file, e))
 
     def _getboolean(self, section, val):
@@ -306,8 +304,8 @@ class SatelliteConfig(object):
             return self.c.getboolean(section, val)
         except (configparser.NoSectionError, configparser.NoOptionError):
             return True
-        except ValueError as e:
-            raise ValueError("Satellite Bad Value for {0} in {1}. {2}".format(
+        except IOError as e:
+            raise IOError("Satellite Bad Value for {0} in {1}. {2}".format(
                 val, self.config_file, e))
 
     def config(self):

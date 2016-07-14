@@ -14,31 +14,28 @@ import re
 import requests
 try:
     from urlparse import urlparse #pylint: disable=import-error
-except:
+except ImportError:
     from urllib.parse import urlparse #pylint: disable=no-name-in-module,import-error
 
-"""Atomic Utility Module"""
+# Atomic Utility Module
 
 ReturnTuple = collections.namedtuple('ReturnTuple',
                                      ['return_code', 'stdout', 'stderr'])
 ATOMIC_CONF = os.environ.get('ATOMIC_CONF', '/etc/atomic.conf')
 ATOMIC_CONFD = os.environ.get('ATOMIC_CONFD', '/etc/atomic.d/')
-_default_docker=None
-_default_docker_lib=None
-
 
 def check_if_python2():
     if int(sys.version_info[0]) < 3:
-        _input = raw_input # pylint: disable=undefined-variable
+        _input = raw_input # pylint: disable=undefined-variable,raw_input-builtin
         return _input, True
     else:
         _input = input
         return _input, False
 
-input, is_python2 = check_if_python2()
+input, is_python2 = check_if_python2() # pylint: disable=redefined-builtin
 
-def _decompose(compound_name):
-    """ '[reg/]repo[:tag]' -> (reg, repo, tag) """
+def decompose(compound_name):
+    # '[reg/]repo[:tag]' -> (reg, repo, tag)
     reg, repo, tag = '', compound_name, ''
     if '/' in repo:
         reg, repo = repo.split('/', 1)
@@ -47,12 +44,10 @@ def _decompose(compound_name):
     return reg, repo, tag
 
 def image_by_name(img_name, images=None):
-    """
-    Returns a list of image data for images which match img_name. Will
-    optionally take a list of images from a docker.Client.images
-    query to avoid multiple docker queries.
-    """
-    i_reg, i_rep, i_tag = _decompose(img_name)
+    # Returns a list of image data for images which match img_name. Will
+    # optionally take a list of images from a docker.Client.images
+    # query to avoid multiple docker queries.
+    i_reg, i_rep, i_tag = decompose(img_name)
 
     # Correct for bash-style matching expressions.
     if not i_reg:
@@ -68,7 +63,7 @@ def image_by_name(img_name, images=None):
     valid_images = []
     for i in images:
         for t in i['RepoTags']:
-            reg, rep, tag = _decompose(t)
+            reg, rep, tag = decompose(t)
             if matches(reg, i_reg) \
                     and matches(rep, i_rep) \
                     and matches(tag, i_tag):
@@ -83,10 +78,8 @@ def image_by_name(img_name, images=None):
 
 
 def subp(cmd, cwd=None):
-    """
-    Run a command as a subprocess.
-    Return a triple of return code, standard out, standard err.
-    """
+    # Run a command as a subprocess.
+    # Return a triple of return code, standard out, standard err.
     proc = subprocess.Popen(cmd, cwd=cwd,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, close_fds=True)
@@ -96,7 +89,9 @@ def subp(cmd, cwd=None):
 # Wrappers for Python's subprocess which override the default for close_fds,
 # since we are a privileged process, and we don't want to leak things like
 # the docker socket into child processes by default
-def check_call(cmd, env=os.environ, stdin=None, stderr=None, stdout=None):
+def check_call(cmd, env=None, stdin=None, stderr=None, stdout=None):
+    if not env:
+        env=os.environ
     # Make sure cmd is a list; break if needed
     if not isinstance(cmd, list):
         if is_python2:
@@ -106,13 +101,17 @@ def check_call(cmd, env=os.environ, stdin=None, stderr=None, stdout=None):
             cmd = shlex.split(cmd)
     return subprocess.check_call(cmd, env=env, stdin=stdin, stderr=stderr, stdout=stdout, close_fds=True)
 
-def check_output(cmd, env=os.environ, stdin=None, stderr=None):
+def check_output(cmd, env=None, stdin=None, stderr=None):
+    if not env:
+        env=os.environ
     # Make sure cmd is a list
     if not isinstance(cmd, list):
         cmd = shlex.split(cmd)
     return subprocess.check_output(cmd, env=env, stdin=stdin, stderr=stderr, close_fds=True)
 
-def call(cmd, env=os.environ, stdin=None, stderr=None, stdout=None):
+def call(cmd, env=None, stdin=None, stderr=None, stdout=None):
+    if not env:
+        env=os.environ
     # Make sure cmd is a list
     if not isinstance(cmd, list):
         cmd = shlex.split(cmd)
@@ -179,11 +178,6 @@ def is_dock_obj_mounted(docker_obj):
 
 
 def urllib3_disable_warnings():
-    if not 'requests' in sys.modules:
-        import requests
-    else:
-        requests = sys.modules['requests']
-
     # On latest Fedora, this is a symlink
     if hasattr(requests, 'packages'):
         requests.packages.urllib3.disable_warnings() #pylint: disable=maybe-no-member
@@ -202,14 +196,14 @@ def urllib3_disable_warnings():
             if hasattr(urllib3, 'disable_warnings'):
                 urllib3.disable_warnings()
 
+def skopeo_inspect(image, args=None):
+    if not args:
+        args=[]
 
-def skopeo_inspect(image, args=[]):
-    """
-    Performs remote inspection of an image on a registry
-    :param image: fully qualified name
-    :param args: additional parameters to pass to Skopeo
-    :return: Returns json formatted data
-    """
+    # Performs remote inspection of an image on a registry
+    # :param image: fully qualified name
+    # :param args: additional parameters to pass to Skopeo
+    # :return: Returns json formatted data
 
     cmd = ['skopeo', 'inspect'] + args + [image]
     try:
@@ -224,7 +218,7 @@ def skopeo_inspect(image, args=[]):
         return json.loads(results.stdout.decode('utf-8'))
 
 
-def skopeo_layers(image, args=[], layers=[]):
+def skopeo_layers(image, args=None, layers=None):
     """
     Fetch image layers through Skopeo
     :param image: fully qualified name
@@ -232,6 +226,10 @@ def skopeo_layers(image, args=[], layers=[]):
     :param layers: if set, specify what layers must be downloaded
     :return: Returns the temporary directory with the layers
     """
+    if not args:
+        args=[]
+    if not layers:
+        layers=[]
     success = False
     temp_dir = tempfile.mkdtemp()
     try:
@@ -259,19 +257,17 @@ def check_v1_registry(image):
 
 class NoDockerDaemon(Exception):
     def __init__(self):
-        Exception.__init__(self, "The docker daemon does not appear to be running.")
+        super(NoDockerDaemon, self).__init__("The docker daemon does not appear to be running.")
 
 
 class DockerObjectNotFound(ValueError):
     def __init__(self, msg):
-        Exception.__init__(self, "Unable to associate '{}' with an image or container".format(msg))
+        super(DockerObjectNotFound, self).__init__("Unable to associate '{}' with an image or container".format(msg))
 
 def get_atomic_config():
-    """
-    Returns the atomic configuration file (/etc/atomic.conf)
-    in a dict
-    :return: dict based structure of the atomic config file
-    """
+    # Returns the atomic configuration file (/etc/atomic.conf)
+    # in a dict
+    # :return: dict based structure of the atomic config file
     if not os.path.exists(ATOMIC_CONF):
         raise ValueError("{} does not exist".format(ATOMIC_CONF))
     with open(ATOMIC_CONF, 'r') as conf_file:
@@ -311,17 +307,17 @@ def get_scanners():
     return scanners
 
 def default_docker():
-    global _default_docker
-    if not _default_docker:
+    if not default_docker.cache:
         atomic_config = get_atomic_config()
-        _default_docker = atomic_config.get('default_docker','docker')
-    return _default_docker
+        default_docker.cache = atomic_config.get('default_docker','docker')
+    return default_docker.cache
+default_docker.cache = None
 
 def default_docker_lib():
-    global _default_docker_lib
-    if not _default_docker_lib:
-        _default_docker_lib = "/var/lib/%s" % default_docker()
-    return _default_docker_lib
+    if not default_docker_lib.cache:
+        default_docker_lib.cache = "/var/lib/%s" % default_docker()
+    return default_docker_lib.cache
+default_docker_lib.cache = None
 
 # Utilities for dealing with config files that use bourne shell
 # syntax, such as /etc/sysconfig/docker-storage-setup

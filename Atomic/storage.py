@@ -16,7 +16,7 @@ except ImportError:
 try:
     from . import Atomic
 except ImportError:
-    from atomic import Atomic
+    from atomic import Atomic # pylint: disable=relative-import
 
 def query_lvs(lvol, vgroup, fields):
     return util.check_output([ "lvs", "--noheadings", "-o",  fields, "--unit", "b", vgroup + "/" + lvol ]).split()
@@ -33,9 +33,8 @@ def list_pvs(vgroup):
     return res
 
 def list_lvs(vgroup):
-    return map(lambda s: s.strip(),
-               util.check_output([ "lvs", "--noheadings", "-o", "name", vgroup ]).splitlines())
-
+    return map(lambda s: s.strip(), # pylint: disable=deprecated-lambda, map-builtin-not-iterating
+               util.check_output([ "lvs", "--noheadings", "-o", "name", vgroup ]).splitlines()) 
 def list_parents(dev):
     return util.check_output([ "lsblk", "-snlp", "-o", "NAME", dev ]).splitlines()[1:]
 
@@ -45,7 +44,6 @@ def list_children(dev):
 def get_dss_vgroup(conf):
     vgroup = util.sh_get_var_in_file(conf, "VG", "")
     if vgroup == "":
-        root_dev = None
         for l in open("/proc/mounts", "r").readlines():
             fields = l.split()
             if fields[1] == "/" and fields[0].startswith("/dev"):
@@ -74,7 +72,7 @@ class Storage(Atomic):
         os.mkdir(root)
         try:
             selinux.restorecon(root.encode("utf-8"))
-        except:
+        except (TypeError, OSError):
             selinux.restorecon(root)
 
     def modify(self):
@@ -110,6 +108,7 @@ class Storage(Atomic):
         lvs = list_lvs(vgroup)
         n_pvs = len(pvs)
         devices = set(devices)
+        parents = None
         for pv in pvs:
             parents = list_parents(pv)
             if set(parents).isdisjoint(devices):

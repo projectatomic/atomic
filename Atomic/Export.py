@@ -52,18 +52,18 @@ def export_images(export_location):
 
     images = {}
     for image in AtomicDocker().images():
-        id, tags = image["Id"], image["RepoTags"]
+        Id, tags = image["Id"], image["RepoTags"]
 
         if '<none>:<none>' in tags:
             continue
-        if id not in images:
-            images[id] = []
-        images[id].extend(tags)
+        if Id not in images:
+            images[Id] = []
+        images[Id].extend(tags)
 
-    for id in images:
-        tags = " ".join(images[id])
-        util.write_out("Exporting image: {0}".format(id[:12]))
-        with open(export_location + '/images/' + id, 'w') as f:
+    for Id in images:
+        tags = " ".join(images[Id])
+        util.write_out("Exporting image: {0}".format(Id[:12]))
+        with open(export_location + '/images/' + Id, 'w') as f:
             util.check_call([util.default_docker(), "save", tags], stdout=f)
 
 def export_containers(graph, export_location):
@@ -74,12 +74,12 @@ def export_containers(graph, export_location):
         os.makedirs(export_location + "/containers")
 
     for container in AtomicDocker().containers(all=True):
-        id = container["Id"]
+        Id = container["Id"]
 
-        util.write_out("Exporting container: {0}".format(id[:12]))
+        util.write_out("Exporting container: {0}".format(Id[:12]))
         util.check_call([ATOMIC_LIBEXEC + '/migrate.sh',
                                'export',
-                               '--container-id=' + id[:12],
+                               '--container-id=' + Id[:12],
                                '--graph=' + graph,
                                '--export-location=' + export_location])
 

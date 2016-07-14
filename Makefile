@@ -15,7 +15,7 @@ all: python-build docs pylint-check dockertar-sha256-helper
 
 .PHONY: test-python3-pylint
 test-python3-pylint: 
-	$(PYTHON3_PYLINT) -E --additional-builtins=_ *.py atomic Atomic tests/unit/*.py
+	$(PYTHON3_PYLINT) --disable=all --enable=E --enable=W --additional-builtins=_ *.py atomic Atomic tests/unit/*.py -d=no-absolute-import,print-statement,no-absolute-import,bad-builtin
 
 .PHONY: test
 test: all test-python3-pylint
@@ -30,7 +30,7 @@ python-build:
 
 .PHONY: pylint-check
 pylint-check:
-	$(PYLINT) -E --additional-builtins=_ *.py atomic Atomic tests/unit/*.py
+	$(PYLINT) --disable=all --enable=E --enable=W --additional-builtins=_ *.py atomic Atomic tests/unit/*.py -d=no-absolute-import,print-statement,no-absolute-import,bad-builtin
 
 MANPAGES_MD = $(wildcard docs/*.md)
 

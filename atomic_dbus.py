@@ -71,10 +71,8 @@ class atomic_dbus(slip.dbus.service.Object):
             self.last_token += 1
             return self.last_token
 
-    """
-    The Version method takes in an image name and returns its version
-    information
-    """
+    # The Version method takes in an image name and returns its version
+    # information
     @slip.dbus.polkit.require_auth("org.atomic.read")
     @dbus.service.method("org.atomic", in_signature='asb',
                          out_signature='aa{sv}')
@@ -89,10 +87,8 @@ class atomic_dbus(slip.dbus.service.Object):
                              "Version": self.atomic.version()})
         return versions
 
-    """
-    The Verify method takes in an image name and returns whether or not the
-    image should be updated
-    """
+    # The Verify method takes in an image name and returns whether or not the
+    # image should be updated
     @slip.dbus.polkit.require_auth("org.atomic.read")
     @dbus.service.method("org.atomic", in_signature='as', out_signature='av')
     def Verify(self, images):
@@ -106,9 +102,8 @@ class atomic_dbus(slip.dbus.service.Object):
                                   "Verification": verify.verify()}) #pylint: disable=no-member
         return verifications
 
-        """
-        The StorageReset method deletes all containers and images from a system. Resets storage to its initial configuration.
-        """
+    # The StorageReset method deletes all containers and images from a system.
+    # Resets storage to its initial configuration.
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     @dbus.service.method("org.atomic", in_signature='', out_signature='')
     def StorageReset(self):
@@ -118,22 +113,20 @@ class atomic_dbus(slip.dbus.service.Object):
         storage.set_args(args)
         storage.reset()
 
-    """
-    The StorageImport method imports all containers and their associated contents from a filesystem directory.
-    """
+    # The StorageImport method imports all containers and their associated
+    # contents from a filesystem directory.
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     @dbus.service.method("org.atomic", in_signature='ss', out_signature='')
     def StorageImport(self, graph, import_location):
         storage = Storage()
         args = self.Args()
         args.graph = graph
-        args.import_loc = import_location
+        args.import_location = import_location
         storage.set_args(args)
         storage.Import()
 
-    """
-    The StorageExport method exports all containers and their associated contents into a filesystem directory.
-    """
+    # The StorageExport method exports all containers and their associated
+    # contents into a filesystem directory.
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     @dbus.service.method("org.atomic", in_signature='ssb', out_signature='')
     def StorageExport(self, graph="/var/lib/docker", export_location="/var/lib/atomic/migrate", force = False):
@@ -145,22 +138,22 @@ class atomic_dbus(slip.dbus.service.Object):
         storage.set_args(args)
         storage.Export()
 
-    """
-    The StorageModify method modifies the default storage setup.
-    """
+    # The StorageModify method modifies the default storage setup.
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     @dbus.service.method("org.atomic", in_signature='asv', out_signature='')
-    def StorageModify(self, devices=[], driver = None):
+    def StorageModify(self, devices=None, driver = None):
         storage = Storage()
         args = self.Args()
-        args.devices = devices
+        if devices:
+            args.devices = devices
+        else:
+            args.devices = []
         args.driver = driver
         storage.set_args(args)
         storage.modify()
 
-    """
-    The Diff method shows differences between two container images, file diff or RPMS.
-    """
+    # The Diff method shows differences between two container images, file
+    # diff or RPMS.
     @slip.dbus.polkit.require_auth("org.atomic.read")
     @dbus.service.method("org.atomic", in_signature='ss',
                          out_signature='s')
@@ -176,9 +169,7 @@ class atomic_dbus(slip.dbus.service.Object):
         diff.set_args(args)
         return diff.diff()
 
-    """
-    The ScanList method will return a list of all scanners.
-    """
+    # The ScanList method will return a list of all scanners.
     @slip.dbus.polkit.require_auth("org.atomic.read")
     @dbus.service.method("org.atomic", in_signature='',
                          out_signature= 's')
@@ -188,10 +179,8 @@ class atomic_dbus(slip.dbus.service.Object):
         scan_list.set_args(args)
         return scan_list.get_scanners_list()
 
-    """
-    The ScanSetup method will create the scan object.
-    """
-    def ScanSetup(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):
+    # The ScanSetup method will create the scan object.
+    def _ScanSetup(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):
         scan = Scan()
         args = self.Args()
         scan.useTTY = False
@@ -201,6 +190,8 @@ class atomic_dbus(slip.dbus.service.Object):
             args.scanner = scanner
         if scan_type:
             args.scan_type = scan_type
+        if len(scan_targets):
+            args.scan_targets = scan_targets
         args.rootfs = rootfs
         args.all = _all
         args.images = images
@@ -209,31 +200,26 @@ class atomic_dbus(slip.dbus.service.Object):
         return scan
 
 
-    """
-    The Scan method will return a string.
-    """
+    # The Scan method will return a string.
     @slip.dbus.polkit.require_auth("org.atomic.read")
     @dbus.service.method("org.atomic", in_signature='asssasbbb',
                          out_signature= 's')
     def Scan(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):
-        return self.ScanSetup(scan_targets, scanner, scan_type, rootfs, _all, images, containers).scan()
+        return self._ScanSetup(scan_targets, scanner, scan_type, rootfs, _all, images, containers).scan()
 
-    """
-    The ScheduleScan method will return a token.
-    """
+    # The ScheduleScan method will return a token.
     @slip.dbus.polkit.require_auth("org.atomic.read")
     @dbus.service.method("org.atomic", in_signature='asssasbbb',
                          out_signature= 'x')
     def ScheduleScan(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):
-        scan = self.ScanSetup(scan_targets, scanner, scan_type, rootfs, _all, images, containers)
+        scan = self._ScanSetup(scan_targets, scanner, scan_type, rootfs, _all, images, containers)
         token = self.AllocateToken()
         with self.tasks_lock:
             self.tasks.append((token, scan))
         return token
 
-    """
-    The GetScanResults method will determine whether or not the results for the token are ready.
-    """
+    # The GetScanResults method will determine whether or not the results for
+    # the token are ready.
     @slip.dbus.polkit.require_auth("org.atomic.read")
     @dbus.service.method("org.atomic", in_signature='x',
                          out_signature= 's')
@@ -248,10 +234,10 @@ class atomic_dbus(slip.dbus.service.Object):
 
 
 if __name__ == "__main__":
-        mainloop = GLib.MainLoop()
-        dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-        system_bus = dbus.SystemBus()
-        name = dbus.service.BusName("org.atomic", system_bus)
-        object = atomic_dbus(system_bus, "/org/atomic/object")
-        slip.dbus.service.set_mainloop(mainloop)
-        mainloop.run()
+    mainloop = GLib.MainLoop()
+    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+    system_bus = dbus.SystemBus()
+    name = dbus.service.BusName("org.atomic", system_bus)
+    atomic_dbus(system_bus, "/org/atomic/object")
+    slip.dbus.service.set_mainloop(mainloop)
+    mainloop.run()

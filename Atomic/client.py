@@ -14,10 +14,10 @@ def get_docker_client():
 
 def check_if_python2():
     if int(sys.version_info[0]) < 3:
-        _input = raw_input # pylint: disable=undefined-variable
+        _input = raw_input # pylint: disable=undefined-variable,raw_input-builtin
         return _input, True
     else:
-        _input = input
+        _input = input # pylint: disable=input-builtin
         return _input, False
 
 class AtomicDocker():
@@ -72,7 +72,7 @@ def iter_subs(tree, key=None):
         if str(tree).startswith(ALGO) and key in SUB_KEYS:
             return no_shaw(tree)
     # In py2, it is unicode and not str
-    elif is_python2 and isinstance(tree, unicode) and key in SUB_KEYS: #pylint: disable=undefined-variable
+    elif is_python2 and isinstance(tree, unicode) and key in SUB_KEYS: #pylint: disable=undefined-variable,unicode-builtin
         if str(tree).startswith(ALGO):
             return no_shaw(tree)
     elif isinstance(tree, dict):
@@ -80,7 +80,7 @@ def iter_subs(tree, key=None):
             tree[k] = iter_subs(v, key=k)
     elif isinstance(tree, list):
         if is_python2:
-            if all(isinstance(x, unicode) for x in tree) and all(j.startswith(ALGO) for j in tree): # pylint: disable=undefined-variable
+            if all(isinstance(x, unicode) for x in tree) and all(j.startswith(ALGO) for j in tree): # pylint: disable=undefined-variable,unicode-builtin
                 return [no_shaw(i) for i in tree]
         else:
             if all(isinstance(x, str) for x in tree) and all(j.startswith(ALGO) for j in tree):

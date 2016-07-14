@@ -33,7 +33,7 @@ from .util import NoDockerDaemon
 import shutil
 from .syscontainers import OSTREE_PRESENT as OSTREE_PRESENT
 
-""" Module for mounting and unmounting containerized applications. """
+# Module for mounting and unmounting containerized applications.
 
 
 class MountError(Exception):
@@ -41,6 +41,7 @@ class MountError(Exception):
     """Generic error mounting a candidate container."""
 
     def __init__(self, val):
+        super(MountError, self).__init__()
         self.val = val
 
     def __str__(self):
@@ -51,10 +52,10 @@ class SelectionMatchError(MountError):
 
     """Input identifier matched multiple mount candidates."""
 
-    def __init__(self, i, matches):
+    def __init__(self, i, all_matches):
+        super(SelectionMatchError, self).__init__("")
         self.val = ('"{0}" matched multiple items. Try one of the following:\n'
-                    '{1}'.format(i, '\n'.join(['\t' + m for m in matches])))
-
+                    '{1}'.format(i, '\n'.join(['\t' + m for m in all_matches])))
 
 class Mount(Atomic):
 
@@ -334,25 +335,25 @@ class DockerMount(Mount):
 
     @staticmethod
     def _no_gd_api_dm(cid):
-        # TODO: Deprecated
         desc_file = os.path.join('/var/lib/docker/devicemapper/metadata', cid)
         desc = json.loads(open(desc_file).read())
         return desc['device_id'], desc['size']
 
     @staticmethod
     def _no_gd_api_overlay(cid):
-        # TODO: Deprecated
         prefix = os.path.join('/var/lib/docker/overlay/', cid)
         ld_metafile = open(os.path.join(prefix, 'lower-id'))
         ld_loc = os.path.join('/var/lib/docker/overlay/', ld_metafile.read())
         return (os.path.join(ld_loc, 'root'), os.path.join(prefix, 'upper'),
                 os.path.join(prefix, 'work'))
 
-    def mount(self, identifier, options=[]):
+    def mount(self, identifier, options=None): # pylint: disable=arguments-differ
         """
         Mounts a container or image referred to by identifier to
         the host filesystem.
         """
+        if not options:
+            options=[]
         try:
             # Check if a container/image is already mounted at the
             # desired mount point.
@@ -375,18 +376,23 @@ class DockerMount(Mount):
         # Return mount path so it can be later unmounted by path
         return self.mountpoint
 
-    def _unsupported_backend(self, identifier='', options=[]): # pylint: disable=unused-argument
+    def _unsupported_backend(self, identifier='', options=None): # pylint: disable=unused-argument
+        if not options:
+            options=[]
         raise MountError('Atomic mount is not supported on the {} docker '
                          'storage backend.'
                          ''.format(self.d.info()['Driver']))
 
-    def _default_options(self, options, default_con=None, default_options=[]):
+    def default_options(self, options, default_con=None, default_opt=None):
         """
         Merges user options with default options and determines security
         context.
         """
+        if not default_opt:
+            default_opt=[]
+
         if not options:
-            options = default_options
+            options = default_opt
         # Determines default context.
         if all([o.find('context=') == -1 for o in options]):
             options.append('context="' +
@@ -415,7 +421,7 @@ class DockerMount(Mount):
             try:
                 if not os.path.exists(self.mountpoint) :
                     os.mkdir(self.mountpoint)
-            except Exception as e:
+            except (TypeError, OSError) as e:
                 raise MountError(e)
 
         cinfo = self.d.inspect_container(cid)
@@ -429,9 +435,9 @@ class DockerMount(Mount):
         else:
             defcon=cinfo['MountLabel']
 
-        options = self._default_options(
+        options = self.default_options(
             options, default_con=defcon,
-            default_options=[] if self.live else ['ro', 'nosuid', 'nodev'])
+            default_opt=[] if self.live else ['ro', 'nosuid', 'nodev'])
 
         dm_dev_name, dm_dev_id, dm_dev_size = '', '', ''
         dm_pool = info['DriverStatus'][0][1]
@@ -440,8 +446,7 @@ class DockerMount(Mount):
             dm_dev_name = cinfo['GraphDriver']['Data']['DeviceName']
             dm_dev_id = cinfo['GraphDriver']['Data']['DeviceId']
             dm_dev_size = cinfo['GraphDriver']['Data']['DeviceSize']
-        except:
-            # TODO: deprecated when GraphDriver patch makes it upstream
+        except KeyError:
             dm_dev_id, dm_dev_size = DockerMount._no_gd_api_dm(cid)
             dm_dev_name = dm_pool.replace('pool', cid)
 
@@ -487,7 +492,7 @@ class DockerMount(Mount):
             ld = cinfo['GraphDriver']['Data']['lowerDir']
             ud = cinfo['GraphDriver']['Data']['upperDir']
             wd = cinfo['GraphDriver']['Data']['workDir']
-        except:
+        except KeyError:
             ld, ud, wd = DockerMount._no_gd_api_overlay(cid)
 
         options += ['ro', 'lowerdir=' + ld, 'upperdir=' + ud, 'workdir=' + wd]
@@ -535,7 +540,7 @@ class DockerMount(Mount):
         if self.tmp_image is not None:
             self.d.remove_image(self.tmp_image, noprune=True)
 
-    def unmount(self, path=None):
+    def unmount(self, path=None):  #pylint: disable=arguments-differ
         """
         Unmounts and cleans-up after a previous mount().
         """
@@ -582,7 +587,6 @@ class DockerMount(Mount):
         cinfo = self.d.inspect_container(cid)
 
         # Was the container live mounted? If so, done.
-        # TODO: Container.Config.Env should be {} (iterable) not None.
         #       Fix in docker-py.
         env = cinfo['Config']['Env']
         if (env and '_ATOMIC_TEMP_CONTAINER' not in env) or not env:
@@ -626,30 +630,30 @@ class DockerMount(Mount):
             self.d.remove_container(short_cid)
         self._clean_tmp_image()
 
-setxattr = None
-getxattr = None
-removexattr = None
-
-def _initxattr():
+def getxattrfuncs():
     # Python 3 has support for extended attributes in the os module, while
     # Python 2 needs the xattr library.  Detect if any is available.
-    global setxattr, getxattr, removexattr
     module = None
-    if setxattr:
-        return
+    if getxattrfuncs.setxattr:
+        return getxattrfuncs.setxattr, getxattrfuncs.getxattr, getxattrfuncs.removexattr
     if getattr(os, 'setxattr', None):
         module = os
     else:
         try:
-            import xattr
-            module = xattr
-        except:
+            import xattr #pylint: disable=import-error
+            module = xattr 
+        except ImportError:
             pass
 
     if module:
-        setxattr = getattr(module, 'setxattr')
-        getxattr = getattr(module, 'getxattr')
-        removexattr = getattr(module, 'removexattr')
+        getxattrfuncs.setxattr = getattr(module, 'setxattr')
+        getxattrfuncs.getxattr = getattr(module, 'getxattr')
+        getxattrfuncs.removexattr = getattr(module, 'removexattr')
+
+    return getxattrfuncs.setxattr, getxattrfuncs.getxattr, getxattrfuncs.removexattr
+getxattrfuncs.setxattr = None
+getxattrfuncs.getxattr = None
+getxattrfuncs.removexattr = None
 
 class OSTreeMount(Mount):
 
@@ -659,7 +663,6 @@ class OSTreeMount(Mount):
     """
 
     def __init__(self, args, mountpoint, live=False, mnt_mkdir=False, shared=False):
-        global _initxattr, setxattr
         Mount.__init__(self)
         self.args = args
         self.syscontainers.set_args(args)
@@ -668,7 +671,8 @@ class OSTreeMount(Mount):
         self.shared = shared
         self.mnt_mkdir = mnt_mkdir
         self.tmp_image = None
-        _initxattr()
+        setxattr, _, _ = getxattrfuncs()
+
         if setxattr is None:
             raise MountError('xattr required to mount OSTree images.')
 
@@ -681,8 +685,10 @@ class OSTreeMount(Mount):
     def has_identifier(self, _id):
         return self.has_container(_id) or self.has_image(_id)
 
-    def mount(self, identifier, options=[]):
-        global setxattr, getxattr, removexattr
+    def mount(self, identifier, options=None): # pylint: disable=arguments-differ
+        if not options:
+            options = []
+        setxattr, _, _ = getxattrfuncs()
 
         if not OSTREE_PRESENT:
             return False
@@ -714,8 +720,8 @@ class OSTreeMount(Mount):
         Mount.mount_path(self.mountpoint, self.mountpoint, bind=True, optstring=(','.join(options)))
         return True
 
-    def unmount(self, path=None):
-        global setxattr, getxattr, removexeattr
+    def unmount(self, path=None): # pylint: disable=arguments-differ
+        _, getxattr, removexattr = getxattrfuncs()
         typ = None
 
         if not OSTREE_PRESENT:
@@ -726,7 +732,7 @@ class OSTreeMount(Mount):
 
         try:
             typ = getxattr(self.mountpoint, "user.atomic.type") # pylint: disable=not-callable
-        except:
+        except IOError:
             pass
 
         if not typ or "ostree" not in typ.decode():

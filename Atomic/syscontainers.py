@@ -8,6 +8,7 @@ from string import Template
 import calendar
 import shutil
 import stat
+import subprocess
 import time
 from .client import AtomicDocker
 
@@ -50,7 +51,9 @@ class SystemContainers(object):
     def __init__(self, logfn):
         self.write_out = logfn
         self.atomic_config = util.get_atomic_config()
-        pass
+        self.backend = None
+        self.args = None
+        self.setvalues = None
 
     def get_atomic_config_item(self, config_item):
         return util.get_atomic_config_item(config_item, atomic_config=self.atomic_config)
@@ -60,14 +63,14 @@ class SystemContainers(object):
 
         try:
             self.backend = args.backend
-        except:
+        except (NameError, AttributeError):
             self.backend = None
         if not self.backend:
             self.backend = self.get_atomic_config_item(["default_storage"]) or "ostree"
 
         try:
             self.setvalues = args.setvalues
-        except:
+        except (NameError, AttributeError):
             pass
 
     def _pull_image_to_ostree(self, repo, image, upgrade):
@@ -101,7 +104,9 @@ class SystemContainers(object):
 
         return self._checkout_system_container(repo, name, image, 0, False)
 
-    def _checkout_system_container(self, repo, name, img, deployment, upgrade, values={}, destination=None, extract_only=False):
+    def _checkout_system_container(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False):
+        if not values:
+            values = {}
         imagebranch = SystemContainers._get_ostree_image_branch(img)
 
         destination = destination or "%s/%s.%d" % (self._get_system_checkout_path(), name, deployment)
@@ -127,7 +132,7 @@ class SystemContainers(object):
                 osname = sysroot.get_booted_deployment().get_osname()
                 destination = os.path.join("/ostree/deploy/", osname, os.path.relpath(destination, "/"))
                 destination = os.path.realpath(destination)
-            except:
+            except: #pylint: disable=bare-except
                 pass
             rootfs = os.path.join(destination, "rootfs")
 
@@ -200,7 +205,7 @@ class SystemContainers(object):
                 shutil.copyfile(src, os.path.join(destination, i))
             elif os.path.exists(src + ".template"):
                 with open(src + ".template", 'r') as infile, open(os.path.join(destination, i), "w") as outfile:
-                        _write_template(src + ".template", infile.read(), values, outfile)
+                    _write_template(src + ".template", infile.read(), values, outfile)
             else:
                 args = ['runc', 'spec']
                 util.subp(args, cwd=destination)
@@ -337,11 +342,11 @@ class SystemContainers(object):
         self.args.display = False
         try:
             self._systemctl_command("stop", name)
-        except:
+        except subprocess.CalledProcessError:
             pass
         try:
             self._systemctl_command("disable", name)
-        except:
+        except subprocess.CalledProcessError:
             pass
 
         for deploy in ["0", "1"]:
@@ -584,7 +589,7 @@ class SystemContainers(object):
         try:
             imagebranch = SystemContainers._get_ostree_image_branch(img)
             return repo.resolve_rev(imagebranch, False)[0]
-        except:
+        except: #pylint: disable=bare-except
             return False
 
     def _pull_dockertar_layers(self, repo, imagebranch, temp_dir, input_layers):

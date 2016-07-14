@@ -149,8 +149,9 @@ class Scan(Atomic):
         finally:
             # unmount all the rootfs
             self._unmount_rootfs_in_dir()
-            if not self.useTTY:
-                return (json.dumps(self.get_scan_data()))
+
+        if not self.useTTY:
+            return (json.dumps(self.get_scan_data()))
 
     def _get_scan_list(self):
 

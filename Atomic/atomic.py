@@ -23,20 +23,18 @@ import re
 from .util import NoDockerDaemon, DockerObjectNotFound
 from docker.errors import NotFound
 
-IMAGES = []
-
 def convert_size(size):
     if size > 0:
         size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
         i = int(math.floor(math.log(size, 1000)))
         p = math.pow(1000, i)
-        s = round(size/p, 2)
+        s = round(size/p, 2) # pylint: disable=round-builtin,old-division
         if s > 0:
             return '%s %s' % (s, size_name[i])
     return '0B'
 
 
-def find_repo_tag(d, id, image_name):
+def find_repo_tag(d, Id, image_name):
     def image_in_repotags(image_name, repotags):
         if image_name in repotags:
             return image_name
@@ -45,17 +43,16 @@ def find_repo_tag(d, id, image_name):
                 return image_name
         return None
 
-    global IMAGES
-    if len(IMAGES) == 0:
-        IMAGES = d.images()
-    for image in IMAGES:
+    if not find_repo_tag.images:
+        find_repo_tag.images = d.images()
+    for image in find_repo_tag.images:
         repo_tag = image_in_repotags(image_name, image['RepoTags'])
         if repo_tag is not None:
             return repo_tag
-        if id == image["Id"]:
+        if Id == image["Id"]:
             return image["RepoTags"][0]
     return ""
-
+find_repo_tag.images = None
 
 class Atomic(object):
     INSTALL_ARGS = ["run",
@@ -104,12 +101,15 @@ class Atomic(object):
 
     def __init__(self):
         self.d = AtomicDocker()
+        self.args = None
+        self.command = None
         self.name = None
         self.image = None
         self.spc = False
         self.system = False
         self.setvalues = None
         self.inspect = None
+        self.backend = None
         self.force = False
         self._images = []
         self.containers = False
@@ -219,11 +219,11 @@ class Atomic(object):
                 self.args.url = util.input("URL: ")
 
         if self.args.pulp:
-                    return pulp.push_image_to_pulp(self.image, self.args.url,
-                                                   self.args.username,
-                                                   self.args.password,
-                                                   self.args.verify_ssl,
-                                                   self.d)
+            return pulp.push_image_to_pulp(self.image, self.args.url,
+                                           self.args.username,
+                                           self.args.password,
+                                           self.args.verify_ssl,
+                                           self.d)
 
         if self.args.satellite:
             if not self.args.activation_key:
@@ -265,31 +265,31 @@ class Atomic(object):
         self.args = args
         try:
             self.image = args.image
-        except:
+        except (NameError, AttributeError):
             pass
         try:
             self.command = args.command
-        except:
-            self.command = None
+        except (NameError, AttributeError):
+            pass
 
         try:
             self.spc = args.spc
-        except:
-            self.spc = False
+        except (NameError, AttributeError):
+            pass
 
         try:
             self.system = args.system
-        except:
+        except (NameError, AttributeError):
             pass
 
         try:
             self.name = args.name
-        except:
+        except (NameError, AttributeError):
             pass
 
         try:
             self.force = args.force
-        except:
+        except (NameError, AttributeError):
             pass
 
         if not self.name and self.image is not None:
@@ -438,7 +438,7 @@ class Atomic(object):
 
         args = self._get_args("STOP")
         if args:
-            cmd = self.gen_cmd(args + list(map(pipes.quote, self.args.args)))
+            cmd = self.gen_cmd(args + self.quote(self.args.args))
             cmd = self.sub_env_strings(cmd)
             self.display(cmd)
             util.check_call(cmd, env=self.cmd_env())
@@ -511,6 +511,9 @@ class Atomic(object):
             argv.append("--hotfix")
         self._ostreeadmin(argv)
 
+    def quote(self, args):
+        return list(map(pipes.quote, args))
+
     def uninstall(self):
         if self.syscontainers.get_system_container_checkout(self.args.image):
             return self.syscontainers.uninstall_system_container(self.args.image)
@@ -522,7 +525,7 @@ class Atomic(object):
             # Attempt to remove container, if it exists just return
             self.d.stop(self.name)
             self.d.remove_container(self.name)
-        except:
+        except NotFound:
             # On exception attempt to remove image
             pass
 
@@ -532,7 +535,7 @@ class Atomic(object):
 
         args = self._get_args("UNINSTALL")
         if args:
-            cmd = self.gen_cmd(args + list(map(pipes.quote, self.args.args)))
+            cmd = self.gen_cmd(args + self.quote(self.args.args))
             cmd = self.sub_env_strings(cmd)
             self.display(cmd)
             util.check_call(cmd, env=self.cmd_env())
@@ -764,7 +767,7 @@ class Atomic(object):
         if not args:
             return
 
-        cmd = self.sub_env_strings(self.gen_cmd(args + list(map(pipes.quote, self.args.args))))
+        cmd = self.sub_env_strings(self.gen_cmd(args + self.quote(self.args.args)))
 
         self.display(cmd)
 
@@ -774,9 +777,8 @@ class Atomic(object):
     def _container_exists(self, name):
         try:
             return self.syscontainers.get_system_container_checkout(name) or self._inspect_container(name)
-        except Exception:
-            return False
-
+        except ValueError:
+            return None
 
     def help(self):
         if os.path.exists("/usr/bin/rpm-ostree"):
@@ -886,7 +888,7 @@ class Atomic(object):
         in_string = os.path.expandvars(in_string)
 
         # Replace undefined variables with blank
-        in_string = re.sub('\$\{?\S*\}?', '', in_string)
+        in_string = re.sub(r'\$\{?\S*\}?', '', in_string)
 
         # Solve whitespacing
         in_string = " ".join(in_string.split())
