@@ -50,6 +50,6 @@ class Ps(Atomic):
         for container in all_containers:
             self.write_out(col_out.format(container["container"][0:12],
                                           container["image"][0:20],
-                                          container["command"][0:20].encode('utf-8'),
+                                          container["command"][0:20],
                                           container["created"][0:15],
                                           container["status"][0:9]))
