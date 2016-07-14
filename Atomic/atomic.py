@@ -674,7 +674,6 @@ class Atomic(object):
             Determine the max length of the repository and tag names
             :param _images:
             :return: a set with len of repository and tag
-
             If there are no images, return 1, 1
             '''
             repo_tags = split_repo_tags(_images)

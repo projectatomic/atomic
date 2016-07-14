@@ -140,6 +140,6 @@ if __name__ == "__main__":
                 print (json.loads(dbus_proxy.scan([], '', '', [], False, False, True)))
 
             else:
-                print (json.loads(dbus_proxy.scan(['registry.access.redhat.com/rhel7'], '', '', [], False, False, False)))
+                print (json.loads(dbus_proxy.scan([sys.argv[2]], '', '', [], False, False, False)))
     except dbus.DBusException as e:
         print (e)

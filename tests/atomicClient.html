@@ -187,6 +187,10 @@
                 call = proxy.Scan(scan_targets, scanner, scan_type, rootfs, false, false, true);
               }
 
+              else {
+                call = proxy.Scan([command[1]], scanner, scan_type, rootfs, false, false, false);
+              }
+
               call.done(function(result) {
                 console.log(JSON.stringify(result));
               });
