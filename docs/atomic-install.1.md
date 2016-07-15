@@ -24,40 +24,58 @@ If the container image has a LABEL INSTALL instruction like the following:
 `atomic install` will set the following environment variables for use in the command:
 
 **NAME**
-  The name specified via the command.  NAME will be replaced with IMAGE if it is not specified.
+The name specified via the command.  NAME will be replaced with IMAGE if it is not specified.
 
 **IMAGE**
-  The name and image specified via the command.
+The name and image specified via the command.
 
 **OPT1, OPT2, OPT3**
-  Additional options which can be specified via the command.
+Additional options which can be specified via the command.
 
 **SUDO_UID**
-  The `SUDO_UID` environment variable.  This is useful with the docker `-u` option for user space tools.  If the environment variable is not available, the value of `/proc/self/loginuid` is used.
+The `SUDO_UID` environment variable.  This is useful with the docker
+`-u` option for user space tools.  If the environment variable is
+not available, the value of `/proc/self/loginuid` is used.
 
 **SUDO_GID**
-  The `SUDO_GID` environment variable.  This is useful with the docker `-u` option for user space tools.  If the environment variable is not available, the default GID of the value for `SUDO_UID` is used.  If this value is not available, the value of `/proc/self/loginuid` is used.
+The `SUDO_GID` environment variable.  This is useful with the docker
+`-u` option for user space tools.  If the environment variable is
+not available, the default GID of the value for `SUDO_UID` is used.
+If this value is not available, the value of `/proc/self/loginuid`
+is used.
 
 Any additional arguments will be appended to the command.
 
 # OPTIONS:
 **-h** **--help**
-  Print usage statement
+Print usage statement
 
 **--display**
-  Display the image's install options and environment variables populated into the install command.
+Display the image's install options and environment variables
+populated into the install command.
 The install command will not execute if --display is specified.
 If --display is not specified the install command will execute.
 
 **-n** **--name**=""
-   Use this name for creating installed content for the container.
-NAME will default to the IMAGENAME if it is not specified.
+ Use this name for creating installed content for the container.
+ NAME will default to the IMAGENAME if it is not specified.
 
 **--set=NAME=VALUE**
-  Set a value that is going to be used by a system container for its configuration and can be specified multiple times.  It is used only by --system.  OSTree is required for this feature to be available.
+Set a value that is going to be used by a system container for its
+configuration and can be specified multiple times.  It is used only
+by --system.  OSTree is required for this feature to be available.
 
 **--system**
-  Install a system container.  A system container is a container that is executed out of an systemd unit file early in boot, using runc.  OSTree is required for this feature to be available.
+Install a system container.  A system container is a container that
+is executed out of an systemd unit file early in boot, using runc.
+OSTree is required for this feature to be available.  The specified
+**IMAGE** must be a system image already fetched.  If it is not
+already present, atomic will attempt to fetch it assuming it is an
+`oci` image.  For more information on how images are fetched, see
+also **atomic-pull(1)**
+Installing a system container consists of checking it the image by
+default under /var/lib/containers/atomic/ and generating the
+configuration files for runc and systemd.
 
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)
