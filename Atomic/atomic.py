@@ -1066,7 +1066,7 @@ class Atomic(object):
             for uuid in summary_results.keys():
                 if summary_results[uuid]['Vulnerable']:
                     vuln_ids.append(uuid)
-                    return vuln_ids
+            return vuln_ids
         except IOError:
             return []
 
