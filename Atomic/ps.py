@@ -22,7 +22,7 @@ class Ps(Atomic):
             created = dateparse(ret['created']).strftime("%F %H:%M") # pylint: disable=no-member
             all_containers.append({"type" : "systemcontainer", "container" : container,
                                    "image" : image, "command" : command, "created" : created,
-                                   "status" : status})
+                                   "status" : status, "runtime" : "runc"})
 
         # Collect the docker containers
         for container in [x["Id"] for x in self.d.containers(all=self.args.all)]:
@@ -33,23 +33,25 @@ class Ps(Atomic):
             created = dateparse(ret['Created']).strftime("%F %H:%M") # pylint: disable=no-member
             all_containers.append({"type" : "docker", "container" : container,
                                    "image" : image, "command" : command,
-                                   "created" : created, "status" : status})
+                                   "created" : created, "status" : status, "runtime" : "Docker"})
 
         if self.args.json:
             self.write_out(json.dumps(all_containers))
             return
 
-        col_out = "{0:12} {1:20} {2:20} {3:15} {4:9}"
+        col_out = "{0:12} {1:20} {2:20} {3:16} {4:9} {5:10}"
         if self.args.heading:
             self.write_out(col_out.format("CONTAINER ID",
                                           "IMAGE",
                                           "COMMAND",
                                           "CREATED",
-                                          "STATUS"))
+                                          "STATUS",
+                                          "RUNTIME"))
 
         for container in all_containers:
             self.write_out(col_out.format(container["container"][0:12],
                                           container["image"][0:20],
                                           container["command"][0:20],
-                                          container["created"][0:15],
-                                          container["status"][0:9]))
+                                          container["created"][0:16],
+                                          container["status"][0:9],
+                                          container["runtime"][0:10]))
