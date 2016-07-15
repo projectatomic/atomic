@@ -321,7 +321,8 @@ class SystemContainers(object):
 
             tag = ":".join(rev.replace("ociimage/", "").rsplit('-', 1))
             timestamp = OSTree.commit_get_timestamp(commit)
-            return {'Id' : commit_rev, 'RepoTags' : [tag], 'Names' : [], 'Created': timestamp }
+            return {'Id' : commit_rev, 'RepoTags' : [tag], 'Names' : [], 'Created': timestamp,
+                    'ImageType' : "System"}
 
         return [get_system_image(x) for x in revs]
 

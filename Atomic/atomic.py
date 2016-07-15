@@ -707,14 +707,15 @@ class Atomic(object):
             vuln_ids = self.get_vulnerable_ids()
             _max_repo, _max_tag = get_col_lengths(_images)
             col_out = "{0:2} {1:" + str(_max_repo) + "} {2:" + str(_max_tag) + \
-                      "} {3:14} {4:18} {5:14}"
+                      "} {3:14} {4:18} {5:14} {6:10}"
             if self.args.heading:
                 self.write_out(col_out.format(" ",
                                               "REPOSITORY",
                                               "TAG",
                                               "IMAGE ID",
                                               "CREATED",
-                                              "VIRTUAL SIZE"))
+                                              "VIRTUAL SIZE",
+                                              "TYPE"))
             for image in self.get_images():
                 repo, tag = image["RepoTags"][0].rsplit(":", 1)
                 if "Created" in image:
@@ -737,10 +738,12 @@ class Atomic(object):
                     space = " " if len(indicator) < 1 else ""
                     indicator = indicator + self.skull + space
 
+                image_type = image['ImageType']
                 self.write_out(col_out.format(indicator, repo,
                                               tag, image["Id"][:12],
                                               created,
-                                              virtual_size))
+                                              virtual_size,
+                                              image_type))
             self.write_out("")
             return
 
@@ -1009,20 +1012,23 @@ class Atomic(object):
 
         raise DockerObjectNotFound(identifier)
 
+    def _get_docker_images(self):
+        try:
+            images = self.d.images()
+            for i in images:
+                i["ImageType"] = "Docker"
+        except requests.exceptions.ConnectionError:
+            raise NoDockerDaemon()
+        return images
+
     def get_images(self):
         '''
         Wrapper function that should be used instead of querying docker
         multiple times for a list of images.
         '''
         if len(self.images_cache) == 0:
-            try:
-                images = self.d.images()
-            except requests.exceptions.ConnectionError:
-                raise NoDockerDaemon()
-            if images:
-                self.images_cache = images
-
-        return self.images_cache + self.syscontainers.get_system_images()
+            self.images_cache = self._get_docker_images() + self.syscontainers.get_system_images()
+        return self.images_cache
 
     def get_containers(self):
         '''
