@@ -31,7 +31,6 @@ class Verify(Atomic):
 
         # Set debug bool
         self.set_debug()
-
         # Check if the input is an image id associated with more than one
         # repotag.  If so, error out.
         if self.is_iid():
@@ -50,6 +49,10 @@ class Verify(Atomic):
                 util.output_json(l)
         uniq_names = list(set(x['Name'] for x in layers if x['Name'] != ''))
         base_images = self.get_tagged_images(uniq_names, layers)
+
+        if not self.useTTY:
+            return base_images
+
         if self.debug:
             for b in base_images:
                 util.output_json(b)

@@ -5,6 +5,7 @@ import time
 import threading
 import dbus.service
 import dbus.mainloop.glib
+import json
 from gi.repository import GLib # pylint: disable=no-name-in-module
 import slip.dbus.service
 from Atomic import Atomic
@@ -90,17 +91,18 @@ class atomic_dbus(slip.dbus.service.Object):
     # The Verify method takes in an image name and returns whether or not the
     # image should be updated
     @slip.dbus.polkit.require_auth("org.atomic.read")
-    @dbus.service.method("org.atomic", in_signature='as', out_signature='av')
+    @dbus.service.method("org.atomic", in_signature='as', out_signature='s')
     def Verify(self, images):
         verifications = []
         verify = Verify()
+        verify.useTTY = False
         for image in images:
             args = self.Args()
             args.image = image
             verify.set_args(args)
             verifications.append({"Image": image,
                                   "Verification": verify.verify()}) #pylint: disable=no-member
-        return verifications
+        return json.dumps(verifications)
 
     # The StorageReset method deletes all containers and images from a system.
     # Resets storage to its initial configuration.

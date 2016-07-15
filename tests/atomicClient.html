@@ -152,6 +152,10 @@
               else if(command.indexOf("--containers") != -1) {
                 call = proxy.ScheduleScan(scan_targets, scanner, scan_type, rootfs, false, false, true);
               }
+
+              else {
+                call = proxy.ScheduleScan([command[1]], scanner, scan_type, rootfs, false, false, false);
+              }
               call.done(function(result) {
                 while(true){
                   NewCall = proxy.GetScanResults(result);
@@ -211,6 +215,17 @@
               });
             }
 
+            function run_verify(command) {
+              var call = proxy.Verify([command[1]]);
+              call.done(function(result) {
+                console.log(JSON.stringify(result));
+              });
+
+              call.fail(function(error) {
+                console.warn(error);
+              });
+            }
+
             //Depending on what is entered, it will send the command to the appropriate function to be parsed.
             function run_command() {
               var command = (input.val()).split(" ");
@@ -245,6 +260,10 @@
 
               else if(command[0].toLowerCase() == "diff") {
                 run_diff(command)
+              }
+
+              else if(command[0].toLowerCase() == "verify") {
+                run_verify(command)
               }
             }
 

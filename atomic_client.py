@@ -103,9 +103,12 @@ if __name__ == "__main__":
                     print(str(v["Id"]), str(v["Version"]), str(v["Tag"]))
 
         elif(sys.argv[1] == "verify"):
-            resp = dbus_proxy.verify(sys.argv[2:])
-            for r in resp:
-                print(r)
+            resp = json.loads(dbus_proxy.verify(sys.argv[2:]))
+            for each in resp:
+                print(each["Image"])
+                verification = each["Verification"]
+                for verify in verification:
+                    print(verify)
 
         elif(sys.argv[1] == "storage"):
             #handles atomic storage export
