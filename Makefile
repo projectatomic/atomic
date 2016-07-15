@@ -17,7 +17,10 @@ all: python-build docs pylint-check dockertar-sha256-helper
 test-python3-pylint: 
 	$(PYTHON3_PYLINT) --disable=all --enable=E --enable=W --additional-builtins=_ *.py atomic Atomic tests/unit/*.py -d=no-absolute-import,print-statement,no-absolute-import,bad-builtin
 
-.PHONY: test
+.PHONY: test check
+
+check: test
+
 test: all test-python3-pylint
 	./test.sh
 
