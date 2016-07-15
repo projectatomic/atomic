@@ -20,7 +20,9 @@ temporary image and spawning a temporary container from that image. If UUID or
 REPO refers to an image, then *atomic mount* will simply create a temporary
 container from the given image. All temporary artifacts are cleaned upon
 *atomic unmount*. Atomic mount is *only* supported on the devicemapper and
-overlayfs docker storage backends.
+overlayfs docker storage backends.  If an image stored on an OSTree
+repository is mounted, then a temporary checkout is done, which will
+be deleted by atomic unmount.
 
 # OPTIONS
 **-o|--options** *OPTIONS*
