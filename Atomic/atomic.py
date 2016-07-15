@@ -149,7 +149,7 @@ class Atomic(object):
                     self.d.remove_container(c["Id"], force=True)
 
     def update(self):
-        if 'container' in self.args and self.args.container:
+        if hasattr(self.args, 'container') and self.args.container:
             if self.syscontainers.get_system_container_checkout(self.args.image):
                 return self.syscontainers.update_system_container(self.args.image)
             raise ValueError("Container '%s' is not installed" % self.args.image)

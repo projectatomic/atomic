@@ -42,6 +42,7 @@ class atomic_dbus(slip.dbus.service.Object):
             self.all = False
             self.images = False
             self.containers = False
+            self.container = False
 
     def __init__(self, *p, **k):
         super(atomic_dbus, self).__init__(*p, **k)
@@ -233,6 +234,16 @@ class atomic_dbus(slip.dbus.service.Object):
                 return ret
             else:
                 return ""
+
+    # The Update method downloads the latest container image.
+    # Resets storage to its initial configuration.
+    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
+    @dbus.service.method("org.atomic", in_signature='s', out_signature='')
+    def Update(self, image):
+        args = self.Args()
+        args.image = image
+        self.atomic.set_args(args)
+        self.atomic.update()
 
 
 if __name__ == "__main__":
