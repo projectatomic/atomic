@@ -36,12 +36,12 @@ class Ps(Atomic):
                                    "created" : created, "status" : status, "runtime" : "Docker"})
 
         if self.args.json:
-            self.write_out(json.dumps(all_containers))
+            util.write_out(json.dumps(all_containers))
             return
 
-        col_out = "{0:12} {1:20} {2:20} {3:16} {4:9} {5:10}"
+        col_out = u"{0:12} {1:20} {2:20} {3:16} {4:9} {5:10}"
         if self.args.heading:
-            self.write_out(col_out.format("CONTAINER ID",
+            util.write_out(col_out.format("CONTAINER ID",
                                           "IMAGE",
                                           "COMMAND",
                                           "CREATED",
@@ -49,7 +49,7 @@ class Ps(Atomic):
                                           "RUNTIME"))
 
         for container in all_containers:
-            self.write_out(col_out.format(container["container"][0:12],
+            util.write_out(col_out.format(container["container"][0:12],
                                           container["image"][0:20],
                                           container["command"][0:20],
                                           container["created"][0:16],

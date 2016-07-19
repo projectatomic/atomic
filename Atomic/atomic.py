@@ -119,16 +119,12 @@ class Atomic(object):
         self.debug = False
         self.is_python2 = (int(sys.version[0])) < 3
         self.useTTY = True
-        self.syscontainers = SystemContainers(self.write_out)
+        self.syscontainers = SystemContainers()
 
     def docker_binary(self):
         if not self.docker_cmd:
             self.docker_cmd = util.default_docker()
         return self.docker_cmd
-
-    def write_out(self, output, lf="\n"):
-        sys.stdout.flush()
-        sys.stdout.write(output + lf)
 
     def get_label(self, label, image=None):
         inspect = self._inspect_image(image)
@@ -167,20 +163,20 @@ class Atomic(object):
             bar = json.loads(line)
             status = bar['status']
             if prevstatus != status:
-                self.write_out(status, "")
+                util.write_out(status, "")
             if 'id' not in bar:
                 continue
             if status == "Downloading":
-                self.write_out(bar['progress'] + " ")
+                util.write_out(bar['progress'] + " ")
             elif status == "Extracting":
-                self.write_out("Extracting: " + bar['id'])
+                util.write_out("Extracting: " + bar['id'])
             elif status == "Pull complete":
                 pass
             elif status.startswith("Pulling"):
-                self.write_out("Pulling: " + bar['id'])
+                util.write_out("Pulling: " + bar['id'])
 
             prevstatus = status
-        self.write_out("")
+        util.write_out("")
 
     def push(self):
         self.ping()
@@ -246,15 +242,15 @@ class Atomic(object):
                 bar = json.loads(line)
                 status = bar['status']
                 if prevstatus != status:
-                    self.write_out(status, "")
+                    util.write_out(status, "")
                 if 'id' not in bar:
                     continue
                 if status == "Uploading":
-                    self.write_out(bar['progress'] + " ")
+                    util.write_out(bar['progress'] + " ")
                 elif status == "Push complete":
                     pass
                 elif status.startswith("Pushing"):
-                    self.write_out("Pushing: " + bar['id'])
+                    util.write_out("Pushing: " + bar['id'])
 
                 prevstatus = status
 
@@ -336,7 +332,7 @@ class Atomic(object):
         else:
             if self.command:
                 if self.args.display:
-                    return self.write_out("docker exec -t -i %s %s" %
+                    return util.write_out("docker exec -t -i %s %s" %
                                          (self.name, self.command))
                 else:
                     return util.check_call(
@@ -344,7 +340,7 @@ class Atomic(object):
                         self.command, stderr=DEVNULL)
             else:
                 if not self.args.display:
-                    self.write_out("Container is running")
+                    util.write_out("Container is running")
 
     def _start(self):
         if self._interactive():
@@ -541,7 +537,7 @@ class Atomic(object):
             util.check_call(cmd, env=self.cmd_env())
 
         if self.name == self.image:
-            self.write_out("docker rmi %s" % self.image)
+            util.write_out("docker rmi %s" % self.image)
             util.check_call([self.docker_binary(), "rmi", self.image])
 
     def cmd_env(self):
@@ -655,7 +651,7 @@ class Atomic(object):
 
         if labels is not None and len(labels) is not 0:
             for label in labels:
-                self.write_out('{0}: {1}'.format(label, labels[label]))
+                util.write_out('{0}: {1}'.format(label, labels[label]))
         else:
             _no_label()
 
@@ -709,7 +705,7 @@ class Atomic(object):
             col_out = "{0:2} {1:" + str(_max_repo) + "} {2:" + str(_max_tag) + \
                       "} {3:14} {4:18} {5:14} {6:10}"
             if self.args.heading:
-                self.write_out(col_out.format(" ",
+                util.write_out(col_out.format(" ",
                                               "REPOSITORY",
                                               "TAG",
                                               "IMAGE ID",
@@ -739,12 +735,12 @@ class Atomic(object):
                     indicator = indicator + self.skull + space
 
                 image_type = image['ImageType']
-                self.write_out(col_out.format(indicator, repo,
+                util.write_out(col_out.format(indicator, repo,
                                               tag, image["Id"][:12],
                                               created,
                                               virtual_size,
                                               image_type))
-            self.write_out("")
+            util.write_out("")
             return
 
     def _check_if_image_present(self):
@@ -872,7 +868,7 @@ class Atomic(object):
             version = layer["Version"]
             if layer["Version"] == '':
                 version = "None"
-            self.write_out("%s %s %s" % (layer["Id"], version, layer["Tag"]))
+            util.write_out("%s %s %s" % (layer["Id"], version, layer["Tag"]))
 
     def display(self, cmd):
         util.write_out(cmd)

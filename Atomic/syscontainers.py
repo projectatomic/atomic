@@ -48,8 +48,7 @@ WantedBy=multi-user.target
 
 class SystemContainers(object):
 
-    def __init__(self, logfn):
-        self.write_out = logfn
+    def __init__(self):
         self.atomic_config = util.get_atomic_config()
         self.backend = None
         self.args = None
@@ -99,7 +98,7 @@ class SystemContainers(object):
         self._pull_image_to_ostree(repo, image, False)
 
         if self.get_system_container_checkout(name):
-            self.write_out("%s already present" % (name))
+            util.write_out("%s already present" % (name))
             return
 
         return self._checkout_system_container(repo, name, image, 0, False)
@@ -117,7 +116,7 @@ class SystemContainers(object):
         if not upgrade and os.path.exists(unitfileout):
             raise ValueError("The file %s already exists." % unitfileout)
 
-        self.write_out("Extracting to %s" % destination)
+        util.write_out("Extracting to %s" % destination)
 
         if 'display' in self.args and self.args.display:
             return
@@ -328,7 +327,7 @@ class SystemContainers(object):
 
     def _systemctl_command(self, command, name):
         cmd = ["systemctl", command, name]
-        self.write_out(" ".join(cmd))
+        util.write_out(" ".join(cmd))
         if not self.args.display:
             util.check_call(cmd)
 
@@ -387,7 +386,7 @@ class SystemContainers(object):
         for k, v in refs.items():
             if not v:
                 ref = OSTree.parse_refspec(k)
-                self.write_out("Deleting %s" % k)
+                util.write_out("Deleting %s" % k)
                 repo.set_ref_immediate(ref[1], ref[2], None)
         return
 
@@ -538,7 +537,7 @@ class SystemContainers(object):
             layer = i.replace("sha256:", "")
             if not repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1]:
                 missing_layers.append(layer)
-                self.write_out("Missing layer %s" % layer)
+                util.write_out("Missing layer %s" % layer)
 
         if len(missing_layers) == 0:
             return True
