@@ -399,7 +399,7 @@ class SystemContainers(object):
         else:
             name = "%s-%s" % (image.replace("/", "-"), tag)
 
-        return "%s-%s" % (name.strip("-"), "system")
+        return name
 
     @staticmethod
     def _parse_imagename(imagename):
