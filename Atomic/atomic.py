@@ -1066,9 +1066,11 @@ class Atomic(object):
         try:
             summary_results = json.loads(open(os.path.join(self.results, "scan_summary.json"), "r").read())
             vuln_ids = []
+
             for uuid in summary_results.keys():
-                if summary_results[uuid]['Vulnerable']:
-                    vuln_ids.append(uuid)
+                if 'Vulnerable' in summary_results[uuid]:
+                    if summary_results[uuid]['Vulnerable']:
+                        vuln_ids.append(uuid)
             return vuln_ids
         except IOError:
             return []
