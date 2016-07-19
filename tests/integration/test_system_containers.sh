@@ -58,6 +58,7 @@ ${ATOMIC} --debug install --name=${NAME} --set=RECEIVER=${SECRET} --system oci:a
 ${ATOMIC} ps | grep -q "test-system"
 ${ATOMIC} ps --json | grep -q "test-system"
 ${ATOMIC} ps --all | grep -q "test-system"
+${ATOMIC} ps --json --all | grep -q "test-system"
 
 test -e /etc/systemd/system/${NAME}.service
 
