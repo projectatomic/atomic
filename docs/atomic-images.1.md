@@ -34,11 +34,6 @@ also removing the older version of the image.
 [**--no-trunc**]
   Do not truncate output
 
-[**--prune**]
-  Prune (remove) all dangling images
-
-Using the `--prune` option will free wasted disk space by deleting unused `dangling` images.
-
 
 **delete IMAGES...**
 
@@ -52,8 +47,13 @@ Mark given container image(s) for deletion. Remote disk space will not be freed 
 [**--remote**]
   Delete images in remote registry
 
+
+**prune**
+
+Using the `prune` command will free wasted disk space by deleting all unused `dangling` images.
+
 # HISTORY
 July 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)
 
 
-June 2016, Updated to reflect images sub-command changes (jhonce at redhat dot com)
+July 2016, Updated to reflect images sub-command changes (jhonce at redhat dot com)

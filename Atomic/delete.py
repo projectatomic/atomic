@@ -12,7 +12,7 @@ class Delete(Atomic):
     def delete_image(self):
         """
         Mark given image(s) for deletion from registry
-        :return: True if all images marked for deletion
+        :return: 0 if all images marked for deletion, otherwise 2 on any failure
         """
 
         if not self.args.force_delete:
@@ -27,6 +27,23 @@ class Delete(Atomic):
         else:
             results = self._delete_local(self.args.delete_targets)
         return results
+
+    def prune_images(self):
+        """
+        Remove dangling images from registry
+        :return: 0 if all images deleted or no dangling images found
+        """
+        enc = sys.getdefaultencoding()
+
+        results = self.d.images(filters={"dangling":True}, quiet=True)
+        if len(results) == 0:
+            return 0
+
+        for img in results:
+            self.d.remove_image(img.decode(enc), force=True)
+            util.write_out("Removed dangling Image {}".format(enc))
+        self.syscontainers.prune_ostree_images()
+        return 0
 
     def _delete_remote(self, targets):
         results = 0

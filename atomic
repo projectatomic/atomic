@@ -316,13 +316,8 @@ def create_parser(help_text):
     list_parser = images_subparser.add_parser("list",
                                               help=_("list container images on your system"),
                                               epilog="atomic images by default will list all installed "
-                                                     "container images on your system.  Using the --prune "
-                                                     "option, will free up disk space deleting unused "
-                                                     "'dangling' images")
+                                                     "container images on your system.")
     list_parser.set_defaults(func='images')
-
-    list_parser.add_argument("--prune", action="store_true",
-                             help=_("prune dangling images"))
 
     list_parser.add_argument("-n", "--noheading", dest="heading", default=True,
                              action="store_false",
@@ -349,6 +344,13 @@ def create_parser(help_text):
 
     delete_parser.add_argument("delete_targets", nargs=argparse.ONE_OR_MORE,
                                help=_("container image(s)"))
+
+    prune_parser = images_subparser.add_parser("prune",
+                                               help=_("delete unused 'dangling' images"),
+                                               epilog="Using the prune command, "
+                                                      "will free up disk space deleting unused "
+                                                      "'dangling' images")
+    prune_parser.set_defaults(_class=Delete, func='prune_images')
 
     # atomic mount
     mountp = subparser.add_parser(

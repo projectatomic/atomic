@@ -447,6 +447,7 @@ _atomic_images() {
   local subcommands="
     list
     delete
+    prune
   "
 
   __atomic_subcommands "$subcommands" && return
@@ -464,7 +465,6 @@ _atomic_images() {
 
 _atomic_images_list() {
   local all_options="
-    --prune
     --help -h
     --noheading -n
     --no-trunc

@@ -687,14 +687,6 @@ class Atomic(object):
             else:
                 return 1, 1
 
-        enc = sys.getdefaultencoding()
-        if self.args.prune:
-            cmd = "docker images --filter dangling=true -q".split()
-            for i in util.check_output(cmd, stderr=DEVNULL).split():
-                self.d.remove_image(i.decode(enc), force=True)
-            self.syscontainers.prune_ostree_images()
-            return
-
         _images = self.get_images()
 
         used_image_ids = [x['ImageID'] for x in self.get_containers()]
