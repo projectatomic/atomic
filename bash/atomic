@@ -311,9 +311,42 @@ _atomic_pull() {
 }
 
 _atomic_ps() {
+	local options_with_args="
+		--filter -f
+	"
+
+	local all_options="$options_with_args
+		--all -a
+		--help
+		--json
+		--noheading -n
+		--no-trunc
+		--quiet -q
+	"
+
+	local filterables="
+		id
+		container
+		image
+		command
+		created
+		status
+		runtime
+	"
+
+	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
+
+	case "$prev" in
+		$options_with_args_glob )
+			compopt -o nospace
+			COMPREPLY=( $( compgen -S\= -W "$filterables" "$cur" ) )
+			return 0
+			;;
+	esac
+
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "-a --all -n --noheading --json" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
 			;;
 	esac
 }

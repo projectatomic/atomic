@@ -59,6 +59,13 @@ ${ATOMIC} ps | grep -q "test-system"
 ${ATOMIC} ps --json | grep -q "test-system"
 ${ATOMIC} ps --all | grep -q "test-system"
 ${ATOMIC} ps --json --all | grep -q "test-system"
+${ATOMIC} ps --filter id=test-system | grep -q "test-system"
+${ATOMIC} ps --no-trunc | grep -q "test-system"
+${ATOMIC} ps --quiet | grep -q "test-system"
+${ATOMIC} ps -aq --no-trunc --filter id=test-system | grep -q "test-system"
+if ${ATOMIC} ps -aq --no-trunc --filter id=non-existing-system | grep -q "test-system"; then
+    exit 1
+fi
 
 test -e /etc/systemd/system/${NAME}.service
 
