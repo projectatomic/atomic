@@ -47,6 +47,9 @@ local OSTree repository:
 **-h** **--help**
 Print usage statement
 
+**--user**
+User flag to specify the user is non-privileged. Default to False.
+
 **--storage=[ostree]**
 Define the destination storage for the pulled image.
 

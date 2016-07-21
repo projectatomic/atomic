@@ -51,6 +51,7 @@ class SystemContainers(object):
     def __init__(self):
         self.atomic_config = util.get_atomic_config()
         self.backend = None
+        self.user = None
         self.args = None
         self.setvalues = None
 
@@ -60,6 +61,10 @@ class SystemContainers(object):
     def set_args(self, args):
         self.args = args
 
+        try:
+            self.user = args.user
+        except (NameError, AttributeError):
+            self.user = None
         try:
             self.backend = args.backend
         except (NameError, AttributeError):
@@ -246,17 +251,24 @@ class SystemContainers(object):
         if not OSTREE_PRESENT:
             return None
 
-        repo_location = os.environ.get("ATOMIC_OSTREE_REPO") or \
-                        self.get_atomic_config_item(["ostree_repository"]) or \
-                        "/ostree/repo"
+        if self.user:
+            home_dir = os.getenv("HOME")
+            repo_location = os.path.expanduser("%s/ostree/repo" % home_dir)
+        else:
+            repo_location = os.environ.get("ATOMIC_OSTREE_REPO") or \
+                            self.get_atomic_config_item(["ostree_repository"]) or \
+                            "/ostree/repo"
 
         repo = OSTree.Repo.new(Gio.File.new_for_path(repo_location))
 
         # If the repository doesn't exist at the specified location, create it
         if not os.path.exists(os.path.join(repo_location, "config")):
             os.makedirs(repo_location)
-            repo.create(OSTree.RepoMode.BARE)
-
+            if self.user:
+                repo.create(OSTree.RepoMode.BARE_USER)
+            else:
+                repo.create(OSTree.RepoMode.BARE)
+                
         repo.open(None)
         return repo
 
