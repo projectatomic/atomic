@@ -130,18 +130,20 @@ container_export(){
 	echo $containerBaseImageID>>containerInfo.txt
 	echo $notruncContainerID>>containerInfo.txt
         "$GOTAR" -cf container-metadata.tar $dockerRootDir/containers/$notruncContainerID 2> /dev/null
-        imageName=$(echo $RANDOM)
-        docker commit $containerID $imageName 1>/dev/null||exit 1
-        mkdir -p $tmpDir/temp
-        docker save $imageName > $tmpDir/temp/image.tar||exit 1
-	$(cd $tmpDir/temp; "$GOTAR" -xf image.tar)
-        diffLayerID=$(python -c 'import json; f=open("temp/repositories"); j=json.load(f); print(j[j.keys()[0]]["latest"])')
-        cd $tmpDir/temp/$diffLayerID
-        cp layer.tar $tmpDir/container-diff.tar
-        cd $tmpDir
-        /usr/bin/tar --delete -f container-diff.tar run/gotar 2>/dev/null || true
-        rm -rf temp
-        docker rmi -f $imageName 1>/dev/null||exit 1
+	if [[ ! -z $(docker diff $containerID) ]];then
+                imageName=$(echo $RANDOM)
+                docker commit $containerID $imageName 1>/dev/null||exit 1
+                mkdir -p $tmpDir/temp
+                docker save $imageName > $tmpDir/temp/image.tar||exit 1
+                $(cd $tmpDir/temp; "$GOTAR" -xf image.tar)
+                diffLayerID=$(python -c 'import json; f=open("temp/repositories"); j=json.load(f); print(j[j.keys()[0]]["latest"])')
+                cd $tmpDir/temp/$diffLayerID
+                cp layer.tar $tmpDir/container-diff.tar
+                cd $tmpDir
+                /usr/bin/tar --delete -f container-diff.tar run/gotar 2>/dev/null || true
+                rm -rf temp
+                docker rmi -f $imageName 1>/dev/null||exit 1
+	fi
 }
 
 container_import(){
@@ -184,8 +186,12 @@ container_import(){
         fi
 
 	cd $importPath/containers/migrate-$containerID
-	dockerBaseImageID=$(sed -n '2p' containerInfo.txt)||exit 1	
-	cat container-diff.tar|docker run -i -v "$GOTAR:/run/gotar" $dockerBaseImageID /run/gotar -xf -
+	dockerBaseImageID=$(sed -n '2p' containerInfo.txt)||exit 1
+        if [[ -f container-diff.tar ]];then
+                cat container-diff.tar|docker run -i -v "$GOTAR:/run/gotar" $dockerBaseImageID /run/gotar -xf -
+	else
+		docker run -i $dockerBaseImageID echo "container_import"
+	fi
 	newContainerID=$(docker ps -lq)||exit 1
 	newContainerName=$(docker inspect -f '{{.Name}}' $newContainerID)||exit 1
 	newNotruncContainerID=$(docker ps -aq --no-trunc|grep $newContainerID)||exit 1					

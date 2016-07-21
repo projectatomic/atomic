@@ -2,13 +2,6 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-#With the inclusion of this PR (https://github.com/projectatomic/atomic/pull/294)
-#atomic storage export/import will only work with docker 1.10 support.
-#Skip this test, until we move to docker 1.10.
-
-echo "WARNING: skipping test_migrate.sh since it is only supported with docker 1.10 onwards."
-exit 0
-
 #
 # 'atomic storage' integration tests (non-live)
 # AUTHOR: Shishir Mahajan <shishir dot mahajan at redhat dot com>
@@ -25,7 +18,13 @@ if [ "$init" != "systemd" ];then
     exit 0
 fi
 
-dockerPid=$(ps -C docker -o pid=|xargs)
+if ! systemctl is-active docker >/dev/null; then
+     echo "Docker daemon is not running"
+     exit 1
+fi
+
+pid=$(systemctl show -p MainPID docker.service)
+dockerPid=$(echo ${pid#*=})
 dockerCmdline=$(cat /proc/$dockerPid/cmdline)
 if [[ $dockerCmdline =~ "-g=" ]] || [[ $dockerCmdline =~ "-g/" ]] || [[ $dockerCmdline =~ "--graph" ]];then
    echo "Docker is not located at the default (/var/lib/docker) root location. Skipping these tests."
