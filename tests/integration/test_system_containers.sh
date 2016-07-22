@@ -28,8 +28,6 @@ docker save atomic-test-system > ${WORK_DIR}/atomic-test-system.tar
 
 ${ATOMIC} pull dockertar:/${WORK_DIR}/atomic-test-system.tar
 
-${ATOMIC} pull docker.io/busybox
-
 # Check that the branch is created in the OSTree repository
 ostree --repo=${ATOMIC_OSTREE_REPO} refs | grep -q "ociimage/atomic-test-system-latest"
 
@@ -107,6 +105,17 @@ test \! -e /etc/systemd/system/${NAME}.service
 test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}
 test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0
 test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1
+
+
+${ATOMIC} pull docker.io/busybox
+ostree --repo=${ATOMIC_OSTREE_REPO} refs | grep busybox
+${ATOMIC} images delete -f busybox
+OUTPUT=$(! ostree --repo=${ATOMIC_OSTREE_REPO} refs | grep -c busybox)
+if test $OUTPUT \!= 0; then
+    exit 1
+fi
+${ATOMIC} pull docker.io/busybox
+ostree --repo=${ATOMIC_OSTREE_REPO} refs | grep busybox
 
 # check that there are not any "ociimage/" prefixed branch left after images prune
 ${ATOMIC} images delete -f atomic-test-system

@@ -601,24 +601,23 @@ class SystemContainers(object):
                 missing_layers.append(layer)
                 util.write_out("Missing layer %s" % layer)
 
-        if len(missing_layers) == 0:
-            return True
-
-        layers_dir = self._skopeo_get_layers(img, missing_layers)
+        layers_dir = None
         try:
-            layers = {}
-            for root, _, files in os.walk(layers_dir):
-                for f in files:
-                    if f.endswith(".tar"):
-                        layer_file = os.path.join(root, f)
-                        layer = f.replace(".tar", "")
-                        if layer in missing_layers:
-                            layers[layer] = layer_file
+            layers_to_import = {}
+            if len(missing_layers):
+                layers_dir = self._skopeo_get_layers(img, missing_layers)
+                for root, _, files in os.walk(layers_dir):
+                    for f in files:
+                        if f.endswith(".tar"):
+                            layer_file = os.path.join(root, f)
+                            layer = f.replace(".tar", "")
+                            if layer in missing_layers:
+                                layers_to_import[layer] = layer_file
 
-            if (len(layers)):
-                SystemContainers._import_layers_into_ostree(repo, imagebranch, manifest, layers)
+            SystemContainers._import_layers_into_ostree(repo, imagebranch, manifest, layers_to_import)
         finally:
-            shutil.rmtree(layers_dir)
+            if layers_dir:
+                shutil.rmtree(layers_dir)
         return True
 
     @staticmethod
