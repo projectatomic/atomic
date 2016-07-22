@@ -19,7 +19,7 @@ class Delete(Atomic):
             confirm = util.input("Do you wish to delete {}? (y/N) ".format(self.args.delete_targets))
             confirm = confirm.strip().lower()
             if not confirm in ['y', 'yes']:
-                sys.stderr.write("User aborted delete operation for {}\n".format(self.args.delete_targets))
+                util.write_err("User aborted delete operation for {}".format(self.args.delete_targets))
                 sys.exit(2)
 
         if self.args.remote_delete:
@@ -65,7 +65,7 @@ class Delete(Atomic):
                 util.skopeo_delete(img, args)
                 util.write_out("Image {} marked for deletion".format(img))
             except ValueError as e:
-                sys.stderr.write("Failed to mark Image {} for deletion: {}\n".format(img, e))
+                util.write_err("Failed to mark Image {} for deletion: {}".format(img, e))
                 results = 2
         return results
 
@@ -75,9 +75,9 @@ class Delete(Atomic):
             try:
                 self.d.remove_image(target)
             except NotFound as e:
-                sys.stderr.write("Failed to delete Image {}: {}\n".format(target, e))
+                util.write_err("Failed to delete Image {}: {}".format(target, e))
                 results = 2
             except APIError as e:
-                sys.stderr.write("Failed operation for delete Image {}: {}\n".format(target, e))
+                util.write_err("Failed operation for delete Image {}: {}".format(target, e))
                 results = 2
         return results

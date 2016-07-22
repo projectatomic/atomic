@@ -1,5 +1,4 @@
 import os
-import sys
 import json
 try:
     import ConfigParser as configparser
@@ -135,7 +134,7 @@ class SatelliteServer(object):
             return None
 
         if ('errors' in r_json):
-            sys.stderr.write('Error message from Satellite response:\n{0}\n'
+            util.write_err('Error message from Satellite response:\n{0}'
                              .format(r_json['errors']))
         if 'spawned_tasks' in r_json:
             for task in r_json['spawned_tasks']:
@@ -219,8 +218,7 @@ class SatelliteServer(object):
             if not content:
                 break
             url = "{0}/katello/api/repositories/{1}/content_uploads/{2}".format(self._server_url, repo_id, upload_id)
-            sys.stdout.flush()
-            sys.stdout.write(".")
+            util.write_out(".", "")
             payload = {
                 'offset': offset,
                 'content': content

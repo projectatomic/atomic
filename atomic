@@ -39,7 +39,7 @@ from Atomic.help import AtomicHelp
 from Atomic.run import Run
 from Atomic.ps import Ps
 from Atomic.storage import Storage
-from Atomic.util import get_scanners, default_docker_lib, NoDockerDaemon
+from Atomic.util import get_scanners, default_docker_lib, write_err, NoDockerDaemon
 import traceback
 from Atomic.mount import MountError
 
@@ -60,8 +60,8 @@ except IOError:
 class HelpByDefaultArgumentParser(argparse.ArgumentParser):
 
     def error(self, message):
-        sys.stderr.write('%s: %s\n' % (sys.argv[0], message))
-        sys.stderr.write("Try '%s --help' for more information.\n" % self.prog)
+        write_err('%s: %s' % (sys.argv[0], message))
+        write_err("Try '%s --help' for more information." % self.prog)
         sys.exit(2)
 
 
@@ -678,12 +678,12 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         sys.exit(0)
     except (ValueError, IOError, docker.errors.DockerException, NoDockerDaemon) as e:
-        sys.stderr.write("%s\n" % str(e))
+        write_err("%s" % str(e))
         if os.geteuid() != 0:
             need_root()
         sys.exit(1)
     except subprocess.CalledProcessError as e:
-        sys.stderr.write("\n")
+        write_err("")
         sys.exit(e.returncode)
     except AttributeError:
         # python3 throws exception on no args to atomic
@@ -693,10 +693,10 @@ if __name__ == '__main__':
         if str(e).find("Permission denied") > 0:
             need_root()
         else:
-            sys.stderr.write("%s\n" % str(e))
+            write_err("%s" % str(e))
         sys.exit(1)
     except Exception as e: # pylint: disable=broad-except
-        sys.stderr.write("%s\n" % str(e))
+        write_err("%s" % str(e))
         sys.exit(1)
     except SystemExit as e:
         # Overriding debug args to avoid a traceback from sys.exit()

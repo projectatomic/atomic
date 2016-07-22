@@ -219,7 +219,7 @@ class Mount(Atomic):
             rc, result_stdout, result_stderr = util.subp(['umount', path])
             if rc == 0:
                 return rc, result_stdout, result_stderr
-            sys.stderr.write("Warning: {}\nRetrying {}/{} to unmount {}\n"
+            util.write_err("Warning: {}\nRetrying {}/{} to unmount {}"
                              .format(result_stderr, x+1, timeout, path))
             time.sleep(1)
         raise ValueError("Unable to unmount {0} due to {1}".format(path, result_stderr))
@@ -641,7 +641,7 @@ def getxattrfuncs():
     else:
         try:
             import xattr #pylint: disable=import-error
-            module = xattr 
+            module = xattr
         except ImportError:
             pass
 
