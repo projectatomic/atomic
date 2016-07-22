@@ -2,7 +2,9 @@ import json
 
 from . import util
 from . import Atomic
+import subprocess
 from dateutil.parser import parse as dateparse
+from . import atomic
 
 class Ps(Atomic):
     def ps(self):
@@ -11,8 +13,11 @@ class Ps(Atomic):
         # Collect the system containers
         for i in self.syscontainers.get_system_containers():
             container = i["Id"]
-            inspect_stdout = util.check_output(["runc", "state", container])
-            ret = json.loads(inspect_stdout)
+            try:
+                inspect_stdout = util.check_output(["runc", "state", container], stderr=atomic.DEVNULL)
+                ret = json.loads(inspect_stdout.decode())
+            except (subprocess.CalledProcessError):
+                continue
             status = ret["status"]
             if not self.args.all and status != "running":
                 continue
