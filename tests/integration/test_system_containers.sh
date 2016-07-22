@@ -109,8 +109,8 @@ test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0
 test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1
 
 # check that there are not any "ociimage/" prefixed branch left after images prune
-ostree --repo=${ATOMIC_OSTREE_REPO} refs --delete "ociimage/atomic-test-system-latest"
-ostree --repo=${ATOMIC_OSTREE_REPO} refs --delete "ociimage/busybox-latest"
+${ATOMIC} images delete -f atomic-test-system
+${ATOMIC} images delete -f busybox
 ${ATOMIC} images prune
 OUTPUT=$(! ostree --repo=${ATOMIC_OSTREE_REPO} refs | grep -c ociimage)
 if test $OUTPUT \!= 0; then

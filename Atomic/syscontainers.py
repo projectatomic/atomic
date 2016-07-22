@@ -358,6 +358,17 @@ class SystemContainers(object):
             ret.append(container)
         return ret
 
+    def delete_image(self, image):
+        repo = self._get_ostree_repo()
+        if not repo:
+            return
+        imagebranch = SystemContainers._get_ostree_image_branch(image)
+        commit_rev = repo.resolve_rev(imagebranch, True)
+        if not commit_rev[1]:
+            return
+        ref = OSTree.parse_refspec(imagebranch)
+        repo.set_ref_immediate(ref[1], ref[2], None)
+
     def get_system_images(self, repo=None):
         if repo is None:
             repo = self._get_ostree_repo()

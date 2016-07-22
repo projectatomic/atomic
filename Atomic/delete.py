@@ -73,12 +73,15 @@ class Delete(Atomic):
     def _delete_local(self, targets):
         results = 0
         for target in targets:
-            try:
-                self.d.remove_image(target)
-            except NotFound as e:
-                util.write_err("Failed to delete Image {}: {}".format(target, e))
-                results = 2
-            except APIError as e:
-                util.write_err("Failed operation for delete Image {}: {}".format(target, e))
-                results = 2
+            if self.syscontainers.has_system_container_image(target):
+                self.syscontainers.delete_image(target)
+            else:
+                try:
+                    self.d.remove_image(target)
+                except NotFound as e:
+                    util.write_err("Failed to delete Image {}: {}".format(target, e))
+                    results = 2
+                except APIError as e:
+                    util.write_err("Failed operation for delete Image {}: {}".format(target, e))
+                    results = 2
         return results
