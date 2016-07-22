@@ -11,6 +11,7 @@ import stat
 import subprocess
 import time
 from .client import AtomicDocker
+from ctypes import cdll, CDLL
 
 try:
     import gi
@@ -58,6 +59,20 @@ class SystemContainers(object):
     def get_atomic_config_item(self, config_item):
         return util.get_atomic_config_item(config_item, atomic_config=self.atomic_config)
 
+    def _do_syncfs(self, rootfs, rootfs_fd):
+        # Fallback to sync --file-system if loading it from libc fails.
+        try:
+            cdll.LoadLibrary("libc.so.6")
+            libc = CDLL("libc.so.6")
+            if libc.syncfs(rootfs_fd) == 0:
+                return
+        except (NameError, AttributeError, OSError):
+            pass
+
+        util.check_call(["sync", "--file-system", rootfs], stdin=DEVNULL,
+                        stdout=DEVNULL,
+                        stderr=DEVNULL)
+
     def _checkout_layer(self, repo, rootfs_fd, rootfs, rev):
         OSTREE_SAFE_GLIB_REPO_CHECKOUT_OPTIONS = False
         # There is an issue in the way the RepoCheckoutOptions is mapped by glib, as the C
@@ -68,12 +83,14 @@ class SystemContainers(object):
             options = OSTree.RepoCheckoutOptions()
             options.overwrite_mode = OSTree.RepoCheckoutOverwriteMode.UNION_FILES
             options.process_whiteouts = True
+            options.disable_fsync = True
             repo.checkout_tree_at(options, rootfs_fd, rootfs, rev)
         else:
             util.check_call(["ostree", "--repo=%s" % self._get_ostree_repo_location(),
                              "checkout",
                              "--union",
                              "--whiteouts",
+                             "--fsync=no",
                              rev,
                              rootfs],
                             stdin=DEVNULL,
@@ -181,6 +198,7 @@ class SystemContainers(object):
                 for layer in layers:
                     rev_layer = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer.replace("sha256:", "")), False)[1]
                     self._checkout_layer(repo, rootfs_fd, rootfs, rev_layer)
+            self._do_syncfs(rootfs, rootfs_fd)
         finally:
             if rootfs_fd:
                 os.close(rootfs_fd)
