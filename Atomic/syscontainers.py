@@ -58,6 +58,28 @@ class SystemContainers(object):
     def get_atomic_config_item(self, config_item):
         return util.get_atomic_config_item(config_item, atomic_config=self.atomic_config)
 
+    def _checkout_layer(self, repo, rootfs_fd, rootfs, rev):
+        OSTREE_SAFE_GLIB_REPO_CHECKOUT_OPTIONS = False
+        # There is an issue in the way the RepoCheckoutOptions is mapped by glib, as the C
+        # struct is using bit fields that are not supported by the introspection.
+        # Accessing .disable_fsync and .process_whiteouts thus results in a segfault in
+        # libostree.  Re-enable this once it gets fixed.
+        if OSTREE_SAFE_GLIB_REPO_CHECKOUT_OPTIONS:
+            options = OSTree.RepoCheckoutOptions()
+            options.overwrite_mode = OSTree.RepoCheckoutOverwriteMode.UNION_FILES
+            options.process_whiteouts = True
+            repo.checkout_tree_at(options, rootfs_fd, rootfs, rev)
+        else:
+            util.check_call(["ostree", "--repo=%s" % self._get_ostree_repo_location(),
+                             "checkout",
+                             "--union",
+                             "--whiteouts",
+                             rev,
+                             rootfs],
+                            stdin=DEVNULL,
+                            stdout=DEVNULL,
+                            stderr=DEVNULL)
+
     def set_args(self, args):
         self.args = args
 
@@ -148,19 +170,17 @@ class SystemContainers(object):
         rev = repo.resolve_rev(imagebranch, False)[1]
 
         manifest = SystemContainers._get_commit_metadata(repo, rev, "docker.manifest")
-        options = OSTree.RepoCheckoutOptions()
-        options.overwrite_mode = OSTree.RepoCheckoutOverwriteMode.UNION_FILES
 
         rootfs_fd = None
         try:
             rootfs_fd = os.open(rootfs, os.O_DIRECTORY)
             if manifest is None:
-                repo.checkout_tree_at(options, rootfs_fd, rootfs, rev)
+                self._checkout_layer(repo, rootfs_fd, rootfs, rev)
             else:
                 layers = SystemContainers._get_layers_from_manifest(json.loads(manifest))
                 for layer in layers:
                     rev_layer = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer.replace("sha256:", "")), False)[1]
-                    repo.checkout_tree_at(options, rootfs_fd, rootfs, rev_layer)
+                    self._checkout_layer(repo, rootfs_fd, rootfs, rev_layer)
         finally:
             if rootfs_fd:
                 os.close(rootfs_fd)
@@ -247,18 +267,20 @@ class SystemContainers(object):
             self.get_atomic_config_item(["checkout_path"]) or \
             "/var/lib/containers/atomic"
 
+    def _get_ostree_repo_location(self):
+        if self.user:
+            home_dir = os.getenv("HOME")
+            return os.path.expanduser("%s/ostree/repo" % home_dir)
+        else:
+            return os.environ.get("ATOMIC_OSTREE_REPO") or \
+                self.get_atomic_config_item(["ostree_repository"]) or \
+                "/ostree/repo"
+
     def _get_ostree_repo(self):
         if not OSTREE_PRESENT:
             return None
 
-        if self.user:
-            home_dir = os.getenv("HOME")
-            repo_location = os.path.expanduser("%s/ostree/repo" % home_dir)
-        else:
-            repo_location = os.environ.get("ATOMIC_OSTREE_REPO") or \
-                            self.get_atomic_config_item(["ostree_repository"]) or \
-                            "/ostree/repo"
-
+        repo_location = self._get_ostree_repo_location()
         repo = OSTree.Repo.new(Gio.File.new_for_path(repo_location))
 
         # If the repository doesn't exist at the specified location, create it
