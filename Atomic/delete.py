@@ -35,6 +35,8 @@ class Delete(Atomic):
         """
         enc = sys.getdefaultencoding()
 
+        self.syscontainers.prune_ostree_images()
+
         results = self.d.images(filters={"dangling":True}, quiet=True)
         if len(results) == 0:
             return 0
@@ -42,7 +44,6 @@ class Delete(Atomic):
         for img in results:
             self.d.remove_image(img.decode(enc), force=True)
             util.write_out("Removed dangling Image {}".format(enc))
-        self.syscontainers.prune_ostree_images()
         return 0
 
     def _delete_remote(self, targets):
