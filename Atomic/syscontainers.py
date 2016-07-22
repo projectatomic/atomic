@@ -401,12 +401,11 @@ class SystemContainers(object):
         except subprocess.CalledProcessError:
             pass
 
+        if os.path.lexists("%s/%s" % (self._get_system_checkout_path(), name)):
+            os.unlink("%s/%s" % (self._get_system_checkout_path(), name))
         for deploy in ["0", "1"]:
             if os.path.exists("%s/%s.%s" % (self._get_system_checkout_path(), name, deploy)):
                 shutil.rmtree("%s/%s.%s" % (self._get_system_checkout_path(), name, deploy))
-        if os.path.exists("%s/%s" % (self._get_system_checkout_path(), name)):
-            os.unlink("%s/%s" % (self._get_system_checkout_path(), name))
-
         if os.path.exists(os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)):
             os.unlink(os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name))
 
