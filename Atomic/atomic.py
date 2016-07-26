@@ -401,7 +401,7 @@ class Atomic(object):
     def _check_latest(self):
         inspect = self._inspect_image()
         if inspect and inspect["Id"] != self.inspect["Image"]:
-            sys.stdout.write(
+            util.write_out(
                 "The '%(name)s' container is using an older version of the "
                 "installed\n'%(image)s' container image. If you wish to use "
                 "the newer image,\nyou must either create a new container "

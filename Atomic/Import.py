@@ -25,10 +25,10 @@ def import_docker(graph, import_location):
     import_volumes(graph, import_location)
 
     util.write_out("atomic import completed successfully")
-    util.write_out("Would you like to cleanup (rm -rf {0}) the temporary directory [y/N]"
+    confirm = util.input("Would you like to cleanup (rm -rf {0}) the temporary directory [y/N]"
                   .format(import_location))
-    choice = sys.stdin.read(1)
-    if choice.lower() == 'y':
+    confirm = confirm.strip().lower()
+    if confirm in ['y', 'yes']:
         util.write_out("Deleting {0}".format(import_location))
         util.check_call(['/usr/bin/rm', '-rf', import_location])
     util.write_out("Please restart docker daemon for the changes to take effect")

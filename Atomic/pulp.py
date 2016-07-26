@@ -1,5 +1,4 @@
 import os
-import sys
 import json
 try:
     import ConfigParser as configparser
@@ -97,7 +96,7 @@ class PulpServer(object):
             return r_json
 
         if 'error_message' in r_json:
-            sys.stderr.write('Error messages from Pulp response:\n{0}'
+            util.write_err('Error messages from Pulp response:\n{0}'
                              ''.format(r_json['error_message']))
 
         if 'spawned_tasks' in r_json:
@@ -188,8 +187,7 @@ class PulpServer(object):
                 break
             url = '{0}/pulp/api/v2/content/uploads/{1}/{2}/' \
                   ''.format(self._server_url, upload_id, offset)
-            sys.stdout.flush()
-            sys.stdout.write(".")
+            util.write_out(".", "")
             self._call_pulp(url, "put", data)
             offset += self._chunk_size
             image_stream.close()

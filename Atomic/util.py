@@ -131,13 +131,22 @@ def default_ro_container_context():
         return selinux.getfilecon("/usr")[1]
     return ""
 
-def write_out(output, lf="\n"):
-    sys.stdout.flush()
-    if is_python2:
-        sys.stdout.write(output.encode('utf-8') + lf)
-    else:
-        sys.stdout.write(output + str(lf))
 
+def write_out(output, lf="\n"):
+    _output(sys.stdout, output, lf)
+
+
+def write_err(output, lf="\n"):
+    _output(sys.stderr, output, lf)
+
+
+def _output(fd, output, lf):
+    fd.flush()
+
+    if is_python2:
+        fd.write(output.encode('utf-8') + lf)
+    else:
+        fd.write(output + str(lf))
 
 def output_json(json_data):
     ''' Pretty print json data '''

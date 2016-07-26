@@ -88,7 +88,7 @@ class DiffHelpers(object):
             except mount.SelectionMatchError as e:
                 if len(image_list) > 0:
                     DiffHelpers.cleanup(image_list)
-                sys.stderr.write("{}\n".format(e))
+                util.write_err("{}".format(e))
                 sys.exit(1)
         return image_list
 

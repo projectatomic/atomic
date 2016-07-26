@@ -2,7 +2,6 @@
 export docker images, containers and volumes into a filesystem directory.
 """
 import os
-import sys
 
 from .client import AtomicDocker
 from . import util
@@ -21,10 +20,11 @@ def export_docker(graph, export_location, force):
     dangling_images = AtomicDocker().images(filters={"dangling":True}, quiet=True)
     if any(dangling_images):
         if not force:
-            util.write_out("There are dangling images in your system. Would you like atomic to prune them [y/N]")
-            choice = sys.stdin.read(1)
-            if choice.lower() == 'n':
+            choice = util.input("There are dangling images in your system. Would you like atomic to prune them [y/N]")
+            choice = choice.strip().lower()
+            if not choice in ['y', 'yes']:
                 raise ValueError("Please delete dangling images before running atomic storage export")
+
         util.write_out("Deleting dangling images")
         util.check_call([util.default_docker(), "rmi", "-f"]+dangling_images)
 
