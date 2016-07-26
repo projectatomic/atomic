@@ -110,6 +110,7 @@ class Atomic(object):
         self.setvalues = None
         self.inspect = None
         self.backend = None
+        self.user = None
         self.force = False
         self._images = []
         self.containers = False
