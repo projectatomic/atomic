@@ -33,13 +33,7 @@ Using --all will list all the installed containers.
   Filterables: `container (id)`, `image`, `command`, `created`, `status`, `runtime`
 
 **--json**
-  Print in a machine parseable format
-
-**-n** **--noheading**
-  Do not print heading when listing the containers
-
-**--json**
-  Print in a machine parseable format
+  Print in a machine parsable format
 
 **-n** **--noheading**
   Do not print heading when listing the containers
