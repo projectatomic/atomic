@@ -33,8 +33,6 @@ class Delete(Atomic):
         Remove dangling images from registry
         :return: 0 if all images deleted or no dangling images found
         """
-        enc = sys.getdefaultencoding()
-
         self.syscontainers.prune_ostree_images()
 
         results = self.d.images(filters={"dangling":True}, quiet=True)
@@ -42,8 +40,8 @@ class Delete(Atomic):
             return 0
 
         for img in results:
-            self.d.remove_image(img.decode(enc), force=True)
-            util.write_out("Removed dangling Image {}".format(enc))
+            self.d.remove_image(img, force=True)
+            util.write_out("Removed dangling Image {}".format(img))
         return 0
 
     def _delete_remote(self, targets):
