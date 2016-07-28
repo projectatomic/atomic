@@ -130,7 +130,7 @@ make_docker_images
 # Python unit tests.
 echo "UNIT TESTS:"
 
-COVERAGE_BIN="/usr/bin/coverage"
+COVERAGE_BIN=${COVERAGE_BIN-"/usr/bin/coverage"}
 
 if [[ ! -x "${COVERAGE_BIN}" ]]; then
   # Check to see if it is in local instead.
