@@ -328,9 +328,9 @@ class DiffFS(object):
             (_dir, dir_names, files) = x
             if len(dir_names) < 1 and len(files) > 0:
                 for _file in files:
-                    file_list.append(os.path.join(_dir, _file).encode('utf-8'))
+                    file_list.append(os.path.join(_dir, _file))
             elif len(dir_names) < 1 and len(files) < 1:
-                file_list.append(_dir.encode('utf-8'))
+                file_list.append(_dir)
         return file_list
 
     def delta(self, compare_obj):
