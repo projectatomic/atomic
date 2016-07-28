@@ -30,6 +30,12 @@ class AtomicDocker():
     def __repr__(self):
         return self._dockerclient.__repr__()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, typ, value, traceback):
+        self.close()
+
     def __getattr__(self, name):
         return self.__getattribute__(name)
 
@@ -46,6 +52,9 @@ class AtomicDocker():
             return newfunc
         else:
             return attr
+
+    def close(self):
+        self._dockerclient.close()
 
 is_python2 = check_if_python2()[1]
 

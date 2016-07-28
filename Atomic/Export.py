@@ -17,31 +17,32 @@ def export_docker(graph, export_location, force):
     if not os.path.isdir(export_location):
         os.makedirs(export_location)
 
-    dangling_images = AtomicDocker().images(filters={"dangling":True}, quiet=True)
-    if any(dangling_images):
-        if not force:
-            choice = util.input("There are dangling images in your system. Would you like atomic to prune them [y/N]")
-            choice = choice.strip().lower()
-            if not choice in ['y', 'yes']:
-                raise ValueError("Please delete dangling images before running atomic storage export")
+    with AtomicDocker() as client:
+        dangling_images = client.images(filters={"dangling":True}, quiet=True)
+        if any(dangling_images):
+            if not force:
+                choice = util.input("There are dangling images in your system. Would you like atomic to prune them [y/N]")
+                choice = choice.strip().lower()
+                if not choice in ['y', 'yes']:
+                    raise ValueError("Please delete dangling images before running atomic storage export")
 
-        util.write_out("Deleting dangling images")
-        util.check_call([util.default_docker(), "rmi", "-f"]+dangling_images)
+            util.write_out("Deleting dangling images")
+            util.check_call([util.default_docker(), "rmi", "-f"]+dangling_images)
 
-    #Save the docker storage driver
-    storage_driver = AtomicDocker().info()["Driver"]
-    filed = open(export_location+"/info.txt", "w")
-    filed.write(storage_driver)
-    filed.close()
+        #Save the docker storage driver
+        storage_driver = client.info()["Driver"]
+        filed = open(export_location+"/info.txt", "w")
+        filed.write(storage_driver)
+        filed.close()
 
-    #export docker images
-    export_images(export_location)
-    #export docker containers
-    export_containers(graph, export_location)
-    #export docker volumes
-    export_volumes(graph, export_location)
+        #export docker images
+        export_images(export_location)
+        #export docker containers
+        export_containers(graph, export_location)
+        #export docker volumes
+        export_volumes(graph, export_location)
 
-    util.write_out("atomic export completed successfully")
+        util.write_out("atomic export completed successfully")
 
 def export_images(export_location):
     """
@@ -51,14 +52,15 @@ def export_images(export_location):
         os.makedirs(export_location + "/images")
 
     images = {}
-    for image in AtomicDocker().images():
-        Id, tags = image["Id"], image["RepoTags"]
+    with AtomicDocker() as client:
+        for image in client.images():
+            Id, tags = image["Id"], image["RepoTags"]
 
-        if '<none>:<none>' in tags:
-            continue
-        if Id not in images:
-            images[Id] = []
-        images[Id].extend(tags)
+            if '<none>:<none>' in tags:
+                continue
+            if Id not in images:
+                images[Id] = []
+            images[Id].extend(tags)
 
     for Id in images:
         tags = " ".join(images[Id])
@@ -73,15 +75,16 @@ def export_containers(graph, export_location):
     if not os.path.isdir(export_location + "/containers"):
         os.makedirs(export_location + "/containers")
 
-    for container in AtomicDocker().containers(all=True):
-        Id = container["Id"]
+    with AtomicDocker() as client:
+        for container in client.containers(all=True):
+            Id = container["Id"]
 
-        util.write_out("Exporting container: {0}".format(Id[:12]))
-        util.check_call([ATOMIC_LIBEXEC + '/migrate.sh',
-                               'export',
-                               '--container-id=' + Id[:12],
-                               '--graph=' + graph,
-                               '--export-location=' + export_location])
+            util.write_out("Exporting container: {0}".format(Id[:12]))
+            util.check_call([ATOMIC_LIBEXEC + '/migrate.sh',
+                             'export',
+                             '--container-id=' + Id[:12],
+                             '--graph=' + graph,
+                             '--export-location=' + export_location])
 
 def tar_create(srcdir, destfile):
     util.check_call(['/usr/bin/tar', '--create', '--gzip', '--selinux',

@@ -51,7 +51,9 @@ class TestAtomicUtilSh(unittest.TestCase):
                          'VAR=OLD\n\nVAR=""\n')
 
     def assertFileEqual(self, path, content):
-        self.assertEqual(open(path, "r").read(), content)
+        with open(path, "r") as f:
+            data = f.read()
+            self.assertEqual(data, content)
 
     def test_util_sh_modify_file(self):
         path = os.path.join(os.environ["WORK_DIR"], "sh.conf")

@@ -122,6 +122,12 @@ class Atomic(object):
         self.useTTY = True
         self.syscontainers = SystemContainers()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, typ, value, traceback):
+        self.d.close()
+
     def docker_binary(self):
         if not self.docker_cmd:
             self.docker_cmd = util.default_docker()

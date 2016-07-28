@@ -57,8 +57,8 @@ def image_by_name(img_name, images=None):
 
     # If the images were not passed in, go get them.
     if images is None:
-        c = AtomicDocker()
-        images = c.images(all=False)
+        with AtomicDocker() as c:
+            images = c.images(all=False)
 
     valid_images = []
     for i in images:
@@ -119,11 +119,11 @@ def call(cmd, env=None, stdin=None, stderr=None, stdout=None):
 
 def default_container_context():
     if selinux.is_selinux_enabled() != 0:
-        fd = open(selinux.selinux_lxc_contexts_path())
-        for i in fd.readlines():
-            name, context = i.split("=")
-            if name.strip() == "file":
-                return context.strip("\n\" ")
+        with open(selinux.selinux_lxc_contexts_path()) as fd:
+            for i in fd.readlines():
+                name, context = i.split("=")
+                if name.strip() == "file":
+                    return context.strip("\n\" ")
     return ""
 
 def default_ro_container_context():

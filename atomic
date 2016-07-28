@@ -670,13 +670,13 @@ def create_parser(help_text):
 
 if __name__ == '__main__':
     try:
-        atomic = Atomic.Atomic()
-        aparser = create_parser(atomic.help())
-        args = aparser.parse_args()
-        _class = atomic if '_class' not in args else args._class() # pylint: disable=protected-access
-        _class.set_args(args)
-        _func = getattr(_class, args.func)
-        sys.exit(_func())
+        with Atomic.Atomic() as atomic:
+            aparser = create_parser(atomic.help())
+            args = aparser.parse_args()
+            _class = atomic if '_class' not in args else args._class() # pylint: disable=protected-access
+            _class.set_args(args)
+            _func = getattr(_class, args.func)
+            sys.exit(_func())
     except KeyboardInterrupt:
         sys.exit(0)
     except (ValueError, IOError, docker.errors.DockerException, NoDockerDaemon) as e:
