@@ -497,11 +497,37 @@ _atomic_images() {
 }
 
 _atomic_images_list() {
-  local all_options="
+  local options_with_args="
+    --filter -f
+  "
+
+  local all_options="$options_with_args
+    --all -a
     --help -h
     --noheading -n
     --no-trunc
+    --quiet -q
   "
+
+  local filterables="
+    repo
+    tag
+    id
+    image
+    created
+    size
+    type
+  "
+
+  local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
+
+  case "$prev" in
+    $options_with_args_glob )
+      compopt -o nospace
+      COMPREPLY=( $( compgen -S\= -W "$filterables" "$cur" ) )
+      return 0
+      ;;
+  esac
 
   case "$cur" in
     -*)

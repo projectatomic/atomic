@@ -28,11 +28,21 @@ also removing the older version of the image.
 [**-h|--help**]
   Print usage statement
 
+[**-a|--all**]
+  Show all images, including intermediate images
+
+[**-f|--filter**]
+  Filter output based on given filters, example usage: '--filter repo=foo'
+will list all images that has "foo" as part of their repository name.
+
 [**-n|--noheading**]
   Do not print heading when listing the images
 
 [**--no-trunc**]
   Do not truncate output
+
+[**-q|--quiet]
+  Only display image IDs
 
 
 **delete IMAGES...**
@@ -57,3 +67,4 @@ July 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)
 
 
 July 2016, Updated to reflect images sub-command changes (jhonce at redhat dot com)
+July 2016, Added sub-commands all, filter and quiet to list (jerzhang at redhat dot com)

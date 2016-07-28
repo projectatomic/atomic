@@ -36,6 +36,18 @@ grep -q "ociimage/atomic-test-system-latest" refs
 
 ${ATOMIC} images list > ${WORK_DIR}/images
 grep -q "atomic-test-system" ${WORK_DIR}/images
+${ATOMIC} images list -a > ${WORK_DIR}/images
+grep -q "atomic-test-system" ${WORK_DIR}/images
+${ATOMIC} images list -f repo=atomic-test-system > ${WORK_DIR}/images
+grep -q "atomic-test-system" ${WORK_DIR}/images
+${ATOMIC} images list -f repo=non-existing-repo > ${WORK_DIR}/images
+if grep -q "atomic-test-system" ${WORK_DIR}/images; then
+    exit 1
+fi
+${ATOMIC} images list -q > ${WORK_DIR}/images
+if grep -q "atomic-test-system" ${WORK_DIR}/images; then
+    exit 1
+fi
 
 export NAME="test-system-container-$$"
 

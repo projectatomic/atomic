@@ -319,6 +319,14 @@ def create_parser(help_text):
                                                      "container images on your system.")
     list_parser.set_defaults(func='images')
 
+    list_parser.add_argument("-a", "--all", dest="all", default=False,
+                             action="store_true",
+                             help=_("Show all images, including intermediate images"))
+
+    list_parser.add_argument("-f", "--filter", dest="filter", metavar="FILTER",
+                             action="append",
+                             help=_("Filter output based on VARIABLE=VALUE format"))
+
     list_parser.add_argument("-n", "--noheading", dest="heading", default=True,
                              action="store_false",
                              help=_("do not print heading when listing the images"))
@@ -326,6 +334,10 @@ def create_parser(help_text):
     list_parser.add_argument("--no-trunc", dest="truncate", default=True,
                              action="store_false",
                              help=_("Don't truncate output"))
+
+    list_parser.add_argument("-q", "--quiet", dest="quiet", default=False,
+                             action="store_true",
+                             help=_("Only display image IDs"))
 
     # atomic images delete
     delete_parser = images_subparser.add_parser("delete",

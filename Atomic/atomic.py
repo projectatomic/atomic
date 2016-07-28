@@ -115,6 +115,7 @@ class Atomic(object):
         self._images = []
         self.containers = False
         self.images_cache = []
+        self.images_all_cache = []
         self.active_containers = []
         self.docker_cmd = None
         self.debug = False
@@ -667,6 +668,25 @@ class Atomic(object):
             return True
         return False
 
+    def _filter_include_image(self, image_info):
+        filterables = ["repo", "tag", "id", "created", "size", "type"]
+        for i in self.args.filter:
+            var, value = str(i).split("=")
+            var = var.lower()
+            if var == "repository":
+                var = "repo"
+
+            if var == "image":
+                var = "id"
+
+            if var not in filterables: # Default to allowing all images through for non-existing filterable
+                continue
+
+            if value not in image_info[var].lower():
+                return False
+
+        return True
+
     def images(self):
         def split_repo_tags(_images):
             sub_list = [item.split(":") for sublist in _images for item
@@ -694,7 +714,7 @@ class Atomic(object):
             else:
                 return 1, 1
 
-        _images = self.get_images()
+        _images = self.get_images(get_all=self.args.all)
 
         used_image_ids = [x['ImageID'] for x in self.get_containers()]
 
@@ -709,7 +729,7 @@ class Atomic(object):
             col_out = "{0:2} {1:" + str(_max_repo) + "} {2:" + str(_max_tag) + \
                       "} {3:" + str(_max_id) + "} {4:18} {5:14} {6:10}"
 
-            if self.args.heading:
+            if self.args.heading and not self.args.quiet:
                 util.write_out(col_out.format(" ",
                                               "REPOSITORY",
                                               "TAG",
@@ -717,7 +737,7 @@ class Atomic(object):
                                               "CREATED",
                                               "VIRTUAL SIZE",
                                               "TYPE"))
-            for image in self.get_images():
+            for image in _images:
                 repo, tag = image["RepoTags"][0].rsplit(":", 1)
                 if "Created" in image:
                     created = time.strftime("%F %H:%M", time.localtime(image["Created"]))
@@ -741,11 +761,20 @@ class Atomic(object):
 
                 image_id = image["Id"][:12] if self.args.truncate else image["Id"]
                 image_type = image['ImageType']
-                util.write_out(col_out.format(indicator, repo,
-                                              tag, image_id,
-                                              created,
-                                              virtual_size,
-                                              image_type))
+                if self.args.filter:
+                    image_info = {"repo" : repo, "tag" : tag, "id" : image_id,
+                                  "created" : created, "size" : virtual_size, "type" : image_type}
+                    if not self._filter_include_image(image_info):
+                        continue
+
+                if self.args.quiet:
+                    util.write_out(image_id)
+                else:
+                    util.write_out(col_out.format(indicator, repo,
+                                                  tag, image_id,
+                                                  created,
+                                                  virtual_size,
+                                                  image_type))
             util.write_out("")
             return
 
@@ -1014,23 +1043,28 @@ class Atomic(object):
 
         raise DockerObjectNotFound(identifier)
 
-    def _get_docker_images(self):
+    def _get_docker_images(self, get_all=False):
         try:
-            images = self.d.images()
+            images = self.d.images(all=get_all)
             for i in images:
                 i["ImageType"] = "Docker"
         except requests.exceptions.ConnectionError:
             raise NoDockerDaemon()
         return images
 
-    def get_images(self):
+    def get_images(self, get_all=False):
         '''
         Wrapper function that should be used instead of querying docker
         multiple times for a list of images.
         '''
-        if len(self.images_cache) == 0:
-            self.images_cache = self._get_docker_images() + self.syscontainers.get_system_images()
-        return self.images_cache
+        if get_all:
+            if len(self.images_all_cache) == 0:
+                self.images_all_cache = self._get_docker_images(get_all=True) + self.syscontainers.get_system_images()
+            return self.images_all_cache
+        else:
+            if len(self.images_cache) == 0:
+                self.images_cache = self._get_docker_images() + self.syscontainers.get_system_images()
+            return self.images_cache
 
     def get_containers(self):
         '''
