@@ -69,6 +69,14 @@ class AtomicDBus (object):
     def update(self, image):
         self.dbus_object.Update(image, dbus_interface="org.atomic", timeout = 2147400)
 
+    @polkit.enable_proxy
+    def images(self):
+        return self.dbus_object.Images(dbus_interface="org.atomic", timeout = 2147400)
+
+    @polkit.enable_proxy
+    def vulnerable(self):
+        return self.dbus_object.VulnerableInfo(dbus_interface="org.atomic", timeout = 2147400)
+
 #For outputting the list of scanners
 def print_scan_list(all_scanners):
     if len(all_scanners) == 0:
@@ -150,6 +158,12 @@ if __name__ == "__main__":
 
         elif(sys.argv[1] == "update"):
             dbus_proxy.update(sys.argv[2])
-            
+
+        elif(sys.argv[1] == "images"):
+            print(json.loads(dbus_proxy.images()))
+
+        elif(sys.argv[1] == "vulnerable"):
+            print(json.loads(dbus_proxy.vulnerable()))
+
     except dbus.DBusException as e:
         print (e)

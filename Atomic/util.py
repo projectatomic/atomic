@@ -144,7 +144,9 @@ def _output(fd, output, lf):
     fd.flush()
 
     if is_python2:
-        fd.write(output.encode('utf-8') + lf)
+        if isinstance(output, unicode): #pylint: disable=undefined-variable,unicode-builtin
+            output = output.encode('utf-8')
+        fd.write(output + lf)
     else:
         fd.write(output + str(lf))
 

@@ -687,17 +687,7 @@ class Atomic(object):
 
         return True
 
-    def images(self):
-        def split_repo_tags(_images):
-            sub_list = [item.split(":") for sublist in _images for item
-                         in sublist['RepoTags']]
-            repo_tags = []
-            for repo in sub_list:
-                if len(repo) > 2:
-                    repo = [repo[0] + repo[1], repo[2]]
-                repo_tags.append(repo)
-            return repo_tags
-
+    def display_all_image_info(self):
         def get_col_lengths(_images):
             '''
             Determine the max length of the repository and tag names
@@ -705,7 +695,7 @@ class Atomic(object):
             :return: a set with len of repository and tag
             If there are no images, return 1, 1
             '''
-            repo_tags = split_repo_tags(_images)
+            repo_tags = [[i["repo"], i["tag"]] for i in _images]
             # Integer additions below are for column padding
             # 7 == 1 for dangling, 2 for spacing, 4 for highlighting
             if repo_tags:
@@ -714,12 +704,9 @@ class Atomic(object):
             else:
                 return 1, 1
 
-        _images = self.get_images(get_all=self.args.all)
-
-        used_image_ids = [x['ImageID'] for x in self.get_containers()]
+        _images = self.images()
 
         if len(_images) >= 0:
-            vuln_ids = self.get_vulnerable_ids()
             _max_repo, _max_tag = get_col_lengths(_images)
             if self.args.truncate:
                 _max_id = 14
@@ -737,7 +724,42 @@ class Atomic(object):
                                               "CREATED",
                                               "VIRTUAL SIZE",
                                               "TYPE"))
+
             for image in _images:
+                if self.args.filter:
+                    image_info = {"repo" : image['repo'], "tag" : image['tag'], "id" : image['id'],
+                                  "created" : image['created'], "size" : image['virtual_size'], "type" : image['type']}
+                    if not self._filter_include_image(image_info):
+                        continue
+                if self.args.quiet:
+                    util.write_out(image['id'])
+
+                else:
+                    indicator = ""
+                    if image["is_dangling"]:
+                        indicator += "*"
+                    elif image["used_image"]:
+                        indicator += ">"
+                    if image["vulnerable"]:
+                        space = " " if len(indicator) < 1 else ""
+                        if util.is_python2:
+                            indicator = indicator + self.skull + space
+                        else:
+                            indicator = indicator + str(self.skull, "utf-8") + space
+                    util.write_out(col_out.format(indicator, image['repo'], image['tag'], image['id'], image['created'], image['virtual_size'], image['type']))
+            util.write_out("")
+            return
+
+    def images(self):
+        _images = self.get_images()
+        all_image_info = []
+
+        if len(_images) >= 0:
+            vuln_ids = self.get_vulnerable_ids()
+            all_vuln_info = json.loads(self.get_all_vulnerable_info())
+            used_image_ids = [x['ImageID'] for x in self.get_containers()]
+            for image in _images:
+                image_dict = dict()
                 repo, tag = image["RepoTags"][0].rsplit(":", 1)
                 if "Created" in image:
                     created = time.strftime("%F %H:%M", time.localtime(image["Created"]))
@@ -748,35 +770,24 @@ class Atomic(object):
                 else:
                     virtual_size = ""
 
-                if self.is_dangling(repo):
-                    indicator = "*"
-                elif image['Id'] in used_image_ids:
-                    indicator = ">"
-                else:
-                    indicator = ""
-
-                if image['Id'] in vuln_ids:
-                    space = " " if len(indicator) < 1 else ""
-                    indicator = indicator + self.skull + space
-
+                image_dict["is_dangling"] = self.is_dangling(repo)
+                image_dict["used_image"] = image["Id"] in used_image_ids
+                image_dict["vulnerable"] = image["Id"] in vuln_ids
                 image_id = image["Id"][:12] if self.args.truncate else image["Id"]
                 image_type = image['ImageType']
-                if self.args.filter:
-                    image_info = {"repo" : repo, "tag" : tag, "id" : image_id,
-                                  "created" : created, "size" : virtual_size, "type" : image_type}
-                    if not self._filter_include_image(image_info):
-                        continue
-
-                if self.args.quiet:
-                    util.write_out(image_id)
+                image_dict["repo"] = repo
+                image_dict["tag"] = tag
+                image_dict["id"] = image_id
+                image_dict["created"] = created
+                image_dict["virtual_size"] = virtual_size
+                image_dict["type"] = image_type
+                if image_dict["vulnerable"]:
+                    image_dict["vuln_info"] = all_vuln_info[image["Id"]]
                 else:
-                    util.write_out(col_out.format(indicator, repo,
-                                                  tag, image_id,
-                                                  created,
-                                                  virtual_size,
-                                                  image_type))
-            util.write_out("")
-            return
+                    image_dict["vuln_info"] = dict()
+
+                all_image_info.append(image_dict)
+            return all_image_info
 
     def _check_if_image_present(self):
         self.inspect = self._inspect_image()
@@ -1089,6 +1100,17 @@ class Atomic(object):
     def set_debug(self):
         if self.args.debug:
             self.debug = True
+
+    def get_all_vulnerable_info(self):
+        """
+        Will simply read and return the entire /var/lib/atomic/scan_summary.json
+        as a JSON string so it can then be parsed appropriately.
+        """
+        try:
+            return open(os.path.join(self.results, "scan_summary.json"), "r").read()
+        except IOError:
+            return "{}"
+
 
     def get_vulnerable_ids(self):
         """

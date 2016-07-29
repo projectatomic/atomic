@@ -43,6 +43,9 @@ class atomic_dbus(slip.dbus.service.Object):
             self.images = False
             self.containers = False
             self.container = False
+            self.prune = False
+            self.heading = False
+            self.truncate = False
 
     def __init__(self, *p, **k):
         super(atomic_dbus, self).__init__(*p, **k)
@@ -243,6 +246,23 @@ class atomic_dbus(slip.dbus.service.Object):
         args.image = image
         self.atomic.set_args(args)
         self.atomic.update()
+
+    # The Images method will list all installed container images on the system.
+    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @dbus.service.method("org.atomic", in_signature='', out_signature='s')
+    def Images(self):
+        args = self.Args()
+        self.atomic.set_args(args)
+        return json.dumps(self.atomic.images())
+
+    # The Vulnerable method will send back information that says
+    # whether or not an installed container image is vulnerable
+    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @dbus.service.method("org.atomic", in_signature='', out_signature='s')
+    def VulnerableInfo(self):
+        args = self.Args()
+        self.atomic.set_args(args)
+        return self.atomic.get_all_vulnerable_info()
 
 
 if __name__ == "__main__":

@@ -146,6 +146,8 @@ class Scan(Atomic):
 
             # record environment
             self.record_environment()
+
+            self.write_persistent_data()
         finally:
             # unmount all the rootfs
             self._unmount_rootfs_in_dir()
@@ -195,6 +197,11 @@ class Scan(Atomic):
                                  "scan. See 'atomic scan --help' for more information")
 
         return scan_list
+
+    def _get_roots_path_from_bind_name(self, in_bind_name):
+        for _path, bind_path in self.rootfs_mappings.items():
+            if bind_path == os.path.basename(os.path.split(in_bind_name)[0]):
+                return _path
 
     def get_scan_data(self):
         results = []
@@ -251,21 +258,12 @@ class Scan(Atomic):
         Write results of the scan to stdout
         :return: None
         """
-        def _get_roots_path_from_bind_name(in_bind_name):
-            for _path, bind_path in self.rootfs_mappings.items():
-                if bind_path == os.path.basename(os.path.split(in_bind_name)[0]):
-                    return _path
-
-        persistent_data = {}
         json_files = self._get_json_files()
         for json_file in json_files:
             json_results = json.load(open(json_file))
 
             uuid = os.path.basename(json_results['UUID']) if len(self.args.rootfs) == 0 \
-                else _get_roots_path_from_bind_name(json_file)
-
-            # Get data from the results for persistent use
-            persistent_data[uuid] = self.get_persist_data(json_results, json_file)
+                else self._get_roots_path_from_bind_name(json_file)
 
             name1 = uuid if len(self.args.rootfs) > 1 else self._get_input_name_for_id(uuid)
             if len(self.args.rootfs) == 0 and not self._is_iid(uuid):
@@ -304,9 +302,6 @@ class Scan(Atomic):
                 util.write_out("{}{} is not supported for this scan."
                                .format(' ' * 5, self._get_input_name_for_id(uuid)))
         util.write_out("\nFiles associated with this scan are in {}.\n".format(self.results_dir))
-
-        self.write_persistent_data(persistent_data)
-
 
     def _output_custom(self, value, indent):
         space = ' ' * indent
@@ -460,7 +455,15 @@ class Scan(Atomic):
         persist['json_file'] = json_file
         return persist
 
-    def write_persistent_data(self, new_data):
+
+    def write_persistent_data(self):
+        new_data = dict()
+        json_files = self._get_json_files()
+        for json_file in json_files:
+            json_results = json.load(open(json_file))
+            uuid = os.path.basename(json_results['UUID']) if len(self.args.rootfs) == 0 \
+                else self._get_roots_path_from_bind_name(json_file)
+            new_data[uuid] = self.get_persist_data(json_results, json_file)
         summary_file = os.path.join(self.results, "scan_summary.json")
         if not os.path.exists(summary_file):
             persistent_data = new_data
@@ -473,10 +476,9 @@ class Scan(Atomic):
                     persistent_data[uuid] = new_data[uuid]
 
             # Clean up old data
-            for uuid in persistent_data.keys():
+            for uuid in list(persistent_data):
                 if uuid not in iids and uuid not in cids:
                     del persistent_data[uuid]
 
         with open(summary_file, 'w') as f:
             json.dump(persistent_data, f, indent=4)
-

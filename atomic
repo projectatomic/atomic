@@ -317,7 +317,7 @@ def create_parser(help_text):
                                               help=_("list container images on your system"),
                                               epilog="atomic images by default will list all installed "
                                                      "container images on your system.")
-    list_parser.set_defaults(func='images')
+    list_parser.set_defaults(func='display_all_image_info')
 
     list_parser.add_argument("-a", "--all", dest="all", default=False,
                              action="store_true",
