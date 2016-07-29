@@ -5,7 +5,7 @@ from Atomic import atomic
 class TestAtomicPull(unittest.TestCase):
     class Args():
         def __init__(self):
-            self.image = "fedora"
+            self.image = "docker:fedora"
             self.user = False
 
     def test_pull_as_privileged_user(self):
