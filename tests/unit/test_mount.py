@@ -14,8 +14,12 @@ class TestAtomicMount(unittest.TestCase):
 
             # assertRaisesRegexp was deprecated by assertRaisesRegex.
             # If it is present, prefer assertRaisesRegex.
-            self.assertRaisesRegexp(mount.MountError, exp, m.mount, 'fedora:22') #pylint: disable=deprecated-method
-            self.assertRaisesRegexp(mount.MountError, exp, m.unmount) #pylint: disable=deprecated-method
+            if hasattr(self, 'assertRaisesRegex'):
+                assertRaisesRegex = getattr(self, "assertRaisesRegex")
+            else:
+                assertRaisesRegex = getattr(self, "assertRaisesRegexp")
+            assertRaisesRegex(mount.MountError, exp, m.mount, 'fedora:22')
+            assertRaisesRegex(mount.MountError, exp, m.unmount)
 
     def test_default_options(self):
         with mount.DockerMount('foobar') as m:
