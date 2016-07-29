@@ -98,13 +98,13 @@ class Mount(Atomic):
             d.mount(self.image, self.options)
 
             # only need to bind-mount on the devicemapper driver
-            if self.d.info()['Driver'] == 'devicemapper':
+            if self._info()['Driver'] == 'devicemapper':
                 Mount.mount_path(os.path.join(self.mountpoint, "rootfs"),
                                  self.mountpoint,
                                  bind=True)
 
         except (MountError, NoDockerDaemon) as dme:
-            raise ValueError(str(dme))
+            raise ValueError(dme)
 
     def unmount(self):
 
@@ -122,7 +122,7 @@ class Mount(Atomic):
             return DockerMount(self.mountpoint).unmount()
 
         except MountError as dme:
-            raise ValueError(str(dme))
+            raise ValueError(dme)
 
     # LVM DeviceMapper Utility Methods
     @staticmethod
@@ -280,7 +280,7 @@ class DockerMount(Mount):
                 }
             )['Id']
         except docker.errors.APIError as ex:
-            raise MountError(str(ex))
+            raise MountError(ex)
         self.tmp_image = iid
         if image_only:
             return iid
@@ -419,7 +419,7 @@ class DockerMount(Mount):
             self.mountpoint = os.path.join(self.mountpoint, cid[:20])
 
             try:
-                if not os.path.exists(self.mountpoint) :
+                if not os.path.exists(self.mountpoint):
                     os.mkdir(self.mountpoint)
             except (TypeError, OSError) as e:
                 raise MountError(e)
@@ -470,7 +470,10 @@ class DockerMount(Mount):
         except MountError as de:
             self._cleanup_container(cinfo)
             if not self.live:
-                Mount._remove_thin_device(dm_dev_name)
+                try:
+                    Mount._remove_thin_device(dm_dev_name)
+                except MountError:
+                    pass
             raise de
 
     def _mount_overlay(self, identifier, options):
