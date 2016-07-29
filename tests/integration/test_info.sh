@@ -13,11 +13,11 @@ validTest1 () {
 
 
 TEST_1=`${ATOMIC} info atomic-test-1`
-TEST_CENTOS=`${ATOMIC} info centos:latest`
+TEST_CENTOS=`${ATOMIC} info centos:latest | sort`
 
 set +e
 
-TEST_CENTOS_REMOTE=`${ATOMIC} info --remote centos:latest`
+TEST_CENTOS_REMOTE=`${ATOMIC} info --remote centos:latest | sort`
 HAS_REMOTE=$?
 TEST_DOES_NOT_EXIST=`${ATOMIC} info this-is-not-a-real-image`
 
