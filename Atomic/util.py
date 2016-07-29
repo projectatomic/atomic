@@ -1,3 +1,4 @@
+import errno
 import shlex
 import sys
 import json
@@ -404,8 +405,12 @@ def find_remote_image(client, image):
     registry and image.
     :return: str(fq name)
     """
-    results = client.search(image)
-    for x in results:
-        if x['name'] == image:
-            return '{}/{}'.format(x['registry_name'], x['name'])
+    try:
+        results = client.search(image)
+        for x in results:
+            if x['name'] == image:
+                return '{}/{}'.format(x['registry_name'], x['name'])
+    except (ValueError, IOError) as e:
+        if e.args[0].args[0] == errno.ENOENT:
+            raise ValueError("Image not found")
     return None

@@ -1,6 +1,7 @@
 import docker
 from docker.utils import kwargs_from_env
 import sys
+import requests
 
 def get_docker_client():
     """
@@ -22,7 +23,13 @@ def check_if_python2():
 
 class AtomicDocker():
     def __init__(self):
-        self._dockerclient = get_docker_client()
+        self._client = None
+
+    @property
+    def _dockerclient(self):
+        if not self._client:
+            self._client = get_docker_client()
+        return self._client
 
     def __dir__(self):
         return dir(self._dockerclient)
@@ -41,20 +48,26 @@ class AtomicDocker():
 
     def __getattribute__(self, name):
         # Avoid recursion for self._dockerclient
-        if name == "_dockerclient":
+        if name == "_dockerclient" or name == "_client":
             return object.__getattribute__(self, name)
         obj = self._dockerclient
         attr = docker.AutoVersionClient.__getattribute__(obj, name)
         if hasattr(attr, '__call__'):
             def newfunc(*args, **kwargs):
-                result = attr(*args, **kwargs)
-                return iter_subs(result)
+                try:
+                    result = attr(*args, **kwargs)
+                    return iter_subs(result)
+                except requests.exceptions.ConnectionError as e:
+                    if name == "containers" or name == "images":
+                        return []
+                    raise e
             return newfunc
         else:
             return attr
 
     def close(self):
-        self._dockerclient.close()
+        if self._client != None:
+            self._client.close()
 
 is_python2 = check_if_python2()[1]
 
