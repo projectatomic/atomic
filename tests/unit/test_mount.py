@@ -8,7 +8,7 @@ class TestAtomicMount(unittest.TestCase):
         def mock_info():
             return {'Driver': 'foobardriver'}
         with mount.DockerMount('foobar') as m:
-            m.d.info = mock_info
+            m._info = mock_info  # pylint: disable=protected-access
             exp = 'Atomic mount is not supported on the foobardriver docker ' \
                   'storage backend.'
 

@@ -87,6 +87,9 @@ class Mount(Atomic):
         if hasattr(args, "image"):
             self.image = args.image
 
+    def _info(self):
+        return self.d.info()
+
     def mount(self):
         try:
             d = OSTreeMount(self.args, self.mountpoint, live=self.live, shared=self.shared)
@@ -365,7 +368,7 @@ class DockerMount(Mount):
             pass
 
         try:
-            driver = self.d.info()['Driver']
+            driver = self._info()['Driver']
         except requests.exceptions.ConnectionError:
             raise NoDockerDaemon()
 
@@ -381,7 +384,7 @@ class DockerMount(Mount):
             options=[]
         raise MountError('Atomic mount is not supported on the {} docker '
                          'storage backend.'
-                         ''.format(self.d.info()['Driver']))
+                         ''.format(self._info()['Driver']))
 
     def default_options(self, options, default_con=None, default_opt=None):
         """
@@ -408,7 +411,7 @@ class DockerMount(Mount):
             raise MountError('Cannot set mount options for live container '
                              'mount.')
 
-        info = self.d.info()
+        info = self._info()
 
         cid = self._identifier_as_cid(identifier)
 
@@ -547,7 +550,7 @@ class DockerMount(Mount):
         """
         Unmounts and cleans-up after a previous mount().
         """
-        driver = self.d.info()['Driver']
+        driver = self._info()['Driver']
         driver_unmount_fn = getattr(self, "_unmount_" + driver,
                                     self._unsupported_backend)
         if path is not None:
