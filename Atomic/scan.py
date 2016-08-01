@@ -26,6 +26,7 @@ class Scan(Atomic):
         self.debug = False
         self.rootfs_mappings = {}
         self.scanner = None
+        self.mount_paths = {}
 
     def get_scanners_list(self):
         return json.dumps(self.scanners)
@@ -214,7 +215,8 @@ class Scan(Atomic):
 
     def _mount_scan_rootfs(self, scan_list):
         for docker_object in scan_list:
-            mount_path = os.path.join(self.chroot_dir, docker_object['Id'])
+            mount_path = os.path.join(self.chroot_dir, docker_object['Id'].replace("/", "_"))
+            self.mount_paths[os.path.basename(mount_path.rstrip('/'))] = docker_object['Id']
             os.mkdir(mount_path)
             if self.debug:
                 util.write_out("Created {}".format(mount_path))
@@ -264,7 +266,7 @@ class Scan(Atomic):
         for json_file in json_files:
             json_results = json.load(open(json_file))
 
-            uuid = os.path.basename(json_results['UUID']) if len(self.args.rootfs) == 0 \
+            uuid = self.mount_paths[os.path.basename(json_results['UUID']).rstrip('/')] if len(self.args.rootfs) == 0 \
                 else self._get_roots_path_from_bind_name(json_file)
 
             name1 = uuid if len(self.args.rootfs) > 1 else self._get_input_name_for_id(uuid)
