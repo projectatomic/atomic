@@ -185,8 +185,7 @@ class SystemContainers(object):
         os.makedirs(rootfs)
 
         rev = repo.resolve_rev(imagebranch, False)[1]
-
-        manifest = SystemContainers._get_commit_metadata(repo, rev, "docker.manifest")
+        manifest = self._image_manifest(repo, rev)
 
         rootfs_fd = None
         try:
@@ -194,7 +193,7 @@ class SystemContainers(object):
             if manifest is None:
                 self._checkout_layer(repo, rootfs_fd, rootfs, rev)
             else:
-                layers = SystemContainers._get_layers_from_manifest(json.loads(manifest))
+                layers = SystemContainers.get_layers_from_manifest(json.loads(manifest))
                 for layer in layers:
                     rev_layer = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer.replace("sha256:", "")), False)[1]
                     self._checkout_layer(repo, rootfs_fd, rootfs, rev_layer)
@@ -369,6 +368,23 @@ class SystemContainers(object):
         ref = OSTree.parse_refspec(imagebranch)
         repo.set_ref_immediate(ref[1], ref[2], None)
 
+    def inspect_system_image(self, image):
+        repo = self._get_ostree_repo()
+        if not repo:
+            return None
+        imagebranch = SystemContainers._get_ostree_image_branch(image)
+        return self._inspect_system_branch(repo, imagebranch)
+
+    def _inspect_system_branch(self, repo, imagebranch):
+        commit_rev = repo.resolve_rev(imagebranch, False)[1]
+        commit = repo.load_commit(commit_rev)[1]
+
+        tag = ":".join(imagebranch.replace("ociimage/", "").rsplit('-', 1))
+        timestamp = OSTree.commit_get_timestamp(commit)
+
+        return {'Id' : commit_rev, 'RepoTags' : [tag], 'Names' : [], 'Created': timestamp,
+                'ImageType' : "System", 'Labels' : {}}
+
     def get_system_images(self, repo=None):
         if repo is None:
             repo = self._get_ostree_repo()
@@ -377,16 +393,7 @@ class SystemContainers(object):
         revs = [x for x in repo.list_refs()[1] if x.startswith(OSTREE_OCIIMAGE_PREFIX) \
                 and len(x) != len(OSTREE_OCIIMAGE_PREFIX) + 64]
 
-        def get_system_image(rev):
-            commit_rev = repo.resolve_rev(rev, False)[1]
-            commit = repo.load_commit(commit_rev)[1]
-
-            tag = ":".join(rev.replace("ociimage/", "").rsplit('-', 1))
-            timestamp = OSTree.commit_get_timestamp(commit)
-            return {'Id' : commit_rev, 'RepoTags' : [tag], 'Names' : [], 'Created': timestamp,
-                    'ImageType' : "System"}
-
-        return [get_system_image(x) for x in revs]
+        return [self._inspect_system_branch(repo, x) for x in revs]
 
     def _systemctl_command(self, command, name):
         cmd = ["systemctl", command, name]
@@ -435,11 +442,10 @@ class SystemContainers(object):
                     app_refs.append(i)
 
         def visit(rev):
-            commit = repo.resolve_rev(rev, False)[1]
-            manifest = SystemContainers._get_commit_metadata(repo, commit, "docker.manifest")
+            manifest = self.get_manifest(repo, rev)
             if not manifest:
                 return
-            for layer in SystemContainers._get_layers_from_manifest(json.loads(manifest)):
+            for layer in SystemContainers.get_layers_from_manifest(json.loads(manifest)):
                 refs[OSTREE_OCIIMAGE_PREFIX + layer.replace("sha256:", "")] = True
 
         for app in app_refs:
@@ -499,8 +505,28 @@ class SystemContainers(object):
         args, img = self._convert_to_skopeo(image)
         return util.skopeo_layers(img, args, layers)
 
+    def _image_manifest(self, repo, rev):
+        return SystemContainers._get_commit_metadata(repo, rev, "docker.manifest")
+
+    def get_manifest(self, image, remote=False):
+        repo = self._get_ostree_repo()
+        if not repo:
+            return None
+
+        if remote:
+            return self._skopeo_get_manifest(image)
+
+        imagebranch = SystemContainers._get_ostree_image_branch(image)
+        commit_rev = repo.resolve_rev(imagebranch, True)
+        if not commit_rev[1]:
+            return None
+        return self._image_manifest(repo, commit_rev[1])
+
     @staticmethod
-    def _get_layers_from_manifest(manifest):
+    def get_layers_from_manifest(manifest):
+        if isinstance(manifest, str):
+            manifest = json.loads(manifest)
+
         fs_layers = manifest.get("fsLayers")
         if fs_layers:
             layers = list(i["blobSum"] for i in fs_layers)
@@ -593,7 +619,7 @@ class SystemContainers(object):
             return False
 
         manifest = self._skopeo_get_manifest(img)
-        layers = SystemContainers._get_layers_from_manifest(manifest)
+        layers = SystemContainers.get_layers_from_manifest(manifest)
         missing_layers = []
         for i in layers:
             layer = i.replace("sha256:", "")

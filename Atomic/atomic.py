@@ -377,10 +377,11 @@ class Atomic(object):
                     stderr=DEVNULL)
 
     def _inspect_image(self, image=None):
+        image = image or self.image
         try:
-            if image:
-                return self.d.inspect_image(image)
-            return self.d.inspect_image(self.image)
+            if self.syscontainers.has_system_container_image(image):
+                return self.syscontainers.inspect_system_image(image)
+            return self.d.inspect_image(image)
         except NotFound:
             pass
         except requests.exceptions.ConnectionError:
@@ -627,7 +628,9 @@ class Atomic(object):
                              .format(self.args.image))
         # Check if the input is an image id associated with more than one
         # repotag.  If so, error out.
-        if self.is_iid():
+        if self.syscontainers.has_system_container_image(self.image):
+            pass
+        elif self.is_iid():
             self.get_fq_name(self._inspect_image())
         # The input is not an image id
         else:
@@ -851,9 +854,13 @@ class Atomic(object):
             raise ValueError("Image '%s' does not exist" % self.image)
         version = ("%s-%s-%s" % (get_label("Name"), get_label("Version"),
                                  get_label("Release"))).strip("-")
+        if 'Parent' in image:
+            parent = image['Parent']
+        else:
+            parent = ""
         return({"Id": image['Id'], "Name": get_label("Name"),
                 "Version": version, "Tag": find_repo_tag(self.d, image['Id'], self.image),
-                "Parent": image['Parent']})
+                "Parent": parent})
 
     def get_layers(self):
         layers = []
