@@ -381,9 +381,15 @@ class SystemContainers(object):
 
         tag = ":".join(imagebranch.replace("ociimage/", "").rsplit('-', 1))
         timestamp = OSTree.commit_get_timestamp(commit)
+        labels = {}
 
+        manifest = self._image_manifest(repo, commit_rev)
+        if manifest:
+            manifest = json.loads(manifest)
+            if 'Labels' in manifest:
+                labels = manifest['Labels']
         return {'Id' : commit_rev, 'RepoTags' : [tag], 'Names' : [], 'Created': timestamp,
-                'ImageType' : "System", 'Labels' : {}}
+                'ImageType' : "System", 'Labels' : labels}
 
     def get_system_images(self, repo=None):
         if repo is None:
