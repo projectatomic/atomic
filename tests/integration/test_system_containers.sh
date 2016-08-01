@@ -143,6 +143,11 @@ fi
 ${ATOMIC} pull docker.io/busybox
 ostree --repo=${ATOMIC_OSTREE_REPO} refs | grep busybox
 
+${ATOMIC} verify busybox > verify.out
+if grep -q "contains images or layers that have updates" verify.out; then
+    exit 1
+fi
+
 # check that there are not any "ociimage/" prefixed branch left after images prune
 ${ATOMIC} images delete -f atomic-test-system
 ${ATOMIC} images delete -f busybox

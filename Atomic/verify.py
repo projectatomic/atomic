@@ -4,11 +4,48 @@ import os
 from docker.errors import NotFound
 from operator import itemgetter
 from .atomic import AtomicError
+from .syscontainers import SystemContainers
+import itertools
+import subprocess
 
 class Verify(Atomic):
     def __init__(self):
         super(Verify, self).__init__()
         self.debug = False
+
+    def verify_system_image(self):
+        manifest = self.syscontainers.get_manifest(self.image)
+        layers = SystemContainers.get_layers_from_manifest(manifest)
+        remote = True
+        try:
+            remote_manifest = self.syscontainers.get_manifest(self.image, remote=True)
+            remote_layers = SystemContainers.get_layers_from_manifest(remote_manifest)
+        except subprocess.CalledProcessError:
+            remote_layers = []
+            remote = False
+
+        if hasattr(itertools, 'izip_longest'):
+            zip_longest = getattr(itertools, 'izip_longest')
+        else:
+            zip_longest = getattr(itertools, 'zip_longest')
+
+        images = []
+        for local, remote in zip_longest(layers, remote_layers):
+            images.append({'iid': self.image,
+                           'local_nvr': local,
+                           'latest_nvr': remote,
+                           'remote': remote,
+                           'no_version' : True,
+                           'tag': self.image,
+            })
+
+        not_matching = [x for x in images if x['local_nvr'] != x['latest_nvr']]
+        if len(not_matching) == 0:
+            pass
+        elif self.args.verbose:
+            self._print_verify_verbose(images, self.image)
+        else:
+            self._print_verify(images, self.image)
 
     def verify(self):
         """
@@ -31,6 +68,10 @@ class Verify(Atomic):
 
         # Set debug bool
         self.set_debug()
+
+        if self.syscontainers.has_system_container_image(self.image):
+            return self.verify_system_image()
+
         # Check if the input is an image id associated with more than one
         # repotag.  If so, error out.
         if self.is_iid():
