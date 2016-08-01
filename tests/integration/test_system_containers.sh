@@ -107,12 +107,12 @@ mkdir ${WORK_DIR}/mount
 
 # Test that mount and umount work
 
-# Check that --live and --shared fail
+# Check that --live fails
 OUTPUT=$(! ${ATOMIC} mount --live ${NAME} ${WORK_DIR}/mount 2>&1)
 grep "do not support --live" <<< $OUTPUT
 
-OUTPUT=$(! ${ATOMIC} mount --shared ${NAME} ${WORK_DIR}/mount 2>&1)
-grep "do not support --shared" <<< $OUTPUT
+${ATOMIC} mount --shared ${NAME} ${WORK_DIR}/mount
+${ATOMIC} umount ${WORK_DIR}/mount
 
 # mount a container
 ${ATOMIC} mount ${NAME} ${WORK_DIR}/mount

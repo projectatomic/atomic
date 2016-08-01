@@ -706,8 +706,6 @@ class OSTreeMount(Mount):
         if has_container or has_image:
             if self.live:
                 raise MountError('Containers and images managed through OSTree do not support --live.')
-            if self.shared:
-                raise MountError('Containers and images managed through OSTree do not support --shared.')
 
         if has_container:
             typ = "container"
