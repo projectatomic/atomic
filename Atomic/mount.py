@@ -720,7 +720,16 @@ class OSTreeMount(Mount):
         else:
             return False
 
-        setxattr(self.mountpoint, "user.atomic.type", ("ostree-%s" % typ).encode()) # pylint: disable=not-callable
+        typ = ("ostree-%s" % typ).encode()
+        try:
+            setxattr(self.mountpoint, "user.atomic.type", typ) # pylint: disable=not-callable
+        except IOError:
+            mountpoint = self.mountpoint.rstrip('/')
+            infofile = os.path.join(os.path.dirname(mountpoint), ".%s.info" % os.path.basename(mountpoint))
+            with open(infofile, 'w') as f:
+                data = json.dumps({"user.atomic.type" : typ})
+                f.write(data)
+
         Mount.mount_path(self.mountpoint, self.mountpoint, bind=True, optstring=(','.join(options)))
         return True
 
@@ -734,10 +743,18 @@ class OSTreeMount(Mount):
         if not self.mountpoint:
             return False
 
+        typ = None
         try:
             typ = getxattr(self.mountpoint, "user.atomic.type") # pylint: disable=not-callable
         except IOError:
             pass
+
+        mountpoint = self.mountpoint.rstrip('/')
+        infofile = os.path.join(os.path.dirname(mountpoint), ".%s.info" % os.path.basename(mountpoint))
+        if typ == None and os.path.exists(infofile):
+            with open(infofile) as f:
+                info = json.loads(f.read())
+                typ = info['user.atomic.type']
 
         if not typ or "ostree" not in typ.decode():
             return False
@@ -751,6 +768,10 @@ class OSTreeMount(Mount):
                     os.unlink(path)
                 else:
                     shutil.rmtree(path)
+        try:
             removexattr(self.mountpoint, "user.atomic.type") # pylint: disable=not-callable
+        except IOError:
+            if os.path.exists(infofile):
+                os.unlink(infofile)
 
         return True
