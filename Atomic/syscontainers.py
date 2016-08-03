@@ -193,7 +193,7 @@ class SystemContainers(object):
 
         util.write_out("Extracting to %s" % destination)
 
-        if 'display' in self.args and self.args.display:
+        if hasattr(self.args, 'display') and self.args.display:
             return
 
         if extract_only:
@@ -348,7 +348,7 @@ class SystemContainers(object):
                 repo.create(OSTree.RepoMode.BARE_USER)
             else:
                 repo.create(OSTree.RepoMode.BARE)
-                
+
         repo.open(None)
         return repo
 

@@ -131,7 +131,7 @@ require([
     var text = "Repository            Last Scanned\n";
     call.done(function(result) {
       response = JSON.parse(result);
-      for (var i = 2; i < response.length; i++) {
+      for (var i = 0; i < response.length; i++) {
         text += response[i]["repo"] + "            ";
         var checkbox = document.createElement('input');
         checkbox.type = "checkbox";
