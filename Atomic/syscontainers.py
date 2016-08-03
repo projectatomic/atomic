@@ -80,7 +80,7 @@ class SystemContainers(object):
         # Accessing .disable_fsync and .process_whiteouts thus results in a segfault in
         # libostree.  Re-enable this once it gets fixed.
         if OSTREE_SAFE_GLIB_REPO_CHECKOUT_OPTIONS:
-            options = OSTree.RepoCheckoutOptions()
+            options = OSTree.RepoCheckoutOptions() # pylint: disable=no-member 
             options.overwrite_mode = OSTree.RepoCheckoutOverwriteMode.UNION_FILES
             options.process_whiteouts = True
             options.disable_fsync = True
