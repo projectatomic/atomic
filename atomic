@@ -56,14 +56,17 @@ except IOError:
     import builtins # pylint: disable=import-error
     builtins.__dict__['_'] = str
 
-
 class HelpByDefaultArgumentParser(argparse.ArgumentParser):
 
     def error(self, message):
-        write_err('%s: %s' % (sys.argv[0], message))
+        write_err('%s: %s' % (self.prog, message))
         write_err("Try '%s --help' for more information." % self.prog)
         sys.exit(2)
 
+    def print_usage(self, message="too few arguments"):
+        self.prog = " ".join(sys.argv)
+        self.error(message)
+        
 
 # Code for python2 copied from Adrian Sampson hack
 # https://gist.github.com/sampsyo/471779
