@@ -751,7 +751,7 @@ class Atomic(object):
             return
 
     def images(self):
-        _images = self.get_images()
+        _images = self.get_images(get_all=self.args.all)
         all_image_info = []
 
         if len(_images) >= 0:
