@@ -763,7 +763,10 @@ class Atomic(object):
             used_image_ids = [x['ImageID'] for x in self.get_containers()]
             for image in _images:
                 image_dict = dict()
-                repo, tag = image["RepoTags"][0].rsplit(":", 1)
+                if ':' in image["RepoTags"][0]:
+                    repo, tag = image["RepoTags"][0].rsplit(":", 1)
+                else:
+                    repo, tag = image["RepoTags"][0], ""
                 if "Created" in image:
                     created = time.strftime("%F %H:%M", time.localtime(image["Created"]))
                 else:

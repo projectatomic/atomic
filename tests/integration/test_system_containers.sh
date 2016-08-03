@@ -148,6 +148,10 @@ if grep -q "contains images or layers that have updates" verify.out; then
     exit 1
 fi
 
+image_digest=$(ostree --repo=${ATOMIC_OSTREE_REPO} show --print-metadata-key=docker.manifest ociimage/busybox-latest | sed -e"s|.*Digest\": \"sha256:\([a-z0-9]\+\).*|\1|" | head -c 12)
+${ATOMIC} images list > images.out
+grep "busybox.*$image_digest" images.out
+
 # check that there are not any "ociimage/" prefixed branch left after images prune
 ${ATOMIC} images delete -f atomic-test-system
 ${ATOMIC} images delete -f busybox

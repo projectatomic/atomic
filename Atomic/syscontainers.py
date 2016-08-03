@@ -251,9 +251,17 @@ class SystemContainers(object):
                 args = ['runc', 'spec']
                 util.subp(args, cwd=destination)
 
+        image_manifest = self._image_manifest(repo, rev)
+        image_id = rev
+        if image_manifest:
+            image_manifest = json.loads(image_manifest)
+            if 'Digest' in image_manifest:
+                image_id = image_manifest['Digest'].replace("sha256:", "")
+
         with open(os.path.join(destination, "info"), 'w') as info_file:
             info = {"image" : img,
-                    "revision" : rev,
+                    "revision" : image_id,
+                    "ostree-commit": rev,
                     'created' : calendar.timegm(time.gmtime()),
                     "values" : values}
             info_file.write(json.dumps(info))
@@ -379,17 +387,27 @@ class SystemContainers(object):
         commit_rev = repo.resolve_rev(imagebranch, False)[1]
         commit = repo.load_commit(commit_rev)[1]
 
-        tag = ":".join(imagebranch.replace("ociimage/", "").rsplit('-', 1))
+        branch_id = imagebranch.replace("ociimage/", "")
+        tag = ":".join(branch_id.rsplit('-', 1))
         timestamp = OSTree.commit_get_timestamp(commit)
         labels = {}
 
         manifest = self._image_manifest(repo, commit_rev)
+        if len(branch_id) == 64:
+            image_id = branch_id
+        else:
+            image_id = commit_rev
+
         if manifest:
             manifest = json.loads(manifest)
             if 'Labels' in manifest:
                 labels = manifest['Labels']
-        return {'Id' : commit_rev, 'RepoTags' : [tag], 'Names' : [], 'Created': timestamp,
-                'ImageType' : "System", 'Labels' : labels}
+
+            if 'Digest' in manifest:
+                image_id = manifest['Digest'].replace("sha256:", "")
+
+        return {'Id' : image_id, 'RepoTags' : [tag], 'Names' : [], 'Created': timestamp,
+                'ImageType' : "System", 'Labels' : labels, 'OSTree-rev' : commit_rev}
 
     def get_system_images(self, repo=None):
         if repo is None:
