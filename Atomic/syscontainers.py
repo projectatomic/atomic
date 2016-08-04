@@ -240,16 +240,16 @@ class SystemContainers(object):
 
             outfile.write(result)
 
-        for i in ["config.json", "runtime.json"]:
-            src = os.path.join(exports, i)
-            if os.path.exists(src):
-                shutil.copyfile(src, os.path.join(destination, i))
-            elif os.path.exists(src + ".template"):
-                with open(src + ".template", 'r') as infile, open(os.path.join(destination, i), "w") as outfile:
-                    _write_template(src + ".template", infile.read(), values, outfile)
-            else:
-                args = ['runc', 'spec']
-                util.subp(args, cwd=destination)
+        src = os.path.join(exports, "config.json")
+        destination_path = os.path.join(destination, "config.json")
+        if os.path.exists(src):
+            shutil.copyfile(src, destination_path)
+        elif os.path.exists(src + ".template"):
+            with open(src + ".template", 'r') as infile, open(destination_path, "w") as outfile:
+                _write_template(src + ".template", infile.read(), values, outfile)
+        else:
+            args = ['runc', 'spec']
+            util.subp(args, cwd=destination)
 
         image_manifest = self._image_manifest(repo, rev)
         image_id = rev
