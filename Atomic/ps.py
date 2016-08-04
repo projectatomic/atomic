@@ -29,7 +29,7 @@ class Ps(Atomic):
                 continue
 
             image = i['Image']
-            command = ""
+            command = i['Command']
             created = created.strftime("%F %H:%M") # pylint: disable=no-member
             container_info = {"type" : "systemcontainer", "container" : container,
                               "image" : image, "command" : command, "created" : created,

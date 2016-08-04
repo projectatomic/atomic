@@ -89,6 +89,10 @@ if grep -q "test-system" ps.out; then
     exit 1
 fi
 
+${ATOMIC} ps --all --no-trunc --filter id=test-system > ps.out
+# Check the command is included in the output
+grep "test-system" ps.out | grep "/usr/bin/run.sh"
+
 systemctl stop ${NAME}
 
 ${ATOMIC} ps --all > ps.out
