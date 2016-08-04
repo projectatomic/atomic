@@ -38,8 +38,8 @@ SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE = """
 Description=$NAME
 
 [Service]
-ExecStart=/bin/runc start '$NAME'
-ExecStop=/bin/runc kill '$NAME'
+ExecStart=$EXEC_START
+ExecStop=$EXEC_STOP
 Restart=on-crash
 WorkingDirectory=$DESTDIR
 
@@ -158,7 +158,7 @@ class SystemContainers(object):
             raise ValueError("Invalid configuration file.  Path must be 'rootfs'")
 
     def _generate_default_oci_configuration(self, destination):
-        args = ['runc', 'spec']
+        args = ['/bin/runc', 'spec']
         util.subp(args, cwd=destination)
         conf_path = os.path.join(destination, "config.json")
         with open(conf_path, 'r') as conf:
@@ -169,6 +169,14 @@ class SystemContainers(object):
         configuration['process']['args'] = ['run.sh']
         with open(conf_path, 'w') as conf:
             conf.write(json.dumps(configuration, indent=4))
+
+    def _generate_systemd_startstop_directives(self, name):
+        version = str(util.check_output(["/bin/runc", "--version"], stderr=DEVNULL))
+        if "version 0" in version:
+            runc_commands = ["start", "kill"]
+        else:
+            runc_commands = ["run", "kill"]
+        return ["/bin/runc %s '%s'" % (command, name) for command in runc_commands]
 
     def _checkout_system_container(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False):
         if not values:
@@ -252,6 +260,7 @@ class SystemContainers(object):
 
         values["DESTDIR"] = destination
         values["NAME"] = name
+        values["EXEC_START"], values["EXEC_STOP"] = self._generate_systemd_startstop_directives(name)
 
         def _write_template(inputfilename, data, values, outfile):
             template = Template(data)
