@@ -500,7 +500,7 @@ class SystemContainers(object):
                     app_refs.append(i)
 
         def visit(rev):
-            manifest = self.get_manifest(repo, rev)
+            manifest = self._image_manifest(repo, repo.resolve_rev(rev, True)[1])
             if not manifest:
                 return
             for layer in SystemContainers.get_layers_from_manifest(json.loads(manifest)):
@@ -514,7 +514,6 @@ class SystemContainers(object):
                 ref = OSTree.parse_refspec(k)
                 util.write_out("Deleting %s" % k)
                 repo.set_ref_immediate(ref[1], ref[2], None)
-        return
 
     @staticmethod
     def get_default_system_name(image):
