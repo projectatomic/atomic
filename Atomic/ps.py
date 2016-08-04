@@ -5,6 +5,7 @@ from . import Atomic
 import subprocess
 from dateutil.parser import parse as dateparse
 from . import atomic
+import datetime
 
 class Ps(Atomic):
     def ps(self):
@@ -13,18 +14,23 @@ class Ps(Atomic):
         # Collect the system containers
         for i in self.syscontainers.get_system_containers():
             container = i["Id"]
+
+            status = "exited"
+            created = datetime.datetime.fromtimestamp(i["Created"])
             try:
                 inspect_stdout = util.check_output(["runc", "state", container], stderr=atomic.DEVNULL)
                 ret = json.loads(inspect_stdout.decode())
+                status = ret["status"]
+                created = dateparse(ret['created'])
             except (subprocess.CalledProcessError):
-                continue
-            status = ret["status"]
+                pass
+
             if not self.args.all and status != "running":
                 continue
 
             image = i['Image']
             command = ""
-            created = dateparse(ret['created']).strftime("%F %H:%M") # pylint: disable=no-member
+            created = created.strftime("%F %H:%M") # pylint: disable=no-member
             container_info = {"type" : "systemcontainer", "container" : container,
                               "image" : image, "command" : command, "created" : created,
                               "status" : status, "runtime" : "runc"}

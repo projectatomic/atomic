@@ -89,6 +89,16 @@ if grep -q "test-system" ps.out; then
     exit 1
 fi
 
+systemctl stop ${NAME}
+
+${ATOMIC} ps --all > ps.out
+grep "test-system" ps.out | grep "exited"
+
+${ATOMIC} ps --quiet > ps.out
+if grep -q "test-system" ps.out; then
+    exit 1
+fi
+
 test -e /etc/systemd/system/${NAME}.service
 
 # The value we set is exported into the config file
