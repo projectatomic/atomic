@@ -288,7 +288,7 @@ class SystemContainers(object):
                     "ostree-commit": rev,
                     'created' : calendar.timegm(time.gmtime()),
                     "values" : values}
-            info_file.write(json.dumps(info))
+            info_file.write(json.dumps(info, indent=4))
 
         if os.path.exists(unitfile):
             with open(unitfile, 'r') as infile:
