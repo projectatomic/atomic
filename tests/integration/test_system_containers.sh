@@ -152,6 +152,15 @@ image_digest=$(ostree --repo=${ATOMIC_OSTREE_REPO} show --print-metadata-key=doc
 ${ATOMIC} images list > images.out
 grep "busybox.*$image_digest" images.out
 
+${ATOMIC} images list > images.out
+${ATOMIC} images list --all > images.all.out
+test $(wc -l < images.out) -lt $(wc -l < images.all.out)
+grep -q '<none>' images.all.out
+OUTPUT=$(! grep -q '<none>' images.out)
+if test $OUTPUT \!= 0; then
+    exit 1
+fi
+
 # check that there are not any "ociimage/" prefixed branch left after images prune
 ${ATOMIC} images delete -f atomic-test-system
 ${ATOMIC} images delete -f busybox

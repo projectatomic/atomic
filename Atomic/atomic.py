@@ -699,8 +699,6 @@ class Atomic(object):
             If there are no images, return 1, 1
             '''
             repo_tags = [[i["repo"], i["tag"]] for i in _images]
-            # Integer additions below are for column padding
-            # 7 == 1 for dangling, 2 for spacing, 4 for highlighting
             if repo_tags:
                 return max([len(x[0]) for x in repo_tags]) + 2,\
                        max([len(x[1]) for x in repo_tags]) + 2
@@ -1080,7 +1078,7 @@ class Atomic(object):
         '''
         if get_all:
             if len(self.images_all_cache) == 0:
-                self.images_all_cache = self._get_docker_images(get_all=True) + self.syscontainers.get_system_images()
+                self.images_all_cache = self._get_docker_images(get_all=True) + self.syscontainers.get_system_images(get_all=True)
             return self.images_all_cache
         else:
             if len(self.images_cache) == 0:

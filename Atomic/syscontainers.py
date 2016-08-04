@@ -395,6 +395,7 @@ class SystemContainers(object):
         manifest = self._image_manifest(repo, commit_rev)
         if len(branch_id) == 64:
             image_id = branch_id
+            tag = "<none>"
         else:
             image_id = commit_rev
 
@@ -409,13 +410,13 @@ class SystemContainers(object):
         return {'Id' : image_id, 'RepoTags' : [tag], 'Names' : [], 'Created': timestamp,
                 'ImageType' : "System", 'Labels' : labels, 'OSTree-rev' : commit_rev}
 
-    def get_system_images(self, repo=None):
+    def get_system_images(self, get_all=False, repo=None):
         if repo is None:
             repo = self._get_ostree_repo()
             if repo is None:
                 return []
         revs = [x for x in repo.list_refs()[1] if x.startswith(OSTREE_OCIIMAGE_PREFIX) \
-                and len(x) != len(OSTREE_OCIIMAGE_PREFIX) + 64]
+                and (get_all or len(x) != len(OSTREE_OCIIMAGE_PREFIX) + 64)]
 
         return [self._inspect_system_branch(repo, x) for x in revs]
 
