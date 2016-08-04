@@ -157,6 +157,19 @@ class SystemContainers(object):
         if configuration['root']['path'] != 'rootfs':
             raise ValueError("Invalid configuration file.  Path must be 'rootfs'")
 
+    def _generate_default_oci_configuration(self, destination):
+        args = ['runc', 'spec']
+        util.subp(args, cwd=destination)
+        conf_path = os.path.join(destination, "config.json")
+        with open(conf_path, 'r') as conf:
+            configuration = json.loads(conf.read())
+        configuration['root']['readonly'] = True
+        configuration['root']['path'] = 'rootfs'
+        configuration['process']['terminal'] = False
+        configuration['process']['args'] = ['run.sh']
+        with open(conf_path, 'w') as conf:
+            conf.write(json.dumps(configuration, indent=4))
+
     def _checkout_system_container(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False):
         if not values:
             values = {}
@@ -258,8 +271,8 @@ class SystemContainers(object):
             with open(src + ".template", 'r') as infile, open(destination_path, "w") as outfile:
                 _write_template(src + ".template", infile.read(), values, outfile)
         else:
-            args = ['runc', 'spec']
-            util.subp(args, cwd=destination)
+            self._generate_default_oci_configuration(destination)
+
         self._check_oci_configuration_file(destination_path)
 
         image_manifest = self._image_manifest(repo, rev)
