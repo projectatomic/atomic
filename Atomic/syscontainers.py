@@ -147,6 +147,16 @@ class SystemContainers(object):
 
         return self._checkout_system_container(repo, name, image, 0, False)
 
+    def _check_oci_configuration_file(self, conf_path):
+        with open(conf_path, 'r') as conf:
+            configuration = json.loads(conf.read())
+        if not 'root' in configuration or \
+           not 'readonly' in configuration['root'] or \
+           not configuration['root']['readonly']:
+            raise ValueError("Invalid configuration file.  Only readonly images are supported")
+        if configuration['root']['path'] != 'rootfs':
+            raise ValueError("Invalid configuration file.  Path must be 'rootfs'")
+
     def _checkout_system_container(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False):
         if not values:
             values = {}
@@ -250,6 +260,7 @@ class SystemContainers(object):
         else:
             args = ['runc', 'spec']
             util.subp(args, cwd=destination)
+        self._check_oci_configuration_file(destination_path)
 
         image_manifest = self._image_manifest(repo, rev)
         image_id = rev
