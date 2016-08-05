@@ -34,7 +34,7 @@ def list_pvs(vgroup):
 
 def list_lvs(vgroup):
     return map(lambda s: s.strip(), # pylint: disable=deprecated-lambda, map-builtin-not-iterating
-               util.check_output([ "lvs", "--noheadings", "-o", "name", vgroup ]).splitlines()) 
+               util.check_output([ "lvs", "--noheadings", "-o", "name", vgroup ]).splitlines())
 def list_parents(dev):
     return util.check_output([ "lsblk", "-snlp", "-o", "NAME", dev ]).splitlines()[1:]
 
@@ -78,8 +78,6 @@ class Storage(Atomic):
     def modify(self):
         try:
             shutil.copyfile(self.dss_conf, self.dss_conf_bak)
-            if len(self.args.devices) > 0:
-                self._add_device(self.args.devices)
             if len(self.args.remove_devices) > 0:
                 self._remove_devices(self.args.remove_devices, only_unused=False)
             if self.args.remove_unused_devices:
@@ -88,6 +86,8 @@ class Storage(Atomic):
                 self._driver(self.args.driver)
             if self.args.vgroup is not None:
                 self._vgroup(self.args.vgroup)
+            if len(self.args.devices) > 0:
+                self._add_device(self.args.devices)
             if util.call(["docker-storage-setup"]) != 0:
                 os.rename(self.dss_conf_bak, self.dss_conf)
                 util.call(["docker-storage-setup"])
