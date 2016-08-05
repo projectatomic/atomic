@@ -805,6 +805,9 @@ class SystemContainers(object):
             imagebranch = SystemContainers._get_ostree_image_branch(img)
             return repo.resolve_rev(imagebranch, False)[0]
         except: #pylint: disable=bare-except
+            for i in self.get_system_images(get_all=True):
+                if i['Id'].startswith(img):
+                    return True
             return False
 
     def _pull_dockertar_layers(self, repo, imagebranch, temp_dir, input_layers):
