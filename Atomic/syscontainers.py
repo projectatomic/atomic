@@ -602,7 +602,14 @@ class SystemContainers(object):
         repo.prepare_transaction()
         for layer, tar in layers.items():
             mtree = OSTree.MutableTree()
-            repo.write_archive_to_mtree(Gio.File.new_for_path(tar), mtree, None, True)
+            def filter_func(*args):
+                info = args[2]
+                if info.get_file_type() == Gio.FileType.DIRECTORY:
+                    info.set_attribute_uint32("unix::mode", info.get_attribute_uint32("unix::mode") | stat.S_IWUSR)
+                return OSTree.RepoCommitFilterResult.ALLOW
+
+            modifier = OSTree.RepoCommitModifier(0, filter_func, None)
+            repo.write_archive_to_mtree(Gio.File.new_for_path(tar), mtree, modifier, True)
             root = repo.write_mtree(mtree)[1]
             metav = GLib.Variant("a{sv}", {'docker.layer': GLib.Variant('s', layer)})
             csum = repo.write_commit(None, "", None, metav, root)[1]
