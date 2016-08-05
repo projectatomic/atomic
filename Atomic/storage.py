@@ -86,6 +86,8 @@ class Storage(Atomic):
                 self._remove_devices(get_dss_devs(self.dss_conf), only_unused=True)
             if self.args.driver:
                 self._driver(self.args.driver)
+            if self.args.vgroup is not None:
+                self._vgroup(self.args.vgroup)
             if util.call(["docker-storage-setup"]) != 0:
                 os.rename(self.dss_conf_bak, self.dss_conf)
                 util.call(["docker-storage-setup"])
@@ -139,6 +141,10 @@ class Storage(Atomic):
     def _driver(self, driver):
         util.sh_modify_var_in_file(self.dss_conf, "STORAGE_DRIVER",
                                    lambda old: driver)
+
+    def _vgroup(self, vgroup):
+        util.sh_modify_var_in_file(self.dss_conf, "VG",
+                                   lambda old: vgroup)
 
     def Export(self):
         try:

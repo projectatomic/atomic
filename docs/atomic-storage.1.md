@@ -84,5 +84,8 @@ Remove all block devices from the storage pool that are currently unused.
 Backend storage driver for containers.  This options the storage driver.
 Drivers supported: devicemapper, overlay
 
+**--vgroup**
+The name of the volume group for the storage pool.
+
 # HISTORY
 October 2015, Originally compiled by Shishir Mahajan (shishir dot mahajan at redhat dot com)

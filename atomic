@@ -590,6 +590,7 @@ def create_parser(help_text):
     modifyp.add_argument('--remove-unused-devices', action='store_true',
                          help=_("remove all unused block devices from storage pool"))
     modifyp.add_argument('--driver', dest="driver", default=None, help='The storage backend driver', choices=['devicemapper', 'overlay'])
+    modifyp.add_argument('--vgroup', dest="vgroup", default=None, help='The storage volume group')
     modifyp.set_defaults(_class=Storage, func='modify')
 
     # atomic storage reset
