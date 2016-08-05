@@ -24,6 +24,7 @@ ReturnTuple = collections.namedtuple('ReturnTuple',
                                      ['return_code', 'stdout', 'stderr'])
 ATOMIC_CONF = os.environ.get('ATOMIC_CONF', '/etc/atomic.conf')
 ATOMIC_CONFD = os.environ.get('ATOMIC_CONFD', '/etc/atomic.d/')
+ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
 
 def check_if_python2():
     if int(sys.version_info[0]) < 3:
@@ -296,7 +297,6 @@ def skopeo_layers(image, args=None, layers=None):
     finally:
         if not success:
             shutil.rmtree(temp_dir)
-
     return temp_dir
 
 
@@ -435,3 +435,39 @@ def find_remote_image(client, image):
 
 def is_user_mode():
     return os.geteuid() != 0
+
+def generate_validation_manifest(img_rootfs=None, img_tar=None, keywords=""):
+    """
+    Executes the gomtree validation manifest creation command
+    :param img_rootfs: path to directory
+    :param img_tar: path to tar file (or tgz file)
+    :param keywords: use only the keywords specified to create the manifest
+    :return: output of gomtree validation manifest creation
+    """
+    if img_rootfs == None and img_tar == None:
+        write_out("no source for gomtree to generate a manifest from")
+    if img_rootfs:
+        cmd = [ATOMIC_LIBEXEC + '/gomtree','-c','-p',img_rootfs]
+    elif img_tar:
+        cmd = [ATOMIC_LIBEXEC + '/gomtree','-c','-T',img_tar]
+    if keywords:
+        cmd += ['-k',keywords]
+    return subp(cmd)
+
+def validate_manifest(spec, img_rootfs=None, img_tar=None, keywords=""):
+    """
+    Executes the gomtree validation manife  st validation command
+    :param img_rootfs: path to directory
+    :param img_tar: path to tar file (or tgz file)
+    :param keywords: use only the keywords specified to validate the manifest
+    :return: output of gomtree validation manifest validation
+    """
+    if img_rootfs == None and img_tar == None:
+        write_out("no source for gomtree to validate a manifest")
+    if img_rootfs:
+        cmd = [ATOMIC_LIBEXEC + '/gomtree', '-p', img_rootfs, '-f', spec]
+    elif img_tar:
+        cmd = [ATOMIC_LIBEXEC + '/gomtree','-T',img_tar, '-f', spec]
+    if keywords:
+        cmd += ['-k',keywords]
+    return subp(cmd)

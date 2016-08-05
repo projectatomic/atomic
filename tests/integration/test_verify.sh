@@ -13,9 +13,10 @@ IFS=$'\n\t'
 
 # In addition, the test harness creates some images for use in testing.
 #   See tests/test-images/
-
+echo "testing"
 IMAGE="atomic-test-4"
 ID=`${DOCKER} inspect ${IMAGE} | grep '"Id"' | cut -f4 --delimiter=\"`
+ATOMIC_VAR='/var/lib/containers/atomic'
 
 setup () {
     # Perform setup routines here.
@@ -29,6 +30,7 @@ teardown () {
     ${DOCKER} rmi foobar/${IMAGE}:latest
     set -e
 }
+
 # Utilize exit traps for cleanup wherever possible. Additional cleanup
 # logic can be added to a "cleanup stack", by cascading function calls
 # within traps. See tests/integration/test_mount.sh for an example.
@@ -45,5 +47,10 @@ if [[ ${rc} != 1 ]]; then
     exit 1
 fi
 
-
-
+${ATOMIC} pull oci:busybox
+if [ ! -d ${ATOMIC_VAR}/gomtree-manifests ]; then
+    echo "gomtree manifests not created"
+    exit 1
+fi
+rm -rf ${ATOMIC_VAR}/gomtree-manifests
+${ATOMIC} images delete -f busybox

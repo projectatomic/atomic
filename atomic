@@ -66,7 +66,6 @@ class HelpByDefaultArgumentParser(argparse.ArgumentParser):
     def print_usage(self, message="too few arguments"):
         self.prog = " ".join(sys.argv)
         self.error(message)
-        
 
 # Code for python2 copied from Adrian Sampson hack
 # https://gist.github.com/sampsyo/471779
@@ -683,6 +682,12 @@ def create_parser(help_text):
     verifyp.add_argument("-v", "--verbose", default=False,
                           action="store_true",
                           help=_("Report status of each layer"))
+    verifyp.add_argument("-V", "--validate", default=True,
+                                action="store_false",
+                                help=_("disable validating system images"))
+    verifyp.add_argument("-g", "--generate", default=False,
+                                action="store_true",
+                                help=_("generate gomtree manifest of image and store it"))
     return parser
 
 if __name__ == '__main__':

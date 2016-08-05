@@ -15,7 +15,6 @@ VERSION=$(shell $(PYTHON) setup.py --version)
 all: python-build docs pylint-check dockertar-sha256-helper
 
 .PHONY: test-python3-pylint
-test-python3-pylint: 
 	$(PYTHON3_PYLINT) --disable=all --enable=E --enable=W --additional-builtins=_ *.py atomic Atomic tests/unit/*.py -d=no-absolute-import,print-statement,no-absolute-import,bad-builtin
 
 .PHONY: test check
@@ -62,7 +61,7 @@ install-only:
 	ln -fs ../share/atomic/atomic $(DESTDIR)/usr/bin/atomic
 
 	install -d -m 0755 $(DESTDIR)/usr/libexec/atomic
-	install -m 0755 dockertar-sha256-helper migrate.sh gotar $(DESTDIR)/usr/libexec/atomic
+	install -m 0755 dockertar-sha256-helper migrate.sh gotar gomtree $(DESTDIR)/usr/libexec/atomic
 
 	[ -d $(SYSCONFDIR) ] || mkdir -p $(SYSCONFDIR)
 	install -m 644 atomic.sysconfig $(SYSCONFDIR)/atomic
@@ -86,4 +85,3 @@ install: all install-only
 .PHONY: install-openscap
 install-openscap:
 	install -m 644 atomic.d/openscap $(DESTDIR)/etc/atomic.d
-

@@ -5,8 +5,13 @@ from docker.errors import NotFound
 from operator import itemgetter
 from .atomic import AtomicError
 from .syscontainers import SystemContainers
+from .mount import Mount
+import shutil
 import itertools
+import tempfile
 import subprocess
+
+ATOMIC_VAR = '/var/lib/containers/atomic'
 
 class Verify(Atomic):
     def __init__(self):
@@ -16,6 +21,10 @@ class Verify(Atomic):
     def verify_system_image(self):
         manifest = self.syscontainers.get_manifest(self.image)
         layers = SystemContainers.get_layers_from_manifest(manifest)
+
+        if hasattr(self.args,"validate") and self.args.validate:
+            self.validate_system_image_manifests(layers)
+
         remote = True
         try:
             remote_manifest = self.syscontainers.get_manifest(self.image, remote=True)
@@ -87,6 +96,12 @@ class Verify(Atomic):
                 self.image = self.get_fq_name(self._inspect_image(iid))
             except AtomicError:
                 self._no_such_image()
+
+        if hasattr(self.args,"generate") and self.args.generate:
+            self.generate_docker_validation_manifest()
+
+        elif hasattr(self.args,"validate") and self.args.validate:
+            self.validate_docker_image_manifest()
 
         layers = fix_layers(self.get_layers())
         if self.debug:
@@ -342,6 +357,98 @@ class Verify(Atomic):
             return "{}-Version unavailable".format(image_name)
         else:
             return nvr
+
+    def validate_system_image_manifests(self,layers):
+        """
+        Validate a system image's layers against the the associated validation manifests
+        created from those image layers on atomic pull.
+        :param layers: list of the names of the layers to validate
+        :return: None
+        """
+        missing_manifests = []
+        for layer in layers:
+            layer = layer.replace("sha256:","")
+            manifestpath = self.get_gomtree_manifest(layer)
+            if not manifestpath:
+                missing_manifests.append(layer)
+                continue
+            tmp_dir = tempfile.mkdtemp()
+            ref = os.path.join("ociimage", layer)
+            cmd = ['ostree','checkout','--union','--repo=%s' % self.syscontainers.get_ostree_repo_location(),ref,tmp_dir]
+            r = util.subp(cmd)
+            if r.return_code != 0:
+                util.write_err(r.stderr)
+                continue
+            r = util.validate_manifest(manifestpath, img_rootfs=tmp_dir,keywords="type,uid,gid,mode,size,sha256digest")
+            if r.return_code != 0:
+                util.write_out("modifications in layer %s layer:\n" % layer)
+                if r.return_code > 1:
+                    util.write_err(r.stderr)
+                else:
+                    util.write_err(r.stdout)
+            shutil.rmtree(tmp_dir)
+        if len(missing_manifests):
+            util.write_out("validation manifests for the following layers do not exist:\n")
+            for layer in missing_manifests:
+                util.write_out("\t%s" % layer)
+            util.write_out("\n")
+            util.write_out("perform an `atomic pull \"%s\"` if you want to generate these manifests\n" % self.image)
+
+    def generate_docker_validation_manifest(self):
+        """
+        Generates a gomtree validation manifest for a non-system image and stores it in
+        ATOMIC_VAR
+        :param:
+        :return: None
+        """
+        iid = self._is_image(self.image)
+        if os.path.exists(os.path.join(ATOMIC_VAR,"gomtree-manifests/%s.mtree" % iid)):
+            return
+        if not os.path.exists(os.path.join(ATOMIC_VAR,"gomtree-manifests")):
+            os.makedirs(os.path.join(ATOMIC_VAR,"gomtree-manifests"))
+        manifestname = os.path.join(ATOMIC_VAR, "gomtree-manifests/%s.mtree" % iid)
+        tmpdir = tempfile.mkdtemp()
+        m = Mount()
+        m.args = []
+        m.image = self.image
+        m.mountpoint = tmpdir
+        m.mount()
+        r = util.generate_validation_manifest(img_rootfs=tmpdir, keywords="type,uid,gid,mode,size,sha256digest")
+        m.unmount()
+        with open(manifestname,"w",0) as f:
+            f.write(r.stdout)
+        shutil.rmtree(tmpdir)
+
+    def validate_docker_image_manifest(self):
+        """
+        Validates a docker image by mounting the image on a rootfs and validate that
+        rootfs against the manifests that were created. Note that it won't be validated
+        layer by layer.
+        :param:
+        :return: None
+        """
+        iid = self._is_image(self.image)
+        if not os.path.exists(os.path.join(ATOMIC_VAR,"gomtree-manifests/%s.mtree" % iid)):
+            return
+        manifestname = os.path.join(ATOMIC_VAR, "gomtree-manifests/%s.mtree" % iid)
+        tmpdir = tempfile.mkdtemp()
+        m = Mount()
+        m.args = []
+        m.image = self.image
+        m.mountpoint = tmpdir
+        m.mount()
+        r = util.validate_manifest(manifestname, img_rootfs=tmpdir, keywords="type,uid,gid,mode,size,sha256digest")
+        m.unmount()
+        if r.return_code != 0:
+            util.write_err(r.stdout)
+        shutil.rmtree(tmpdir)
+
+    @staticmethod
+    def get_gomtree_manifest(layer, root=os.path.join(ATOMIC_VAR, "gomtree-manifests")):
+        manifestpath = os.path.join(root,"%s.mtree" % layer)
+        if os.path.isfile(manifestpath):
+            return manifestpath
+        return None
 
     @staticmethod
     def get_local_version(name, layers):

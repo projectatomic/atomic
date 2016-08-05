@@ -10,6 +10,7 @@ import shutil
 import stat
 import subprocess
 import time
+import gzip
 from .client import AtomicDocker
 from ctypes import cdll, CDLL
 from dateutil.parser import parse as dateparse
@@ -31,6 +32,7 @@ except ImportError:
     DEVNULL = open(os.devnull, 'wb')
 
 ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
+ATOMIC_VAR = '/var/lib/containers/atomic'
 
 OSTREE_OCIIMAGE_PREFIX = "ociimage/"
 SYSTEMD_UNIT_FILES_DEST = "/etc/systemd/system"
@@ -96,7 +98,7 @@ class SystemContainers(object):
                 user = ["--user-mode"]
             else:
                 user = []
-            util.check_call(["ostree", "--repo=%s" % self._get_ostree_repo_location(),
+            util.check_call(["ostree", "--repo=%s" % self.get_ostree_repo_location(),
                              "checkout",
                              "--union"] +
                             user +
@@ -367,9 +369,9 @@ class SystemContainers(object):
             home = os.path.expanduser("~")
             return "%s/.containers/atomic" % home
         else:
-            return "/var/lib/containers/atomic"
+            return ATOMIC_VAR
 
-    def _get_ostree_repo_location(self):
+    def get_ostree_repo_location(self):
         if self.user:
             home = os.path.expanduser("~")
             return "%s/.containers/repo" % home
@@ -382,7 +384,7 @@ class SystemContainers(object):
         if not OSTREE_PRESENT:
             return None
 
-        repo_location = self._get_ostree_repo_location()
+        repo_location = self.get_ostree_repo_location()
         repo = OSTree.Repo.new(Gio.File.new_for_path(repo_location))
 
         # If the repository doesn't exist at the specified location, create it
@@ -766,10 +768,11 @@ class SystemContainers(object):
         missing_layers = []
         for i in layers:
             layer = i.replace("sha256:", "")
-            if not repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1]:
+            has_layer = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1]
+            has_gomtree_manifest = os.path.isfile(os.path.join(ATOMIC_VAR, "gomtree-manifests/%s.mtree" % layer))
+            if not has_layer or not has_gomtree_manifest:
                 missing_layers.append(layer)
                 util.write_out("Missing layer %s" % layer)
-
         layers_dir = None
         try:
             layers_to_import = {}
@@ -780,9 +783,10 @@ class SystemContainers(object):
                         if f.endswith(".tar"):
                             layer_file = os.path.join(root, f)
                             layer = f.replace(".tar", "")
-                            if layer in missing_layers:
+                            if not repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1]:
                                 layers_to_import[layer] = layer_file
-
+                            if not os.path.isfile(os.path.join(ATOMIC_VAR, "gomtree-manifests/%s.mtree" % layer)):
+                                SystemContainers._generate_validation_manifest(layer,layer_file)
             SystemContainers._import_layers_into_ostree(repo, imagebranch, manifest, layers_to_import)
         finally:
             if layers_dir:
@@ -858,3 +862,35 @@ class SystemContainers(object):
         for k, v in layers.items():
             layers_to_import[layers_map[k]] = v
         SystemContainers._import_layers_into_ostree(repo, imagebranch, manifest, layers_to_import)
+
+    @staticmethod
+    def _generate_validation_manifest(layer,tar,root=os.path.join(ATOMIC_VAR, "gomtree-manifests")):
+        """
+        Creates a gomtree validation manifest using a tar archive associated with
+        it's layer. Defaults to placing the manifest in a folder in the ATOMIC_VAR folder.
+        :param layer: layer digest
+        :param tar: may or may not be gzip compressed
+        :return: None
+        """
+        if not os.path.exists(root):
+            os.makedirs(root)
+        manifestname = os.path.join(root, "%s.mtree" % layer)
+        if os.path.isfile(manifestname):
+            util.write_out("validation manifest for layer %s already created" % layer)
+        else:
+            gomtree = util.generate_validation_manifest(img_tar=tar,keywords="type,uid,gid,mode,size,sha256digest")
+            if gomtree.return_code != 0:
+                decompressed = tar.replace(".tar",".tar.gz")
+                os.rename(tar,decompressed)
+                with gzip.open(decompressed, "rb") as g:
+                    _, tmptar = tempfile.mkstemp()
+                    with open(tmptar, "wb") as t:
+                        t.write(g.read())
+                        gomtree = util.generate_validation_manifest(img_tar=tmptar,keywords="type,uid,gid,mode,size,sha256digest")
+                    os.remove(tmptar)
+                os.rename(decompressed, tar.replace(".tar.gz",".tar"))
+            if gomtree.return_code == 0:
+                with open(manifestname, "w", 0) as m:
+                    m.write(gomtree.stdout)
+            else:
+                util.write_out(gomtree.stderr)
