@@ -80,7 +80,7 @@ class SystemContainers(object):
         # Accessing .disable_fsync and .process_whiteouts thus results in a segfault in
         # libostree.  Re-enable this once it gets fixed.
         if OSTREE_SAFE_GLIB_REPO_CHECKOUT_OPTIONS:
-            options = OSTree.RepoCheckoutOptions() # pylint: disable=no-member 
+            options = OSTree.RepoCheckoutOptions() # pylint: disable=no-member
             options.overwrite_mode = OSTree.RepoCheckoutOverwriteMode.UNION_FILES
             options.process_whiteouts = True
             options.disable_fsync = True
@@ -399,7 +399,7 @@ class SystemContainers(object):
                 command = u' '.join(config["process"]["args"])
 
             container = {'Image' : image, 'ImageID' : revision, 'Id' : x, 'Created' : created, 'Names' : [x],
-                         'Command' : command}
+                         'Command' : command, 'Type' : 'systemcontainer'}
             ret.append(container)
         return ret
 

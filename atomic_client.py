@@ -77,6 +77,9 @@ class AtomicDBus (object):
     def vulnerable(self):
         return self.dbus_object.VulnerableInfo(dbus_interface="org.atomic", timeout = 2147400)
 
+    @polkit.enable_proxy
+    def ps(self):
+        return self.dbus_object.Ps(dbus_interface="org.atomic", timeout = 2147400)
 #For outputting the list of scanners
 def print_scan_list(all_scanners):
     if len(all_scanners) == 0:
@@ -164,6 +167,9 @@ if __name__ == "__main__":
 
         elif(sys.argv[1] == "vulnerable"):
             print(json.loads(dbus_proxy.vulnerable()))
+
+        elif(sys.argv[1] == "ps"):
+            print(json.loads(dbus_proxy.ps()))
 
     except dbus.DBusException as e:
         print (e)

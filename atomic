@@ -486,7 +486,7 @@ def create_parser(help_text):
     pss = subparser.add_parser(
         "ps", help=_("list the containers"),
         epilog="By default this shows only the running containers.")
-    pss.set_defaults(_class=Ps, func='ps')
+    pss.set_defaults(_class=Ps, func='ps_tty')
     pss.add_argument("-a", "--all", action='store_true',dest="all", default=False,
                      help=_("show all containers"))
     pss.add_argument("-f", "--filter", metavar='FILTER', action='append', dest="filter",

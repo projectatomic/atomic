@@ -13,6 +13,7 @@ from Atomic.verify import Verify
 from Atomic.storage import Storage
 from Atomic.diff import Diff
 from Atomic.scan import Scan
+from Atomic.ps import Ps
 
 class atomic_dbus(slip.dbus.service.Object):
     default_polkit_auth_required = "org.atomic.readwrite"
@@ -263,6 +264,16 @@ class atomic_dbus(slip.dbus.service.Object):
         args = self.Args()
         self.atomic.set_args(args)
         return self.atomic.get_all_vulnerable_info()
+
+    # The Ps method will list all containers on the system.
+    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @dbus.service.method("org.atomic", in_signature='', out_signature='s')
+    def Ps(self):
+        ps = Ps()
+        ps.useTTY = False
+        args = self.Args()
+        ps.set_args(args)
+        return json.dumps(ps.ps())
 
 
 if __name__ == "__main__":

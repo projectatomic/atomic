@@ -68,19 +68,19 @@ trap teardown EXIT
 
 ${ATOMIC} --debug install --name=${NAME} --set=RECEIVER=${SECRET} --system oci:atomic-test-system
 
-${ATOMIC} ps > ps.out
+${ATOMIC} --debug ps --no-trunc > ps.out
 grep -q "test-system" ps.out
-${ATOMIC} ps --json > ps.out
+${ATOMIC} --debug ps --json > ps.out
 grep -q "test-system" ps.out
 ${ATOMIC} ps --all > ps.out
 grep -q "test-system" ps.out
-${ATOMIC} ps --json --all > ps.out
+${ATOMIC} ps --all --no-trunc > ps.out
 grep -q "test-system" ps.out
-${ATOMIC} ps --filter id=test-system > ps.out
+${ATOMIC} ps --no-trunc --filter id=test-system > ps.out
 grep -q "test-system" ps.out
 ${ATOMIC} ps --no-trunc > ps.out
 grep -q "test-system" ps.out
-${ATOMIC} ps --quiet > ps.out
+${ATOMIC} ps --no-trunc --quiet > ps.out
 grep -q "test-system" ps.out
 ${ATOMIC} ps -aq --no-trunc --filter id=test-system > ps.out
 grep -q "test-system" ps.out
