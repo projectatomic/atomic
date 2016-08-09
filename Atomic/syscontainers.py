@@ -667,7 +667,7 @@ class SystemContainers(object):
                     info.set_attribute_uint32("unix::mode", info.get_attribute_uint32("unix::mode") | stat.S_IWUSR)
                 return OSTree.RepoCommitFilterResult.ALLOW
 
-            modifier = OSTree.RepoCommitModifier(0, filter_func, None)
+            modifier = OSTree.RepoCommitModifier.new(0, filter_func, None)
             repo.write_archive_to_mtree(Gio.File.new_for_path(tar), mtree, modifier, True)
             root = repo.write_mtree(mtree)[1]
             metav = GLib.Variant("a{sv}", {'docker.layer': GLib.Variant('s', layer)})
