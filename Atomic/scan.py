@@ -266,47 +266,50 @@ class Scan(Atomic):
         json_files = self._get_json_files()
         for json_file in json_files:
             json_results = json.load(open(json_file))
-
-            uuid = self.mount_paths[os.path.basename(json_results['UUID']).rstrip('/')] if len(self.args.rootfs) == 0 \
-                else self._get_roots_path_from_bind_name(json_file)
-
-            name1 = uuid if len(self.args.rootfs) > 1 else self._get_input_name_for_id(uuid)
-            if len(self.args.rootfs) == 0 and not self._is_iid(uuid):
-                name2 = uuid[:15]
+            if self.args.json:
+                util.output_json(json_results)
             else:
-                # Containers do not have repo names
-                if len(self.args.rootfs) == 0 and uuid not in [x['Id'] for x in self.get_containers()]:
-                    name2 = self._get_repo_names(uuid)
-                else:
+                uuid = self.mount_paths[os.path.basename(json_results['UUID']).rstrip('/')] if len(self.args.rootfs) == 0 \
+                    else self._get_roots_path_from_bind_name(json_file)
+
+                name1 = uuid if len(self.args.rootfs) > 1 else self._get_input_name_for_id(uuid)
+                if len(self.args.rootfs) == 0 and not self._is_iid(uuid):
                     name2 = uuid[:15]
-            util.write_out("\n{} ({})\n".format(name1, name2))
-            if json_results['Successful'].upper() == "TRUE":
-                if 'Custom' in json_results:
-                    self._output_custom(json_results['Custom'], 3)
-                if 'Vulnerabilities' in json_results and len(json_results['Vulnerabilities']) > 0:
-                    util.write_out("The following issues were found:\n")
-                    for vul in json_results['Vulnerabilities']:
-                        if 'Title' in vul:
-                            util.write_out("{}{}".format(' ' * 5, vul['Title']))
-                        if 'Severity' in vul:
-                            util.write_out("{}Severity: {}".format(' ' * 5, vul['Severity']))
-                        if 'Custom' in vul.keys() and len(vul['Custom']) > 0:
-                            custom_field = vul['Custom']
-                            self._output_custom(custom_field, 7)
-                        util.write_out("")
-                elif 'Results' in json_results and len(json_results['Results']) > 0:
-                    util.write_out("The following results were found:\n")
-                    for result in json_results['Results']:
-                        if 'Custom' in result.keys() and len(result['Custom']) > 0:
-                            custom_field = result['Custom']
-                            self._output_custom(custom_field, 7)
-                    util.write_out("")
                 else:
-                    util.write_out("{} passed the scan".format(self._get_input_name_for_id(uuid)))
-            else:
-                util.write_out("{}{} is not supported for this scan."
-                               .format(' ' * 5, self._get_input_name_for_id(uuid)))
-        util.write_out("\nFiles associated with this scan are in {}.\n".format(self.results_dir))
+                    # Containers do not have repo names
+                    if len(self.args.rootfs) == 0 and uuid not in [x['Id'] for x in self.get_containers()]:
+                        name2 = self._get_repo_names(uuid)
+                    else:
+                        name2 = uuid[:15]
+                util.write_out("\n{} ({})\n".format(name1, name2))
+                if json_results['Successful'].upper() == "TRUE":
+                    if 'Custom' in json_results:
+                        self._output_custom(json_results['Custom'], 3)
+                    if 'Vulnerabilities' in json_results and len(json_results['Vulnerabilities']) > 0:
+                        util.write_out("The following issues were found:\n")
+                        for vul in json_results['Vulnerabilities']:
+                            if 'Title' in vul:
+                                util.write_out("{}{}".format(' ' * 5, vul['Title']))
+                            if 'Severity' in vul:
+                                util.write_out("{}Severity: {}".format(' ' * 5, vul['Severity']))
+                            if 'Custom' in vul.keys() and len(vul['Custom']) > 0:
+                                custom_field = vul['Custom']
+                                self._output_custom(custom_field, 7)
+                            util.write_out("")
+                    elif 'Results' in json_results and len(json_results['Results']) > 0:
+                        util.write_out("The following results were found:\n")
+                        for result in json_results['Results']:
+                            if 'Custom' in result.keys() and len(result['Custom']) > 0:
+                                custom_field = result['Custom']
+                                self._output_custom(custom_field, 7)
+                        util.write_out("")
+                    else:
+                        util.write_out("{} passed the scan".format(self._get_input_name_for_id(uuid)))
+                else:
+                    util.write_out("{}{} is not supported for this scan."
+                                   .format(' ' * 5, self._get_input_name_for_id(uuid)))
+        if not self.args.json:
+            util.write_out("\nFiles associated with this scan are in {}.\n".format(self.results_dir))
 
     def _output_custom(self, value, indent):
         space = ' ' * indent
