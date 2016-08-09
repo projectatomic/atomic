@@ -305,7 +305,7 @@ _atomic_version() {
 _atomic_pull() {
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "--storage --user" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "--storage" -- "$cur" ) )
 			;;
 	esac
 }

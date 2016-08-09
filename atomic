@@ -398,8 +398,6 @@ def create_parser(help_text):
         epilog="pull the latest specified image from a repository.")
     pullp.add_argument("--storage", dest="backend", help=_("Specify the storage."))
     pullp.add_argument("image", help=_("image id"))
-    pullp.add_argument("--user", dest="user", action="store_true",
-                       help=_("Flag to specify if user is non-root privileged."))
     pullp.set_defaults(func='pull_image')
 
     # making it so we cannot call both the --pulp and --satellite commands

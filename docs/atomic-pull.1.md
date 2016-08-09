@@ -43,12 +43,12 @@ local OSTree repository:
 
 `atomic pull ostree:REMOTE/branch`
 
+If the user is not privileged, the image will be stored in the user
+specific repository.
+
 # OPTIONS:
 **-h** **--help**
 Print usage statement
-
-**--user**
-User flag to specify the user is non-privileged. Default to False.
 
 **--storage=[ostree]**
 Define the destination storage for the pulled image.
