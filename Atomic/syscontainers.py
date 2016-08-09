@@ -12,6 +12,7 @@ import subprocess
 import time
 from .client import AtomicDocker
 from ctypes import cdll, CDLL
+from dateutil.parser import parse as dateparse
 
 try:
     import gi
@@ -405,6 +406,19 @@ class SystemContainers(object):
         values = info["values"]
 
         self._checkout_system_container(repo, name, image, next_deployment, True, values)
+
+    def get_container_runtime_info(self, container):
+        if self.user:
+            return {'status' : 'unknown'}
+
+        try:
+            inspect_stdout = util.check_output(["runc", "state", container])
+            ret = json.loads(inspect_stdout.decode())
+            status = ret["status"]
+            created = dateparse(ret['created'])
+            return {"status" : status, "created" : created}
+        except (subprocess.CalledProcessError):
+            return {}
 
     def get_system_containers(self):
         checkouts = self._get_system_checkout_path()

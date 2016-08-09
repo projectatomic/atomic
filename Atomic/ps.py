@@ -2,10 +2,8 @@ import json
 
 from . import util
 from . import Atomic
-import subprocess
-from dateutil.parser import parse as dateparse
-from . import atomic
 import datetime
+from dateutil.parser import parse as dateparse
 
 class Ps(Atomic):
 
@@ -18,13 +16,11 @@ class Ps(Atomic):
                 container = each["Id"]
                 status = "exited"
                 created = datetime.datetime.fromtimestamp(each["Created"])
-                try:
-                    inspect_stdout = util.check_output(["runc", "state", container], stderr=atomic.DEVNULL)
-                    ret = json.loads(inspect_stdout.decode())
-                    status = ret["status"]
-                    created = dateparse(ret['created'])
-                except (subprocess.CalledProcessError):
-                    pass
+                info = self.syscontainers.get_container_runtime_info(container)
+                if 'status' in info:
+                    status = info["status"]
+                    if 'created' in info:
+                        created = info['created']
 
                 if not self.args.all and status != "running":
                     continue
