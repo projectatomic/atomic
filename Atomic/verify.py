@@ -70,6 +70,10 @@ class Verify(Atomic):
         self.set_debug()
 
         if self.syscontainers.has_system_container_image(self.image):
+            imgs = self.syscontainers.get_system_images()
+            for img in imgs:
+                if img['Id'].startswith(self.image):
+                    self.image = img['RepoTags'][0]
             return self.verify_system_image()
 
         # Check if the input is an image id associated with more than one
