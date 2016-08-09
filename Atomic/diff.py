@@ -12,7 +12,7 @@ class Diff(Atomic):
     def diff_tty(self):
         diff_dict = self.diff()
         if self.args.json:
-            util.output_json(diff_dict)
+            util.output_json(json.loads(diff_dict))
 
     def diff(self):
         '''
