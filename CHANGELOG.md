@@ -1,3 +1,10 @@
+## 1.11 (2016-8-9)
+Add support for system containers
+Add support for managing storage
+Add support for atomic ps
+Improve dbus interfaces
+Improvements to atomic scan
+
 ## 1.10 (2016-5-25)
 Improve Error Handling
 - Unify error messages for no docker daemon (BZ #1300187)
