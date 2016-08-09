@@ -328,7 +328,7 @@ class SystemContainers(object):
     def _get_ostree_repo_location(self):
         if self.user:
             home_dir = os.getenv("HOME")
-            return os.path.expanduser("%s/ostree/repo" % home_dir)
+            return os.path.expanduser("%s/.containers/repo" % home_dir)
         else:
             return os.environ.get("ATOMIC_OSTREE_REPO") or \
                 self.get_atomic_config_item(["ostree_repository"]) or \
