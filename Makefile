@@ -44,7 +44,7 @@ docs/%.1: docs/%.1.md
 .PHONY: docs
 docs: $(MANPAGES_MD:%.md=%)
 
-dockertar-sha256-helper:
+dockertar-sha256-helper: dockertar-sha256-helper.go
 	$(GO) build dockertar-sha256-helper.go
 
 .PHONY: clean
