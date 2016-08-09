@@ -77,6 +77,10 @@ Installing a system container consists of checking it the image by
 default under /var/lib/containers/atomic/ and generating the
 configuration files for runc and systemd.
 
+**--user**
+If running as non-root, specify to install the image from the current
+OSTree repository and manage it through systemd and bubblewrap.
+
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)
 July 2015, edited by Sally O'Malley (somalley at redhat dot com)
