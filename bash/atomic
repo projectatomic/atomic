@@ -452,6 +452,7 @@ _atomic_install() {
                --display
                --system
                --set
+               --user
 	"
 
 	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
