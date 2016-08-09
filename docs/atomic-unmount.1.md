@@ -11,7 +11,10 @@ DIRECTORY
 
 # DESCRIPTION
 **atomic unmount** will unmount a container/image previously mounted with
-**atomic mount**.
+**atomic mount**. If the UID of the user is not zero, i.e. if the user
+is not root, it will expect the image being deleted was mounted by
+non-root user and will delete the files rather than use the unmount
+system call. 
 
 # OPTIONS:
 **-h** **--help**

@@ -18,7 +18,10 @@ If the given UUID or NAME is a container, and **--live** is not set, then
 *atomic mount* will create a snapshot of the container by committing it to a
 temporary image and spawning a temporary container from that image. If UUID or
 REPO refers to an image, then *atomic mount* will simply create a temporary
-container from the given image. All temporary artifacts are cleaned upon
+container from the given image. If the UID is not zero, i.e. not being run as
+root, then *atomic mount* will call ostree checkout with --user-mode option.
+It will also ignore the mount system call, since ostree checkout takes care
+of that. All temporary artifacts are cleaned upon
 *atomic unmount*. Atomic mount is *only* supported on the devicemapper and
 overlayfs docker storage backends.  If an image stored on an OSTree
 repository is mounted, then a temporary checkout is done, which will

@@ -107,6 +107,7 @@ class Mount(Atomic):
         self.live = False
         self.shared = False
         self.options = ""
+        self.user = util.is_user_mode()
 
     def __exit__(self, typ, value, traceback):
         super(Mount, self).__exit__(typ, value, traceback)
@@ -723,6 +724,7 @@ class OSTreeMount(Mount):
         self.shared = shared
         self.mnt_mkdir = mnt_mkdir
         self.tmp_image = None
+        self.user = util.is_user_mode()
         setxattr, _, _ = getxattrfuncs()
 
         if setxattr is None:
@@ -754,6 +756,8 @@ class OSTreeMount(Mount):
                 raise MountError('Containers and images managed through OSTree do not support --live.')
 
         if has_container:
+            if self.user:
+                raise MountError('Need to be root to mount a container.')
             typ = "container"
             source = os.path.join(self.syscontainers.get_system_container_checkout(identifier), "rootfs")
             Mount.mount_path(source, self.mountpoint, bind=True)
@@ -762,7 +766,8 @@ class OSTreeMount(Mount):
             if len(os.listdir(self.mountpoint)):
                 raise MountError('The destination path is not empty.')
             self.syscontainers.extract_system_container(identifier, self.mountpoint)
-            Mount.mount_path(self.mountpoint, self.mountpoint, bind=True)
+            if not self.user:
+                Mount.mount_path(self.mountpoint, self.mountpoint, bind=True)
         else:
             return False
 
@@ -776,7 +781,8 @@ class OSTreeMount(Mount):
                 data = json.dumps({"user.atomic.type" : typ})
                 f.write(data)
 
-        Mount.mount_path(self.mountpoint, self.mountpoint, bind=True, optstring=(','.join(options)))
+        if not self.user:
+            Mount.mount_path(self.mountpoint, self.mountpoint, bind=True, optstring=(','.join(options)))
         return True
 
     def unmount(self, path=None): # pylint: disable=arguments-differ
@@ -805,7 +811,16 @@ class OSTreeMount(Mount):
         if not typ or "ostree" not in typ.decode():
             return False
 
-        Mount.unmount_path(self.mountpoint)
+        if self.user:
+            for root,dirs,_ in os.walk(self.mountpoint):
+                for d in dirs:
+                    dirpath = os.path.join(root,d)
+                    if os.path.islink(dirpath):
+                        os.unlink(dirpath)
+                    else:
+                        shutil.rmtree(dirpath)
+        else:
+            Mount.unmount_path(self.mountpoint)
 
         if "-image" in typ.decode():
             for i in os.listdir(self.mountpoint):
