@@ -387,11 +387,8 @@ class Atomic(object):
             if self.syscontainers.has_system_container_image(image):
                 return self.syscontainers.inspect_system_image(image)
             return self.d.inspect_image(image)
-        except NotFound:
+        except (NotFound, requests.exceptions.ConnectionError):
             pass
-        except requests.exceptions.ConnectionError:
-            raise NoDockerDaemon()
-
         return None
 
     def _inspect_container(self, name=None):
@@ -399,10 +396,8 @@ class Atomic(object):
             name = self.name
         try:
             return self.d.inspect_container(name)
-        except NotFound:
+        except (NotFound, requests.exceptions.ConnectionError):
             pass
-        except requests.exceptions.ConnectionError:
-            raise NoDockerDaemon()
         return None
 
     def _get_args(self, label):
