@@ -33,6 +33,7 @@ ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
 
 OSTREE_OCIIMAGE_PREFIX = "ociimage/"
 SYSTEMD_UNIT_FILES_DEST = "/etc/systemd/system"
+SYSTEMD_UNIT_FILES_DEST_USER = "%s/.config/systemd/user" # Must be expanded
 SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE = """
 [Unit]
 Description=$NAME
@@ -46,13 +47,14 @@ WorkingDirectory=$DESTDIR
 [Install]
 WantedBy=multi-user.target
 """
+BWRAP_OCI_PATH="/usr/bin/bwrap-oci"
 
 class SystemContainers(object):
 
     def __init__(self):
         self.atomic_config = util.get_atomic_config()
         self.backend = None
-        self.user = None
+        self.user = util.is_user_mode()
         self.args = None
         self.setvalues = None
 
@@ -84,15 +86,22 @@ class SystemContainers(object):
             options.overwrite_mode = OSTree.RepoCheckoutOverwriteMode.UNION_FILES
             options.process_whiteouts = True
             options.disable_fsync = True
+            if self.user:
+                options.mode = OSTree.RepoCheckoutMode.USER
             repo.checkout_tree_at(options, rootfs_fd, rootfs, rev)
         else:
+            if self.user:
+                user = ["--user-mode"]
+            else:
+                user = []
             util.check_call(["ostree", "--repo=%s" % self._get_ostree_repo_location(),
                              "checkout",
-                             "--union",
-                             "--whiteouts",
-                             "--fsync=no",
-                             rev,
-                             rootfs],
+                             "--union"] +
+                            user +
+                             ["--whiteouts",
+                              "--fsync=no",
+                              rev,
+                              rootfs],
                             stdin=DEVNULL,
                             stdout=DEVNULL,
                             stderr=DEVNULL)
@@ -100,10 +109,6 @@ class SystemContainers(object):
     def set_args(self, args):
         self.args = args
 
-        try:
-            self.user = args.user
-        except (NameError, AttributeError):
-            self.user = None
         try:
             self.backend = args.backend
         except (NameError, AttributeError):
@@ -133,6 +138,10 @@ class SystemContainers(object):
         else:
             raise ValueError("Destination not known, please choose --storage=ostree")
         return
+
+    def install_user_container(self, image, name):
+        # Same entrypoint
+        return self.install_system_container(image, name)
 
     def install_system_container(self, image, name):
         repo = self._get_ostree_repo()
@@ -171,6 +180,9 @@ class SystemContainers(object):
             conf.write(json.dumps(configuration, indent=4))
 
     def _generate_systemd_startstop_directives(self, name):
+        if self.user:
+            return ["%s '%s'" % (BWRAP_OCI_PATH, name), ""]
+
         version = str(util.check_output(["/bin/runc", "--version"], stderr=DEVNULL))
         if "version 0" in version:
             runc_commands = ["start", "kill"]
@@ -186,7 +198,11 @@ class SystemContainers(object):
         destination = destination or "%s/%s.%d" % (self._get_system_checkout_path(), name, deployment)
         exports = os.path.join(destination, "rootfs/exports")
         unitfile = os.path.join(exports, "service.template")
-        unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
+        if self.user:
+            home = os.path.expanduser("~")
+            unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST_USER % home, "%s.service" % name)
+        else:
+            unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
 
         if not upgrade and os.path.exists(unitfileout):
             raise ValueError("The file %s already exists." % unitfileout)
@@ -196,7 +212,9 @@ class SystemContainers(object):
         if hasattr(self.args, 'display') and self.args.display:
             return
 
-        if extract_only:
+        if self.user:
+            rootfs = os.path.join(destination, "rootfs")
+        elif extract_only:
             rootfs = destination
         else:
             # Under Atomic, get the real deployment location.  It is needed to create the hard links.
@@ -305,6 +323,10 @@ class SystemContainers(object):
         else:
             systemd_template = SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE
 
+        try:
+            os.makedirs(os.path.dirname(unitfileout))
+        except OSError:
+            pass
         with open(unitfileout, "w") as outfile:
             _write_template(unitfile, systemd_template, values, outfile)
 
@@ -321,14 +343,20 @@ class SystemContainers(object):
         return
 
     def _get_system_checkout_path(self):
-        return os.environ.get("ATOMIC_OSTREE_CHECKOUT_PATH") or \
-            self.get_atomic_config_item(["checkout_path"]) or \
-            "/var/lib/containers/atomic"
+        if os.environ.get("ATOMIC_OSTREE_CHECKOUT_PATH"):
+            return os.environ.get("ATOMIC_OSTREE_CHECKOUT_PATH")
+        if self.get_atomic_config_item(["checkout_path"]):
+            return self.get_atomic_config_item(["checkout_path"])
+        if self.user:
+            home = os.path.expanduser("~")
+            return "%s/.containers/atomic" % home
+        else:
+            return "/var/lib/containers/atomic"
 
     def _get_ostree_repo_location(self):
         if self.user:
-            home_dir = os.getenv("HOME")
-            return os.path.expanduser("%s/.containers/repo" % home_dir)
+            home = os.path.expanduser("~")
+            return "%s/.containers/repo" % home
         else:
             return os.environ.get("ATOMIC_OSTREE_REPO") or \
                 self.get_atomic_config_item(["ostree_repository"]) or \
@@ -445,8 +473,13 @@ class SystemContainers(object):
             if 'Digest' in manifest:
                 image_id = manifest['Digest'].replace("sha256:", "")
 
+        if self.user:
+            image_type = "User"
+        else:
+            image_type = "System"
+
         return {'Id' : image_id, 'RepoTags' : [tag], 'Names' : [], 'Created': timestamp,
-                'ImageType' : "System", 'Labels' : labels, 'OSTree-rev' : commit_rev}
+                'ImageType' : image_type, 'Labels' : labels, 'OSTree-rev' : commit_rev}
 
     def get_system_images(self, get_all=False, repo=None):
         if repo is None:
@@ -459,7 +492,12 @@ class SystemContainers(object):
         return [self._inspect_system_branch(repo, x) for x in revs]
 
     def _systemctl_command(self, command, name):
-        cmd = ["systemctl", command, name]
+        if self.user:
+            user = ["--user"]
+        else:
+            user = []
+
+        cmd = ["systemctl"] + user + [command, name]
         util.write_out(" ".join(cmd))
         if not self.args.display:
             util.check_call(cmd)
@@ -487,8 +525,15 @@ class SystemContainers(object):
         for deploy in ["0", "1"]:
             if os.path.exists("%s/%s.%s" % (self._get_system_checkout_path(), name, deploy)):
                 shutil.rmtree("%s/%s.%s" % (self._get_system_checkout_path(), name, deploy))
-        if os.path.exists(os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)):
-            os.unlink(os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name))
+
+        if self.user:
+            home = os.path.expanduser("~")
+            unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST_USER % home, "%s.service" % name)
+        else:
+            unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
+
+        if os.path.exists(unitfileout):
+            os.unlink(unitfileout)
 
     def prune_ostree_images(self):
         repo = self._get_ostree_repo()

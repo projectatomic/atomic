@@ -298,6 +298,8 @@ def create_parser(help_text):
         help=_("preview the command that %s would execute") % sys.argv[0])
     installp.add_argument("image", help=_("container image"))
     if Atomic.syscontainers.OSTREE_PRESENT:
+        installp.add_argument("--user", dest="user", action="store_true",
+                              help=_("Flag to specify if user is non-root privileged."))
         installp.add_argument("--system", dest="system",
                               action='store_true', default=False,
                               help=_('install a system container'))

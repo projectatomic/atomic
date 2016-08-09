@@ -414,3 +414,6 @@ def find_remote_image(client, image):
         if e.args[0].args[0] == errno.ENOENT:
             raise ValueError("Image not found")
     return None
+
+def is_user_mode():
+    return os.geteuid() != 0

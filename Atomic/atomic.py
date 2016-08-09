@@ -296,6 +296,11 @@ class Atomic(object):
         except (NameError, AttributeError):
             pass
 
+        try:
+            self.user = args.user
+        except (NameError, AttributeError):
+            pass
+
         if not self.name and self.image is not None:
             self.name = self.image.split("/")[-1].split(":")[0]
             if self.spc:
@@ -806,10 +811,14 @@ class Atomic(object):
         if self._container_exists(self.name):
             raise ValueError("A container '%s' is already present" % self.name)
 
-        if self.system:
+        if self.user:
+            if not util.is_user_mode():
+                raise ValueError("--user does not work for privileged user")
+            return self.syscontainers.install_user_container(self.image, self.name)
+        elif self.system:
             return self.syscontainers.install_system_container(self.image, self.name)
         elif self.args.setvalues:
-            raise ValueError("--set is valid only when used with --system")
+            raise ValueError("--set is valid only when used with --system or --user")
 
         self._check_if_image_present()
         args = self._get_args("INSTALL")
