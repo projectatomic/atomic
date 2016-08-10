@@ -40,21 +40,21 @@ class Ps(Atomic):
 
             elif each["Type"] == "docker":
             # Collect the docker containers
-                for container in [x["Id"] for x in self.d.containers(all=self.args.all)]:
-                    ret = self._inspect_container(name=container)
-                    status = ret["State"]["Status"]
-                    image = ret['Config']['Image']
-                    command = u' '.join(ret['Config']['Cmd']) if ret['Config']['Cmd'] else ""
-                    created = dateparse(ret['Created']).strftime("%F %H:%M") # pylint: disable=no-member
-                    container_info = {"type" : "docker", "container" : container,
-                              "image" : image, "command" : command,
-                              "created" : created, "status" : status,
-                              "runtime" : "Docker", "vulnerable" : each["vulnerable"]}
+                container = each["Id"]
+                ret = self._inspect_container(name=container)
+                status = ret["State"]["Status"]
+                image = ret['Config']['Image']
+                command = u' '.join(ret['Config']['Cmd']) if ret['Config']['Cmd'] else ""
+                created = dateparse(ret['Created']).strftime("%F %H:%M") # pylint: disable=no-member
+                container_info = {"type" : "docker", "container" : container,
+                                  "image" : image, "command" : command,
+                                  "created" : created, "status" : status,
+                                  "runtime" : "Docker", "vulnerable" : each["vulnerable"]}
 
-                    if self.args.filter:
-                        if not self._filter_include_container(container_info):
-                            continue
-                    all_containers.append(container_info)
+                if self.args.filter:
+                    if not self._filter_include_container(container_info):
+                        continue
+                all_containers.append(container_info)
 
         if not all_containers:
             return
