@@ -48,7 +48,8 @@ WorkingDirectory=$DESTDIR
 [Install]
 WantedBy=multi-user.target
 """
-BWRAP_OCI_PATH="/usr/bin/bwrap-oci"
+BWRAP_OCI_PATH = "/usr/bin/bwrap-oci"
+RUNC_PATH = "/bin/runc"
 
 class SystemContainers(object):
 
@@ -141,6 +142,14 @@ class SystemContainers(object):
         return
 
     def install_user_container(self, image, name):
+        try:
+            util.check_call([BWRAP_OCI_PATH, "--version"], stdout=DEVNULL)
+        except util.FileNotFound:
+            raise ValueError("Cannot install the container: bwrap-oci is needed to run user containers")
+
+        if not "--user" in str(util.check_output(["systemctl", "--help"], stdin=DEVNULL, stderr=DEVNULL)):
+            raise ValueError("Cannot install the container: systemctl does not support --user")
+
         # Same entrypoint
         return self.install_system_container(image, name)
 
@@ -148,6 +157,12 @@ class SystemContainers(object):
         repo = self._get_ostree_repo()
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
+
+        if not self.user:
+            try:
+                util.check_call([RUNC_PATH, "--version"], stdout=DEVNULL)
+            except util.FileNotFound:
+                raise ValueError("Cannot install the container: runc is needed to run system containers")
 
         self._pull_image_to_ostree(repo, image, False)
 
@@ -168,7 +183,7 @@ class SystemContainers(object):
             raise ValueError("Invalid configuration file.  Path must be 'rootfs'")
 
     def _generate_default_oci_configuration(self, destination):
-        args = ['/bin/runc', 'spec']
+        args = [RUNC_PATH, 'spec']
         util.subp(args, cwd=destination)
         conf_path = os.path.join(destination, "config.json")
         with open(conf_path, 'r') as conf:
@@ -184,12 +199,12 @@ class SystemContainers(object):
         if self.user:
             return ["%s '%s'" % (BWRAP_OCI_PATH, name), ""]
 
-        version = str(util.check_output(["/bin/runc", "--version"], stderr=DEVNULL))
+        version = str(util.check_output([RUNC_PATH, "--version"], stderr=DEVNULL))
         if "version 0" in version:
             runc_commands = ["start", "kill"]
         else:
             runc_commands = ["run", "kill"]
-        return ["/bin/runc %s '%s'" % (command, name) for command in runc_commands]
+        return ["%s %s '%s'" % (RUNC_PATH, command, name) for command in runc_commands]
 
     def _checkout_system_container(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False):
         if not values:
@@ -412,7 +427,7 @@ class SystemContainers(object):
             return {'status' : 'unknown'}
 
         try:
-            inspect_stdout = util.check_output(["runc", "state", container])
+            inspect_stdout = util.check_output([RUNC_PATH, "state", container])
             ret = json.loads(inspect_stdout.decode())
             status = ret["status"]
             created = dateparse(ret['created'])
@@ -467,7 +482,7 @@ class SystemContainers(object):
         commit_rev = repo.resolve_rev(imagebranch, False)[1]
         commit = repo.load_commit(commit_rev)[1]
 
-        branch_id = imagebranch.replace("ociimage/", "")
+        branch_id = imagebranch.replace(OSTREE_OCIIMAGE_PREFIX, "")
         tag = ":".join(branch_id.rsplit('-', 1))
         timestamp = OSTree.commit_get_timestamp(commit)
         labels = {}
