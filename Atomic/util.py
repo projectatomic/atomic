@@ -87,6 +87,9 @@ def subp(cmd, cwd=None):
     out, err = proc.communicate()
     return ReturnTuple(proc.returncode, stdout=out, stderr=err)
 
+class FileNotFound(Exception):
+    pass
+
 # Wrappers for Python's subprocess which override the default for close_fds,
 # since we are a privileged process, and we don't want to leak things like
 # the docker socket into child processes by default
@@ -100,7 +103,12 @@ def check_call(cmd, env=None, stdin=None, stderr=None, stdout=None):
             cmd = shlex.split(" ".join([x.encode('utf-8') for x in cmd.split()]))
         else:
             cmd = shlex.split(cmd)
-    return subprocess.check_call(cmd, env=env, stdin=stdin, stderr=stderr, stdout=stdout, close_fds=True)
+    try:
+        return subprocess.check_call(cmd, env=env, stdin=stdin, stderr=stderr, stdout=stdout, close_fds=True)
+    except OSError as e:
+        if e.args[0] == errno.ENOENT:
+            raise FileNotFound("Cannot find file: `{}`".format(cmd[0]))
+        raise
 
 def check_output(cmd, env=None, stdin=None, stderr=None):
     if not env:
@@ -108,7 +116,12 @@ def check_output(cmd, env=None, stdin=None, stderr=None):
     # Make sure cmd is a list
     if not isinstance(cmd, list):
         cmd = shlex.split(cmd)
-    return subprocess.check_output(cmd, env=env, stdin=stdin, stderr=stderr, close_fds=True)
+    try:
+        return subprocess.check_output(cmd, env=env, stdin=stdin, stderr=stderr, close_fds=True)
+    except OSError as e:
+        if e.args[0] == errno.ENOENT:
+            raise FileNotFound("Cannot find file: `{}`".format(cmd[0]))
+        raise
 
 def call(cmd, env=None, stdin=None, stderr=None, stdout=None):
     if not env:
@@ -116,7 +129,12 @@ def call(cmd, env=None, stdin=None, stderr=None, stdout=None):
     # Make sure cmd is a list
     if not isinstance(cmd, list):
         cmd = shlex.split(cmd)
-    return subprocess.call(cmd, env=env, stdin=stdin, stderr=stderr, stdout=stdout, close_fds=True)
+    try:
+        return subprocess.call(cmd, env=env, stdin=stdin, stderr=stderr, stdout=stdout, close_fds=True)
+    except OSError as e:
+        if e.args[0] == errno.ENOENT:
+            raise FileNotFound("Cannot find file: `{}`".format(cmd[0]))
+        raise
 
 def default_container_context():
     if selinux.is_selinux_enabled() != 0:

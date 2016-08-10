@@ -34,6 +34,29 @@ class TestAtomicUtil(unittest.TestCase):
                selinux.is_selinux_enabled() else '')
         self.assertEqual(exp, util.default_container_context())
 
+    def test_check_call(self):
+        exception_raised = False
+        try:
+            util.check_call(['/usr/bin/does_not_exist'])
+        except util.FileNotFound:
+            exception_raised = True
+        self.assertTrue(exception_raised)
+
+    def test_call(self):
+        exception_raised = False
+        try:
+            util.call(['/usr/bin/does_not_exist'])
+        except util.FileNotFound:
+            exception_raised = True
+        self.assertTrue(exception_raised)
+
+    def test_check_output(self):
+        exception_raised = False
+        try:
+            util.check_call(['/usr/bin/does_not_exist'])
+        except util.FileNotFound:
+            exception_raised = True
+        self.assertTrue(exception_raised)
 
 if __name__ == '__main__':
     unittest.main()
