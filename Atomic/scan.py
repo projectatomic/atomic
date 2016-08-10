@@ -392,6 +392,9 @@ class Scan(Atomic):
                                      "default scan type defined for '{}'".format(self.args.scanner))
                 for x in i['scans']:
                     scan_types.append(x['name'])
+        if default_scan_type not in scan_types:
+            raise ValueError("The default scan type '{}' is not defined as a valid scan type for "
+                             "the scanner '{}'".format(default_scan_type, self.scanner))
         if self.args.scan_type is None:
             return default_scan_type
         elif self.args.scan_type in scan_types:
