@@ -160,7 +160,8 @@ printf "\nINTEGRATION TESTS:\n" | tee -a ${LOG}
 
 export ATOMIC="${COVERAGE}
 --append
-atomic"
+atomic
+--debug"
 
 for tf in `find ./tests/integration/ -name test_*.sh`; do
 

@@ -66,11 +66,11 @@ teardown () {
 
 trap teardown EXIT
 
-${ATOMIC} --debug install --name=${NAME} --set=RECEIVER=${SECRET} --system oci:atomic-test-system
+${ATOMIC} install --name=${NAME} --set=RECEIVER=${SECRET} --system oci:atomic-test-system
 
-${ATOMIC} --debug ps --no-trunc > ps.out
+${ATOMIC} ps --no-trunc > ps.out
 grep -q "test-system" ps.out
-${ATOMIC} --debug ps --json > ps.out
+${ATOMIC} ps --json > ps.out
 grep -q "test-system" ps.out
 ${ATOMIC} ps --all > ps.out
 grep -q "test-system" ps.out
