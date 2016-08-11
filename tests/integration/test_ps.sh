@@ -16,11 +16,11 @@ IFS=$'\n\t'
 
 OUTPUT=$(/bin/true)
 
-${ATOMIC} ps --all -q -f type=docker | sort > atomic.ps.out
+${ATOMIC} ps --all -q -f runtime=Docker | sort > atomic.ps.out
 docker ps --all -q | sort > docker.ps.out
 diff docker.ps.out atomic.ps.out
 
-${ATOMIC} ps -q -f type=docker | sort > atomic.ps.out
+${ATOMIC} ps -q -f runtime=Docker | sort > atomic.ps.out
 docker ps -q | sort > docker.ps.out
 diff docker.ps.out atomic.ps.out
 
