@@ -450,6 +450,7 @@ _atomic_install() {
 	local all_options="$options_with_args
 		--help
                --display
+               --rootfs
                --system
                --set
                --user

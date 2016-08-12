@@ -9,6 +9,7 @@ atomic-install - Execute Image Install Method
 [**-h**|**--help**]
 [**--display**]
 [**-n**][**--name**[=*NAME*]]
+[**--rootfs**=*ROOTFS*]
 [**--set**=*NAME*=*VALUE*]
 [**--system**]
 IMAGE [ARG...]
@@ -59,6 +60,13 @@ If --display is not specified the install command will execute.
 **-n** **--name**=""
  Use this name for creating installed content for the container.
  NAME will default to the IMAGENAME if it is not specified.
+
+**--rootfs=ROOTFS**
+Specify a ROOTFS folder, which can be an existing, expanded
+container/image, or a location which contains an existing
+root filesystem. The existing rootfs will be used as the new
+system container's rootfs (read only), and thus the new container
+will only contain config and info files.
 
 **--set=NAME=VALUE**
 Set a value that is going to be used by a system container for its

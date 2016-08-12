@@ -174,14 +174,14 @@ class SystemContainers(object):
 
         return self._checkout_system_container(repo, name, image, 0, False)
 
-    def _check_oci_configuration_file(self, conf_path):
+    def _check_oci_configuration_file(self, conf_path, remote=None):
         with open(conf_path, 'r') as conf:
             configuration = json.loads(conf.read())
         if not 'root' in configuration or \
            not 'readonly' in configuration['root'] or \
            not configuration['root']['readonly']:
             raise ValueError("Invalid configuration file.  Only readonly images are supported")
-        if configuration['root']['path'] != 'rootfs':
+        if configuration['root']['path'] != 'rootfs' and not remote:
             raise ValueError("Invalid configuration file.  Path must be 'rootfs'")
 
     def _generate_default_oci_configuration(self, destination):
@@ -208,13 +208,36 @@ class SystemContainers(object):
             runc_commands = ["run", "kill"]
         return ["%s %s '%s'" % (RUNC_PATH, command, name) for command in runc_commands]
 
+    def _resolve_remote_path(self, remote_path):
+        if not remote_path:
+            return None
+
+        real_path = os.path.realpath(remote_path)
+        if not os.path.exists(real_path):
+            raise ValueError ("The container's rootfs is set to remote, but the remote rootfs does not exist")
+        return real_path
+
     def _checkout_system_container(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False):
         if not values:
             values = {}
+
+        remote = self._resolve_remote_path(self.args.remote)
         imagebranch = SystemContainers._get_ostree_image_branch(img)
 
         destination = destination or "%s/%s.%d" % (self._get_system_checkout_path(), name, deployment)
-        exports = os.path.join(destination, "rootfs/exports")
+        if remote:
+            remote_rootfs = os.path.join(remote, "rootfs")
+            if os.path.exists(remote_rootfs):
+                util.write_out("The remote rootfs for this container is set to be %s" % remote_rootfs)
+            elif os.path.exists(os.path.join(remote, "usr")): # Assume that the user directly gave the location of the rootfs
+                remote_rootfs = remote
+                remote = os.path.dirname(remote) # Use the parent directory as the "container location"
+            else:
+                raise ValueError("--remote was specified but the given location does not contain a rootfs")
+            exports = os.path.join(remote, "rootfs/exports")
+        else:
+            exports = os.path.join(destination, "rootfs/exports")
+
         unitfile = os.path.join(exports, "service.template")
         if self.user:
             home = os.path.expanduser("~")
@@ -234,6 +257,8 @@ class SystemContainers(object):
             rootfs = os.path.join(destination, "rootfs")
         elif extract_only:
             rootfs = destination
+        elif remote:
+            rootfs = os.path.join(remote, "rootfs")
         else:
             # Under Atomic, get the real deployment location.  It is needed to create the hard links.
             try:
@@ -249,25 +274,29 @@ class SystemContainers(object):
         if os.path.exists(destination):
             shutil.rmtree(destination)
 
-        os.makedirs(rootfs)
+        if remote:
+            os.makedirs(destination)
+        else:
+            os.makedirs(rootfs)
 
         rev = repo.resolve_rev(imagebranch, False)[1]
         manifest = self._image_manifest(repo, rev)
 
-        rootfs_fd = None
-        try:
-            rootfs_fd = os.open(rootfs, os.O_DIRECTORY)
-            if manifest is None:
-                self._checkout_layer(repo, rootfs_fd, rootfs, rev)
-            else:
-                layers = SystemContainers.get_layers_from_manifest(json.loads(manifest))
-                for layer in layers:
-                    rev_layer = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer.replace("sha256:", "")), False)[1]
-                    self._checkout_layer(repo, rootfs_fd, rootfs, rev_layer)
-            self._do_syncfs(rootfs, rootfs_fd)
-        finally:
-            if rootfs_fd:
-                os.close(rootfs_fd)
+        if not remote:
+            rootfs_fd = None
+            try:
+                rootfs_fd = os.open(rootfs, os.O_DIRECTORY)
+                if manifest is None:
+                    self._checkout_layer(repo, rootfs_fd, rootfs, rev)
+                else:
+                    layers = SystemContainers.get_layers_from_manifest(json.loads(manifest))
+                    for layer in layers:
+                        rev_layer = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer.replace("sha256:", "")), False)[1]
+                        self._checkout_layer(repo, rootfs_fd, rootfs, rev_layer)
+                self._do_syncfs(rootfs, rootfs_fd)
+            finally:
+                if rootfs_fd:
+                    os.close(rootfs_fd)
 
         if extract_only:
             return
@@ -305,7 +334,6 @@ class SystemContainers(object):
                 missing = {x[1] for x in template.pattern.findall(data, template.flags) if len(x[1]) > 0 and x[1] not in values} # pylint: disable=no-member
                 raise ValueError("The template file %s still contains unreplaced values for: %s" % \
                                  (inputfilename, ", ".join(missing)))
-
             outfile.write(result)
 
         src = os.path.join(exports, "config.json")
@@ -318,7 +346,14 @@ class SystemContainers(object):
         else:
             self._generate_default_oci_configuration(destination)
 
-        self._check_oci_configuration_file(destination_path)
+        if remote:
+            with open(destination_path, 'r') as config_file:
+                config = json.loads(config_file.read())
+                config['root']['path'] = remote_rootfs
+            with open(destination_path, 'w') as config_file:
+                config_file.write(json.dumps(config, indent=4))
+
+        self._check_oci_configuration_file(destination_path, remote)
 
         image_manifest = self._image_manifest(repo, rev)
         image_id = rev
@@ -332,7 +367,8 @@ class SystemContainers(object):
                     "revision" : image_id,
                     "ostree-commit": rev,
                     'created' : calendar.timegm(time.gmtime()),
-                    "values" : values}
+                    "values" : values,
+                    "remote" : self.args.remote}
             info_file.write(json.dumps(info, indent=4))
 
         if os.path.exists(unitfile):
@@ -400,12 +436,18 @@ class SystemContainers(object):
 
     def update_system_container(self, name):
         self.args.display = False
+        self.args.remote = None
 
         repo = self._get_ostree_repo()
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
 
         path = os.path.join(self._get_system_checkout_path(), name)
+        with open(os.path.join(path, "info"), 'r') as info_file:
+            info = json.loads(info_file.read())
+            self.args.remote = info['remote']
+            if self.args.remote:
+                util.write_out("Updating a container with a remote rootfs. Only changes to config will be applied.")
 
         next_deployment = 0
         if os.path.realpath(path).endswith(".0"):
@@ -805,6 +847,7 @@ class SystemContainers(object):
         repo = self._get_ostree_repo()
         if not repo:
             return False
+        self.args.remote = None
         return self._checkout_system_container(repo, img, img, 0, False, destination=destination, extract_only=True)
 
     @staticmethod

@@ -57,11 +57,16 @@ teardown () {
     # Do not leave the runc container in any case
     runc kill $NAME 9 &> /dev/null || true
     runc delete $NAME &> /dev/null  || true
+    runc kill $NAME-remote 9 &> /dev/null || true
+    runc delete $NAME-remote &> /dev/null || true
 
     # Ensure there is no systemd service left running
     systemctl stop $NAME &> /dev/null || true
     systemctl disable $NAME &> /dev/null || true
     rm -rf /etc/systemd/system/${NAME}.service || true
+    systemctl stop $NAME-remote &> /dev/null || true
+    systemctl disable $NAME-remote &> /dev/null || true
+    rm -rf /etc/systemd/system/${NAME}-remote.service || true
 }
 
 trap teardown EXIT
@@ -117,6 +122,20 @@ ${ATOMIC} update --set=PORT=8082 --container ${NAME}
 grep -q ${SECRET} ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/config.json
 grep -q 8082 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/config.json
 
+# Test if a container with a remote rootfs can be installed/updated
+${ATOMIC} --debug install --name=${NAME}-remote --rootfs=${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1 --set=RECEIVER=${SECRET}-remote --system oci:atomic-test-system
+
+${ATOMIC} --debug ps --no-trunc > ps.out
+grep -q "remote" ps.out
+test -e /etc/systemd/system/${NAME}-remote.service
+
+# The rootfs should not exist
+test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}-remote.0/rootfs
+
+# Values should still be able to be updated for remote containers
+${ATOMIC} update --set=PORT=8083 --container ${NAME}-remote
+grep -q 8083 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}-remote.1/config.json
+
 mkdir ${WORK_DIR}/mount
 
 # Test that mount and umount work
@@ -137,6 +156,14 @@ ${ATOMIC} umount ${WORK_DIR}/mount
 ${ATOMIC} mount atomic-test-system ${WORK_DIR}/mount
 test -e ${WORK_DIR}/mount/usr/bin/greet.sh
 ${ATOMIC} umount ${WORK_DIR}/mount
+
+# Check uninstalling a remote container, and whether it affects the original rootfs
+${ATOMIC} uninstall ${NAME}-remote
+test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}/rootfs
+test \! -e /etc/systemd/system/${NAME}-remote.service
+test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}-remote
+test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}-remote.0
+test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}-remote.1
 
 ${ATOMIC} uninstall ${NAME}
 test \! -e /etc/systemd/system/${NAME}.service

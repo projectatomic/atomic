@@ -299,6 +299,10 @@ def create_parser(help_text):
     if Atomic.syscontainers.OSTREE_PRESENT:
         installp.add_argument("--user", dest="user", action="store_true",
                               help=_("Flag to specify if user is non-root privileged."))
+        installp.add_argument("--rootfs", dest="remote",
+                              help=_("choose an existing exploded container/image to use "
+                                     "its rootfs as a remote, read-only rootfs for the"
+                                     "container to be installed"))
         installp.add_argument("--system", dest="system",
                               action='store_true', default=False,
                               help=_('install a system container'))
