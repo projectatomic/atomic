@@ -495,9 +495,9 @@ class DockerMount(Mount):
 
         ld, ud, wd = '', '', ''
         try:
-            ld = cinfo['GraphDriver']['Data']['lowerDir']
-            ud = cinfo['GraphDriver']['Data']['upperDir']
-            wd = cinfo['GraphDriver']['Data']['workDir']
+            ld = cinfo['GraphDriver']['Data']['LowerDir']
+            ud = cinfo['GraphDriver']['Data']['UpperDir']
+            wd = cinfo['GraphDriver']['Data']['WorkDir']
         except KeyError:
             ld, ud, wd = DockerMount._no_gd_api_overlay(cid)
 
@@ -615,9 +615,16 @@ class DockerMount(Mount):
                     if o.startswith('upperdir=')][0]
         cdir = upperdir.rsplit('/', 1)[0]
         if not cdir.startswith('/var/lib/docker/overlay/'):
-            raise MountError('The device mounted at that location is not a '
-                             'docker container.')
-        return cdir.replace('/var/lib/docker/overlay/', '')
+            raise MountError('The device mounted at %s is not a '
+                             'docker container.' % self.mountpoint )
+
+        for c in self._get_all_cids():
+            graph = self.d.inspect_container(c)["GraphDriver"]
+            if graph['Data']['UpperDir'].startswith(cdir):
+                return c
+
+        raise MountError('The device mounted at %s is not a '
+                         'docker container.' % self.mountpoint )
 
     def _unmount_overlay(self, path=None):
         """
@@ -635,6 +642,9 @@ class DockerMount(Mount):
         if not self.live:
             self.d.remove_container(short_cid)
         self._clean_tmp_image()
+
+    def get_driver(self):
+        return self._info()['Driver']
 
 def getxattrfuncs():
     # Python 3 has support for extended attributes in the os module, while

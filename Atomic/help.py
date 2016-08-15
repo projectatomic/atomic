@@ -1,5 +1,6 @@
 from . import Atomic
 import subprocess
+import tempfile
 from pydoc import pager
 import os
 from . import mount
@@ -11,7 +12,7 @@ class AtomicHelp(Atomic):
 
     def __init__(self):
         super(AtomicHelp, self).__init__()
-        self.mount_location = '/run/atomic'
+        self.mount_location = tempfile.mkdtemp(prefix='/run/atomic/')
         self.help_file_name = 'help.1'
         self.docker_object = None
         self.is_container = True
@@ -63,12 +64,11 @@ class AtomicHelp(Atomic):
             self.use_pager = False
         dm = mount.DockerMount(self.mount_location, mnt_mkdir=True)
         mnt_path = dm.mount(docker_id)
+        help_path = os.path.join(mnt_path, self.help_file_name)
+        if not os.path.exists(help_path):
+            help_path = os.path.join(mnt_path, 'rootfs', self.help_file_name)
         try:
-            help_file = open(os.path.join(mnt_path, self.help_file_name))
-        except IOError:
-            pass
-        try:
-            help_file = open(os.path.join(mnt_path, 'rootfs', self.help_file_name))
+            help_file=open(help_path)
         except IOError:
             dm.unmount(path=mnt_path)
             raise ValueError("Unable to find help file for {}".format(self.docker_object))

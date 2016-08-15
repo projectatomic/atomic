@@ -2,6 +2,7 @@ import os
 import sys
 import rpm
 import json
+import tempfile
 from filecmp import dircmp
 from . import util
 from . import mount
@@ -138,10 +139,14 @@ class DiffHelpers(object):
 
 class DiffObj(object):
     def __init__(self, docker_name):
-        self.dm = mount.DockerMount("/tmp", mnt_mkdir=True)
+        self.dm = mount.DockerMount(tempfile.mkdtemp(), mnt_mkdir=True)
         self.name = docker_name
         self.root_path = self.dm.mount(self.name)
-        self.chroot = os.path.join(self.root_path, "rootfs")
+        chroot = os.path.join(self.root_path, "rootfs")
+        if os.path.exists(chroot):
+            self.chroot = chroot
+        else:
+            self.chroot = self.root_path
 
     def remove(self):
         """
