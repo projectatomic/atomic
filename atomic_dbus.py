@@ -10,6 +10,7 @@ from gi.repository import GLib # pylint: disable=no-name-in-module
 import slip.dbus.service
 from Atomic import Atomic
 from Atomic.verify import Verify
+from Atomic.images import Images
 from Atomic.storage import Storage
 from Atomic.diff import Diff
 from Atomic.scan import Scan
@@ -253,8 +254,9 @@ class atomic_dbus(slip.dbus.service.Object):
     @dbus.service.method("org.atomic", in_signature='', out_signature='s')
     def Images(self):
         args = self.Args()
-        self.atomic.set_args(args)
-        return json.dumps(self.atomic.images())
+        images = Images()
+        images.set_args(args)
+        return json.dumps(images.images())
 
     # The Vulnerable method will send back information that says
     # whether or not an installed container image is vulnerable

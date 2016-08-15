@@ -31,9 +31,6 @@ the version information.
 **-v** **--verbose**
   Will output the status of each base image that makes up the image being verified.
 
-**-g** **--generate**
-  Generates a gomtree validation manifest when user specifies a non-system image
-
 # EXAMPLES
 Verify the Red Hat rsyslog image
 

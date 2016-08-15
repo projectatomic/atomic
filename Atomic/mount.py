@@ -32,6 +32,7 @@ import requests
 from .util import NoDockerDaemon
 import shutil
 from .syscontainers import OSTREE_PRESENT as OSTREE_PRESENT
+from gi.repository import GLib  # pylint: disable=no-name-in-module
 
 # Module for mounting and unmounting containerized applications.
 
@@ -95,7 +96,9 @@ class Mount(Atomic):
             d = OSTreeMount(self.args, self.mountpoint, live=self.live, shared=self.shared)
             if d.mount(self.image, self.options):
                 return
-
+        except GLib.Error: # pylint: disable=catching-non-exception
+            pass
+        try:
             d = DockerMount(self.mountpoint, self.live)
             d.shared = self.shared
             d.mount(self.image, self.options)

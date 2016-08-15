@@ -483,6 +483,7 @@ _atomic_images() {
     list
     delete
     prune
+    generate
   "
 
   __atomic_subcommands "$subcommands" && return

@@ -11,8 +11,6 @@ import itertools
 import tempfile
 import subprocess
 
-ATOMIC_VAR = '/var/lib/containers/atomic'
-
 class Verify(Atomic):
     def __init__(self):
         super(Verify, self).__init__()
@@ -97,11 +95,8 @@ class Verify(Atomic):
             except AtomicError:
                 self._no_such_image()
 
-        if hasattr(self.args,"generate") and self.args.generate:
-            self.generate_docker_validation_manifest()
-
-        elif hasattr(self.args,"validate") and self.args.validate:
-            self.validate_docker_image_manifest()
+        if hasattr(self.args,"validate") and self.args.validate:
+            self.validate_image_manifest()
 
         layers = fix_layers(self.get_layers())
         if self.debug:
@@ -394,32 +389,7 @@ class Verify(Atomic):
             util.write_out("\n")
             util.write_out("perform an `atomic pull \"%s\"` if you want to generate these manifests\n" % self.image)
 
-    def generate_docker_validation_manifest(self):
-        """
-        Generates a gomtree validation manifest for a non-system image and stores it in
-        ATOMIC_VAR
-        :param:
-        :return: None
-        """
-        iid = self._is_image(self.image)
-        if os.path.exists(os.path.join(ATOMIC_VAR,"gomtree-manifests/%s.mtree" % iid)):
-            return
-        if not os.path.exists(os.path.join(ATOMIC_VAR,"gomtree-manifests")):
-            os.makedirs(os.path.join(ATOMIC_VAR,"gomtree-manifests"))
-        manifestname = os.path.join(ATOMIC_VAR, "gomtree-manifests/%s.mtree" % iid)
-        tmpdir = tempfile.mkdtemp()
-        m = Mount()
-        m.args = []
-        m.image = self.image
-        m.mountpoint = tmpdir
-        m.mount()
-        r = util.generate_validation_manifest(img_rootfs=tmpdir, keywords="type,uid,gid,mode,size,sha256digest")
-        m.unmount()
-        with open(manifestname,"w",0) as f:
-            f.write(r.stdout)
-        shutil.rmtree(tmpdir)
-
-    def validate_docker_image_manifest(self):
+    def validate_image_manifest(self):
         """
         Validates a docker image by mounting the image on a rootfs and validate that
         rootfs against the manifests that were created. Note that it won't be validated
@@ -428,9 +398,9 @@ class Verify(Atomic):
         :return: None
         """
         iid = self._is_image(self.image)
-        if not os.path.exists(os.path.join(ATOMIC_VAR,"gomtree-manifests/%s.mtree" % iid)):
+        manifestname = os.path.join(util.ATOMIC_VAR, "gomtree-manifests/%s.mtree" % iid)
+        if not os.path.exists(manifestname):
             return
-        manifestname = os.path.join(ATOMIC_VAR, "gomtree-manifests/%s.mtree" % iid)
         tmpdir = tempfile.mkdtemp()
         m = Mount()
         m.args = []
@@ -444,7 +414,7 @@ class Verify(Atomic):
         shutil.rmtree(tmpdir)
 
     @staticmethod
-    def get_gomtree_manifest(layer, root=os.path.join(ATOMIC_VAR, "gomtree-manifests")):
+    def get_gomtree_manifest(layer, root=os.path.join(util.ATOMIC_VAR, "gomtree-manifests")):
         manifestpath = os.path.join(root,"%s.mtree" % layer)
         if os.path.isfile(manifestpath):
             return manifestpath
