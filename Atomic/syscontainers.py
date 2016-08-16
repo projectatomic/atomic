@@ -218,13 +218,37 @@ class SystemContainers(object):
         return real_path
 
     def _checkout_system_container(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False, remote=None):
+        destination = destination or "%s/%s.%d" % (self._get_system_checkout_path(), name, deployment)
+        if self.user:
+            home = os.path.expanduser("~")
+            unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST_USER % home, "%s.service" % name)
+        else:
+            unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
+
+        if not upgrade and os.path.exists(unitfileout):
+            raise ValueError("The file %s already exists." % unitfileout)
+
+        try:
+            return self._do_checkout_system_container(repo, name, img, upgrade, values, destination, unitfileout, extract_only, remote)
+        except (ValueError, OSError) as e:
+            try:
+                shutil.rmtree(destination)
+            except OSError:
+                pass
+            try:
+                if not upgrade:
+                    shutil.rmtree(unitfileout)
+            except OSError:
+                pass
+            raise e
+
+    def _do_checkout_system_container(self, repo, name, img, upgrade, values, destination, unitfileout, extract_only, remote):
         if not values:
             values = {}
 
         remote_path = self._resolve_remote_path(remote)
         imagebranch = SystemContainers._get_ostree_image_branch(img)
 
-        destination = destination or "%s/%s.%d" % (self._get_system_checkout_path(), name, deployment)
         if remote_path:
             remote_rootfs = os.path.join(remote_path, "rootfs")
             if os.path.exists(remote_rootfs):
@@ -239,14 +263,6 @@ class SystemContainers(object):
             exports = os.path.join(destination, "rootfs/exports")
 
         unitfile = os.path.join(exports, "service.template")
-        if self.user:
-            home = os.path.expanduser("~")
-            unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST_USER % home, "%s.service" % name)
-        else:
-            unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
-
-        if not upgrade and os.path.exists(unitfileout):
-            raise ValueError("The file %s already exists." % unitfileout)
 
         util.write_out("Extracting to %s" % destination)
 
@@ -397,7 +413,6 @@ class SystemContainers(object):
             self._systemctl_command("restart", name)
         else:
             self._systemctl_command("start", name)
-        return
 
     def _get_system_checkout_path(self):
         if os.environ.get("ATOMIC_OSTREE_CHECKOUT_PATH"):
