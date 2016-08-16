@@ -94,6 +94,8 @@ class Images(Atomic):
             used_image_ids = [x['ImageID'] for x in self.get_containers()]
             for image in _images:
                 image_dict = dict()
+                if not image["RepoTags"]:
+                    continue
                 if ':' in image["RepoTags"][0]:
                     repo, tag = image["RepoTags"][0].rsplit(":", 1)
                 else:
@@ -136,12 +138,19 @@ class Images(Atomic):
         _images = self.get_images(get_all=True)
         for image in _images:
             atomic_var = util.ATOMIC_VAR
+            if not image["RepoTags"]:
+                continue
             iid = image["RepoTags"][0]
+            if image["ImageType"] == "System":
+                continue
+            if iid == "<none>:<none>" or iid == "<none>":
+                continue
             if os.path.exists(os.path.join(atomic_var,"gomtree-manifests/%s.mtree" % iid)):
                 continue
-            if not os.path.exists(os.path.join(atomic_var,"gomtree-manifests")): # 
-                os.makedirs(os.path.join(atomic_var,"gomtree-manifests"))
             manifestname = os.path.join(atomic_var, "gomtree-manifests/%s.mtree" % iid)
+            dname = os.path.dirname(manifestname)
+            if not os.path.exists(dname):
+                os.makedirs(dname)
             tmpdir = tempfile.mkdtemp()
             m = Mount()
             m.args = []

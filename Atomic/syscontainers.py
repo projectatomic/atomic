@@ -172,7 +172,7 @@ class SystemContainers(object):
             util.write_out("%s already present" % (name))
             return
 
-        return self._checkout_system_container(repo, name, image, 0, False)
+        return self._checkout_system_container(repo, name, image, 0, False, remote=self.args.remote)
 
     def _check_oci_configuration_file(self, conf_path, remote=None):
         with open(conf_path, 'r') as conf:
@@ -217,24 +217,24 @@ class SystemContainers(object):
             raise ValueError ("The container's rootfs is set to remote, but the remote rootfs does not exist")
         return real_path
 
-    def _checkout_system_container(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False):
+    def _checkout_system_container(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False, remote=None):
         if not values:
             values = {}
 
-        remote = self._resolve_remote_path(self.args.remote)
+        remote_path = self._resolve_remote_path(remote)
         imagebranch = SystemContainers._get_ostree_image_branch(img)
 
         destination = destination or "%s/%s.%d" % (self._get_system_checkout_path(), name, deployment)
-        if remote:
-            remote_rootfs = os.path.join(remote, "rootfs")
+        if remote_path:
+            remote_rootfs = os.path.join(remote_path, "rootfs")
             if os.path.exists(remote_rootfs):
                 util.write_out("The remote rootfs for this container is set to be %s" % remote_rootfs)
             elif os.path.exists(os.path.join(remote, "usr")): # Assume that the user directly gave the location of the rootfs
                 remote_rootfs = remote
-                remote = os.path.dirname(remote) # Use the parent directory as the "container location"
+                remote_path = os.path.dirname(remote_path) # Use the parent directory as the "container location"
             else:
                 raise ValueError("--remote was specified but the given location does not contain a rootfs")
-            exports = os.path.join(remote, "rootfs/exports")
+            exports = os.path.join(remote_path, "rootfs/exports")
         else:
             exports = os.path.join(destination, "rootfs/exports")
 
@@ -257,8 +257,8 @@ class SystemContainers(object):
             rootfs = os.path.join(destination, "rootfs")
         elif extract_only:
             rootfs = destination
-        elif remote:
-            rootfs = os.path.join(remote, "rootfs")
+        elif remote_path:
+            rootfs = os.path.join(remote_path, "rootfs")
         else:
             # Under Atomic, get the real deployment location.  It is needed to create the hard links.
             try:
@@ -274,7 +274,7 @@ class SystemContainers(object):
         if os.path.exists(destination):
             shutil.rmtree(destination)
 
-        if remote:
+        if remote_path:
             os.makedirs(destination)
         else:
             os.makedirs(rootfs)
@@ -282,7 +282,7 @@ class SystemContainers(object):
         rev = repo.resolve_rev(imagebranch, False)[1]
         manifest = self._image_manifest(repo, rev)
 
-        if not remote:
+        if not remote_path:
             rootfs_fd = None
             try:
                 rootfs_fd = os.open(rootfs, os.O_DIRECTORY)
@@ -346,14 +346,14 @@ class SystemContainers(object):
         else:
             self._generate_default_oci_configuration(destination)
 
-        if remote:
+        if remote_path:
             with open(destination_path, 'r') as config_file:
                 config = json.loads(config_file.read())
                 config['root']['path'] = remote_rootfs
             with open(destination_path, 'w') as config_file:
                 config_file.write(json.dumps(config, indent=4))
 
-        self._check_oci_configuration_file(destination_path, remote)
+        self._check_oci_configuration_file(destination_path, remote_path)
 
         image_manifest = self._image_manifest(repo, rev)
         image_id = rev
@@ -368,7 +368,7 @@ class SystemContainers(object):
                     "ostree-commit": rev,
                     'created' : calendar.timegm(time.gmtime()),
                     "values" : values,
-                    "remote" : self.args.remote}
+                    "remote" : remote}
             info_file.write(json.dumps(info, indent=4))
 
         if os.path.exists(unitfile):
@@ -436,7 +436,6 @@ class SystemContainers(object):
 
     def update_system_container(self, name):
         self.args.display = False
-        self.args.remote = None
 
         repo = self._get_ostree_repo()
         if not repo:
@@ -464,7 +463,7 @@ class SystemContainers(object):
         image = info["image"]
         values = info["values"]
 
-        self._checkout_system_container(repo, name, image, next_deployment, True, values)
+        self._checkout_system_container(repo, name, image, next_deployment, True, values, remote=self.args.remote)
 
     def get_container_runtime_info(self, container):
         if self.user:
@@ -847,7 +846,6 @@ class SystemContainers(object):
         repo = self._get_ostree_repo()
         if not repo:
             return False
-        self.args.remote = None
         return self._checkout_system_container(repo, img, img, 0, False, destination=destination, extract_only=True)
 
     @staticmethod

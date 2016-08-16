@@ -65,6 +65,8 @@ def image_by_name(img_name, images=None):
 
     valid_images = []
     for i in images:
+        if not i["RepoTags"]:
+            continue
         for t in i['RepoTags']:
             reg, rep, tag = decompose(t)
             if matches(reg, i_reg) \
