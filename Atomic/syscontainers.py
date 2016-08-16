@@ -291,7 +291,10 @@ class SystemContainers(object):
                 else:
                     layers = SystemContainers.get_layers_from_manifest(json.loads(manifest))
                     for layer in layers:
-                        rev_layer = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer.replace("sha256:", "")), False)[1]
+                        rev_layer = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer.replace("sha256:", "")), True)[1]
+                        if not rev_layer:
+                            raise ValueError("Layer not found: %s.  Please pull again the image" % layer.replace("sha256:", ""))
+
                         self._checkout_layer(repo, rootfs_fd, rootfs, rev_layer)
                 self._do_syncfs(rootfs, rootfs_fd)
             finally:
