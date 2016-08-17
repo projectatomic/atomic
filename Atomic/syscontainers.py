@@ -10,7 +10,6 @@ import shutil
 import stat
 import subprocess
 import time
-import gzip
 from .client import AtomicDocker
 from ctypes import cdll, CDLL
 from dateutil.parser import parse as dateparse
@@ -214,7 +213,7 @@ class SystemContainers(object):
 
         real_path = os.path.realpath(remote_path)
         if not os.path.exists(real_path):
-            raise ValueError ("The container's rootfs is set to remote, but the remote rootfs does not exist")
+            raise ValueError("The container's rootfs is set to remote, but the remote rootfs does not exist")
         return real_path
 
     def _checkout_system_container(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False, remote=None):
@@ -844,8 +843,6 @@ class SystemContainers(object):
                             layer = f.replace(".tar", "")
                             if not repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1]:
                                 layers_to_import[layer] = layer_file
-                            if not os.path.isfile(os.path.join(ATOMIC_VAR, "gomtree-manifests/%s.mtree" % layer)):
-                                SystemContainers._generate_validation_manifest(layer,layer_file)
             SystemContainers._import_layers_into_ostree(repo, imagebranch, manifest, layers_to_import)
         finally:
             if layers_dir:
@@ -922,34 +919,44 @@ class SystemContainers(object):
             layers_to_import[layers_map[k]] = v
         SystemContainers._import_layers_into_ostree(repo, imagebranch, manifest, layers_to_import)
 
-    @staticmethod
-    def _generate_validation_manifest(layer,tar,root=os.path.join(ATOMIC_VAR, "gomtree-manifests")):
-        """
-        Creates a gomtree validation manifest using a tar archive associated with
-        it's layer. Defaults to placing the manifest in a folder in the ATOMIC_VAR folder.
-        :param layer: layer digest
-        :param tar: may or may not be gzip compressed
-        :return: None
-        """
-        if not os.path.exists(root):
-            os.makedirs(root)
-        manifestname = os.path.join(root, "%s.mtree" % layer)
-        if os.path.isfile(manifestname):
-            util.write_out("validation manifest for layer %s already created" % layer)
-        else:
-            gomtree = util.generate_validation_manifest(img_tar=tar,keywords="type,uid,gid,mode,size,sha256digest")
-            if gomtree.return_code != 0:
-                decompressed = tar.replace(".tar",".tar.gz")
-                os.rename(tar,decompressed)
-                with gzip.open(decompressed, "rb") as g:
-                    _, tmptar = tempfile.mkstemp()
-                    with open(tmptar, "wb") as t:
-                        t.write(g.read())
-                        gomtree = util.generate_validation_manifest(img_tar=tmptar,keywords="type,uid,gid,mode,size,sha256digest")
-                    os.remove(tmptar)
-                os.rename(decompressed, tar.replace(".tar.gz",".tar"))
-            if gomtree.return_code == 0:
-                with open(manifestname, "w", 0) as m:
-                    m.write(gomtree.stdout)
-            else:
-                util.write_out(gomtree.stderr)
+    def validate_layer(self, layer):
+        ret = []
+        layer = layer.replace("sha256:", "")
+        repo = self._get_ostree_repo()
+        if not repo:
+            return ret
+
+        def validate_ostree_file(csum):
+            _, inputfile, file_info, xattrs = repo.load_file(csum)
+            # images are imported from layer tarballs, without any xattr.  Don't use xattr to compute
+            # the OSTree object checksum.
+            xattrs = GLib.Variant("a(ayay)", [])
+            _, checksum_v = OSTree.checksum_file_from_input(file_info, xattrs, inputfile, OSTree.ObjectType.FILE)
+            return OSTree.checksum_from_bytes(checksum_v)
+
+        def traverse(it):
+            while True:
+                res = it.next()  # pylint: disable=next-method-called
+                if res == OSTree.RepoCommitIterResult.DIR:
+                    dir_checksum = it.get_dir().out_content_checksum
+                    dir_it = OSTree.RepoCommitTraverseIter()
+                    dirtree = repo.load_variant(OSTree.ObjectType.DIR_TREE, dir_checksum)
+                    dir_it.init_dirtree(repo, dirtree[1], OSTree.RepoCommitTraverseFlags.REPO_COMMIT_TRAVERSE_FLAG_NONE)
+                    traverse(dir_it)
+                elif res == OSTree.RepoCommitIterResult.FILE:
+                    new_checksum = validate_ostree_file(it.get_file().out_checksum)
+                    if new_checksum != it.get_file().out_checksum:
+                        ret.append({"name" : it.get_file().out_name,
+                                    "old-checksum" : it.get_file().out_checksum,
+                                    "new-checksum" : new_checksum})
+                elif res == OSTree.RepoCommitIterResult.ERROR:
+                    raise ValueError("Internal error while validating the layer")
+                elif res == OSTree.RepoCommitIterResult.END:
+                    break
+
+        current_rev = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), False)[1]
+
+        it = OSTree.RepoCommitTraverseIter()
+        it.init_commit(repo, repo.load_commit(current_rev)[1], OSTree.RepoCommitTraverseFlags.REPO_COMMIT_TRAVERSE_FLAG_NONE)
+        traverse(it)
+        return ret
