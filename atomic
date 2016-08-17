@@ -47,6 +47,7 @@ from Atomic import push
 from Atomic import stop
 from Atomic import uninstall
 from Atomic import update
+from Atomic import sign
 from Atomic.util import write_err, NoDockerDaemon
 import traceback
 from Atomic.mount import MountError
@@ -144,6 +145,7 @@ def create_parser(help_text):
     pull.cli(subparser)
     run.cli(subparser)
     scan.cli(subparser)
+    sign.cli(subparser)
     stop.cli(subparser)
     storage.cli(subparser)
     top.cli(subparser)

@@ -98,12 +98,13 @@ def image_by_name(img_name, images=None):
     return valid_images
 
 
-def subp(cmd, cwd=None):
+def subp(cmd, cwd=None, newline=False):
     # Run a command as a subprocess.
     # Return a triple of return code, standard out, standard err.
     proc = subprocess.Popen(cmd, cwd=cwd,
                             stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE, close_fds=True)
+                            stderr=subprocess.PIPE, close_fds=True,
+                            universal_newlines=newline)
     out, err = proc.communicate()
     return ReturnTuple(proc.returncode, stdout=out, stderr=err)
 
@@ -246,7 +247,7 @@ def urllib3_disable_warnings():
             if hasattr(urllib3, 'disable_warnings'):
                 urllib3.disable_warnings()
 
-def skopeo_inspect(image, args=None):
+def skopeo_inspect(image, args=None, return_json=True, newline=False):
     if not args:
         args=[]
 
@@ -257,7 +258,7 @@ def skopeo_inspect(image, args=None):
 
     cmd = ['skopeo', 'inspect'] + args + [image]
     try:
-        results = subp(cmd)
+        results = subp(cmd, newline=newline)
     except OSError:
         raise ValueError("skopeo must be installed to perform remote inspections")
     if results.return_code is not 0:
@@ -265,7 +266,10 @@ def skopeo_inspect(image, args=None):
         check_v1_registry(image)
         raise ValueError("Unable to interact with this registry: {}".format(results.stderr))
     else:
-        return json.loads(results.stdout.decode('utf-8'))
+        if return_json:
+            return json.loads(results.stdout.decode('utf-8'))
+        else:
+            return results.stdout
 
 
 def skopeo_delete(image, args=None):
@@ -318,6 +322,23 @@ def skopeo_layers(image, args=None, layers=None):
             shutil.rmtree(temp_dir)
     return temp_dir
 
+def skopeo_standalone_sign(image, manifest_file_name, fingerprint, signature_path):
+    cmd = ['skopeo', 'standalone-sign', manifest_file_name,
+                       image, fingerprint, "-o", signature_path]
+    try:
+        results = subp(cmd)
+    except Exception as e: # pylint: disable=broad-except
+        raise ValueError(e)
+    if results.return_code is not 0:
+        raise ValueError(results.stderr)
+
+def skopeo_manifest_digest(manifest_file):
+    cmd = ['skopeo', 'manifest-digest', manifest_file]
+    try:
+        results = subp(cmd)
+    except Exception: #pylint: disable=broad-except
+        raise ValueError(results.stderr)
+    return results.stdout.rstrip().decode()
 
 def check_v1_registry(image):
     # Skopeo cannot interact with a v1 registry
@@ -354,7 +375,12 @@ def get_atomic_config_item(config_items, atomic_config=None):
     Lookup and return the atomic configuration file value
     for a given structure. Returns None if the option
     cannot be found.
+
+    ** config_items must be a list!
     """
+
+    assert isinstance(config_items, list)
+
     def _recursive_get(atomic_config, items):
         yaml_struct = atomic_config
         try:
@@ -498,3 +524,11 @@ def validate_manifest(spec, img_rootfs=None, img_tar=None, keywords=""):
     if keywords:
         cmd += ['-k',keywords]
     return subp(cmd)
+
+def get_local_signature_path(atomic_conf):
+    # If signature path is defined, get it; else return default
+    signature_path = get_atomic_config_item(['default-sigstore-path'], atomic_config=atomic_conf)
+    if signature_path is None:
+        signature_path = '/var/lib/atomic/sigstore'
+    return signature_path
+

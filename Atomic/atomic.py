@@ -66,6 +66,7 @@ class Atomic(object):
         self.useTTY = True
         self.syscontainers = SystemContainers()
         self.run_opts = None
+        self.atomic_config = util.get_atomic_config()
 
     def __enter__(self):
         return self
