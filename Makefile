@@ -10,9 +10,10 @@ GO_MD2MAN ?= /usr/bin/go-md2man
 GO ?= /usr/bin/go
 PYTHONSITELIB=$(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(0))")
 VERSION=$(shell $(PYTHON) setup.py --version)
+export GOPATH = $(shell pwd)/godeps
 
 .PHONY: all
-all: python-build docs pylint-check dockertar-sha256-helper gotar
+all: python-build docs pylint-check dockertar-sha256-helper gotar gomtree
 
 .PHONY: test-python3-pylint
 test-python3-pylint:
@@ -54,6 +55,15 @@ gotar: gotar.go
 clean:
 	$(PYTHON) setup.py clean
 	-rm -rf dist build *~ \#* *pyc .#* docs/*.1
+
+get-go-dependencies:
+	$(GO) get -u -d github.com/vbatts/go-mtree/cmd/gomtree
+
+godeps/src/github.com/vbatts/go-mtree/cmd/gomtree/main.go:
+	$(MAKE) get-go-dependencies
+
+gomtree: godeps/src/github.com/vbatts/go-mtree/cmd/gomtree/main.go
+	$(GO) build -o $@ $<
 
 .PHONY: install-only
 install-only:
