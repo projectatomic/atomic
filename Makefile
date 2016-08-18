@@ -12,7 +12,7 @@ PYTHONSITELIB=$(shell $(PYTHON) -c "from distutils.sysconfig import get_python_l
 VERSION=$(shell $(PYTHON) setup.py --version)
 
 .PHONY: all
-all: python-build docs pylint-check dockertar-sha256-helper
+all: python-build docs pylint-check dockertar-sha256-helper gotar
 
 .PHONY: test-python3-pylint
 test-python3-pylint:
@@ -46,6 +46,9 @@ docs: $(MANPAGES_MD:%.md=%)
 
 dockertar-sha256-helper: dockertar-sha256-helper.go
 	$(GO) build dockertar-sha256-helper.go
+
+gotar: gotar.go
+	$(GO) build -o $@ $<
 
 .PHONY: clean
 clean:
