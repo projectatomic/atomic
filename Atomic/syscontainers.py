@@ -349,9 +349,9 @@ class SystemContainers(object):
         def _write_template(inputfilename, data, values, outfile):
             template = Template(data)
             result = template.safe_substitute(values)
-            if '$' in result.replace("$$", ""):
-                missing = {x[1] for x in template.pattern.findall(data, template.flags) if len(x[1]) > 0 and x[1] not in values} # pylint: disable=no-member
-                raise ValueError("The template file %s still contains unreplaced values for: %s" % \
+            missing = {x[1] for x in template.pattern.findall(data) if len(x[1]) > 0 and x[1] not in values} # pylint: disable=no-member
+            if len(missing):
+                raise ValueError("The template file '%s' still contains unreplaced values for: %s" % \
                                  (inputfilename, ", ".join(missing)))
             outfile.write(result)
 
