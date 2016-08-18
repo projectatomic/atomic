@@ -131,3 +131,5 @@ ExecReload=/usr/bin/docker exec -t TEMPLATE /usr/sbin/httpd $OPTIONS -k graceful
 [Install]
 WantedBy=multi-user.target
 ```
+
+For an explaination of the Atomic scan JSON output, see the JSON [specification document](README-atomic-scan.md).
