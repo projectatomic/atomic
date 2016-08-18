@@ -25,7 +25,12 @@ if [ "$init" != "systemd" ];then
     exit 0
 fi
 
-dockerPid=$(ps -C docker -o pid=|xargs)
+if ! systemctl is-active docker >/dev/null; then
+     echo "Docker daemon is not running"
+     exit 1
+fi
+pid=$(systemctl show -p MainPID docker.service)
+dockerPid=$(echo ${pid#*=})
 dockerCmdline=$(cat /proc/$dockerPid/cmdline)
 if [[ $dockerCmdline =~ "-g=" ]] || [[ $dockerCmdline =~ "-g/" ]] || [[ $dockerCmdline =~ "--graph" ]];then
    echo "Docker is not located at the default (/var/lib/docker) root location. Skipping these tests."
