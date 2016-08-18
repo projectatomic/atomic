@@ -109,6 +109,7 @@ class Atomic(object):
         self.is_python2 = (int(sys.version[0])) < 3
         self.useTTY = True
         self.syscontainers = SystemContainers()
+        self.run_opts = None
 
     def __enter__(self):
         return self
@@ -563,6 +564,9 @@ class Atomic(object):
 
         if 'SUDO_GID' not in os.environ:
             os.environ["SUDO_GID"] = default_uid
+
+        if self.run_opts is not None:
+            os.environ["RUN_OPTS"] = self.run_opts
         return os.environ
 
     def gen_cmd(self, cargs):

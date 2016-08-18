@@ -98,6 +98,7 @@ make_docker_images () {
         # Copy install.sh into atomic-test-6
         if [[ ${iname} = "atomic-test-6" ]]; then
             cp ./tests/test-images/install.sh ${WORK_DIR}
+            cp ./tests/test-images/show-hostname.sh ${WORK_DIR}
         fi
 
         # Copy install.sh into atomic-test-system

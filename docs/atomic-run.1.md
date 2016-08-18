@@ -49,6 +49,9 @@ These defaults are suggested values for your container images.
 **SUDO_GID**
   The `SUDO_GID` environment variable.  This is useful with the docker `-u` option for user space tools.  If the environment variable is not available, the default GID of the value for `SUDO_UID` is used.  If this value is not available, the value of `/proc/self/loginuid` is used.
 
+**RUN_OPTS**
+  Content of file specified by `LABEL RUN_OPTS_FILE`.  During `atomic install`, the `install.sh` can populate the file with any additional options that need to be passed to `docker run`, for example `--hostname=www.example.test` or `--net host`. The file name undergoes environment variable expansion, so for example `LABEL RUN_OPTS_FILE '/var/lib/${NAME}/docker-run-opts'` can be used to store per-container configuration.
+
 # OPTIONS:
 **-h** **--help**
   Print usage statement

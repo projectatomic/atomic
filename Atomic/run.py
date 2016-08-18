@@ -1,3 +1,4 @@
+import os
 from . import util
 
 try:
@@ -38,6 +39,17 @@ class Run(Atomic):
             args = self._get_args("RUN")
             if args:
                 args += self.command
+                opts_file = self._get_args("RUN_OPTS_FILE")
+                if opts_file:
+                    opts_file = self.sub_env_strings("".join(opts_file))
+                    if opts_file.startswith("/"):
+                        if os.path.isfile(opts_file):
+                            try:
+                                self.run_opts = open(opts_file, "r").read()
+                            except IOError:
+                                raise ValueError("Failed to read RUN_OPTS_FILE %s" % opts_file)
+                    else:
+                        raise ValueError("Will not read RUN_OPTS_FILE %s: not absolute path" % opts_file)
             else:
                 if self.command:
                     args = [self.docker_binary()] + self.RUN_ARGS + self.command
