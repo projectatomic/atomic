@@ -8,6 +8,7 @@ atomic-verify - Verify image is fully updated
 **atomic verify**
 [**-h**|**--help**]
 [**-v**|**--verbose**]
+[**--no-validate**]
 IMAGE
 
 # DESCRIPTION
@@ -27,6 +28,9 @@ the version information.
 # OPTIONS:
 **-h** **--help**
   Print usage statement
+
+**--no-validate**
+  Skip validation of the files contained inside the image.
 
 **-v** **--verbose**
   Will output the status of each base image that makes up the image being verified.
