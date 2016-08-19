@@ -47,10 +47,9 @@ if [[ ${rc} != 1 ]]; then
     exit 1
 fi
 
-${ATOMIC} pull oci:busybox
+${ATOMIC} images generate
 if [ ! -d ${ATOMIC_VAR}/gomtree-manifests ]; then
     echo "gomtree manifests not created"
     exit 1
 fi
 rm -rf ${ATOMIC_VAR}/gomtree-manifests
-${ATOMIC} images delete -f busybox
