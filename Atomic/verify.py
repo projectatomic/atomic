@@ -19,8 +19,7 @@ class Verify(Atomic):
     def verify_system_image(self):
         manifest = self.syscontainers.get_manifest(self.image)
         layers = SystemContainers.get_layers_from_manifest(manifest)
-
-        if hasattr(self.args,"validate") and self.args.validate:
+        if not getattr(self.args,"no_validate", False):
             self.validate_system_image_manifests(layers)
 
         remote = True

@@ -691,8 +691,8 @@ def create_parser(help_text):
     verifyp.add_argument("-v", "--verbose", default=False,
                           action="store_true",
                           help=_("Report status of each layer"))
-    verifyp.add_argument("-V", "--validate", default=True,
-                                action="store_false",
+    verifyp.add_argument("--no-validate", default=False, dest="no_validate",
+                                action="store_true",
                                 help=_("disable validating system images"))
     return parser
 
