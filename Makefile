@@ -13,7 +13,7 @@ VERSION=$(shell $(PYTHON) setup.py --version)
 export GOPATH = $(shell pwd)/godeps
 
 .PHONY: all
-all: python-build docs pylint-check dockertar-sha256-helper gotar gomtree
+all: python-build docs pylint-check dockertar-sha256-helper gotar
 
 .PHONY: test-python3-pylint
 test-python3-pylint:
@@ -56,15 +56,6 @@ clean:
 	$(PYTHON) setup.py clean
 	-rm -rf dist build *~ \#* *pyc .#* docs/*.1
 
-get-go-dependencies:
-	$(GO) get -u -d github.com/vbatts/go-mtree/cmd/gomtree
-
-godeps/src/github.com/vbatts/go-mtree/cmd/gomtree/main.go:
-	$(MAKE) get-go-dependencies
-
-gomtree: godeps/src/github.com/vbatts/go-mtree/cmd/gomtree/main.go
-	$(GO) build -o $@ $<
-
 .PHONY: install-only
 install-only:
 	$(PYTHON) setup.py install --install-scripts /usr/share/atomic `test -n "$(DESTDIR)" && echo --root $(DESTDIR)`
@@ -75,7 +66,7 @@ install-only:
 	ln -fs ../share/atomic/atomic $(DESTDIR)/usr/bin/atomic
 
 	install -d -m 0755 $(DESTDIR)/usr/libexec/atomic
-	install -m 0755 dockertar-sha256-helper migrate.sh gotar gomtree $(DESTDIR)/usr/libexec/atomic
+	install -m 0755 dockertar-sha256-helper migrate.sh gotar $(DESTDIR)/usr/libexec/atomic
 
 	[ -d $(SYSCONFDIR) ] || mkdir -p $(SYSCONFDIR)
 	install -m 644 atomic.sysconfig $(SYSCONFDIR)/atomic
