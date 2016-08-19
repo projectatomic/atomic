@@ -67,8 +67,7 @@ class Run(Atomic):
 
         if not self.args.quiet:
             self.check_args(cmd)
-        if not self.args.display:
-            util.check_call(self.sub_env_strings(cmd), env=self.cmd_env())
+        util.check_call(cmd, env=self.cmd_env())
 
     @staticmethod
     def check_args(cmd):
