@@ -18,10 +18,15 @@ class Verify(Atomic):
 
     def verify_system_image(self):
         manifest = self.syscontainers.get_manifest(self.image)
-        layers = SystemContainers.get_layers_from_manifest(manifest)
+        if manifest:
+            layers = SystemContainers.get_layers_from_manifest(manifest)
+        else:
+            layers = [self.image]
         if not getattr(self.args,"no_validate", False):
             self.validate_system_image_manifests(layers)
 
+        if not manifest:
+            return
         remote = True
         try:
             remote_manifest = self.syscontainers.get_manifest(self.image, remote=True)
@@ -359,34 +364,12 @@ class Verify(Atomic):
         :param layers: list of the names of the layers to validate
         :return: None
         """
-        missing_manifests = []
         for layer in layers:
-            layer = layer.replace("sha256:","")
-            manifestpath = self.get_gomtree_manifest(layer)
-            if not manifestpath:
-                missing_manifests.append(layer)
-                continue
-            tmp_dir = tempfile.mkdtemp()
-            ref = os.path.join("ociimage", layer)
-            cmd = ['ostree','checkout','--union','--repo=%s' % self.syscontainers.get_ostree_repo_location(),ref,tmp_dir]
-            r = util.subp(cmd)
-            if r.return_code != 0:
-                util.write_err(r.stderr)
-                continue
-            r = util.validate_manifest(manifestpath, img_rootfs=tmp_dir,keywords="type,uid,gid,mode,size,sha256digest")
-            if r.return_code != 0:
+            mismatches = self.syscontainers.validate_layer(layer)
+            if len(mismatches) > 0:
                 util.write_out("modifications in layer %s layer:\n" % layer)
-                if r.return_code > 1:
-                    util.write_err(r.stderr)
-                else:
-                    util.write_err(r.stdout)
-            shutil.rmtree(tmp_dir)
-        if len(missing_manifests):
-            util.write_out("validation manifests for the following layers do not exist:\n")
-            for layer in missing_manifests:
-                util.write_out("\t%s" % layer)
-            util.write_out("\n")
-            util.write_out("perform an `atomic pull \"%s\"` if you want to generate these manifests\n" % self.image)
+                for m in mismatches:
+                    util.write_out("file '%s' changed checksum from '%s' to '%s'" % (m["name"], m["old-checksum"], m["new-checksum"]))
 
     def validate_image_manifest(self):
         """
