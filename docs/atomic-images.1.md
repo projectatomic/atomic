@@ -44,6 +44,8 @@ will list all images that has "foo" as part of their repository name.
 [**-q|--quiet]
   Only display image IDs
 
+**--json**
+  Output in the form of JSON.
 
 **delete IMAGES...**
 

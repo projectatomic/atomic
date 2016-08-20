@@ -2,6 +2,7 @@ from . import Atomic
 from . import util
 from .mount import Mount
 import os
+import sys
 import json
 import math
 import shutil
@@ -39,6 +40,9 @@ class Images(Atomic):
                 return 1, 1
 
         _images = self.images()
+        if self.args.json:
+            json.dump(_images, sys.stdout)
+            return
 
         if len(_images) >= 0:
             _max_repo, _max_tag = get_col_lengths(_images)

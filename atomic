@@ -347,6 +347,8 @@ def create_parser(help_text):
     list_parser.add_argument("-q", "--quiet", dest="quiet", default=False,
                              action="store_true",
                              help=_("Only display image IDs"))
+    list_parser.add_argument("--json", action='store_true',dest="json", default=False,
+                             help=_("print in a machine parseable form"))
 
     # atomic images delete
     delete_parser = images_subparser.add_parser("delete",

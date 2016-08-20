@@ -513,6 +513,7 @@ _atomic_images_list() {
     --noheading -n
     --no-trunc
     --quiet -q
+    --json
   "
 
   local filterables="
