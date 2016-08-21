@@ -958,6 +958,7 @@ class Atomic(object):
             images = self.d.images(all=get_all)
             for i in images:
                 i["ImageType"] = "Docker"
+                i["ImageId"] = i["Id"]
         except requests.exceptions.ConnectionError:
             raise NoDockerDaemon()
         return images

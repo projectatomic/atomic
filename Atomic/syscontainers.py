@@ -567,7 +567,7 @@ class SystemContainers(object):
         else:
             image_type = "System"
 
-        return {'Id' : image_id, 'RepoTags' : [tag], 'Names' : [], 'Created': timestamp,
+        return {'Id' : image_id, 'ImageId' : image_id, 'RepoTags' : [tag], 'Names' : [], 'Created': timestamp,
                 'ImageType' : image_type, 'Labels' : labels, 'OSTree-rev' : commit_rev}
 
     def get_system_images(self, get_all=False, repo=None):

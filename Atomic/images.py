@@ -124,6 +124,7 @@ class Images(Atomic):
                 image_dict["created"] = created
                 image_dict["virtual_size"] = virtual_size
                 image_dict["type"] = image_type
+                image_dict["image_id"] = image["ImageId"]
                 if image_dict["vulnerable"]:
                     image_dict["vuln_info"] = all_vuln_info[image["Id"]]
                 else:
