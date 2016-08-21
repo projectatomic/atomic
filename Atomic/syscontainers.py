@@ -487,7 +487,7 @@ class SystemContainers(object):
             return {'status' : 'unknown'}
 
         try:
-            inspect_stdout = util.check_output([RUNC_PATH, "state", container])
+            inspect_stdout = util.check_output([RUNC_PATH, "state", container], stderr=DEVNULL)
             ret = json.loads(inspect_stdout.decode())
             status = ret["status"]
             created = dateparse(ret['created'])
