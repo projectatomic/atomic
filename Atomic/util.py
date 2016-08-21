@@ -25,7 +25,7 @@ ReturnTuple = collections.namedtuple('ReturnTuple',
 ATOMIC_CONF = os.environ.get('ATOMIC_CONF', '/etc/atomic.conf')
 ATOMIC_CONFD = os.environ.get('ATOMIC_CONFD', '/etc/atomic.d/')
 ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
-ATOMIC_VAR = os.environ.get('ATOMIC_VAR', '/var/lib/containers/atomic')
+ATOMIC_VAR_LIB = os.environ.get('ATOMIC_VAR_LIB', '/var/lib/atomic')
 
 def check_if_python2():
     if int(sys.version_info[0]) < 3:

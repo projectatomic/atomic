@@ -72,6 +72,8 @@ teardown () {
 trap teardown EXIT
 
 ${ATOMIC} install --name=${NAME} --set=RECEIVER=${SECRET} --system oci:atomic-test-system
+${ATOMIC} update --container ${NAME} > update.out
+grep -q "Latest version already installed" update.out
 
 ${ATOMIC} ps --no-trunc > ps.out
 grep -q "test-system" ps.out

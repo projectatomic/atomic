@@ -136,13 +136,13 @@ class Images(Atomic):
     def generate_validation_manifest(self):
         """
         Generates a gomtree validation manifest for a non-system image and stores it in
-        ATOMIC_VAR
+        ATOMIC_VAR_LIB
         :param:
         :return: None
         """
         _images = self.get_images(get_all=True)
         for image in _images:
-            atomic_var = util.ATOMIC_VAR
+            atomic_var_lib = util.ATOMIC_VAR_LIB
             if not image["RepoTags"]:
                 continue
             iid = image["RepoTags"][0]
@@ -150,9 +150,9 @@ class Images(Atomic):
                 continue
             if iid == "<none>:<none>" or iid == "<none>":
                 continue
-            if os.path.exists(os.path.join(atomic_var,"gomtree-manifests/%s.mtree" % iid)):
+            if os.path.exists(os.path.join(atomic_var_lib, "gomtree-manifests/%s.mtree" % iid)):
                 continue
-            manifestname = os.path.join(atomic_var, "gomtree-manifests/%s.mtree" % iid)
+            manifestname = os.path.join(atomic_var_lib, "gomtree-manifests/%s.mtree" % iid)
             dname = os.path.dirname(manifestname)
             if not os.path.exists(dname):
                 os.makedirs(dname)

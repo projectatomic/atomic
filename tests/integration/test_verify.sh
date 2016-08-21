@@ -16,7 +16,7 @@ IFS=$'\n\t'
 echo "testing"
 IMAGE="atomic-test-4"
 ID=`${DOCKER} inspect ${IMAGE} | grep '"Id"' | cut -f4 --delimiter=\"`
-ATOMIC_VAR='/var/lib/containers/atomic'
+ATOMIC_VAR_LIB='/var/lib/atomic'
 
 setup () {
     # Perform setup routines here.
@@ -48,8 +48,8 @@ if [[ ${rc} != 1 ]]; then
 fi
 
 ${ATOMIC} images generate
-if [ ! -d ${ATOMIC_VAR}/gomtree-manifests ]; then
+if [ ! -d ${ATOMIC_VAR_LIB}/gomtree-manifests ]; then
     echo "gomtree manifests not created"
     exit 1
 fi
-rm -rf ${ATOMIC_VAR}/gomtree-manifests
+rm -rf ${ATOMIC_VAR_LIB}/gomtree-manifests

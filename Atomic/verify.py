@@ -380,7 +380,7 @@ class Verify(Atomic):
         :return: None
         """
         iid = self._is_image(self.image)
-        manifestname = os.path.join(util.ATOMIC_VAR, "gomtree-manifests/%s.mtree" % iid)
+        manifestname = os.path.join(util.ATOMIC_VAR_LIB, "gomtree-manifests/%s.mtree" % iid)
         if not os.path.exists(manifestname):
             return
         tmpdir = tempfile.mkdtemp()
@@ -396,7 +396,7 @@ class Verify(Atomic):
         shutil.rmtree(tmpdir)
 
     @staticmethod
-    def get_gomtree_manifest(layer, root=os.path.join(util.ATOMIC_VAR, "gomtree-manifests")):
+    def get_gomtree_manifest(layer, root=os.path.join(util.ATOMIC_VAR_LIB, "gomtree-manifests")):
         manifestpath = os.path.join(root,"%s.mtree" % layer)
         if os.path.isfile(manifestpath):
             return manifestpath
