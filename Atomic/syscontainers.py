@@ -827,8 +827,7 @@ class SystemContainers(object):
         for i in layers:
             layer = i.replace("sha256:", "")
             has_layer = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1]
-            has_gomtree_manifest = os.path.isfile(os.path.join(ATOMIC_VAR, "gomtree-manifests/%s.mtree" % layer))
-            if not has_layer or not has_gomtree_manifest:
+            if not has_layer:
                 missing_layers.append(layer)
                 util.write_out("Missing layer %s" % layer)
         layers_dir = None

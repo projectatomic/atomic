@@ -173,6 +173,11 @@ test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1
 
 
 ${ATOMIC} pull docker.io/busybox
+${ATOMIC} pull docker.io/busybox > second.pull.out
+if grep -q "Missing layer" second.pull.out; then
+    exit 1
+fi
+
 ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
 grep -q busybox refs
 ${ATOMIC} images delete -f busybox
