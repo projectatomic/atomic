@@ -116,6 +116,9 @@ grep -q ${SECRET} ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/config.json
 # The default value $PORT specified in the manifest.json is exported
 grep -q 8081 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/config.json
 
+${ATOMIC} update --container ${NAME} > update.out
+grep -q "Latest version already installed" update.out
+
 ${ATOMIC} update --set=PORT=8082 --container ${NAME}
 
 # Check that the same SECRET value is kept, and that $PORT gets the new value

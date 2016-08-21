@@ -471,14 +471,23 @@ class SystemContainers(object):
         else:
             next_deployment = 0
 
-        if os.path.exists("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment)):
-            shutil.rmtree("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment))
-
         with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
             info = json.loads(info_file.read())
 
         image = info["image"]
         values = info["values"]
+        revision = info["revision"] if "revision" in info else None
+
+        if revision and self.args.setvalues is None:
+            image_inspect = self.inspect_system_image(image)
+            if image_inspect:
+                if image_inspect['ImageId'] == revision:
+                    # Nothing to do
+                    util.write_out("Latest version already installed.")
+                    return
+
+        if os.path.exists("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment)):
+            shutil.rmtree("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment))
 
         self._checkout_system_container(repo, name, image, next_deployment, True, values, remote=self.args.remote)
 
