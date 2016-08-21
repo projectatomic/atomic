@@ -26,10 +26,11 @@ class Ps(Atomic):
                     continue
 
                 image = each['Image']
+                imageId = each['ImageID']
                 command = each["Command"]
                 created = created.strftime("%F %H:%M") # pylint: disable=no-member
                 container_info = {"type" : "systemcontainer", "container" : container,
-                              "image" : image, "command" : command,
+                              "image" : image, "command" : command, "image_id" : imageId,
                               "created" : created, "status" : status,
                               "runtime" : "runc", "vulnerable" : each["vulnerable"]}
 
@@ -44,10 +45,11 @@ class Ps(Atomic):
                 ret = self._inspect_container(name=container)
                 status = ret["State"]["Status"]
                 image = ret['Config']['Image']
+                imageId = ret['Image']
                 command = u' '.join(ret['Config']['Cmd']) if ret['Config']['Cmd'] else ""
                 created = dateparse(ret['Created']).strftime("%F %H:%M") # pylint: disable=no-member
                 container_info = {"type" : "docker", "container" : container,
-                                  "image" : image, "command" : command,
+                                  "image" : image, "image_id" : imageId, "command" : command,
                                   "created" : created, "status" : status,
                                   "runtime" : "Docker", "vulnerable" : each["vulnerable"]}
 
