@@ -89,6 +89,8 @@ trap teardown EXIT
 ${ATOMIC} install --name=${NAME} --set=RECEIVER=${SECRET} --system oci:atomic-test-system
 test -e /etc/tmpfiles.d/${NAME}.conf
 
+systemctl start ${NAME}
+
 ${ATOMIC} update --container ${NAME} > update.out
 assert_matches "Latest version already installed" update.out
 
@@ -142,6 +144,7 @@ assert_matches 8082 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/config.json
 
 # Test if a container with a remote rootfs can be installed/updated
 ${ATOMIC} --debug install --name=${NAME}-remote --rootfs=${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1 --set=RECEIVER=${SECRET}-remote --system oci:atomic-test-system
+systemctl start ${NAME}-remote
 
 ${ATOMIC} --debug containers list --no-trunc > ps.out
 assert_matches "remote" ps.out

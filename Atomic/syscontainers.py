@@ -458,9 +458,10 @@ class SystemContainers(object):
         if (tmpfiles_template):
             self._systemd_tmpfiles("--create", tmpfilesout)
 
-        if not upgrade:
+        if upgrade:
+            self._systemctl_command("start", name)
+        else:
             self._systemctl_command("enable", name)
-        self._systemctl_command("start", name)
 
     def _get_system_checkout_path(self):
         if os.environ.get("ATOMIC_OSTREE_CHECKOUT_PATH"):
