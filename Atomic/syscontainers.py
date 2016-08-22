@@ -79,19 +79,16 @@ class SystemContainers(object):
                         stderr=DEVNULL)
 
     def _checkout_layer(self, repo, rootfs_fd, rootfs, rev):
-        OSTREE_SAFE_GLIB_REPO_CHECKOUT_OPTIONS = False
-        # There is an issue in the way the RepoCheckoutOptions is mapped by glib, as the C
-        # struct is using bit fields that are not supported by the introspection.
-        # Accessing .disable_fsync and .process_whiteouts thus results in a segfault in
-        # libostree.  Re-enable this once it gets fixed.
-        if OSTREE_SAFE_GLIB_REPO_CHECKOUT_OPTIONS:
-            options = OSTree.RepoCheckoutOptions() # pylint: disable=no-member
+        # ostree 2016.8 has a glib introspection safe API for checkout, use it
+        # when available.
+        if hasattr(repo, "checkout_at"):
+            options = OSTree.RepoCheckoutAtOptions() # pylint: disable=no-member
             options.overwrite_mode = OSTree.RepoCheckoutOverwriteMode.UNION_FILES
             options.process_whiteouts = True
             options.disable_fsync = True
             if self.user:
                 options.mode = OSTree.RepoCheckoutMode.USER
-            repo.checkout_tree_at(options, rootfs_fd, rootfs, rev)
+            repo.checkout_at(options, rootfs_fd, rootfs, rev)
         else:
             if self.user:
                 user = ["--user-mode"]
