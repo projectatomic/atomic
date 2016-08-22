@@ -146,7 +146,7 @@ class Images(Atomic):
             if not image["RepoTags"]:
                 continue
             iid = image["RepoTags"][0]
-            if image["ImageType"] == "System":
+            if image["ImageType"] == "system":
                 continue
             if iid == "<none>:<none>" or iid == "<none>":
                 continue

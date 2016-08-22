@@ -522,7 +522,7 @@ class SystemContainers(object):
                 command = u' '.join(config["process"]["args"])
 
             container = {'Image' : image, 'ImageID' : revision, 'Id' : x, 'Created' : created, 'Names' : [x],
-                         'Command' : command, 'Type' : 'systemcontainer'}
+                         'Command' : command, 'Type' : 'system'}
             ret.append(container)
         return ret
 
@@ -569,9 +569,9 @@ class SystemContainers(object):
                 image_id = manifest['Digest'].replace("sha256:", "")
 
         if self.user:
-            image_type = "User"
+            image_type = "user"
         else:
-            image_type = "System"
+            image_type = "system"
 
         return {'Id' : image_id, 'ImageId' : image_id, 'RepoTags' : [tag], 'Names' : [], 'Created': timestamp,
                 'ImageType' : image_type, 'Labels' : labels, 'OSTree-rev' : commit_rev}

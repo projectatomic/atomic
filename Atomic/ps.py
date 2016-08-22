@@ -12,7 +12,7 @@ class Ps(Atomic):
         all_container_info = self.ps()
         all_containers = []
         for each in all_container_info:
-            if each["Type"] == "systemcontainer":
+            if each["Type"] == "system":
                 container = each["Id"]
                 status = "exited"
                 created = datetime.datetime.fromtimestamp(each["Created"])
@@ -29,7 +29,7 @@ class Ps(Atomic):
                 imageId = each['ImageID']
                 command = each["Command"]
                 created = created.strftime("%F %H:%M") # pylint: disable=no-member
-                container_info = {"type" : "systemcontainer", "container" : container,
+                container_info = {"type" : "system", "container" : container,
                               "image" : image, "command" : command, "image_id" : imageId,
                               "created" : created, "status" : status,
                               "runtime" : "runc", "vulnerable" : each["vulnerable"]}

@@ -161,7 +161,7 @@ class Scan(Atomic):
         def gen_images():
             slist = []
             for image in self.get_images():
-                if image['ImageType'] == 'System':
+                if image['ImageType'] == 'system':
                     image['Id'] = image['RepoTags'][0]
                 image['input'] = image['Id']
                 slist.append(image)
