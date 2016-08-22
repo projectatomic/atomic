@@ -32,9 +32,9 @@ OUTPUT=$(/bin/true)
 
 rc=0
 # Test different values
-echo --hostname=www.example.test > docker-run-opts-atomic-test-6
-test www.example.test
+echo --hostname=www.example.test -e VAR1=xyz > docker-run-opts-atomic-test-6
+test www.example.test:xyz
 echo --hostname=www2.example.test > docker-run-opts-atomic-test-6
-test www2.example.test
+test www2.example.test:
 rm -f docker-run-opts-atomic-test-6
 

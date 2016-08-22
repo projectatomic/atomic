@@ -1,2 +1,2 @@
 #!/bin/bash
-echo $HOSTNAME
+echo $HOSTNAME:$VAR1
