@@ -2,6 +2,25 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+assert_not_reached() {
+    echo $@ 1>&2
+    exit 1
+}
+
+assert_not_matches() {
+    if grep -q -e $@; then
+	sed -e s',^,| ,' < $2
+	assert_not_reached "Matched: " $@
+    fi
+}
+
+assert_matches() {
+    if ! grep -q -e $@; then
+	sed -e s',^,| ,' < $2
+	assert_not_reached "Failed to match: " $@
+    fi
+}
+
 # Test scripts run with PWD=tests/..
 
 # The test harness exports some variables into the environment during
@@ -32,7 +51,7 @@ ${ATOMIC} pull dockertar:/${WORK_DIR}/atomic-test-system.tar
 
 # Check that the branch is created in the OSTree repository
 ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
-grep -q "ociimage/atomic-test-system-latest" refs
+assert_matches "ociimage/atomic-test-system-latest" refs
 
 ${ATOMIC} images list > ${WORK_DIR}/images
 grep -q "atomic-test-system" ${WORK_DIR}/images
@@ -41,13 +60,9 @@ grep -q "atomic-test-system" ${WORK_DIR}/images
 ${ATOMIC} images list -f repo=atomic-test-system > ${WORK_DIR}/images
 grep -q "atomic-test-system" ${WORK_DIR}/images
 ${ATOMIC} images list -f repo=non-existing-repo > ${WORK_DIR}/images
-if grep -q "atomic-test-system" ${WORK_DIR}/images; then
-    exit 1
-fi
+assert_not_matches "atomic-test-system" ${WORK_DIR}/images
 ${ATOMIC} images list -q > ${WORK_DIR}/images
-if grep -q "atomic-test-system" ${WORK_DIR}/images; then
-    exit 1
-fi
+assert_not_matches "atomic-test-system" ${WORK_DIR}/images
 
 export NAME="test-system-container-$$"
 
@@ -73,65 +88,61 @@ trap teardown EXIT
 
 ${ATOMIC} install --name=${NAME} --set=RECEIVER=${SECRET} --system oci:atomic-test-system
 ${ATOMIC} update --container ${NAME} > update.out
-grep -q "Latest version already installed" update.out
+assert_matches "Latest version already installed" update.out
 
 ${ATOMIC} ps --no-trunc > ps.out
-grep -q "test-system" ps.out
+assert_matches "test-system" ps.out
 ${ATOMIC} ps --json > ps.out
-grep -q "test-system" ps.out
+assert_matches "test-system" ps.out
 ${ATOMIC} ps --all > ps.out
-grep -q "test-system" ps.out
+assert_matches "test-system" ps.out
 ${ATOMIC} ps --all --no-trunc > ps.out
-grep -q "test-system" ps.out
+assert_matches "test-system" ps.out
 ${ATOMIC} ps --no-trunc --filter id=test-system > ps.out
-grep -q "test-system" ps.out
+assert_matches "test-system" ps.out
 ${ATOMIC} ps --no-trunc > ps.out
-grep -q "test-system" ps.out
+assert_matches "test-system" ps.out
 ${ATOMIC} ps --no-trunc --quiet > ps.out
-grep -q "test-system" ps.out
+assert_matches "test-system" ps.out
 ${ATOMIC} ps -aq --no-trunc --filter id=test-system > ps.out
-grep -q "test-system" ps.out
+assert_matches "test-system" ps.out
 ${ATOMIC} ps -aq --no-trunc --filter id=non-existing-system > ps.out
-if grep -q "test-system" ps.out; then
-    exit 1
-fi
+assert_not_matches "test-system" ps.out
 
-${ATOMIC} ps --all --no-trunc --filter id=test-system > ps.out
+${ATOMIC} ps --all --no-trunc --filter id=test-system | grep "test-system" > ps.out
 # Check the command is included in the output
-grep "test-system" ps.out | grep "/usr/bin/run.sh"
+assert_matches "run.sh" ps.out
 
 systemctl stop ${NAME}
 
-${ATOMIC} ps --all > ps.out
-grep "test-system" ps.out | grep "exited"
+${ATOMIC} ps --all | grep "test-system" > ps.out
+assert_matches "exited" ps.out
 
 ${ATOMIC} ps --quiet > ps.out
-if grep -q "test-system" ps.out; then
-    exit 1
-fi
+assert_not_matches "test-system" ps.out
 
 test -e /etc/systemd/system/${NAME}.service
 
 # The value we set is exported into the config file
-grep -q ${SECRET} ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/config.json
+assert_matches ${SECRET} ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/config.json
 
 # The default value $PORT specified in the manifest.json is exported
-grep -q 8081 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/config.json
+assert_matches 8081 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/config.json
 
 ${ATOMIC} update --container ${NAME} > update.out
-grep -q "Latest version already installed" update.out
+assert_matches "Latest version already installed" update.out
 
 ${ATOMIC} update --set=PORT=8082 --container ${NAME}
 
 # Check that the same SECRET value is kept, and that $PORT gets the new value
-grep -q ${SECRET} ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/config.json
-grep -q 8082 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/config.json
+assert_matches ${SECRET} ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/config.json
+assert_matches 8082 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/config.json
 
 # Test if a container with a remote rootfs can be installed/updated
 ${ATOMIC} --debug install --name=${NAME}-remote --rootfs=${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1 --set=RECEIVER=${SECRET}-remote --system oci:atomic-test-system
 
 ${ATOMIC} --debug ps --no-trunc > ps.out
-grep -q "remote" ps.out
+assert_matches "remote" ps.out
 test -e /etc/systemd/system/${NAME}-remote.service
 
 # The rootfs should not exist
@@ -139,7 +150,7 @@ test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}-remote.0/rootfs
 
 # Values should still be able to be updated for remote containers
 ${ATOMIC} update --set=PORT=8083 --container ${NAME}-remote
-grep -q 8083 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}-remote.1/config.json
+assert_matches 8083 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}-remote.1/config.json
 
 mkdir ${WORK_DIR}/mount
 
@@ -179,12 +190,10 @@ test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1
 
 ${ATOMIC} pull docker.io/busybox
 ${ATOMIC} pull docker.io/busybox > second.pull.out
-if grep -q "Missing layer" second.pull.out; then
-    exit 1
-fi
+assert_not_matches "Missing layer" second.pull.out
 
 ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
-grep -q busybox refs
+assert_matches busybox refs
 ${ATOMIC} images delete -f busybox
 ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
 OUTPUT=$(! grep -c busybox refs)
@@ -195,9 +204,7 @@ ${ATOMIC} pull docker.io/busybox
 ostree --repo=${ATOMIC_OSTREE_REPO} refs | grep busybox
 
 ${ATOMIC} verify busybox > verify.out
-if grep -q "contains images or layers that have updates" verify.out; then
-    exit 1
-fi
+assert_not_matches "contains images or layers that have updates" verify.out
 
 image_digest=$(ostree --repo=${ATOMIC_OSTREE_REPO} show --print-metadata-key=docker.manifest ociimage/busybox-latest | sed -e"s|.*Digest\": \"sha256:\([a-z0-9]\+\).*|\1|" | head -c 12)
 ${ATOMIC} images list > images.out
@@ -206,23 +213,23 @@ grep "busybox.*$image_digest" images.out
 ${ATOMIC} images list -f type=system > images.out
 ${ATOMIC} images list -f type=system --all > images.all.out
 test $(wc -l < images.out) -lt $(wc -l < images.all.out)
-grep -q '<none>' images.all.out
-! grep -q '<none>' images.out
+assert_matches '<none>' images.all.out
+assert_not_matches '<none>' images.out
 
 ${ATOMIC} images delete -f busybox
 ${ATOMIC} images prune
 
 # Test there are still intermediate layers left after prune
 ${ATOMIC} images list -f type=system --all > images.all.out
-grep -q "<none>" images.all.out
+assert_matches "<none>" images.all.out
 
 ${ATOMIC} images delete -f atomic-test-system
 ${ATOMIC} images prune
 
 # Test there are not intermediate layers left layers now
 ${ATOMIC} images list -f type=system --all > images.all.out
-! grep -q "<none>" images.all.out
+assert_not_matches "<none>" images.all.out
 
 # Verify there are no branches left in the repository as well
 ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
-! grep -q "<none>" refs
+assert_not_matches "<none>" refs
