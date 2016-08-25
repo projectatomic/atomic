@@ -316,6 +316,14 @@ class SystemContainers(object):
         if extract_only:
             return
 
+        if self.user:
+            home = os.path.expanduser("~")
+            values["RUN_DIRECTORY"] = os.environ["XDG_RUNTIME_DIR"] if "XDG_RUNTIME_DIR" in os.environ else "/run/user/%s" % (os.getuid())
+            values["STATE_DIRECTORY"] = "%s/.data" % (home)
+        else:
+            values["RUN_DIRECTORY"] = "/run"
+            values["STATE_DIRECTORY"] = "/var/lib"
+
         # When installing a new system container, set values in this order:
         #
         # 1) What comes from manifest.json, if present, as default value.
