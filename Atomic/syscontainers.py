@@ -156,6 +156,9 @@ class SystemContainers(object):
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
 
+        if self.args.system and self.user:
+            raise ValueError("Only root can use --system")
+
         if not self.user:
             try:
                 util.check_call([RUNC_PATH, "--version"], stdout=DEVNULL)
