@@ -30,14 +30,16 @@ try:
 except ImportError:
     DEVNULL = open(os.devnull, 'wb')
 
+HOME = os.path.expanduser("~")
+
 ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
 ATOMIC_VAR = '/var/lib/containers/atomic'
-ATOMIC_VAR_USER = "%s/.containers/atomic" # Must be expanded
+ATOMIC_VAR_USER = "%s/.containers/atomic" % HOME
 OSTREE_OCIIMAGE_PREFIX = "ociimage/"
 SYSTEMD_UNIT_FILES_DEST = "/etc/systemd/system"
-SYSTEMD_UNIT_FILES_DEST_USER = "%s/.config/systemd/user" # Must be expanded
+SYSTEMD_UNIT_FILES_DEST_USER = "%s/.config/systemd/user" % HOME
 SYSTEMD_TMPFILES_DEST = "/etc/tmpfiles.d"
-SYSTEMD_TMPFILES_DEST_USER = "%s/.containers/tmpfiles" # Must be expanded
+SYSTEMD_TMPFILES_DEST_USER = "%s/.containers/tmpfiles" % HOME
 SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE = """
 [Unit]
 Description=$NAME
@@ -222,9 +224,8 @@ class SystemContainers(object):
 
     def _get_systemd_destination_files(self, name):
         if self.user:
-            home = os.path.expanduser("~")
-            unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST_USER % home, "%s.service" % name)
-            tmpfilesout = os.path.join(SYSTEMD_TMPFILES_DEST_USER % home, "%s.conf" % name)
+            unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST_USER, "%s.service" % name)
+            tmpfilesout = os.path.join(SYSTEMD_TMPFILES_DEST_USER, "%s.conf" % name)
         else:
             unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
             tmpfilesout = os.path.join(SYSTEMD_TMPFILES_DEST, "%s.conf" % name)
@@ -342,9 +343,8 @@ class SystemContainers(object):
             return
 
         if self.user:
-            home = os.path.expanduser("~")
-            values["RUN_DIRECTORY"] = os.environ["XDG_RUNTIME_DIR"] if "XDG_RUNTIME_DIR" in os.environ else "/run/user/%s" % (os.getuid())
-            values["STATE_DIRECTORY"] = "%s/.data" % (home)
+            values["RUN_DIRECTORY"] = os.environ.get("XDG_RUNTIME_DIR", "/run/user/%s" % (os.getuid()))
+            values["STATE_DIRECTORY"] = "%s/.data" % HOME
         else:
             values["RUN_DIRECTORY"] = "/run"
             values["STATE_DIRECTORY"] = "/var/lib"
@@ -466,15 +466,13 @@ class SystemContainers(object):
         if self.get_atomic_config_item(["checkout_path"]):
             return self.get_atomic_config_item(["checkout_path"])
         if self.user:
-            home = os.path.expanduser("~")
-            return ATOMIC_VAR_USER % home
+            return ATOMIC_VAR_USER
         else:
             return ATOMIC_VAR
 
     def get_ostree_repo_location(self):
         if self.user:
-            home = os.path.expanduser("~")
-            return "%s/.containers/repo" % home
+            return "%s/.containers/repo" % HOME
         else:
             return os.environ.get("ATOMIC_OSTREE_REPO") or \
                 self.get_atomic_config_item(["ostree_repository"]) or \
