@@ -440,6 +440,7 @@ class SystemContainers(object):
             os.unlink(sym)
         os.symlink(destination, sym)
 
+        self._systemctl_command("daemon-reload")
         if (tmpfiles_template):
             self._systemd_tmpfiles("--create", tmpfilesout)
 
@@ -629,13 +630,13 @@ class SystemContainers(object):
         if not self.args.display:
             util.check_call(cmd)
 
-    def _systemctl_command(self, command, name):
+    def _systemctl_command(self, command, name=None):
+        cmd = ["systemctl"]
         if self.user:
-            user = ["--user"]
-        else:
-            user = []
-
-        cmd = ["systemctl"] + user + [command, name]
+            cmd.append("--user")
+        cmd.append(command)
+        if name:
+            cmd.append(name)
         util.write_out(" ".join(cmd))
         if not self.args.display:
             util.check_call(cmd)
