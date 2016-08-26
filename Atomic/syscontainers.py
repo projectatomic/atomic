@@ -424,6 +424,13 @@ class SystemContainers(object):
         else:
             tmpfiles_template = ""
 
+        # When upgrading, stop the service and remove previously installed
+        # tmpfiles, before restarting the service.
+        if upgrade:
+            self._systemctl_command("stop", name)
+            if (tmpfiles_template):
+                self._systemd_tmpfiles("--remove", tmpfilesout)
+
         _write_template(unitfile, systemd_template, values, unitfileout)
         if (tmpfiles_template):
             _write_template(unitfile, tmpfiles_template, values, tmpfilesout)
@@ -436,11 +443,9 @@ class SystemContainers(object):
         if (tmpfiles_template):
             self._systemd_tmpfiles("--create", tmpfilesout)
 
-        self._systemctl_command("enable", name)
-        if upgrade:
-            self._systemctl_command("restart", name)
-        else:
-            self._systemctl_command("start", name)
+        if not upgrade:
+            self._systemctl_command("enable", name)
+        self._systemctl_command("start", name)
 
     def _get_system_checkout_path(self):
         if os.environ.get("ATOMIC_OSTREE_CHECKOUT_PATH"):
