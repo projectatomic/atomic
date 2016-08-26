@@ -395,7 +395,7 @@ def create_parser(help_text):
                             help=_("mount a running container 'live', allowing "
                                    "modification of the contents."))
     mountgroup.add_argument("--shared", dest="shared", action="store_true",
-                            help=_("mount a container 'shared'. Mounts the container with  an SELinux label "
+                            help=_("mount a container image 'shared'. Mounts the container image with  an SELinux label "
                                    "that other containers can read."))
     mountp.add_argument("image", help=_("image/container id"))
     mountp.add_argument("mountpoint", help=_("filesystem location to mount "
