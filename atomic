@@ -160,7 +160,7 @@ def create_parser(help_text):
     helpp.set_defaults(_class=AtomicHelp, func='help')
     helpp.add_argument("image", help=_("Image ID or name"))
 
-    if os.path.exists("/usr/bin/rpm-ostree"):
+    if os.path.exists("/usr/bin/rpm-ostree") and os.path.exists("/run/ostree-booted"):
         # atomic host
         hostp = subparser.add_parser("host", help=_("execute Atomic host "
                                                     "commands"))

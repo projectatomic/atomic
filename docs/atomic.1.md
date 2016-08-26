@@ -31,19 +31,27 @@ show the differences between two images|containers' RPMs
 show help associated with a container or image
 
 **atomic-host(1)**
-execute Atomic commands
+execute commands to manage an Atomic host.
+
+Note: only available on atomic host platforms.
 
 **atomic-images(1)**
 operations on locally installed container images
 
 **atomic-info(1)**
-execute Atomic commands
+execute read and display LABEL information about a container image
 
 **atomic-install(1)**
-execute image install method
+execute commands on installed images
 
 **atomic-mount(1)**
 mount image or container to filesystem
+
+**atomic-pull(1)**
+pull latest image from repository
+
+**atomic-push(1)**
+push container image to a repository
 
 **atomic-run(1)**
 execute image run method (default)
@@ -51,11 +59,11 @@ execute image run method (default)
 **atomic-scan(1)**
 scan an image or container for CVEs
 
-**atomic-storage(1)**
-manage the container storage on the system
-
 **atomic-stop(1)**
 execute container image stop method
+
+**atomic-storage(1)**
+manage the container storage on the system
 
 **atomic-top(1)**
 display a top-like list of container processes
@@ -67,10 +75,7 @@ uninstall container from system
 unmount previously mounted image or container
 
 **atomic-update(1)**
-pull latest image from repository
-
-**atomic-upload(1)**
-upload container image to the repository
+Downloads the latest container image. 
 
 **atomic-verify(1)**
 verify image is fully updated
