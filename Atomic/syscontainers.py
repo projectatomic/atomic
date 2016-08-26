@@ -32,10 +32,12 @@ except ImportError:
 
 ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
 ATOMIC_VAR = '/var/lib/containers/atomic'
-
+ATOMIC_VAR_USER = "%s/.containers/atomic" # Must be expanded
 OSTREE_OCIIMAGE_PREFIX = "ociimage/"
 SYSTEMD_UNIT_FILES_DEST = "/etc/systemd/system"
 SYSTEMD_UNIT_FILES_DEST_USER = "%s/.config/systemd/user" # Must be expanded
+SYSTEMD_TMPFILES_DEST = "/etc/tmpfiles.d"
+SYSTEMD_TMPFILES_DEST_USER = "%s/.containers/tmpfiles" # Must be expanded
 SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE = """
 [Unit]
 Description=$NAME
@@ -206,6 +208,16 @@ class SystemContainers(object):
             runc_commands = ["run", "kill"]
         return ["%s %s '%s'" % (util.RUNC_PATH, command, name) for command in runc_commands]
 
+    def _get_systemd_destination_files(self, name):
+        if self.user:
+            home = os.path.expanduser("~")
+            unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST_USER % home, "%s.service" % name)
+            tmpfilesout = os.path.join(SYSTEMD_TMPFILES_DEST_USER % home, "%s.conf" % name)
+        else:
+            unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
+            tmpfilesout = os.path.join(SYSTEMD_TMPFILES_DEST, "%s.conf" % name)
+        return unitfileout, tmpfilesout
+
     def _resolve_remote_path(self, remote_path):
         if not remote_path:
             return None
@@ -217,17 +229,15 @@ class SystemContainers(object):
 
     def _checkout_system_container(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False, remote=None):
         destination = destination or "%s/%s.%d" % (self._get_system_checkout_path(), name, deployment)
-        if self.user:
-            home = os.path.expanduser("~")
-            unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST_USER % home, "%s.service" % name)
-        else:
-            unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
+        unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
 
-        if not upgrade and os.path.exists(unitfileout):
-            raise ValueError("The file %s already exists." % unitfileout)
+        if not upgrade:
+            for f in [unitfileout, tmpfilesout]:
+                if os.path.exists(f):
+                    raise ValueError("The file %s already exists." % f)
 
         try:
-            return self._do_checkout_system_container(repo, name, img, upgrade, values, destination, unitfileout, extract_only, remote)
+            return self._do_checkout_system_container(repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote)
         except (ValueError, OSError) as e:
             try:
                 shutil.rmtree(destination)
@@ -240,7 +250,7 @@ class SystemContainers(object):
                 pass
             raise e
 
-    def _do_checkout_system_container(self, repo, name, img, upgrade, values, destination, unitfileout, extract_only, remote):
+    def _do_checkout_system_container(self, repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote):
         if not values:
             values = {}
 
@@ -261,6 +271,7 @@ class SystemContainers(object):
             exports = os.path.join(destination, "rootfs/exports")
 
         unitfile = os.path.join(exports, "service.template")
+        tmpfiles = os.path.join(exports, "tmpfiles.template")
 
         util.write_out("Extracting to %s" % destination)
 
@@ -352,22 +363,27 @@ class SystemContainers(object):
         values["NAME"] = name
         values["EXEC_START"], values["EXEC_STOP"] = self._generate_systemd_startstop_directives(name)
 
-        def _write_template(inputfilename, data, values, outfile):
-            template = Template(data)
-            result = template.safe_substitute(values)
-            missing = {"".join(x) for x in template.pattern.findall(data) if "".join(x) not in values} # pylint: disable=no-member
-            if len(missing):
-                raise ValueError("The template file '%s' still contains unreplaced values for: %s" % \
-                                 (inputfilename, ", ".join(missing)))
-            outfile.write(result)
+        def _write_template(inputfilename, data, values, destination):
+            try:
+                os.makedirs(os.path.dirname(destination))
+            except OSError:
+                pass
+            with open(destination, "w") as outfile:
+                template = Template(data)
+                result = template.safe_substitute(values)
+                missing = {"".join(x) for x in template.pattern.findall(data) if "".join(x) not in values} # pylint: disable=no-member
+                if len(missing):
+                    raise ValueError("The template file '%s' still contains unreplaced values for: %s" % \
+                                     (inputfilename, ", ".join(missing)))
+                outfile.write(result)
 
         src = os.path.join(exports, "config.json")
         destination_path = os.path.join(destination, "config.json")
         if os.path.exists(src):
             shutil.copyfile(src, destination_path)
         elif os.path.exists(src + ".template"):
-            with open(src + ".template", 'r') as infile, open(destination_path, "w") as outfile:
-                _write_template(src + ".template", infile.read(), values, outfile)
+            with open(src + ".template", 'r') as infile:
+                _write_template(src + ".template", infile.read(), values, destination_path)
         else:
             self._generate_default_oci_configuration(destination)
 
@@ -402,17 +418,23 @@ class SystemContainers(object):
         else:
             systemd_template = SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE
 
-        try:
-            os.makedirs(os.path.dirname(unitfileout))
-        except OSError:
-            pass
-        with open(unitfileout, "w") as outfile:
-            _write_template(unitfile, systemd_template, values, outfile)
+        if os.path.exists(tmpfiles):
+            with open(tmpfiles, 'r') as infile:
+                tmpfiles_template = infile.read()
+        else:
+            tmpfiles_template = ""
+
+        _write_template(unitfile, systemd_template, values, unitfileout)
+        if (tmpfiles_template):
+            _write_template(unitfile, tmpfiles_template, values, tmpfilesout)
 
         sym = "%s/%s" % (self._get_system_checkout_path(), name)
         if os.path.exists(sym):
             os.unlink(sym)
         os.symlink(destination, sym)
+
+        if (tmpfiles_template):
+            self._systemd_tmpfiles("--create", tmpfilesout)
 
         self._systemctl_command("enable", name)
         if upgrade:
@@ -427,7 +449,7 @@ class SystemContainers(object):
             return self.get_atomic_config_item(["checkout_path"])
         if self.user:
             home = os.path.expanduser("~")
-            return "%s/.containers/atomic" % home
+            return ATOMIC_VAR_USER % home
         else:
             return ATOMIC_VAR
 
@@ -596,6 +618,12 @@ class SystemContainers(object):
 
         return [self._inspect_system_branch(repo, x) for x in revs]
 
+    def _systemd_tmpfiles(self, command, name):
+        cmd = ["systemd-tmpfiles"] + [command, name]
+        util.write_out(" ".join(cmd))
+        if not self.args.display:
+            util.check_call(cmd)
+
     def _systemctl_command(self, command, name):
         if self.user:
             user = ["--user"]
@@ -616,6 +644,8 @@ class SystemContainers(object):
 
     def uninstall_system_container(self, name):
         self.args.display = False
+        unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
+
         try:
             self._systemctl_command("stop", name)
         except subprocess.CalledProcessError:
@@ -625,17 +655,15 @@ class SystemContainers(object):
         except subprocess.CalledProcessError:
             pass
 
+        if os.path.exists(tmpfilesout):
+            self._systemd_tmpfiles("--remove", tmpfilesout)
+            os.unlink(tmpfilesout)
+
         if os.path.lexists("%s/%s" % (self._get_system_checkout_path(), name)):
             os.unlink("%s/%s" % (self._get_system_checkout_path(), name))
         for deploy in ["0", "1"]:
             if os.path.exists("%s/%s.%s" % (self._get_system_checkout_path(), name, deploy)):
                 shutil.rmtree("%s/%s.%s" % (self._get_system_checkout_path(), name, deploy))
-
-        if self.user:
-            home = os.path.expanduser("~")
-            unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST_USER % home, "%s.service" % name)
-        else:
-            unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
 
         if os.path.exists(unitfileout):
             os.unlink(unitfileout)

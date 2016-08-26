@@ -87,6 +87,8 @@ teardown () {
 trap teardown EXIT
 
 ${ATOMIC} install --name=${NAME} --set=RECEIVER=${SECRET} --system oci:atomic-test-system
+test -e /etc/tmpfiles.d/${NAME}.conf
+
 ${ATOMIC} update --container ${NAME} > update.out
 assert_matches "Latest version already installed" update.out
 
@@ -183,6 +185,7 @@ test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}-remote.1
 
 ${ATOMIC} uninstall ${NAME}
 test \! -e /etc/systemd/system/${NAME}.service
+test \! -e /etc/tmpfiles.d/${NAME}.conf
 test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}
 test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0
 test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1

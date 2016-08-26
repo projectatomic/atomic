@@ -98,6 +98,16 @@
 				"relatime",
 				"ro"
 			]
+		},
+		{
+			"type": "bind",
+			"source": "${RUN_DIRECTORY}/${NAME}",
+			"destination": "/var/run/",
+			"options": [
+				"rbind",
+				"rw",
+				"mode=755"
+			]
 		}
 	],
 	"hooks": {},
