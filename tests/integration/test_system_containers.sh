@@ -190,7 +190,7 @@ test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1
 
 ${ATOMIC} pull docker.io/busybox
 ${ATOMIC} pull docker.io/busybox > second.pull.out
-assert_not_matches "Missing layer" second.pull.out
+assert_not_matches "Pulling layer" second.pull.out
 
 ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
 assert_matches busybox refs

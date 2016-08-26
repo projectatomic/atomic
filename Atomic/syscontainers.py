@@ -846,7 +846,7 @@ class SystemContainers(object):
             has_layer = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1]
             if not has_layer:
                 missing_layers.append(layer)
-                util.write_out("Missing layer %s" % layer)
+                util.write_out("Pulling layer %s" % layer)
         layers_dir = None
         try:
             layers_to_import = {}
