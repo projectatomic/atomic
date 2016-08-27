@@ -9,6 +9,7 @@ import os
 import selinux
 from .client import AtomicDocker
 from yaml import load as yaml_load
+from yaml import YAMLError
 import tempfile
 import shutil
 import re
@@ -353,7 +354,10 @@ def get_scanners():
     files = [os.path.join(ATOMIC_CONFD, x) for x in os.listdir(ATOMIC_CONFD) if os.path.isfile(os.path.join(ATOMIC_CONFD, x))]
     for f in files:
         with open(f, 'r') as conf_file:
-            temp_conf = yaml_load(conf_file)
+            try:
+                temp_conf = yaml_load(conf_file)
+            except YAMLError:
+                write_err("Error: Unable to load scannerfile %s.  Continuing..." %f)
             try:
                 if temp_conf.get('type') == "scanner":
                     scanners.append(temp_conf)
