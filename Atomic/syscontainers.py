@@ -132,12 +132,13 @@ class SystemContainers(object):
             self._check_system_oci_image(repo, image, upgrade)
 
     def pull_image(self):
-        if self.backend == "ostree":
-            repo = self._get_ostree_repo()
-            self._pull_image_to_ostree(repo, self.args.image, True)
-        else:
-            raise ValueError("Destination not known, please choose --storage=ostree")
-        return
+        handlers = {"ostree" : lambda img: self._pull_image_to_ostree(self._get_ostree_repo(), img, True)}
+
+        handler = handlers.get(self.backend)
+        if handler is None:
+            raise ValueError("Destination not known, please choose --storage=%s" % "|".join(handlers.keys()))
+        util.write_out("Image %s is being pulled to %s ..." % (self.args.image, self.backend))
+        handler(self.args.image)
 
     def install_user_container(self, image, name):
         try:
