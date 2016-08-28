@@ -2,7 +2,6 @@ import os
 import sys
 import json
 import pipes
-import getpass
 import argparse
 from .client import AtomicDocker
 from .syscontainers import SystemContainers
@@ -15,8 +14,6 @@ except ImportError:
 import requests
 
 from . import util
-from . import satellite
-from . import pulp
 import re
 from .util import NoDockerDaemon, DockerObjectNotFound
 from docker.errors import NotFound
@@ -155,82 +152,6 @@ class Atomic(object):
 
             prevstatus = status
         util.write_out("")
-
-    def push(self):
-        self.ping()
-        prevstatus = ""
-        # Priority order:
-        # If user passes in a password/username/url/ssl flag, use that
-        # If not, read from the config file
-        # If still nothing, ask again for registry user/pass
-        if self.args.pulp:
-            config = pulp.PulpConfig().config()
-
-        if self.args.satellite:
-            config = satellite.SatelliteConfig().config()
-
-        if (self.args.satellite | self.args.pulp):
-            if not self.args.username:
-                self.args.username = config["username"]
-            if not self.args.password:
-                self.args.password = config["password"]
-            if not self.args.url:
-                self.args.url = config["url"]
-            if self.args.verify_ssl is None:
-                self.args.verify_ssl = config["verify_ssl"]
-
-        if self.args.verify_ssl is None:
-            self.args.verify_ssl = False
-
-        if not self.args.username:
-            self.args.username = util.input("Registry Username: ")
-
-        if not self.args.password:
-            self.args.password = getpass.getpass("Registry Password: ")
-
-        if (self.args.satellite | self.args.pulp):
-            if not self.args.url:
-                self.args.url = util.input("URL: ")
-
-        if self.args.pulp:
-            return pulp.push_image_to_pulp(self.image, self.args.url,
-                                           self.args.username,
-                                           self.args.password,
-                                           self.args.verify_ssl,
-                                           self.d)
-
-        if self.args.satellite:
-            if not self.args.activation_key:
-                self.args.activation_key = util.input("Activation Key: ")
-            if not self.args.repo_id:
-                self.args.repo_id = util.input("Repository ID: ")
-            return satellite.push_image_to_satellite(self.image,
-                                                     self.args.url,
-                                                     self.args.username,
-                                                     self.args.password,
-                                                     self.args.verify_ssl,
-                                                     self.d,
-                                                     self.args.activation_key,
-                                                     self.args.repo_id,
-                                                     self.args.debug)
-
-        else:
-            self.d.login(self.args.username, self.args.password)
-            for line in self.d.push(self.image, stream=True):
-                bar = json.loads(line)
-                status = bar['status']
-                if prevstatus != status:
-                    util.write_out(status, "")
-                if 'id' not in bar:
-                    continue
-                if status == "Uploading":
-                    util.write_out(bar['progress'] + " ")
-                elif status == "Push complete":
-                    pass
-                elif status.startswith("Pushing"):
-                    util.write_out("Pushing: " + bar['id'])
-
-                prevstatus = status
 
     def pull_image(self):
         self.syscontainers.pull_image()
