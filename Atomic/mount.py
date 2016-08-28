@@ -108,6 +108,9 @@ class Mount(Atomic):
         self.shared = False
         self.options = ""
 
+    def __exit__(self, typ, value, traceback):
+        super(Mount, self).__exit__(typ, value, traceback)
+
     def set_args(self, args):
         Atomic.set_args(self, args)
         if hasattr(args, "mountpoint"):

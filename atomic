@@ -42,6 +42,7 @@ from Atomic import install
 from Atomic import help as Help
 from Atomic import run
 from Atomic import ps
+from Atomic import pull
 from Atomic import push
 from Atomic import stop
 from Atomic import uninstall
@@ -139,14 +140,7 @@ def create_parser(help_text):
     mount.cli(subparser)
     ps.cli(subparser)
     push.cli(subparser)
-
-    # atomic pull
-    pullp = subparser.add_parser("pull", help=_("pull latest image from a repository"),
-        epilog="pull the latest specified image from a repository.")
-    pullp.add_argument("--storage", dest="backend", help=_("Specify the storage."))
-    pullp.add_argument("image", help=_("image id"))
-    pullp.set_defaults(func='pull_image')
-
+    pull.cli(subparser)
     run.cli(subparser, atomic)
     scan.cli(subparser)
     stop.cli(subparser)

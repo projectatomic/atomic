@@ -153,9 +153,6 @@ class Atomic(object):
             prevstatus = status
         util.write_out("")
 
-    def pull_image(self):
-        self.syscontainers.pull_image()
-
     def set_args(self, args):
         self.args = args
         try:
