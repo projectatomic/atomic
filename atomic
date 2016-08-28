@@ -37,6 +37,7 @@ from Atomic import mount
 from Atomic import verify
 from Atomic import storage
 from Atomic import host
+from Atomic import info
 from Atomic import help as Help
 from Atomic import run
 from Atomic import ps
@@ -127,17 +128,7 @@ def create_parser(help_text):
 
     if os.path.exists("/usr/bin/rpm-ostree") and os.path.exists("/run/ostree-booted"):
         host.cli(subparser)
-
-    # atomic info
-    infop = subparser.add_parser(
-        "info", help=_("display label information about an image"),
-        epilog="atomic info attempts to read and display the LABEL "
-        "information about an image")
-    infop.set_defaults(func='info')
-    infop.add_argument("--remote", dest="force_remote_info",
-                       action='store_true', default=False,
-                       help=_('ignore local images and only scan registries'))
-    infop.add_argument("image", help=_("container image"))
+    info.cli(subparser)
 
     # atomic install
     installp = subparser.add_parser(

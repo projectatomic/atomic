@@ -549,53 +549,6 @@ class Atomic(object):
         raise ValueError("Could not find any image matching '{}'"
                          .format(self.args.image))
 
-    def info(self):
-        """
-        Retrieve and print all LABEL information for a given image.
-        """
-        def _no_label():
-            raise ValueError("'{}' has no label information."
-                             .format(self.args.image))
-        # Check if the input is an image id associated with more than one
-        # repotag.  If so, error out.
-        if self.syscontainers.has_system_container_image(self.image):
-            pass
-        elif self.is_iid():
-            self.get_fq_name(self._inspect_image())
-        # The input is not an image id
-        else:
-            try:
-                iid = self._is_image(self.image)
-                self.image = self.get_fq_name(self._inspect_image(iid))
-            except AtomicError:
-                if self.args.force_remote_info:
-                    self.image = util.find_remote_image(self.d, self.image)
-                if self.image is None:
-                    self._no_such_image()
-        util.write_out("Image Name: {}".format(self.image))
-        inspection = None
-        if not self.args.force_remote_info:
-            inspection = self._inspect_image(self.image)
-            # No such image locally, but fall back to remote
-        if inspection is None:
-            # Shut up pylint in case we're on a machine with upstream
-            # docker-py, which lacks the remote keyword arg.
-            #pylint: disable=unexpected-keyword-arg
-            inspection = util.skopeo_inspect("docker://" + self.image)
-            # image does not exist on any configured registry
-        if 'Config' in inspection and 'Labels' in inspection['Config']:
-            labels = inspection['Config']['Labels']
-        elif 'Labels' in inspection:
-            labels = inspection['Labels']
-        else:
-            _no_label()
-
-        if labels is not None and len(labels) is not 0:
-            for label in labels:
-                util.write_out('{0}: {1}'.format(label, labels[label]))
-        else:
-            _no_label()
-
     def is_dangling(self, image):
         if image == "<none>":
             return True
