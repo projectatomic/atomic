@@ -36,6 +36,7 @@ from Atomic import top
 from Atomic import mount
 from Atomic import verify
 from Atomic import storage
+from Atomic import host
 from Atomic import help as Help
 from Atomic import run
 from Atomic import ps
@@ -125,112 +126,7 @@ def create_parser(help_text):
     Help.cli(subparser)
 
     if os.path.exists("/usr/bin/rpm-ostree") and os.path.exists("/run/ostree-booted"):
-        # atomic host
-        hostp = subparser.add_parser("host", help=_("execute Atomic host "
-                                                    "commands"))
-        host_subparser = hostp.add_subparsers(help=_("host commands"))
-
-        # atomic host rollback
-        rollbackp = host_subparser.add_parser(
-            "rollback", help=_("switch to alternate installed tree at next boot"))
-        rollbackp.set_defaults(func='host_rollback')
-        rollbackp.add_argument("-r", "--reboot", dest="reboot",
-                               action="store_true",
-                               help=_("initiate a reboot after rollback is "
-                                      "prepared"))
-        rollbackp.add_argument("args", nargs=argparse.REMAINDER,
-                               help=_("Additional arguments appended to the "
-                                      "rollback method.  Use `-- --OPTION=VAL` "
-                                      "if you want to pass additional "
-                                      "unsupported arguments to rpm-ostree."))
-
-
-        # atomic host status
-        statusp = host_subparser.add_parser(
-            "status", help=_("list information about all deployments"))
-        statusp.add_argument("-j", "--json", dest="json",
-                             action="store_true",
-                             help=_("Display status in JSON format"))
-        statusp.add_argument("-p", "--pretty", dest="pretty",
-                             action="store_true",
-                             help=_("This option is deprecated and no "
-                                    "longer has any effect"))
-        statusp.add_argument("args", nargs=argparse.REMAINDER,
-                             help=_("Additional arguments appended to the "
-                                    "status method.  Use `-- --OPTION=VAL` "
-                                    "if you want to pass additional "
-                                    "unsupported arguments to rpm-ostree."))
-
-        statusp.set_defaults(func='host_status')
-
-        # atomic host upgrade
-        upgradep = host_subparser.add_parser(
-            "upgrade", help=_("upgrade to the latest Atomic tree if one "
-                              "is available"))
-        upgradep.set_defaults(func='host_upgrade')
-        upgradep.add_argument("-r", "--reboot", dest="reboot",
-                              action="store_true",
-                              help=_("if an upgrade is available, reboot "
-                                     "after deployment is complete"))
-        upgradep.add_argument("--allow-downgrade", dest="downgrade",
-                              action="store_true",
-                              help=_("Permit deployment of chronologically older trees"))
-        upgradep.add_argument("--os", dest="os",
-                              help=_("Operate on provided OSNAME"))
-        upgradep.add_argument("--check-diff", dest="diff",
-                              action="store_true",
-                              help=_("Check for upgrades and print package diff only"))
-        upgradep.add_argument("args", nargs=argparse.REMAINDER,
-                              help=_("Additional arguments appended to the "
-                                     "upgrade method.  Use `-- --OPTION=VAL` "
-                                     "if you want to pass additional "
-                                     "unsupported arguments to rpm-ostree."))
-
-        # atomic host rebase
-        rebasep = host_subparser.add_parser(
-            "rebase", help=_("Download and deploy a new origin refspec"))
-        rebasep.set_defaults(func='host_rebase')
-        rebasep.add_argument("--os", dest="os",
-                              help=_("Operate on provided OSNAME"))
-        rebasep.add_argument("refspec",
-                             help=_("Origin refspec for new deployment"))
-        rebasep.add_argument("args", nargs=argparse.REMAINDER,
-                             help=_("Additional arguments appended to the "
-                                    "rebase method.  Use `-- --OPTION=VAL` "
-                                    "if you want to pass additional "
-                                    "unsupported arguments to rpm-ostree."))
-
-        # atomic host deploy
-        deployp = host_subparser.add_parser(
-            "deploy", help=_("deploy a specific commit"))
-        deployp.set_defaults(func='host_deploy')
-        deployp.add_argument("revision", help=_("Checksum or version to deploy"))
-        deployp.add_argument("-r", "--reboot", dest="reboot",
-                             action="store_true",
-                             help=_("Reboot after deployment is complete"))
-        deployp.add_argument("--os", dest="os",
-                             help=_("Operate on provided OSNAME"))
-        deployp.add_argument("--preview", dest="preview",
-                             action="store_true",
-                             help=_("Just preview package differences"))
-        deployp.add_argument("args", nargs=argparse.REMAINDER,
-                             help=_("Additional arguments appended to the "
-                                    "deploy method.  Use `-- --OPTION=VAL` "
-                                    "if you want to pass additional "
-                                    "unsupported arguments to rpm-ostree."))
-
-        # atomic host unlock
-        unlockp = host_subparser.add_parser(
-            "unlock", help=_("Make the current deployment mutable (for development or a hotfix)"))
-        unlockp.set_defaults(func='host_unlock')
-        unlockp.add_argument("--hotfix", dest="hotfix",
-                               action="store_true",
-                               help=_("Retain any changes after reboot"))
-        unlockp.add_argument("args", nargs=argparse.REMAINDER,
-                               help=_("Additional arguments appended to the "
-                                      "unlock method.  Use `-- --OPTION=VAL` "
-                                      "if you want to pass additional "
-                                      "unsupported arguments to ostree."))
+        host.cli(subparser)
 
     # atomic info
     infop = subparser.add_parser(
