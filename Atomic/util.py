@@ -28,8 +28,13 @@ ATOMIC_CONFD = os.environ.get('ATOMIC_CONFD', '/etc/atomic.d/')
 ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
 ATOMIC_VAR_LIB = os.environ.get('ATOMIC_VAR_LIB', '/var/lib/atomic')
 
+GOMTREE_PATH = "/usr/bin/gomtree"
 BWRAP_OCI_PATH = "/usr/bin/bwrap-oci"
 RUNC_PATH = "/bin/runc"
+
+
+def gomtree_available():
+    return os.path.exists(GOMTREE_PATH)
 
 def runc_available():
     return os.path.exists(RUNC_PATH)
@@ -463,9 +468,9 @@ def generate_validation_manifest(img_rootfs=None, img_tar=None, keywords=""):
     if img_rootfs == None and img_tar == None:
         write_out("no source for gomtree to generate a manifest from")
     if img_rootfs:
-        cmd = [ATOMIC_LIBEXEC + '/gomtree','-c','-p',img_rootfs]
+        cmd = [GOMTREE_PATH,'-c','-p',img_rootfs]
     elif img_tar:
-        cmd = [ATOMIC_LIBEXEC + '/gomtree','-c','-T',img_tar]
+        cmd = [GOMTREE_PATH,'-c','-T',img_tar]
     if keywords:
         cmd += ['-k',keywords]
     return subp(cmd)
@@ -481,9 +486,9 @@ def validate_manifest(spec, img_rootfs=None, img_tar=None, keywords=""):
     if img_rootfs == None and img_tar == None:
         write_out("no source for gomtree to validate a manifest")
     if img_rootfs:
-        cmd = [ATOMIC_LIBEXEC + '/gomtree', '-p', img_rootfs, '-f', spec]
+        cmd = [GOMTREE_PATH, '-p', img_rootfs, '-f', spec]
     elif img_tar:
-        cmd = [ATOMIC_LIBEXEC + '/gomtree','-T',img_tar, '-f', spec]
+        cmd = [GOMTREE_PATH,'-T',img_tar, '-f', spec]
     if keywords:
         cmd += ['-k',keywords]
     return subp(cmd)

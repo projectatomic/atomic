@@ -65,7 +65,8 @@ Mark given container image(s) for deletion. Remote disk space will not be freed 
 Using the `prune` command will free wasted disk space by deleting all unused `dangling` images.
 
 **generate**
-  Generates a gomtree validation manifest for all images
+  Generates a gomtree validation manifest for all images.  Gomtree is
+  required for this feature to be available.
 
 # HISTORY
 July 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)

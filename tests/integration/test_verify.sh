@@ -14,6 +14,11 @@ IFS=$'\n\t'
 # In addition, the test harness creates some images for use in testing.
 #   See tests/test-images/
 echo "testing"
+
+if ! ${ATOMIC} images --help | grep generate; then
+    exit 77
+fi
+
 IMAGE="atomic-test-4"
 ID=`${DOCKER} inspect ${IMAGE} | grep '"Id"' | cut -f4 --delimiter=\"`
 ATOMIC_VAR_LIB='/var/lib/atomic'

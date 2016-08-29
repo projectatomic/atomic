@@ -381,9 +381,10 @@ def create_parser(help_text):
                                                       "'dangling' images")
     prune_parser.set_defaults(_class=Delete, func='prune_images')
 
-    generate_parser = images_subparser.add_parser("generate",
-                                                  help=_("generate image 'manifests' if missing"))
-    generate_parser.set_defaults(_class=Images, func='generate_validation_manifest')
+    if Atomic.util.gomtree_available():
+        generate_parser = images_subparser.add_parser("generate",
+                                                      help=_("generate image 'manifests' if missing"))
+        generate_parser.set_defaults(_class=Images, func='generate_validation_manifest')
 
     # atomic mount
     mountp = subparser.add_parser(
