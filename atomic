@@ -141,7 +141,7 @@ def create_parser(help_text):
     ps.cli(subparser)
     push.cli(subparser)
     pull.cli(subparser)
-    run.cli(subparser, atomic)
+    run.cli(subparser)
     scan.cli(subparser)
     stop.cli(subparser)
     storage.cli(subparser)

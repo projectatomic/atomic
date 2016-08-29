@@ -39,29 +39,6 @@ def find_repo_tag(d, Id, image_name):
 find_repo_tag.images = None
 
 class Atomic(object):
-    SPC_ARGS = ["run",
-                "-t",
-                "-i",
-                "--privileged",
-                "-v", "/:/host",
-                "-v", "/run:/run",
-                "-v", "/etc/localtime:/etc/localtime",
-                "-v", "/sys/fs/selinux:/sys/fs/selinux:ro",
-                "--net=host",
-                "--ipc=host",
-                "--pid=host",
-                "-e", "HOST=/host",
-                "-e", "NAME=${NAME}",
-                "-e", "IMAGE=${IMAGE}",
-                "--name", "${NAME}",
-                "${IMAGE}"]
-
-    RUN_ARGS = ["run",
-                "-t",
-                "-i",
-                "--name", "${NAME}",
-                "${IMAGE}"]
-
     results = '/var/lib/atomic'
     skull = (u"\u2620").encode('utf-8')
 
@@ -433,12 +410,6 @@ class Atomic(object):
             return _('Atomic Management Tool')
         else:
             return _('Atomic Container Tool')
-
-    def print_spc(self):
-        return "%s %s" % (self.docker_binary(), " ".join(self.SPC_ARGS))
-
-    def print_run(self):
-        return "%s %s" % (self.docker_binary(), " ".join(self.RUN_ARGS))
 
     def _get_layer(self, image):
         def get_label(label):

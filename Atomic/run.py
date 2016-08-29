@@ -8,12 +8,35 @@ try:
 except ImportError:
     from atomic import Atomic # pylint: disable=relative-import
 
-def cli(subparser, atomic):
+SPC_ARGS = ["run",
+            "-t",
+            "-i",
+            "--privileged",
+            "-v", "/:/host",
+            "-v", "/run:/run",
+            "-v", "/etc/localtime:/etc/localtime",
+            "-v", "/sys/fs/selinux:/sys/fs/selinux:ro",
+            "--net=host",
+            "--ipc=host",
+            "--pid=host",
+            "-e", "HOST=/host",
+            "-e", "NAME=${NAME}",
+            "-e", "IMAGE=${IMAGE}",
+            "--name", "${NAME}",
+            "${IMAGE}"]
+
+RUN_ARGS = ["run",
+            "-t",
+            "-i",
+            "--name", "${NAME}",
+            "${IMAGE}"]
+
+def cli(subparser):
     # atomic run
     runp = subparser.add_parser(
         "run", help=_("execute container image run method"),
         epilog="atomic run defaults to the following command, if image "
-        "does not specify LABEL run\n'%s'" % atomic.print_run())
+        "does not specify LABEL run\n'%s'" % Run.print_run())
     runp.set_defaults(_class=Run, func='run')
     run_group = runp.add_mutually_exclusive_group()
     util.add_opt(runp)
@@ -21,7 +44,7 @@ def cli(subparser, atomic):
                       help=_("name of container"))
     runp.add_argument("--spc", default=False, action="store_true",
                       help=_("use super privileged container mode: '%s'" %
-                             atomic.print_spc()))
+                             Run.print_spc()))
     runp.add_argument("image", help=_("container image"))
     runp.add_argument("command", nargs=argparse.REMAINDER,
                       help=_("command to execute within the container. "
@@ -63,9 +86,9 @@ class Run(Atomic):
 
         if self.spc:
             if self.command:
-                args = [self.docker_binary()] + self.SPC_ARGS + self.command
+                args = [self.docker_binary()] + SPC_ARGS + self.command
             else:
-                args = [self.docker_binary()] + self.SPC_ARGS + self._get_cmd()
+                args = [self.docker_binary()] + SPC_ARGS + self._get_cmd()
         else:
             args = self._get_args("RUN")
             if args:
@@ -83,9 +106,9 @@ class Run(Atomic):
                         raise ValueError("Will not read RUN_OPTS_FILE %s: not absolute path" % opts_file)
             else:
                 if self.command:
-                    args = [self.docker_binary()] + self.RUN_ARGS + self.command
+                    args = [self.docker_binary()] + RUN_ARGS + self.command
                 else:
-                    args = [self.docker_binary()] + self.RUN_ARGS + self._get_cmd()
+                    args = [self.docker_binary()] + RUN_ARGS + self._get_cmd()
 
         if len(args) > 0 and args[0] == "docker":
             args[0] = self.docker_binary()
@@ -140,3 +163,11 @@ class Run(Atomic):
             util.write_out("\nFor more information on these switches and their "
                           "security implications, consult the manpage for "
                           "'docker run'.\n")
+
+    @staticmethod
+    def print_run():
+        return "%s %s" % (util.default_docker(), " ".join(RUN_ARGS))
+
+    @staticmethod
+    def print_spc():
+        return "%s %s" % (util.default_docker(), " ".join(SPC_ARGS))
