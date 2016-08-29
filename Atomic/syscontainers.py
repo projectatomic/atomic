@@ -49,8 +49,6 @@ WorkingDirectory=$DESTDIR
 [Install]
 WantedBy=multi-user.target
 """
-BWRAP_OCI_PATH = "/usr/bin/bwrap-oci"
-RUNC_PATH = "/bin/runc"
 
 class SystemContainers(object):
 
@@ -142,7 +140,7 @@ class SystemContainers(object):
 
     def install_user_container(self, image, name):
         try:
-            util.check_call([BWRAP_OCI_PATH, "--version"], stdout=DEVNULL)
+            util.check_call([util.BWRAP_OCI_PATH, "--version"], stdout=DEVNULL)
         except util.FileNotFound:
             raise ValueError("Cannot install the container: bwrap-oci is needed to run user containers")
 
@@ -162,7 +160,7 @@ class SystemContainers(object):
 
         if not self.user:
             try:
-                util.check_call([RUNC_PATH, "--version"], stdout=DEVNULL)
+                util.check_call([util.RUNC_PATH, "--version"], stdout=DEVNULL)
             except util.FileNotFound:
                 raise ValueError("Cannot install the container: runc is needed to run system containers")
 
@@ -185,7 +183,7 @@ class SystemContainers(object):
             raise ValueError("Invalid configuration file.  Path must be 'rootfs'")
 
     def _generate_default_oci_configuration(self, destination):
-        args = [RUNC_PATH, 'spec']
+        args = [util.RUNC_PATH, 'spec']
         util.subp(args, cwd=destination)
         conf_path = os.path.join(destination, "config.json")
         with open(conf_path, 'r') as conf:
@@ -199,14 +197,14 @@ class SystemContainers(object):
 
     def _generate_systemd_startstop_directives(self, name):
         if self.user:
-            return ["%s '%s'" % (BWRAP_OCI_PATH, name), ""]
+            return ["%s '%s'" % (util.BWRAP_OCI_PATH, name), ""]
 
-        version = str(util.check_output([RUNC_PATH, "--version"], stderr=DEVNULL))
+        version = str(util.check_output([util.RUNC_PATH, "--version"], stderr=DEVNULL))
         if "version 0" in version:
             runc_commands = ["start", "kill"]
         else:
             runc_commands = ["run", "kill"]
-        return ["%s %s '%s'" % (RUNC_PATH, command, name) for command in runc_commands]
+        return ["%s %s '%s'" % (util.RUNC_PATH, command, name) for command in runc_commands]
 
     def _resolve_remote_path(self, remote_path):
         if not remote_path:
@@ -505,7 +503,7 @@ class SystemContainers(object):
             return {'status' : 'unknown'}
 
         try:
-            inspect_stdout = util.check_output([RUNC_PATH, "state", container], stderr=DEVNULL)
+            inspect_stdout = util.check_output([util.RUNC_PATH, "state", container], stderr=DEVNULL)
             ret = json.loads(inspect_stdout.decode())
             status = ret["status"]
             created = dateparse(ret['created'])

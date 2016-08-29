@@ -28,6 +28,15 @@ ATOMIC_CONFD = os.environ.get('ATOMIC_CONFD', '/etc/atomic.d/')
 ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
 ATOMIC_VAR_LIB = os.environ.get('ATOMIC_VAR_LIB', '/var/lib/atomic')
 
+BWRAP_OCI_PATH = "/usr/bin/bwrap-oci"
+RUNC_PATH = "/bin/runc"
+
+def runc_available():
+    return os.path.exists(RUNC_PATH)
+
+def bwrap_oci_available():
+    return os.path.exists(BWRAP_OCI_PATH)
+
 def check_if_python2():
     if int(sys.version_info[0]) < 3:
         _input = raw_input # pylint: disable=undefined-variable,raw_input-builtin

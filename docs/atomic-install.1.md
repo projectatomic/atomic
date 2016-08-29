@@ -76,18 +76,19 @@ by --system.  OSTree is required for this feature to be available.
 **--system**
 Install a system container.  A system container is a container that
 is executed out of an systemd unit file early in boot, using runc.
-OSTree is required for this feature to be available.  The specified
-**IMAGE** must be a system image already fetched.  If it is not
-already present, atomic will attempt to fetch it assuming it is an
-`oci` image.  For more information on how images are fetched, see
-also **atomic-pull(1)**
+The specified **IMAGE** must be a system image already fetched.  If it
+is not already present, atomic will attempt to fetch it assuming it is
+an `oci` image.  For more information on how images are fetched, see
+also **atomic-pull(1)**.
 Installing a system container consists of checking it the image by
 default under /var/lib/containers/atomic/ and generating the
 configuration files for runc and systemd.
+OSTree and runc are required for this feature to be available.
 
 **--user**
 If running as non-root, specify to install the image from the current
 OSTree repository and manage it through systemd and bubblewrap.
+OSTree and bwrap-oci are required for this feature to be available.
 
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)
