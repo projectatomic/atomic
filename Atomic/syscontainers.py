@@ -374,6 +374,8 @@ class SystemContainers(object):
         values["DESTDIR"] = destination
         values["NAME"] = name
         values["EXEC_START"], values["EXEC_STOP"] = self._generate_systemd_startstop_directives(name)
+        values["HOST_UID"] = os.getuid()
+        values["HOST_GID"] = os.getgid()
 
         def _write_template(inputfilename, data, values, destination):
             try:
