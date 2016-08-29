@@ -720,10 +720,9 @@ class SystemContainers(object):
     def get_default_system_name(image):
         image = image.replace("oci:", "").replace("docker:", "")
         _, image, tag = SystemContainers._parse_imagename(image)
-        if tag == "latest":
-            name = image.replace("/", "-")
-        else:
-            name = "%s-%s" % (image.replace("/", "-"), tag)
+        name = image.split("/")[-1]
+        if tag != "latest":
+            name = "%s-%s" % (name, tag)
 
         return name
 

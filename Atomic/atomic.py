@@ -293,7 +293,7 @@ class Atomic(object):
             self.name = self.image.split("/")[-1].split(":")[0]
             if self.spc:
                 self.name = self.name + "-spc"
-            if self.system:
+            if self.system or self.user:
                 self.name = self.syscontainers.get_default_system_name(self.image)
 
         self.syscontainers.set_args(self.args)
