@@ -380,25 +380,6 @@ class Atomic(object):
             return True
         return False
 
-    def _filter_include_image(self, image_info):
-        filterables = ["repo", "tag", "id", "created", "size", "type"]
-        for i in self.args.filter:
-            var, value = str(i).split("=")
-            var = var.lower()
-            if var == "repository":
-                var = "repo"
-
-            if var == "image":
-                var = "id"
-
-            if var not in filterables: # Default to allowing all images through for non-existing filterable
-                continue
-
-            if value not in image_info[var].lower():
-                return False
-
-        return True
-
     def _container_exists(self, name):
         try:
             return self.syscontainers.get_system_container_checkout(name) or self._inspect_container(name)

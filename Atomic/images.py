@@ -235,3 +235,22 @@ class Images(Atomic):
             with open(manifestname,"w",0) as f:
                 f.write(r.stdout)
             shutil.rmtree(tmpdir)
+
+    def _filter_include_image(self, image_info):
+        filterables = ["repo", "tag", "id", "created", "size", "type"]
+        for i in self.args.filter:
+            var, value = str(i).split("=")
+            var = var.lower()
+            if var == "repository":
+                var = "repo"
+
+            if var == "image":
+                var = "id"
+
+            if var not in filterables: # Default to allowing all images through for non-existing filterable
+                continue
+
+            if value not in image_info[var].lower():
+                return False
+
+        return True
