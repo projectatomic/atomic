@@ -30,7 +30,6 @@ def cli(subparser):
 class Ps(Atomic):
 
     def ps_tty(self):
-        skull = (u"\u2620").encode('utf-8')
         all_container_info = self.ps()
         all_containers = []
         for each in all_container_info:
@@ -117,9 +116,9 @@ class Ps(Atomic):
             indicator = ""
             if container["vulnerable"]:
                 if util.is_python2:
-                    indicator = indicator + skull + " "
+                    indicator = indicator + self.skull + " "
                 else:
-                    indicator = indicator + str(skull, "utf-8") + " "
+                    indicator = indicator + str(self.skull, "utf-8") + " "
             util.write_out(col_out.format(indicator,
                                           container["container"][0:max_len_container],
                                           container["image"][0:max_len_image],
