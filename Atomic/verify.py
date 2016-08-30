@@ -11,6 +11,22 @@ import itertools
 import tempfile
 import subprocess
 
+def cli(subparser):
+    # atomic verify
+    verifyp = subparser.add_parser(
+        "verify", help=_("verify image is fully updated"),
+        epilog="atomic verify checks whether there is a newer image "
+        "available and scans through all layers to see if any of "
+        "the sublayers have a new version available")
+    verifyp.set_defaults(_class=Verify, func='verify')
+    verifyp.add_argument("image", help=_("container image"))
+    verifyp.add_argument("-v", "--verbose", default=False,
+                          action="store_true",
+                          help=_("Report status of each layer"))
+    verifyp.add_argument("--no-validate", default=False, dest="no_validate",
+                                action="store_true",
+                                help=_("disable validating system images"))
+
 class Verify(Atomic):
     def __init__(self):
         super(Verify, self).__init__()

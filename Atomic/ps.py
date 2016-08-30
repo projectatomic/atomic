@@ -5,6 +5,28 @@ from . import Atomic
 import datetime
 from dateutil.parser import parse as dateparse
 
+def cli(subparser):
+    # atomic ps
+    pss = subparser.add_parser("ps",
+                               help=_("list the containers"),
+                               epilog="By default this shows only the running containers.")
+    pss.set_defaults(_class=Ps, func='ps_tty')
+    pss.add_argument("-a", "--all", action='store_true',dest="all", default=False,
+                     help=_("show all containers"))
+    pss.add_argument("-f", "--filter", metavar='FILTER', action='append', dest="filter",
+                     help=_("Filter output based on conditions given in the VARIABLE=VALUE form"))
+    pss.add_argument("--json", action='store_true',dest="json", default=False,
+                     help=_("print in a machine parseable form"))
+    pss.add_argument("-n", "--noheading", dest="heading", default=True,
+                     action="store_false",
+                     help=_("do not print heading when listing the containers"))
+    pss.add_argument("--no-trunc", action='store_false', dest="truncate", default=True,
+                     help=_("Don't truncate output"))
+    pss.add_argument("-q", "--quiet", action='store_true', dest="quiet", default=False,
+                     help=_("Only display container IDs"))
+    util.add_opt(pss)
+
+
 class Ps(Atomic):
 
     def ps_tty(self):

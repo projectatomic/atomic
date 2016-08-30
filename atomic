@@ -29,18 +29,17 @@ import subprocess
 
 import docker
 import Atomic
-from Atomic.diff import Diff
-from Atomic.delete import Delete
-from Atomic.images import Images
-from Atomic.top import Top
-from Atomic.scan import Scan
-from Atomic.mount import Mount
-from Atomic.verify import Verify
-from Atomic.help import AtomicHelp
-from Atomic.run import Run
-from Atomic.ps import Ps
-from Atomic.storage import Storage
-from Atomic.util import get_scanners, default_docker_lib, write_err, NoDockerDaemon
+from Atomic import diff
+from Atomic import images
+from Atomic import scan
+from Atomic import top
+from Atomic import mount
+from Atomic import verify
+from Atomic import storage
+from Atomic import help as Help
+from Atomic import run
+from Atomic import ps
+from Atomic.util import write_err, NoDockerDaemon, add_opt
 import traceback
 from Atomic.mount import MountError
 
@@ -101,19 +100,6 @@ class AliasedSubParsersAction(argparse._SubParsersAction): # pylint: disable=pro
 
         return parser
 
-def add_opt(sub):
-    sub.add_argument("--opt1", dest="opt1",help=argparse.SUPPRESS)
-    sub.add_argument("--opt2", dest="opt2",help=argparse.SUPPRESS)
-    sub.add_argument("--opt3", dest="opt3",help=argparse.SUPPRESS)
-
-
-def check_negative(value):
-    ivalue = int(value)
-    if ivalue < 1:
-        raise argparse.ArgumentTypeError("%s must be a positive integer value greater than 0." % value)
-    return ivalue
-
-
 def need_root():
     sub_function = sys.argv[1] if sys.argv[1] not in ['--debug'] else sys.argv[2]
     exit("Some operations for '%s' require root access." % sub_function)
@@ -135,30 +121,8 @@ def create_parser(help_text):
     except ImportError:
         pass
 
-    # atomic diff
-    diffp = subparser.add_parser(
-    "diff", help=_("Show differences between two container images, file diff or RPMS."),
-    epilog="atomic diff 'image1|container1' 'image2|container2'")
-    diffp.set_defaults(_class=Diff, func='diff_tty')
-    diffp.add_argument("compares", nargs=2,
-                       help=_("Container images to compare"))
-    diffp.add_argument("--json", default=False, action='store_true',
-                       help=_("output json"))
-    diffp.add_argument("-n", "--no-files", default=False, action='store_true',
-                       help=_("Do not perform a file diff between the docker objects"))
-    diffp.add_argument("--names-only", default=False,
-                       action='store_true', help=_("Only compare RPM names and not versions"))
-    diffp.add_argument("-r", "--rpms", default=False, action='store_true',
-                       help=_("List different rpms between the container images."))
-    diffp.add_argument("-v", "--verbose", default=False, action='store_true',
-                       help=_("Show verbose output, listing all RPMs"))
-
-    #atomic help
-    helpp = subparser.add_parser(
-    "help", help=_("Display help associated with the image"),
-    epilog="atomic help 'image'")
-    helpp.set_defaults(_class=AtomicHelp, func='help')
-    helpp.add_argument("image", help=_("Image ID or name"))
+    diff.cli(subparser)
+    Help.cli(subparser)
 
     if os.path.exists("/usr/bin/rpm-ostree") and os.path.exists("/run/ostree-booted"):
         # atomic host
@@ -321,91 +285,10 @@ def create_parser(help_text):
                           help=_("Additional arguments appended to the image "
                                  "install method"))
 
-    # atomic images
-    imagesp = subparser.add_parser("images")
-    images_subparser = imagesp.add_subparsers(title='images subcommands',
-                                              description="operate on images",
-                                              help='additional help')
+    images.cli(subparser)
+    mount.cli(subparser)
+    ps.cli(subparser)
 
-    # atomic images list
-    list_parser = images_subparser.add_parser("list",
-                                              help=_("list container images on your system"),
-                                              epilog="atomic images by default will list all installed "
-                                                     "container images on your system.")
-    list_parser.set_defaults(_class=Images, func='display_all_image_info')
-
-    list_parser.add_argument("-a", "--all", dest="all", default=False,
-                             action="store_true",
-                             help=_("Show all images, including intermediate images"))
-
-    list_parser.add_argument("-f", "--filter", dest="filter", metavar="FILTER",
-                             action="append",
-                             help=_("Filter output based on VARIABLE=VALUE format"))
-
-    list_parser.add_argument("-n", "--noheading", dest="heading", default=True,
-                             action="store_false",
-                             help=_("do not print heading when listing the images"))
-
-    list_parser.add_argument("--no-trunc", dest="truncate", default=True,
-                             action="store_false",
-                             help=_("Don't truncate output"))
-
-    list_parser.add_argument("-q", "--quiet", dest="quiet", default=False,
-                             action="store_true",
-                             help=_("Only display image IDs"))
-    list_parser.add_argument("--json", action='store_true',dest="json", default=False,
-                             help=_("print in a machine parseable form"))
-
-    # atomic images delete
-    delete_parser = images_subparser.add_parser("delete",
-                                                help=_("mark image for deletion"),
-                                                epilog="Marks image. registry garbage-collection "
-                                                "when invoked will recover used disk space")
-    delete_parser.set_defaults(_class=Delete, func='delete_image')
-
-    delete_parser.add_argument("-f", "--force", default=False, dest="force_delete",
-                               action="store_true",
-                               help=_("Delete image without user confirmation"))
-
-    delete_parser.add_argument("--remote", default=False, dest="remote_delete",
-                               action="store_true",
-                               help=_("Delete image from remote repository"))
-
-    delete_parser.add_argument("delete_targets", nargs=argparse.ONE_OR_MORE,
-                               help=_("container image(s)"))
-
-    prune_parser = images_subparser.add_parser("prune",
-                                               help=_("delete unused 'dangling' images"),
-                                               epilog="Using the prune command, "
-                                                      "will free up disk space deleting unused "
-                                                      "'dangling' images")
-    prune_parser.set_defaults(_class=Delete, func='prune_images')
-
-    if Atomic.util.gomtree_available():
-        generate_parser = images_subparser.add_parser("generate",
-                                                      help=_("generate image 'manifests' if missing"))
-        generate_parser.set_defaults(_class=Images, func='generate_validation_manifest')
-
-    # atomic mount
-    mountp = subparser.add_parser(
-        "mount", help=_("mount container image to a specified directory"),
-        epilog="atomic mount attempts to mount a container image to a "
-        "specified directory so that its contents may be "
-        "inspected.")
-    mountp.set_defaults(_class=Mount, func='mount')
-    mountp.add_argument("-o", "--options", dest="options", default="",
-                        help=_("comma-separated list of mount options, "
-                               "defaults are 'ro,nodev,nosuid'"))
-    mountgroup = mountp.add_mutually_exclusive_group()
-    mountgroup.add_argument("--live", dest="live", action="store_true",
-                            help=_("mount a running container 'live', allowing "
-                                   "modification of the contents."))
-    mountgroup.add_argument("--shared", dest="shared", action="store_true",
-                            help=_("mount a container image 'shared'. Mounts the container image with  an SELinux label "
-                                   "that other containers can read."))
-    mountp.add_argument("image", help=_("image/container id"))
-    mountp.add_argument("mountpoint", help=_("filesystem location to mount "
-                                             "the image/container"))
     # atomic push
     pushp = subparser.add_parser(
         "push", aliases=['upload'], help=_("push latest image to repository"),
@@ -473,52 +356,8 @@ def create_parser(help_text):
     #                      dest="org_name",
     #                      help=_("Organization Name"))
 
-    # atomic rhost (if commctl.cli is available)
-    try:
-        import commctl.cli
-        rhostp = subparser.add_parser(
-            "rhost", help=_("execute cluster host management commands"))
-        commctl.cli.add_host_commands(rhostp)
-    except ImportError:
-        pass
-
-    # atomic scan
-    scanners = get_scanners()
-    scanp = subparser.add_parser(
-        "scan", help=_("scan an image or container for CVEs"),
-        epilog="atomic scan <input> scans a container or image for CVEs")
-    scanp.set_defaults(_class=Scan, func='scan')
-    scan_group = scanp.add_mutually_exclusive_group()
-    scanp.add_argument("scan_targets", nargs='*', help=_("container image"))
-    scanp.add_argument("--scanner", choices=[x['scanner_name'] for x in scanners], default=None, help=_("define the intended scanner"))
-    scanp.add_argument("--scan_type", default=None, help=_("define the intended scan type"))
-    scanp.add_argument("--list", action='store_true', default=False, help=_("List available scanners"))
-    scanp.add_argument("--verbose", action='store_true', default=False, help=_("Show more output from scanning container"))
-    scanp.add_argument("--json", action='store_true', default=False, help=_("Output results in JSON format"))
-    scan_group.add_argument("--rootfs", nargs='?', default=[], action='append', help=_("Rootfs path to scan"))
-    scan_group.add_argument("--all", default=False, action='store_true', help=_("scan all images (excluding intermediate layers) and containers"))
-    scan_group.add_argument("--images", default=False, action='store_true', help=_("scan all images (excluding intermediate layers)"))
-    scan_group.add_argument("--containers", default=False, action='store_true', help=_("scan all containers"))
-
-    # atomic ps
-    pss = subparser.add_parser(
-        "ps", help=_("list the containers"),
-        epilog="By default this shows only the running containers.")
-    pss.set_defaults(_class=Ps, func='ps_tty')
-    pss.add_argument("-a", "--all", action='store_true',dest="all", default=False,
-                     help=_("show all containers"))
-    pss.add_argument("-f", "--filter", metavar='FILTER', action='append', dest="filter",
-                     help=_("Filter output based on conditions given in the VARIABLE=VALUE form"))
-    pss.add_argument("--json", action='store_true',dest="json", default=False,
-                     help=_("print in a machine parseable form"))
-    pss.add_argument("-n", "--noheading", dest="heading", default=True,
-                     action="store_false",
-                     help=_("do not print heading when listing the containers"))
-    pss.add_argument("--no-trunc", action='store_false', dest="truncate", default=True,
-                     help=_("Don't truncate output"))
-    pss.add_argument("-q", "--quiet", action='store_true', dest="quiet", default=False,
-                     help=_("Only display container IDs"))
-    add_opt(pss)
+    run.cli(subparser, atomic)
+    scan.cli(subparser)
 
     # atomic stop
     stopp = subparser.add_parser(
@@ -534,97 +373,16 @@ def create_parser(help_text):
                           help=_("Additional arguments appended to the image "
                                  "stop method"))
 
-    # atomic run
-    runp = subparser.add_parser(
-        "run", help=_("execute container image run method"),
-        epilog="atomic run defaults to the following command, if image "
-        "does not specify LABEL run\n'%s'" % atomic.print_run())
-    runp.set_defaults(_class=Run, func='run')
-    run_group = runp.add_mutually_exclusive_group()
-    add_opt(runp)
-    runp.add_argument("-n", "--name", dest="name", default=None,
-                      help=_("name of container"))
-    runp.add_argument("--spc", default=False, action="store_true",
-                      help=_("use super privileged container mode: '%s'" %
-                             atomic.print_spc()))
-    runp.add_argument("image", help=_("container image"))
-    runp.add_argument("command", nargs=argparse.REMAINDER,
-                      help=_("command to execute within the container. "
-                             "If container is not running, command is appended"
-                             "to the image run method"))
-    run_group.add_argument("--quiet", "-q", action="store_true",
-                      help=_("Be less verbose."))
-
-    run_group.add_argument(
-        "--display",
-        default=False,
-        action="store_true",
-        help=_("preview the command that %s would execute") % sys.argv[0])
-
-    # atomic storage
-    storagep = subparser.add_parser(
-        "storage", aliases=['migrate'], help=_("manage container storage"),
-        epilog="atomic storage command allows you to setup/reset "
-        "container storage")
-    storage_subparser = storagep.add_subparsers(help=_("storage commands"))
-    # atomic storage export
-    exportp = storage_subparser.add_parser("export",
-                                           help=_("export containers and associated contents into a filesystem directory"),
-                                           epilog="Export containers. "
-                                           "The export command exports images, "
-                                           "containers, and volumes into a filesystem directory.")
-    exportp.set_defaults(_class=Storage, func='Export')
-    exportp.add_argument("--graph", dest="graph",
-                         default=default_docker_lib(),
-                         help=_("Root of the Docker runtime (Default: %s)" % default_docker_lib()))
-    exportp.add_argument("--dir", dest="export_location",
-                         default="/var/lib/atomic/migrate",
-                         help=_("Path for exporting container's content (Default: /var/lib/atomic/migrate)"))
-    exportp.add_argument("-f", "--force", default=False, dest="force",
-                         action="store_true",
-                         help=_("Force removal of dangling images"))
-
-    # atomic storage import
-    importp = storage_subparser.add_parser("import", help=_("import containers associated contents from a filesystem directory"),
-                                           epilog="Import containers. "
-                                           "The import command imports images,"
-                                           "containers, and volumes from a filesystem directory.")
-    importp.set_defaults(_class=Storage, func='Import')
-    importp.set_defaults(func='Import')
-    importp.add_argument("--graph", dest="graph",
-                         default=default_docker_lib(),
-                         help=_("Root of the Docker runtime (Default: %s)" % default_docker_lib()))
-
-    importp.add_argument("--dir", dest="import_location",
-                         default="/var/lib/atomic/migrate",
-                         help=_("Path for importing container's content (Default: /var/lib/atomic/migrate)"))
-
-    # atomic storage modify
-    modifyp = storage_subparser.add_parser("modify",help='modify default storage setup')
-    modifyp.add_argument('--add-device', metavar="DEVICE", dest="devices", default=[], action='append',
-                         help=_("add block devices to storage pool"))
-    modifyp.add_argument('--remove-device', metavar="DEVICE", dest="remove_devices", default=[], action='append',
-                         help=_("remove block devices from storage pool"))
-    modifyp.add_argument('--remove-unused-devices', action='store_true',
-                         help=_("remove all unused block devices from storage pool"))
-    modifyp.add_argument('--driver', dest="driver", default=None, help='The storage backend driver', choices=['devicemapper', 'overlay'])
-    modifyp.add_argument('--vgroup', dest="vgroup", default=None, help='The storage volume group')
-    modifyp.set_defaults(_class=Storage, func='modify')
-
-    # atomic storage reset
-    resetp = storage_subparser.add_parser("reset",
-                                          help=_("delete all containers/images from your system. Reset storage to its initial configuration."))
-    resetp.set_defaults(_class=Storage, func='reset')
-
-
-    # atomic top
-    topp = subparser.add_parser(
-    "top", help=_("Show top-like stats about processes running in containers"))
-    topp.set_defaults(_class=Top, func='atomic_top')
-    topp.add_argument("-d", type=int, default=1, help=_("Interval (secs) to refresh process information"))
-    topp.add_argument("-o", "--optional", help=_("Additional fields to display"), nargs='?', choices=['time', 'stime', 'ppid', 'uid', 'gid', 'user', 'group'])
-    topp.add_argument("-n", help=_("Number of iterations"), type=check_negative)
-    topp.add_argument("containers", nargs="*", help=_("list of containers to monitor, leave blank for all"))
+    storage.cli(subparser)
+    top.cli(subparser)
+    # atomic rhost (if commctl.cli is available)
+    try:
+        import commctl.cli
+        rhostp = subparser.add_parser(
+            "rhost", help=_("execute cluster host management commands"))
+        commctl.cli.add_host_commands(rhostp)
+    except ImportError:
+        pass
 
     # atomic uninstall
     uninstallp = subparser.add_parser(
@@ -647,16 +405,7 @@ def create_parser(help_text):
                             help=_("Additional arguments appended to the "
                                    "image uninstall method"))
 
-    # atomic unmount
-    unmountp = subparser.add_parser(
-        "unmount", aliases=["umount"],help=_("unmount container image"),
-        epilog="atomic unmount will unmount a container image previously "
-        "mounted with atomic mount")
-    unmountp.set_defaults(_class=Mount, func='unmount')
-    unmountp.add_argument("mountpoint",
-                          help=_("filesystem location of image/container to "
-                                 "be unmounted"))
-
+    mount.cli_unmount(subparser)
     # atomic update
     updatep = subparser.add_parser(
         "update", help=_("pull latest container image from repository"),
@@ -678,6 +427,8 @@ def create_parser(help_text):
                          help=_('update an installed container'))
     updatep.add_argument("image", help=_("container image"))
 
+    verify.cli(subparser)
+
     # atomic version
     versionp = subparser.add_parser(
         "version", help=_("display image 'Name Version Release' label"),
@@ -689,20 +440,6 @@ def create_parser(help_text):
     versionp.set_defaults(func='print_version')
     versionp.add_argument("image", help=_("container image"))
 
-    # atomic verify
-    verifyp = subparser.add_parser(
-        "verify", help=_("verify image is fully updated"),
-        epilog="atomic verify checks whether there is a newer image "
-        "available and scans through all layers to see if any of "
-        "the sublayers have a new version available")
-    verifyp.set_defaults(_class=Verify, func='verify')
-    verifyp.add_argument("image", help=_("container image"))
-    verifyp.add_argument("-v", "--verbose", default=False,
-                          action="store_true",
-                          help=_("Report status of each layer"))
-    verifyp.add_argument("--no-validate", default=False, dest="no_validate",
-                                action="store_true",
-                                help=_("disable validating system images"))
     return parser
 
 if __name__ == '__main__':

@@ -4,7 +4,6 @@ from docker.errors import NotFound
 from docker.errors import APIError
 import sys
 
-
 class Delete(Atomic):
     def __init__(self):
         super(Delete, self).__init__()

@@ -1,3 +1,5 @@
+import argparse
+import sys
 import os
 from . import util
 
@@ -5,6 +7,35 @@ try:
     from . import Atomic
 except ImportError:
     from atomic import Atomic # pylint: disable=relative-import
+
+def cli(subparser, atomic):
+    # atomic run
+    runp = subparser.add_parser(
+        "run", help=_("execute container image run method"),
+        epilog="atomic run defaults to the following command, if image "
+        "does not specify LABEL run\n'%s'" % atomic.print_run())
+    runp.set_defaults(_class=Run, func='run')
+    run_group = runp.add_mutually_exclusive_group()
+    util.add_opt(runp)
+    runp.add_argument("-n", "--name", dest="name", default=None,
+                      help=_("name of container"))
+    runp.add_argument("--spc", default=False, action="store_true",
+                      help=_("use super privileged container mode: '%s'" %
+                             atomic.print_spc()))
+    runp.add_argument("image", help=_("container image"))
+    runp.add_argument("command", nargs=argparse.REMAINDER,
+                      help=_("command to execute within the container. "
+                             "If container is not running, command is appended"
+                             "to the image run method"))
+    run_group.add_argument("--quiet", "-q", action="store_true",
+                      help=_("Be less verbose."))
+
+    run_group.add_argument(
+        "--display",
+        default=False,
+        action="store_true",
+        help=_("preview the command that %s would execute") % sys.argv[0])
+
 
 class Run(Atomic):
     def __init__(self):

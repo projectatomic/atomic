@@ -6,7 +6,7 @@ import os
 from . import util
 from .Export import export_docker
 from .Import import import_docker
-from .util import NoDockerDaemon
+from .util import NoDockerDaemon, default_docker_lib
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -17,6 +17,62 @@ try:
     from . import Atomic
 except ImportError:
     from atomic import Atomic # pylint: disable=relative-import
+
+def cli(subparser):
+    # atomic storage
+    storagep = subparser.add_parser(
+        "storage", aliases=['migrate'], help=_("manage container storage"),
+        epilog="atomic storage command allows you to setup/reset "
+        "container storage")
+    storage_subparser = storagep.add_subparsers(help=_("storage commands"))
+    # atomic storage export
+    exportp = storage_subparser.add_parser("export",
+                                           help=_("export containers and associated contents into a filesystem directory"),
+                                           epilog="Export containers. "
+                                           "The export command exports images, "
+                                           "containers, and volumes into a filesystem directory.")
+    exportp.set_defaults(_class=Storage, func='Export')
+    exportp.add_argument("--graph", dest="graph",
+                         default=default_docker_lib(),
+                         help=_("Root of the Docker runtime (Default: %s)" % default_docker_lib()))
+    exportp.add_argument("--dir", dest="export_location",
+                         default="/var/lib/atomic/migrate",
+                         help=_("Path for exporting container's content (Default: /var/lib/atomic/migrate)"))
+    exportp.add_argument("-f", "--force", default=False, dest="force",
+                         action="store_true",
+                         help=_("Force removal of dangling images"))
+
+    # atomic storage import
+    importp = storage_subparser.add_parser("import", help=_("import containers associated contents from a filesystem directory"),
+                                           epilog="Import containers. "
+                                           "The import command imports images,"
+                                           "containers, and volumes from a filesystem directory.")
+    importp.set_defaults(_class=Storage, func='Import')
+    importp.set_defaults(func='Import')
+    importp.add_argument("--graph", dest="graph",
+                         default=default_docker_lib(),
+                         help=_("Root of the Docker runtime (Default: %s)" % default_docker_lib()))
+
+    importp.add_argument("--dir", dest="import_location",
+                         default="/var/lib/atomic/migrate",
+                         help=_("Path for importing container's content (Default: /var/lib/atomic/migrate)"))
+
+    # atomic storage modify
+    modifyp = storage_subparser.add_parser("modify",help='modify default storage setup')
+    modifyp.add_argument('--add-device', metavar="DEVICE", dest="devices", default=[], action='append',
+                         help=_("add block devices to storage pool"))
+    modifyp.add_argument('--remove-device', metavar="DEVICE", dest="remove_devices", default=[], action='append',
+                         help=_("remove block devices from storage pool"))
+    modifyp.add_argument('--remove-unused-devices', action='store_true',
+                         help=_("remove all unused block devices from storage pool"))
+    modifyp.add_argument('--driver', dest="driver", default=None, help='The storage backend driver', choices=['devicemapper', 'overlay'])
+    modifyp.add_argument('--vgroup', dest="vgroup", default=None, help='The storage volume group')
+    modifyp.set_defaults(_class=Storage, func='modify')
+
+    # atomic storage reset
+    resetp = storage_subparser.add_parser("reset",
+                                          help=_("delete all containers/images from your system. Reset storage to its initial configuration."))
+    resetp.set_defaults(_class=Storage, func='reset')
 
 def query_lvs(lvol, vgroup, fields):
     return util.check_output([ "lvs", "--noheadings", "-o",  fields, "--unit", "b", vgroup + "/" + lvol ]).split()

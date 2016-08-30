@@ -7,6 +7,26 @@ from shutil import rmtree
 import json
 import sys
 
+def cli(subparser):
+    # atomic scan
+    scanners = util.get_scanners()
+    scanp = subparser.add_parser(
+        "scan", help=_("scan an image or container for CVEs"),
+        epilog="atomic scan <input> scans a container or image for CVEs")
+    scanp.set_defaults(_class=Scan, func='scan')
+    scan_group = scanp.add_mutually_exclusive_group()
+    scanp.add_argument("scan_targets", nargs='*', help=_("container image"))
+    scanp.add_argument("--scanner", choices=[x['scanner_name'] for x in scanners], default=None, help=_("define the intended scanner"))
+    scanp.add_argument("--scan_type", default=None, help=_("define the intended scan type"))
+    scanp.add_argument("--list", action='store_true', default=False, help=_("List available scanners"))
+    scanp.add_argument("--verbose", action='store_true', default=False, help=_("Show more output from scanning container"))
+    scanp.add_argument("--json", action='store_true', default=False, help=_("Output results in JSON format"))
+    scan_group.add_argument("--rootfs", nargs='?', default=[], action='append', help=_("Rootfs path to scan"))
+    scan_group.add_argument("--all", default=False, action='store_true', help=_("scan all images (excluding intermediate layers) and containers"))
+    scan_group.add_argument("--images", default=False, action='store_true', help=_("scan all images (excluding intermediate layers)"))
+    scan_group.add_argument("--containers", default=False, action='store_true', help=_("scan all containers"))
+
+
 class Scan(Atomic):
     """
     Scan class that can generically work any scanner

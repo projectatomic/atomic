@@ -1,6 +1,7 @@
 from . import Atomic
 from . import util
 from .mount import Mount
+from .delete import Delete
 import os
 import sys
 import json
@@ -8,6 +9,7 @@ import math
 import shutil
 import tempfile
 import time
+import argparse
 
 def convert_size(size):
     if size > 0:
@@ -18,6 +20,72 @@ def convert_size(size):
         if s > 0:
             return '%s %s' % (s, size_name[i])
     return '0B'
+
+def cli(subparser):
+    # atomic images
+    imagesp = subparser.add_parser("images")
+    images_subparser = imagesp.add_subparsers(title='images subcommands',
+                                              description="operate on images",
+                                              help='additional help')
+
+    # atomic images list
+    list_parser = images_subparser.add_parser("list",
+                                              help=_("list container images on your system"),
+                                              epilog="atomic images by default will list all installed "
+                                                     "container images on your system.")
+    list_parser.set_defaults(_class=Images, func='display_all_image_info')
+
+    list_parser.add_argument("-a", "--all", dest="all", default=False,
+                             action="store_true",
+                             help=_("Show all images, including intermediate images"))
+
+    list_parser.add_argument("-f", "--filter", dest="filter", metavar="FILTER",
+                             action="append",
+                             help=_("Filter output based on VARIABLE=VALUE format"))
+
+    list_parser.add_argument("-n", "--noheading", dest="heading", default=True,
+                             action="store_false",
+                             help=_("do not print heading when listing the images"))
+
+    list_parser.add_argument("--no-trunc", dest="truncate", default=True,
+                             action="store_false",
+                             help=_("Don't truncate output"))
+
+    list_parser.add_argument("-q", "--quiet", dest="quiet", default=False,
+                             action="store_true",
+                             help=_("Only display image IDs"))
+    list_parser.add_argument("--json", action='store_true',dest="json", default=False,
+                             help=_("print in a machine parseable form"))
+
+    # atomic images delete
+    delete_parser = images_subparser.add_parser("delete",
+                                                help=_("mark image for deletion"),
+                                                epilog="Marks image. registry garbage-collection "
+                                                "when invoked will recover used disk space")
+    delete_parser.set_defaults(_class=Delete, func='delete_image')
+
+    delete_parser.add_argument("-f", "--force", default=False, dest="force_delete",
+                               action="store_true",
+                               help=_("Delete image without user confirmation"))
+
+    delete_parser.add_argument("--remote", default=False, dest="remote_delete",
+                               action="store_true",
+                               help=_("Delete image from remote repository"))
+
+    delete_parser.add_argument("delete_targets", nargs=argparse.ONE_OR_MORE,
+                               help=_("container image(s)"))
+
+    prune_parser = images_subparser.add_parser("prune",
+                                               help=_("delete unused 'dangling' images"),
+                                               epilog="Using the prune command, "
+                                                      "will free up disk space deleting unused "
+                                                      "'dangling' images")
+    prune_parser.set_defaults(_class=Delete, func='prune_images')
+
+    if util.gomtree_available():
+        generate_parser = images_subparser.add_parser("generate",
+                                                  help=_("generate image 'manifests' if missing"))
+        generate_parser.set_defaults(_class=Images, func='generate_validation_manifest')
 
 
 class Images(Atomic):
@@ -167,5 +235,3 @@ class Images(Atomic):
             with open(manifestname,"w",0) as f:
                 f.write(r.stdout)
             shutil.rmtree(tmpdir)
-
-

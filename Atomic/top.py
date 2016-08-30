@@ -1,5 +1,6 @@
 from . import Atomic
 from . import util
+import argparse
 import tty
 import sys
 import termios
@@ -8,6 +9,22 @@ from os import isatty
 from operator import itemgetter
 import requests
 from .util import NoDockerDaemon
+
+def check_negative(value):
+    ivalue = int(value)
+    if ivalue < 1:
+        raise argparse.ArgumentTypeError("%s must be a positive integer value greater than 0." % value)
+    return ivalue
+
+def cli(subparser):
+    # atomic top
+    topp = subparser.add_parser("top",
+                                help=_("Show top-like stats about processes running in containers"))
+    topp.set_defaults(_class=Top, func='atomic_top')
+    topp.add_argument("-d", type=int, default=1, help=_("Interval (secs) to refresh process information"))
+    topp.add_argument("-o", "--optional", help=_("Additional fields to display"), nargs='?', choices=['time', 'stime', 'ppid', 'uid', 'gid', 'user', 'group'])
+    topp.add_argument("-n", help=_("Number of iterations"), type=check_negative)
+    topp.add_argument("containers", nargs="*", help=_("list of containers to monitor, leave blank for all"))
 
 
 class Top(Atomic):

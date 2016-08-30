@@ -36,6 +36,39 @@ from gi.repository import GLib  # pylint: disable=no-name-in-module
 
 # Module for mounting and unmounting containerized applications.
 
+def cli_unmount(subparser):
+    # atomic unmount
+    unmountp = subparser.add_parser(
+        "unmount", aliases=["umount"],help=_("unmount container image"),
+        epilog="atomic unmount will unmount a container image previously "
+        "mounted with atomic mount")
+    unmountp.set_defaults(_class=Mount, func='unmount')
+    unmountp.add_argument("mountpoint",
+                          help=_("filesystem location of image/container to "
+                                 "be unmounted"))
+
+
+def cli(subparser):
+    # atomic mount
+    mountp = subparser.add_parser(
+        "mount", help=_("mount container image to a specified directory"),
+        epilog="atomic mount attempts to mount a container image to a "
+        "specified directory so that its contents may be "
+        "inspected.")
+    mountp.set_defaults(_class=Mount, func='mount')
+    mountp.add_argument("-o", "--options", dest="options", default="",
+                        help=_("comma-separated list of mount options, "
+                               "defaults are 'ro,nodev,nosuid'"))
+    mountgroup = mountp.add_mutually_exclusive_group()
+    mountgroup.add_argument("--live", dest="live", action="store_true",
+                            help=_("mount a running container 'live', allowing "
+                                   "modification of the contents."))
+    mountgroup.add_argument("--shared", dest="shared", action="store_true",
+                            help=_("mount a container image 'shared'. Mounts the container image with  an SELinux label "
+                                   "that other containers can read."))
+    mountp.add_argument("image", help=_("image/container id"))
+    mountp.add_argument("mountpoint", help=_("filesystem location to mount "
+                                             "the image/container"))
 
 class MountError(Exception):
 

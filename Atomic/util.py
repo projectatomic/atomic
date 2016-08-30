@@ -1,3 +1,4 @@
+import argparse
 import errno
 import shlex
 import sys
@@ -342,6 +343,11 @@ def get_atomic_config():
         raise ValueError("{} does not exist".format(ATOMIC_CONF))
     with open(ATOMIC_CONF, 'r') as conf_file:
         return yaml_load(conf_file)
+
+def add_opt(sub):
+    sub.add_argument("--opt1", dest="opt1",help=argparse.SUPPRESS)
+    sub.add_argument("--opt2", dest="opt2",help=argparse.SUPPRESS)
+    sub.add_argument("--opt3", dest="opt3",help=argparse.SUPPRESS)
 
 def get_atomic_config_item(config_items, atomic_config=None):
     """

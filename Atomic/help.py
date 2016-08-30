@@ -7,6 +7,13 @@ from . import mount
 import sys
 from . import util
 
+def cli(subparser):
+    #atomic help
+    helpp = subparser.add_parser(
+    "help", help=_("Display help associated with the image"),
+    epilog="atomic help 'image'")
+    helpp.set_defaults(_class=AtomicHelp, func='help')
+    helpp.add_argument("image", help=_("Image ID or name"))
 
 class AtomicHelp(Atomic):
 
