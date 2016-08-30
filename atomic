@@ -38,6 +38,7 @@ from Atomic import verify
 from Atomic import storage
 from Atomic import host
 from Atomic import info
+from Atomic import install
 from Atomic import help as Help
 from Atomic import run
 from Atomic import ps
@@ -130,48 +131,7 @@ def create_parser(help_text):
         host.cli(subparser)
     info.cli(subparser)
 
-    # atomic install
-    installp = subparser.add_parser(
-        "install", help=_("execute container image install method"),
-        epilog="atomic install attempts to read the LABEL INSTALL field "
-        "in the image, if it does not exist atomic will just pull "
-        "the image on to your machine.  You could add a LABEL "
-        "INSTALL command to your Dockerfile like: 'LABEL INSTALL "
-        "%s'" % atomic.print_install())
-    installp.set_defaults(func='install')
-    add_opt(installp)
-    installp.add_argument("-n", "--name", dest="name", default=None,
-                          help=_("name of container"))
-    installp.add_argument(
-        "--display",
-        default=False,
-        action="store_true",
-        help=_("preview the command that %s would execute") % sys.argv[0])
-    installp.add_argument("image", help=_("container image"))
-    if Atomic.syscontainers.OSTREE_PRESENT:
-        bwrap_oci_available = Atomic.util.bwrap_oci_available()
-        runc_available = Atomic.util.runc_available()
-        if bwrap_oci_available or runc_available:
-            system_xor_user = installp.add_mutually_exclusive_group()
-            if bwrap_oci_available:
-                system_xor_user.add_argument("--user", dest="user", action="store_true", default=False,
-                                             help=_("Flag to specify if user is non-root privileged."))
-            if runc_available:
-                system_xor_user.add_argument("--system", dest="system",
-                                             action='store_true', default=False,
-                                             help=_('install a system container'))
-        installp.add_argument("--rootfs", dest="remote",
-                              help=_("choose an existing exploded container/image to use "
-                                     "its rootfs as a remote, read-only rootfs for the"
-                                     "container to be installed"))
-        installp.add_argument("--set", dest="setvalues",
-                              action='append',
-                              help=_("Specify a variable in the VARIABLE=VALUE "
-                                     "form for a system container"))
-    installp.add_argument("args", nargs=argparse.REMAINDER,
-                          help=_("Additional arguments appended to the image "
-                                 "install method"))
-
+    install.cli(subparser)
     images.cli(subparser)
     mount.cli(subparser)
     ps.cli(subparser)
@@ -291,7 +251,6 @@ def create_parser(help_text):
     uninstallp.add_argument("args", nargs=argparse.REMAINDER,
                             help=_("Additional arguments appended to the "
                                    "image uninstall method"))
-
     mount.cli_unmount(subparser)
     # atomic update
     updatep = subparser.add_parser(

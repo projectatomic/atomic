@@ -42,24 +42,6 @@ def find_repo_tag(d, Id, image_name):
 find_repo_tag.images = None
 
 class Atomic(object):
-    INSTALL_ARGS = ["run",
-                    "-t",
-                    "-i",
-                    "--rm",
-                    "--privileged",
-                    "-v", "/:/host",
-                    "--net=host",
-                    "--ipc=host",
-                    "--pid=host",
-                    "-e", "HOST=/host",
-                    "-e", "NAME=${NAME}",
-                    "-e", "IMAGE=${IMAGE}",
-                    "-e", "CONFDIR=/host/etc/${NAME}",
-                    "-e", "LOGDIR=/host/var/log/${NAME}",
-                    "-e", "DATADIR=/host/var/lib/${NAME}",
-                    "--name", "${NAME}",
-                    "${IMAGE}"]
-
     SPC_ARGS = ["run",
                 "-t",
                 "-i",
@@ -422,27 +404,6 @@ class Atomic(object):
 
     #def run -> Atomic/run.py
 
-    def stop(self):
-        self.inspect = self._inspect_container()
-        if self.inspect is None:
-            self.inspect = self._inspect_image()
-            if self.inspect is None:
-                raise DockerObjectNotFound(self.name)
-
-        args = self._get_args("STOP")
-        if args:
-            cmd = self.gen_cmd(args + self.quote(self.args.args))
-            cmd = self.sub_env_strings(cmd)
-            self.display(cmd)
-            util.check_call(cmd, env=self.cmd_env())
-
-        # Container exists
-        try:
-            if self.inspect["State"]["Running"]:
-                self.d.stop(self.name)
-        except KeyError:
-            pass
-
     def quote(self, args):
         return list(map(pipes.quote, args))
 
@@ -573,40 +534,6 @@ class Atomic(object):
 
         return True
 
-    def _check_if_image_present(self):
-        self.inspect = self._inspect_image()
-        if not self.inspect:
-            if self.args.display:
-                self.display("Need to pull %s" % self.image)
-                return
-            self.update()
-            self.inspect = self._inspect_image()
-
-    def install(self):
-        if self._container_exists(self.name):
-            raise ValueError("A container '%s' is already present" % self.name)
-
-        if self.user:
-            if not util.is_user_mode():
-                raise ValueError("--user does not work for privileged user")
-            return self.syscontainers.install_user_container(self.image, self.name)
-        elif self.system:
-            return self.syscontainers.install_system_container(self.image, self.name)
-        elif self.args.setvalues:
-            raise ValueError("--set is valid only when used with --system or --user")
-
-        self._check_if_image_present()
-        args = self._get_args("INSTALL")
-        if not args:
-            return
-
-        cmd = self.sub_env_strings(self.gen_cmd(args + self.quote(self.args.args)))
-
-        self.display(cmd)
-
-        if not self.args.display:
-            return util.check_call(cmd)
-
     def _container_exists(self, name):
         try:
             return self.syscontainers.get_system_container_checkout(name) or self._inspect_container(name)
@@ -624,12 +551,6 @@ class Atomic(object):
 
     def print_run(self):
         return "%s %s" % (self.docker_binary(), " ".join(self.RUN_ARGS))
-
-    def print_install(self):
-        return "%s %s %s" % (self.docker_binary(), " ".join(self.INSTALL_ARGS), "/usr/bin/INSTALLCMD")
-
-    def print_uninstall(self):
-        return "%s %s %s" % (self.docker_binary(), " ".join(self.INSTALL_ARGS), "/usr/bin/UNINSTALLCMD")
 
     def _get_layer(self, image):
         def get_label(label):
