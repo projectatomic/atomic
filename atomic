@@ -43,8 +43,9 @@ from Atomic import help as Help
 from Atomic import run
 from Atomic import ps
 from Atomic import push
+from Atomic import stop
 from Atomic import uninstall
-from Atomic.util import write_err, NoDockerDaemon, add_opt
+from Atomic.util import write_err, NoDockerDaemon
 import traceback
 from Atomic.mount import MountError
 
@@ -148,23 +149,10 @@ def create_parser(help_text):
 
     run.cli(subparser, atomic)
     scan.cli(subparser)
-
-    # atomic stop
-    stopp = subparser.add_parser(
-        "stop", help=_("execute container image stop method"),
-        epilog="atomic will just stop the container if it is running, if "
-        "image does not specify LABEL STOP")
-    stopp.set_defaults(func='stop')
-    add_opt(stopp)
-    stopp.add_argument("-n", "--name", dest="name", default=None,
-                       help=_("name of container"))
-    stopp.add_argument("image", help=_("container image"))
-    stopp.add_argument("args", nargs=argparse.REMAINDER,
-                          help=_("Additional arguments appended to the image "
-                                 "stop method"))
-
+    stop.cli(subparser)
     storage.cli(subparser)
     top.cli(subparser)
+
     # atomic rhost (if commctl.cli is available)
     try:
         import commctl.cli
