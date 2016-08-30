@@ -19,6 +19,18 @@ def cli(subparser):
                        help=_('ignore local images and only scan registries'))
     infop.add_argument("image", help=_("container image"))
 
+def cli_version(subparser):
+    # atomic version
+    versionp = subparser.add_parser(
+        "version", help=_("display image 'Name Version Release' label"),
+        epilog="atomic version displays the image version information, if "
+        "it is provided")
+    versionp.add_argument("-r", "--recurse", default=False, dest="recurse",
+                          action="store_true",
+                          help=_("recurse through all layers"))
+    versionp.set_defaults(_class=Info, func='info')
+    versionp.add_argument("image", help=_("container image"))
+
 
 class Info(Atomic):
     def __init__(self):
@@ -70,3 +82,10 @@ class Info(Atomic):
                 util.write_out('{0}: {1}'.format(label, labels[label]))
         else:
             _no_label()
+
+    def print_version(self):
+        for layer in self.version():
+            version = layer["Version"]
+            if layer["Version"] == '':
+                version = "None"
+            util.write_out("%s %s %s" % (layer["Id"], version, layer["Tag"]))

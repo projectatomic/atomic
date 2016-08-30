@@ -592,13 +592,6 @@ class Atomic(object):
         else:
             return [self._get_layer(self.image)]
 
-    def print_version(self):
-        for layer in self.version():
-            version = layer["Version"]
-            if layer["Version"] == '':
-                version = "None"
-            util.write_out("%s %s %s" % (layer["Id"], version, layer["Tag"]))
-
     def display(self, cmd):
         util.write_out(cmd)
 
