@@ -48,7 +48,6 @@ def cli(subparser):
                                            "The import command imports images,"
                                            "containers, and volumes from a filesystem directory.")
     importp.set_defaults(_class=Storage, func='Import')
-    importp.set_defaults(func='Import')
     importp.add_argument("--graph", dest="graph",
                          default=default_docker_lib(),
                          help=_("Root of the Docker runtime (Default: %s)" % default_docker_lib()))
