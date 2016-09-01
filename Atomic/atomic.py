@@ -407,36 +407,6 @@ class Atomic(object):
     def quote(self, args):
         return list(map(pipes.quote, args))
 
-    def uninstall(self):
-        if self.syscontainers.get_system_container_checkout(self.args.image):
-            return self.syscontainers.uninstall_system_container(self.args.image)
-
-        self.inspect = self._inspect_container()
-        if self.inspect and self.force:
-            self.force_delete_containers()
-        try:
-            # Attempt to remove container, if it exists just return
-            self.d.stop(self.name)
-            self.d.remove_container(self.name)
-        except NotFound:
-            # On exception attempt to remove image
-            pass
-
-        self.inspect = self._inspect_image()
-        if not self.inspect:
-            raise ValueError("Image '%s' is not installed" % self.image)
-
-        args = self._get_args("UNINSTALL")
-        if args:
-            cmd = self.gen_cmd(args + self.quote(self.args.args))
-            cmd = self.sub_env_strings(cmd)
-            self.display(cmd)
-            util.check_call(cmd, env=self.cmd_env())
-
-        if self.name == self.image:
-            util.write_out("docker rmi %s" % self.image)
-            util.check_call([self.docker_binary(), "rmi", self.image])
-
     def cmd_env(self):
         os.environ['NAME'] = self.name or ""
         os.environ['IMAGE'] = self.image or ""

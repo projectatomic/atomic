@@ -42,6 +42,7 @@ from Atomic import install
 from Atomic import help as Help
 from Atomic import run
 from Atomic import ps
+from Atomic import uninstall
 from Atomic.util import write_err, NoDockerDaemon, add_opt
 import traceback
 from Atomic.mount import MountError
@@ -231,26 +232,8 @@ def create_parser(help_text):
     except ImportError:
         pass
 
-    # atomic uninstall
-    uninstallp = subparser.add_parser(
-        "uninstall", help=_("execute container image uninstall method"),
-        epilog="atomic uninstall attempts to read the LABEL UNINSTALL "
-        "field in the image, if it does not exist atomic will "
-        "remove the image from your machine.  You could add a "
-        "LABEL UNINSTALL command to your Dockerfile like: 'LABEL "
-        "UNINSTALL %s'" % atomic.print_uninstall())
-    uninstallp.set_defaults(func='uninstall')
-    add_opt(uninstallp)
-    uninstallp.add_argument("-n", "--name", dest="name", default=None,
-                            help=_("name of container"))
-    uninstallp.add_argument("-f", "--force", default=False, dest="force",
-                            action="store_true",
-                            help=_("remove all containers based on this "
-                                   "image"))
-    uninstallp.add_argument("image", help=_("container image"))
-    uninstallp.add_argument("args", nargs=argparse.REMAINDER,
-                            help=_("Additional arguments appended to the "
-                                   "image uninstall method"))
+    uninstall.cli(subparser)
+
     mount.cli_unmount(subparser)
     # atomic update
     updatep = subparser.add_parser(
