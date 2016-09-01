@@ -6,3 +6,9 @@ build
 htmlcov
 .coverage
 tests/test-images/Dockerfile.secret
+*.orig
+*.rej
+*.out
+*~
+dockertar-sha256-helper
+gotar
