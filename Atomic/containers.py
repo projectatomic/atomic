@@ -6,11 +6,15 @@ import datetime
 from dateutil.parser import parse as dateparse
 
 def cli(subparser):
-    # atomic ps
-    pss = subparser.add_parser("ps",
-                               help=_("list the containers"),
-                               epilog="By default this shows only the running containers.")
-    pss.set_defaults(_class=Ps, func='ps_tty')
+    # atomic containers
+    c = subparser.add_parser("containers")
+    containers_subparser = c.add_subparsers(title='images subcommands',
+                                            description="operate on images",
+                                            help='additional help')
+    pss = containers_subparser.add_parser("list",
+                                          help=_("list the containers"),
+                                          epilog="By default this shows only the running containers.")
+    pss.set_defaults(_class=Containers, func='ps_tty')
     pss.add_argument("-a", "--all", action='store_true',dest="all", default=False,
                      help=_("show all containers"))
     pss.add_argument("-f", "--filter", metavar='FILTER', action='append', dest="filter",
@@ -27,7 +31,7 @@ def cli(subparser):
     util.add_opt(pss)
 
 
-class Ps(Atomic):
+class Containers(Atomic):
 
     def ps_tty(self):
         all_container_info = self.ps()

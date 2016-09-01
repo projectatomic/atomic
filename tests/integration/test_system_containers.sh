@@ -92,35 +92,35 @@ test -e /etc/tmpfiles.d/${NAME}.conf
 ${ATOMIC} update --container ${NAME} > update.out
 assert_matches "Latest version already installed" update.out
 
-${ATOMIC} ps --no-trunc > ps.out
+${ATOMIC} containers list --no-trunc > ps.out
 assert_matches "test-system" ps.out
-${ATOMIC} ps --json > ps.out
+${ATOMIC} containers list --json > ps.out
 assert_matches "test-system" ps.out
-${ATOMIC} ps --all > ps.out
+${ATOMIC} containers list --all > ps.out
 assert_matches "test-system" ps.out
-${ATOMIC} ps --all --no-trunc > ps.out
+${ATOMIC} containers list --all --no-trunc > ps.out
 assert_matches "test-system" ps.out
-${ATOMIC} ps --no-trunc --filter id=test-system > ps.out
+${ATOMIC} containers list --no-trunc --filter id=test-system > ps.out
 assert_matches "test-system" ps.out
-${ATOMIC} ps --no-trunc > ps.out
+${ATOMIC} containers list --no-trunc > ps.out
 assert_matches "test-system" ps.out
-${ATOMIC} ps --no-trunc --quiet > ps.out
+${ATOMIC} containers list --no-trunc --quiet > ps.out
 assert_matches "test-system" ps.out
-${ATOMIC} ps -aq --no-trunc --filter id=test-system > ps.out
+${ATOMIC} containers list -aq --no-trunc --filter id=test-system > ps.out
 assert_matches "test-system" ps.out
-${ATOMIC} ps -aq --no-trunc --filter id=non-existing-system > ps.out
+${ATOMIC} containers list -aq --no-trunc --filter id=non-existing-system > ps.out
 assert_not_matches "test-system" ps.out
 
-${ATOMIC} ps --all --no-trunc --filter id=test-system | grep "test-system" > ps.out
+${ATOMIC} containers list --all --no-trunc --filter id=test-system | grep "test-system" > ps.out
 # Check the command is included in the output
 assert_matches "run.sh" ps.out
 
 systemctl stop ${NAME}
 
-${ATOMIC} ps --all | grep "test-system" > ps.out
+${ATOMIC} containers list --all | grep "test-system" > ps.out
 assert_matches "exited" ps.out
 
-${ATOMIC} ps --quiet > ps.out
+${ATOMIC} containers list --quiet > ps.out
 assert_not_matches "test-system" ps.out
 
 test -e /etc/systemd/system/${NAME}.service
@@ -143,7 +143,7 @@ assert_matches 8082 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/config.json
 # Test if a container with a remote rootfs can be installed/updated
 ${ATOMIC} --debug install --name=${NAME}-remote --rootfs=${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1 --set=RECEIVER=${SECRET}-remote --system oci:atomic-test-system
 
-${ATOMIC} --debug ps --no-trunc > ps.out
+${ATOMIC} --debug containers list --no-trunc > ps.out
 assert_matches "remote" ps.out
 test -e /etc/systemd/system/${NAME}-remote.service
 

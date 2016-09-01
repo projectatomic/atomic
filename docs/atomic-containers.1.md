@@ -2,10 +2,19 @@
 % Giuseppe Scrivano
 % June 2016
 # NAME
-atomic-ps - list locally installed containers
+atomic-containers - operations on containers
 
 # SYNOPSIS
-**atomic ps**
+**atomic containers COMMAND [OPTIONS] [CONTAINERS...]**
+
+atomic containers allows the user to view and operate on containers
+
+# COMMANDS
+**list**
+
+list containers on your system.
+
+# list OPTIONS
 [**-h|--help**]
 [**-a|--all**]
 [**-f|--filter**]
@@ -15,7 +24,7 @@ atomic-ps - list locally installed containers
 [**-q|--quiet**]
 
 # DESCRIPTION
-**atomic ps**, by default, will list all running containers on your
+**atomic containers list**, by default, will list all running containers on your
 system.
 
 Using --all will list all the installed containers.

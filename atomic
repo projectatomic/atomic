@@ -41,7 +41,7 @@ from Atomic import info
 from Atomic import install
 from Atomic import help as Help
 from Atomic import run
-from Atomic import ps
+from Atomic import containers
 from Atomic import pull
 from Atomic import push
 from Atomic import stop
@@ -139,7 +139,7 @@ def create_parser(help_text):
     install.cli(subparser)
     images.cli(subparser)
     mount.cli(subparser)
-    ps.cli(subparser)
+    containers.cli(subparser)
     push.cli(subparser)
     pull.cli(subparser)
     run.cli(subparser)

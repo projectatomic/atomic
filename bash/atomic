@@ -313,7 +313,25 @@ _atomic_pull() {
 	esac
 }
 
-_atomic_ps() {
+_atomic_containers() {
+  local subcommands="
+    list
+  "
+
+  __atomic_subcommands "$subcommands" && return
+
+  case "$cur" in
+    -*)
+      COMPREPLY=( $( compgen -W "--help" -- "$cur" ) )
+      ;;
+    *)
+      COMPREPLY=( $( compgen -W "$subcommands" -- "$cur" ) )
+      ;;
+  esac
+  return 0
+}
+
+_atomic_containers_list() {
 	local options_with_args="
 		--filter -f
 	"
@@ -996,6 +1014,7 @@ _atomic() {
 
 	local commands=(
 		cluster
+		containers
 		host
 		diff
 		info
@@ -1004,7 +1023,6 @@ _atomic() {
 		storage
 		mount
 		pull
-		ps
 		rhost
 		run
 		scan
