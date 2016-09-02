@@ -304,20 +304,21 @@ class Atomic(object):
         return list(map(pipes.quote, args))
 
     def cmd_env(self):
-        os.environ['NAME'] = self.name or ""
-        os.environ['IMAGE'] = self.image or ""
+        newenv = dict(os.environ)
+        newenv['NAME'] = self.name or ""
+        newenv['IMAGE'] = self.image or ""
 
         if hasattr(self.args, 'opt1') and self.args.opt1:
-            os.environ['OPT1'] = self.args.opt1
+            newenv['OPT1'] = self.args.opt1
 
         if hasattr(self.args, 'opt2') and self.args.opt2:
-            os.environ['OPT2'] = self.args.opt2
+            newenv['OPT2'] = self.args.opt2
 
         if hasattr(self.args, 'opt3') and self.args.opt3:
-            os.environ['OPT3'] = self.args.opt3
+            newenv['OPT3'] = self.args.opt3
 
         if not hasattr(self.args, 'PWD'):
-            os.environ['PWD'] = os.getcwd()
+            newenv['PWD'] = os.getcwd()
 
         default_uid = "0"
         with open("/proc/self/loginuid") as f:
@@ -325,15 +326,15 @@ class Atomic(object):
             if int(val) <= 2147483647:
                 default_uid = val
 
-        if "SUDO_UID" not in os.environ:
-            os.environ["SUDO_UID"] = default_uid
+        if "SUDO_UID" not in newenv:
+            newenv["SUDO_UID"] = default_uid
 
-        if 'SUDO_GID' not in os.environ:
-            os.environ["SUDO_GID"] = default_uid
+        if 'SUDO_GID' not in newenv:
+            newenv["SUDO_GID"] = default_uid
 
         if self.run_opts is not None:
-            os.environ["RUN_OPTS"] = self.run_opts
-        return os.environ
+            newenv["RUN_OPTS"] = self.run_opts
+        return newenv
 
     def gen_cmd(self, cargs):
         args = []
@@ -473,11 +474,8 @@ class Atomic(object):
         :param in_string: string to perform the subs on
         :return: string
         """
-        # Set environment variables
-        self.cmd_env()
-
         # Perform variable subs
-        in_string = os.path.expandvars(in_string)
+        in_string = util.expandvars(in_string, environ=self.cmd_env())
 
         # Replace undefined variables with blank
         in_string = re.sub(r'\$\{?\S*\}?', '', in_string)

@@ -532,3 +532,51 @@ def get_local_signature_path(atomic_conf):
         signature_path = ATOMIC_VAR_LIB + '/sigstore'
     return signature_path
 
+# This is copied from the upstream python os.path.expandvars
+# Expand paths containing shell variable substitutions.
+# This expands the forms $variable and ${variable} only.
+# Non-existent variables are left unchanged.
+
+def expandvars(path, environ=None):
+    """Expand shell variables of form $var and ${var}.  Unknown variables
+    are left unchanged."""
+    if not environ:
+        environ = os.environ
+    try:
+        encoding=re.ASCII
+    except AttributeError:
+        encoding=re.UNICODE
+
+    if isinstance(path, bytes):
+        if b'$' not in path:
+            return path
+        _varprogb = re.compile(br'\$(\w+|\{[^}]*\})', encoding)
+        search = _varprogb.search
+        start = b'{'
+        end = b'}'
+    else:
+        if '$' not in path:
+            return path
+        _varprog = re.compile(r'\$(\w+|\{[^}]*\})', encoding)
+        search = _varprog.search
+        start = '{'
+        end = '}'
+    i = 0
+    while True:
+        m = search(path, i)
+        if not m:
+            break
+        i, j = m.span(0)
+        name = m.group(1)
+        if name.startswith(start) and name.endswith(end):
+            name = name[1:-1]
+        try:
+            value = environ[name]
+        except KeyError:
+            i = j
+        else:
+            tail = path[j:]
+            path = path[:i] + value
+            i = len(path)
+            path += tail
+    return path
