@@ -167,6 +167,7 @@ def create_parser(help_text):
     return parser
 
 if __name__ == '__main__':
+    aparser = None
     try:
         with Atomic.Atomic() as atomic:
             aparser = create_parser(atomic.help())
@@ -187,7 +188,10 @@ if __name__ == '__main__':
         sys.exit(e.returncode)
     except AttributeError:
         # python3 throws exception on no args to atomic
-        aparser.print_usage()
+        if aparser:
+            aparser.print_usage()
+        else:
+            traceback.print_exc(file=sys.stdout)
         sys.exit(1)
     except MountError as e:
         if str(e).find("Permission denied") > 0:
