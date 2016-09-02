@@ -100,14 +100,14 @@ __atomic_system_containers_images() {
 	local images
 	REPO_DIR=`test -e /etc/atomic.conf && grep "^ostree_repository:" /etc/atomic.conf | cut -d' ' -f2`
 	images="$(ostree --repo=${REPO_DIR:-/ostree/repo} refs | sed -n  -e '/ociimage/ { /-/ { s|ociimage/||;s|\(.*\)-|\1:|;p }}')"
-        COMPREPLY+=( $(compgen -W "$images" -- "$cur") )
+	COMPREPLY+=( $(compgen -W "$images" -- "$cur") )
 }
 
 __atomic_system_containers_containers() {
 	local containers
 	CHECKOUT_DIR=`test -e /etc/atomic.conf && grep "^checkout_path:" /etc/atomic.conf | cut -d' ' -f2`
 	containers="$(ls -1 ${CHECKOUT_DIR:-/var/lib/containers/atomic/} | grep -v \.[01]$)"
-        COMPREPLY+=( $(compgen -W "$containers" -- "$cur") )
+	COMPREPLY+=( $(compgen -W "$containers" -- "$cur") )
 }
 
 __atomic_image_repos_and_tags_and_ids() {
@@ -266,7 +266,7 @@ _atomic_top() {
 		--optional
 		-o
 		-d
-        -n
+	-n
 	"
     local all_options="$options_with_args"
     [ "$command" = "top" ] && all_options="$all_options"
@@ -277,7 +277,7 @@ _atomic_top() {
 			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
 			;;
 		*)
-		        __atomic_containers_running
+			__atomic_containers_running
 			;;
 	esac
 	return 0
@@ -381,7 +381,7 @@ _atomic_update() {
 		    if test $_container == "0"; then
 			__atomic_image_repos_and_tags
 		    else
-		    	__atomic_system_containers_containers
+			__atomic_system_containers_containers
 		    fi
 		    ;;
 	esac
@@ -404,11 +404,11 @@ _atomic_diff() {
 	local all_options="$options_with_args
 		--help
 		--json
-        --display
-        --names-only
-        --no-files -n
-        --rpms -r
-        --verbose -v
+	--display
+	--names-only
+	--no-files -n
+	--rpms -r
+	--verbose -v
 	"
 
 	[ "$command" = "diff" ] && all_options="$all_options"
@@ -416,15 +416,15 @@ _atomic_diff() {
 
     case "$cur" in
     -*)
-        COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
-        ;;
+	COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+	;;
     *)
-        local counter=$( __atomic_pos_first_nonflag $( __atomic_to_alternatives "$options_with_args" ) )
+	local counter=$( __atomic_pos_first_nonflag $( __atomic_to_alternatives "$options_with_args" ) )
 
-        if [ $cword -eq $counter ]; then
-            __atomic_image_repos_and_tags_and_ids
-        fi
-        ;;
+	if [ $cword -eq $counter ]; then
+	    __atomic_image_repos_and_tags_and_ids
+	fi
+	;;
 	esac
 }
 
@@ -436,8 +436,8 @@ _atomic_run() {
 	local all_options="$options_with_args
 		--help
 		--spc
-               --display
-        --quiet
+	       --display
+	--quiet
 	"
 
 	[ "$command" = "run" ] && all_options="$all_options"
@@ -470,11 +470,11 @@ _atomic_install() {
 	"
 	local all_options="$options_with_args
 		--help
-               --display
-               --rootfs
-               --system
-               --set
-               --user
+	       --display
+	       --rootfs
+	       --system
+	       --set
+	       --user
 	"
 
 	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
@@ -491,9 +491,9 @@ _atomic_install() {
 			;;
 		*)
 		    if test $_system == "0"; then
-		    	__atomic_image_repos_and_tags_and_ids
+			__atomic_image_repos_and_tags_and_ids
 		    else
-		    	__atomic_system_containers_images
+			__atomic_system_containers_images
 		    fi
 			;;
 	esac
@@ -570,12 +570,49 @@ _atomic_images_delete() {
 
   case "$cur" in
       -*)
-        COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
-        ;;
+	COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+	;;
       *)
-        __atomic_image_repos_and_tags
-        ;;
+	__atomic_image_repos_and_tags
+	;;
   esac
+}
+
+_atomic_sign() {
+    local options_with_args="
+	  --sign-by
+	  -o
+    "
+    local all_options="$options_with_args
+	  --help -h
+    "
+
+	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
+
+	case "$prev" in
+		$options_with_args_glob )
+			return 0
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+			;;
+		*)
+
+			local counter=$( __atomic_pos_first_nonflag $( __atomic_to_alternatives "$options_with_args" ) )
+
+			if [ $cword -eq $counter ]; then
+				__atomic_containers_and_images
+				return 0
+			fi
+
+			COMPREPLY=( $( compgen -d "$cur" ) )
+			return 0
+			;;
+	esac
+	return 0
 }
 
 _atomic_mount() {
@@ -682,6 +719,18 @@ _atomic_stop() {
 	esac
 }
 
+
+_atomic_sign() {
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "--sign-by -o" -- "$cur" ) )
+			;;
+		*)
+			__atomic_containers_running
+			;;
+	esac
+}
+
 _atomic_host_deploy() {
 	case "$cur" in
 		-*)
@@ -776,10 +825,10 @@ _atomic_help() {
 _atomic_host() {
 	local commands=(
 		deploy
-	        rollback
+		rollback
 		status
 		upgrade
-	        unlock
+		unlock
 	)
 
 	local completions_func=_atomic_host_${prev}
@@ -841,44 +890,44 @@ _atomic_storage_modify() {
 }
 
 _atomic_storage_storage() {
-        local boolean_options="
-                --help -h
-        "
-        case "$prev" in
-                $main_options_with_args_glob )
-                        return
-                        ;;
-        esac
+	local boolean_options="
+		--help -h
+	"
+	case "$prev" in
+		$main_options_with_args_glob )
+			return
+			;;
+	esac
 
-        case "$cur" in
-                -*)
-                        COMPREPLY=( $( compgen -W "$boolean_options $main_options_with_args" -- "$cur" ) )
-                        ;;
-                *)
-                        COMPREPLY=( $( compgen -W "${commands[*]} help" -- "$cur" ) )
-                        ;;
-        esac
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "$boolean_options $main_options_with_args" -- "$cur" ) )
+			;;
+		*)
+			COMPREPLY=( $( compgen -W "${commands[*]} help" -- "$cur" ) )
+			;;
+	esac
 }
 
 
 _atomic_storage_export() {
 	case "$cur" in
-                -*)
-                        COMPREPLY=( $( compgen -W "--graph --dir -h --help" -- "$cur" ) )
-                        ;;
-                *)
-                        ;;
-        esac
+		-*)
+			COMPREPLY=( $( compgen -W "--graph --dir -h --help" -- "$cur" ) )
+			;;
+		*)
+			;;
+	esac
 }
 
 _atomic_storage_import() {
 	case "$cur" in
-                -*)
-                        COMPREPLY=( $( compgen -W "--graph --dir -h --help" -- "$cur" ) )
-                        ;;
-                *)
-                        ;;
-        esac
+		-*)
+			COMPREPLY=( $( compgen -W "--graph --dir -h --help" -- "$cur" ) )
+			;;
+		*)
+			;;
+	esac
 
 }
 
@@ -1026,6 +1075,7 @@ _atomic() {
 		rhost
 		run
 		scan
+		sign
 		stop
 		top
 		verify
@@ -1049,8 +1099,8 @@ _atomic() {
 
 	local command='atomic' cpos=0
 	local counter=1
-        _system=0
-        _container=0
+	_system=0
+	_container=0
 	while [ $counter -lt $cword ]; do
 		if test "${words[$counter]}" == "--system"; then
 			_system=1
