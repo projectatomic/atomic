@@ -529,6 +529,6 @@ def get_local_signature_path(atomic_conf):
     # If signature path is defined, get it; else return default
     signature_path = get_atomic_config_item(['default-sigstore-path'], atomic_config=atomic_conf)
     if signature_path is None:
-        signature_path = '/var/lib/atomic/sigstore'
+        signature_path = ATOMIC_VAR_LIB + '/sigstore'
     return signature_path
 
