@@ -288,6 +288,9 @@ class SystemContainers(object):
 
         util.write_out("Extracting to %s" % destination)
 
+        # upgrade will not restart the service if it was not already running
+        was_service_active = self._is_service_active(name)
+
         if hasattr(self.args, 'display') and self.args.display:
             return
 
@@ -441,8 +444,9 @@ class SystemContainers(object):
         # When upgrading, stop the service and remove previously installed
         # tmpfiles, before restarting the service.
         if upgrade:
-            self._systemctl_command("stop", name)
-            if (tmpfiles_template):
+            if was_service_active:
+                self._systemctl_command("stop", name)
+            if tmpfiles_template:
                 self._systemd_tmpfiles("--remove", tmpfilesout)
 
         _write_template(unitfile, systemd_template, values, unitfileout)
@@ -458,10 +462,10 @@ class SystemContainers(object):
         if (tmpfiles_template):
             self._systemd_tmpfiles("--create", tmpfilesout)
 
-        if upgrade:
-            self._systemctl_command("start", name)
-        else:
+        if not upgrade:
             self._systemctl_command("enable", name)
+        elif was_service_active:
+            self._systemctl_command("start", name)
 
     def _get_system_checkout_path(self):
         if os.environ.get("ATOMIC_OSTREE_CHECKOUT_PATH"):
@@ -637,6 +641,12 @@ class SystemContainers(object):
 
         return [self._inspect_system_branch(repo, x) for x in revs]
 
+    def _is_service_active(self, name):
+        try:
+            return self._systemctl_command("is-active", name).replace("\n", "") == "active"
+        except subprocess.CalledProcessError:
+            return False
+
     def _systemd_tmpfiles(self, command, name):
         cmd = ["systemd-tmpfiles"] + [command, name]
         util.write_out(" ".join(cmd))
@@ -652,7 +662,8 @@ class SystemContainers(object):
             cmd.append(name)
         util.write_out(" ".join(cmd))
         if not self.args.display:
-            util.check_call(cmd)
+            return util.check_output(cmd, stderr=DEVNULL)
+        return None
 
     def get_system_container_checkout(self, name):
         path = "%s/%s" % (self._get_system_checkout_path(), name)
