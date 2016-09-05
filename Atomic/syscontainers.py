@@ -423,7 +423,10 @@ class SystemContainers(object):
             if was_service_active:
                 self._systemctl_command("stop", name)
             if os.path.exists(tmpfilesout):
-                self._systemd_tmpfiles("--remove", tmpfilesout)
+                try:
+                    self._systemd_tmpfiles("--remove", tmpfilesout)
+                except subprocess.CalledProcessError:
+                    pass
 
         missing_bind_paths = self._check_oci_configuration_file(destination_path, remote_path)
 
@@ -689,7 +692,10 @@ class SystemContainers(object):
             pass
 
         if os.path.exists(tmpfilesout):
-            self._systemd_tmpfiles("--remove", tmpfilesout)
+            try:
+                self._systemd_tmpfiles("--remove", tmpfilesout)
+            except subprocess.CalledProcessError:
+                pass
             os.unlink(tmpfilesout)
 
         if os.path.lexists("%s/%s" % (self._get_system_checkout_path(), name)):
