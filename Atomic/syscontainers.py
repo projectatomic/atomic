@@ -926,10 +926,16 @@ class SystemContainers(object):
 
     @staticmethod
     def _generate_tmpfiles_data(missing_bind_paths, state_directory):
-        def _generate_line(x):
-            state = "d" if os.path.commonprefix([x, state_directory]) == state_directory else "R"
+        def _generate_line(x, state):
             return "%s    %s   0700 %i %i - -\n" % (state, x, os.getuid(), os.getgid())
-        return "".join([_generate_line(x) for x in missing_bind_paths])
+        lines = []
+        for x in missing_bind_paths:
+            if os.path.commonprefix([x, state_directory]) == state_directory:
+                lines.append(_generate_line(x, "d"))
+            else:
+                lines.append(_generate_line(x, "D"))
+                lines.append(_generate_line(x, "R"))
+        return "".join(lines)
 
     @staticmethod
     def _get_commit_metadata(repo, rev, key):
