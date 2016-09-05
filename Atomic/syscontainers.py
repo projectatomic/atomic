@@ -545,7 +545,7 @@ class SystemContainers(object):
 
     def get_container_runtime_info(self, container):
         if self.user:
-            return {'status' : 'unknown'}
+            return {'status' : "running" if self._is_service_active(container) else "exited"}
 
         try:
             inspect_stdout = util.check_output([util.RUNC_PATH, "state", container], stderr=DEVNULL)
