@@ -62,6 +62,7 @@ class SystemContainers(object):
         self.user = util.is_user_mode()
         self.args = None
         self.setvalues = None
+        self.display = False
 
     def get_atomic_config_item(self, config_item):
         return util.get_atomic_config_item(config_item, atomic_config=self.atomic_config)
@@ -117,6 +118,11 @@ class SystemContainers(object):
             self.backend = None
         if not self.backend:
             self.backend = self.get_atomic_config_item(["default_storage"]) or "ostree"
+
+        try:
+            self.display = self.args.display
+        except (NameError, AttributeError):
+            pass
 
         try:
             self.setvalues = args.setvalues
@@ -291,7 +297,7 @@ class SystemContainers(object):
         # upgrade will not restart the service if it was not already running
         was_service_active = self._is_service_active(name)
 
-        if hasattr(self.args, 'display') and self.args.display:
+        if self.display:
             return
 
         if self.user:
@@ -504,8 +510,6 @@ class SystemContainers(object):
         return repo
 
     def update_system_container(self, name):
-        self.args.display = False
-
         repo = self._get_ostree_repo()
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
@@ -650,7 +654,7 @@ class SystemContainers(object):
     def _systemd_tmpfiles(self, command, name):
         cmd = ["systemd-tmpfiles"] + [command, name]
         util.write_out(" ".join(cmd))
-        if not self.args.display:
+        if not self.display:
             util.check_call(cmd)
 
     def _systemctl_command(self, command, name=None):
@@ -661,7 +665,7 @@ class SystemContainers(object):
         if name:
             cmd.append(name)
         util.write_out(" ".join(cmd))
-        if not self.args.display:
+        if not self.display:
             return util.check_output(cmd, stderr=DEVNULL)
         return None
 
@@ -673,7 +677,6 @@ class SystemContainers(object):
             return None
 
     def uninstall_system_container(self, name):
-        self.args.display = False
         unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
 
         try:
