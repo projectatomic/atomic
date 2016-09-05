@@ -417,6 +417,14 @@ class SystemContainers(object):
             with open(destination_path, 'w') as config_file:
                 config_file.write(json.dumps(config, indent=4))
 
+        # When upgrading, stop the service and remove previously installed
+        # tmpfiles, before restarting the service.
+        if upgrade:
+            if was_service_active:
+                self._systemctl_command("stop", name)
+            if os.path.exists(tmpfilesout):
+                self._systemd_tmpfiles("--remove", tmpfilesout)
+
         missing_bind_paths = self._check_oci_configuration_file(destination_path, remote_path)
 
         image_manifest = self._image_manifest(repo, rev)
@@ -446,14 +454,6 @@ class SystemContainers(object):
                 tmpfiles_template = infile.read()
         else:
             tmpfiles_template = SystemContainers._generate_tmpfiles_data(missing_bind_paths, values["STATE_DIRECTORY"])
-
-        # When upgrading, stop the service and remove previously installed
-        # tmpfiles, before restarting the service.
-        if upgrade:
-            if was_service_active:
-                self._systemctl_command("stop", name)
-            if tmpfiles_template:
-                self._systemd_tmpfiles("--remove", tmpfilesout)
 
         _write_template(unitfile, systemd_template, values, unitfileout)
         if (tmpfiles_template):
@@ -927,7 +927,7 @@ class SystemContainers(object):
     @staticmethod
     def _generate_tmpfiles_data(missing_bind_paths, state_directory):
         def _generate_line(x):
-            state = "d" if os.path.commonprefix([x, state_directory]) == state_directory else "D"
+            state = "d" if os.path.commonprefix([x, state_directory]) == state_directory else "R"
             return "%s    %s   0700 %i %i - -\n" % (state, x, os.getuid(), os.getgid())
         return "".join([_generate_line(x) for x in missing_bind_paths])
 
