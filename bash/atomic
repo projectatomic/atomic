@@ -581,7 +581,7 @@ _atomic_images_delete() {
 _atomic_sign() {
     local options_with_args="
 	  --sign-by
-	  -o
+	  -d --directory
     "
     local all_options="$options_with_args
 	  --help -h
@@ -590,6 +590,10 @@ _atomic_sign() {
 	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
 
 	case "$prev" in
+		"-d"|"--directory")
+			COMPREPLY=( $( compgen -d "$cur" ) )
+			return 0
+			;;
 		$options_with_args_glob )
 			return 0
 			;;
@@ -719,17 +723,6 @@ _atomic_stop() {
 	esac
 }
 
-
-_atomic_sign() {
-	case "$cur" in
-		-*)
-			COMPREPLY=( $( compgen -W "--sign-by -o" -- "$cur" ) )
-			;;
-		*)
-			__atomic_containers_running
-			;;
-	esac
-}
 
 _atomic_host_deploy() {
 	case "$cur" in

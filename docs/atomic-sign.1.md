@@ -14,8 +14,8 @@ Only use **atomic sign** if you trust the remote registry which contains the ima
 **atomic sign**
 [**-h**|**--help**]
 
-[**-o**, **--output**]
-[**--sign_key**]
+[**-d**, **--directory**]
+[**--sign-by**]
 [ image ... ]
 
 # DESCRIPTION
@@ -28,11 +28,11 @@ default location can be defined in /etc/atomic.conf with the key **default-sigst
 **-h** **--help**
   Print usage statement.
 
-**-o** **--output**
-  Assign a specific signature file name; otherwise, the file name is generated.  
+**-d** **--directory**
+  Store the signatures in the specified directory.  Default: /var/lib/atomic/signature
  
 
-**--signed-by**
+**--sign-by**
   Override the default identity of the signature. You can define a default in /etc/atomic.conf
   with the key **default_signer**.
 
@@ -44,12 +44,11 @@ Sign the foobar image from privateregistry.example.com
     
 Sign the foobar image with a specific signature name.
 
-    atomic sign -o foobar.sig privateregistry.example.com
+    atomic sign -d /tmp/signatures privateregistry.example.com
 
 Sign the busybox image with the identify of foo@bar.com
 
-    atomic sign --signed-by foo@bar.com privateregistry.example.com
-
+    atomic --sign-by foo@bar.com privateregistry.example.com
 
 # HISTORY
 Initial revision by Brent Baude (bbaude at redhat dot com) August 2016

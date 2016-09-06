@@ -11,18 +11,23 @@ ATOMIC_CONFIG = util.get_atomic_config()
 def cli(subparser):
     # atomic sign
     signer = ATOMIC_CONFIG.get('default_signer', None)
+    signature_path = util.get_atomic_config_item(['default-sigstore-path'], atomic_config=ATOMIC_CONFIG)
+    if signature_path is None:
+        signature_path = util.ATOMIC_VAR_LIB + '/sigstore'
+
     signp = subparser.add_parser("sign",
                                  help="Sign an image",
                                  epilog="Create a signature for an image which can be "
                                         "used later to verify it.")
     signp.set_defaults(_class=Sign, func="sign")
     signp.add_argument("images", nargs="*", help=_("images to sign"))
-    signp.add_argument("--signed-by", dest="sign_key", default=signer,
+    signp.add_argument("--sign-by", dest="sign_by", default=signer,
                        help=_("Name of the signing key. Currently %s, "
                               "default can be defined in /etc/atomic.conf" % signer))
-    signp.add_argument("-o", dest="output", default=None,
-                       help=_("The filename of the signature"))
-
+    signp.add_argument("-d", "--directory",
+                       default=signature_path,
+                       dest="signature_path",
+                       help=_("The directory to store signatures under: Default {}.".format(signature_path) ))
 
 class Sign(Atomic):
     def sign(self):
@@ -32,9 +37,7 @@ class Sign(Atomic):
         if self.args.debug:
             util.write_out(str(self.args))
 
-        signature_path = util.get_local_signature_path(self.atomic_config)
-
-        signer = self.args.sign_key
+        signer = self.args.sign_by
 
         for sign_image in self.args.images:
             remote_inspect_info = util.skopeo_inspect("docker://{}".format(sign_image))
@@ -46,10 +49,10 @@ class Sign(Atomic):
                 manifest_hash = str(util.skopeo_manifest_digest(manifest_file.name))
 
                 expanded_image_name = str(remote_inspect_info['Name'])
-                sigstore_path = "{}/{}/{}@{}".format(signature_path, os.path.dirname(expanded_image_name),
+                sigstore_path = "{}/{}/{}@{}".format(self.args.signature_path, os.path.dirname(expanded_image_name),
                                                      os.path.basename(expanded_image_name), manifest_hash)
                 self.make_sig_dirs(sigstore_path)
-                sig_name = self.args.output if self.args.output is not None else self.get_sig_name(sigstore_path)
+                sig_name = self.get_sig_name(sigstore_path)
                 fq_sig_path = os.path.join(sigstore_path, sig_name)
                 if os.path.exists(fq_sig_path):
                     raise ValueError("The signature {} already exists.  If you wish to "
