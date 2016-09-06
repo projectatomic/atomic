@@ -316,6 +316,7 @@ _atomic_pull() {
 _atomic_containers() {
   local subcommands="
     list
+    trim
   "
 
   __atomic_subcommands "$subcommands" && return
@@ -370,6 +371,18 @@ _atomic_containers_list() {
 			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
 			;;
 	esac
+}
+
+_atomic_containers_trim() {
+	local all_options="
+                --help
+        "
+
+	case "$cur" in
+                -*)
+                        COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+                        ;;
+        esac
 }
 
 _atomic_update() {

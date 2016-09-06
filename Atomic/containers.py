@@ -1,9 +1,16 @@
 import json
+import os
 
 from . import util
 from . import Atomic
+from .client import AtomicDocker
 import datetime
 from dateutil.parser import parse as dateparse
+
+try:
+    from subprocess import DEVNULL  # pylint: disable=no-name-in-module
+except ImportError:
+    DEVNULL = open(os.devnull, 'wb')
 
 def cli(subparser):
     # atomic containers
@@ -11,6 +18,7 @@ def cli(subparser):
     containers_subparser = c.add_subparsers(title='images subcommands',
                                             description="operate on images",
                                             help='additional help')
+    # atomic containers list
     pss = containers_subparser.add_parser("list",
                                           help=_("list the containers"),
                                           epilog="By default this shows only the running containers.")
@@ -28,11 +36,24 @@ def cli(subparser):
                      help=_("Don't truncate output"))
     pss.add_argument("-q", "--quiet", action='store_true', dest="quiet", default=False,
                      help=_("Only display container IDs"))
-    util.add_opt(pss)
-
+    # atomic containers trim
+    trimp = containers_subparser.add_parser("trim",
+                                            help=_("discard unused blocks (fstrim) on running containers"),
+                                            epilog="Discard unused blocks (fstrim) on rootfs of running containers.")
+    trimp.set_defaults(_class=Containers, func='fstrim')
 
 class Containers(Atomic):
 
+    def fstrim(self):
+        with AtomicDocker() as client:
+            for container in client.containers():
+                containerId = container["Id"]
+                ret = self._inspect_container(name=containerId)
+                pid = ret["State"]["Pid"]
+                mp = "/proc/%d/root" % (pid)
+                util.write_out("Trimming container id {0}".format(containerId[0:12]))
+                util.check_call(["/usr/sbin/fstrim", "-v", mp], stdout=DEVNULL)
+        return
     def ps_tty(self):
         all_container_info = self.ps()
         all_containers = []
