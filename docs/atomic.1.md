@@ -7,7 +7,7 @@ atomic \- Atomic Management Tool
 # SYNOPSIS
 **atomic** [OPTIONS] COMMAND [arg...]
   {diff,host,images,info,install,mount,run,scan,stop,storage,uninstall,unmount,update,upload,verify,version}
-[**-h**|**-help**]
+[**-h**|**--help**]
 
 # DESCRIPTION
 Atomic Management Tool
@@ -15,6 +15,16 @@ Atomic Management Tool
 # OPTIONS
 **-h** **--help**
   Print usage statement
+
+**-v** **--version**
+  Show atomic version
+
+**--debug**
+  Show debug messages
+
+**-y** **--assumeyes**
+  automatically answer yes for all questions
+
 # ENVIRONMENT VARIABLES
 
 **ATOMIC_CONF** The location of the atomic configuration file (normally /etc/atomic.conf) can be
