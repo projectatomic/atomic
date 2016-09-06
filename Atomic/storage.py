@@ -210,6 +210,6 @@ class Storage(Atomic):
     def Import(self):
         self.ping()
         try:
-            import_docker(self.args.graph, self.args.import_location)
+            import_docker(self.args.graph, self.args.import_location, self.args.assumeyes)
         except requests.exceptions.ConnectionError:
             raise NoDockerDaemon()

@@ -117,8 +117,12 @@ def need_root():
 def create_parser(help_text):
     parser = HelpByDefaultArgumentParser(description=help_text)
     parser.register('action', 'parsers', AliasedSubParsersAction)
-    parser.add_argument('-v', '--version', action='version', version=Atomic.__version__)
-    parser.add_argument('--debug', default=False, action='store_true')
+    parser.add_argument('-v', '--version', action='version', version=Atomic.__version__,
+                        help=_("show atomic version and exit"))
+    parser.add_argument('--debug', default=False, action='store_true',
+                        help=_("show debug messages"))
+    parser.add_argument('-y', '--assumeyes', default=False, action='store_true',
+                        help=_("automatically answer yes for all questions"))
     subparser = parser.add_subparsers(help=_("commands"))
 
     # atomic cluster (if commctl.cli is available)

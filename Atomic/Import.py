@@ -9,7 +9,7 @@ from . import util
 
 ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
 
-def import_docker(graph, import_location):
+def import_docker(graph, import_location, assumeyes):
     """
     This is a wrapper function for importing docker images, containers
     and volumes.
@@ -25,8 +25,12 @@ def import_docker(graph, import_location):
     import_volumes(graph, import_location)
 
     util.write_out("atomic import completed successfully")
-    confirm = util.input("Would you like to cleanup (rm -rf {0}) the temporary directory [y/N]"
-                  .format(import_location))
+    confirm = ""
+    if assumeyes:
+        confirm = "yes"
+    else:
+        confirm = util.input("Would you like to cleanup (rm -rf {0}) the temporary directory [y/N]"
+                      .format(import_location))
     confirm = confirm.strip().lower()
     if confirm in ['y', 'yes']:
         util.write_out("Deleting {0}".format(import_location))
