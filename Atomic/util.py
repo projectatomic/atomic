@@ -322,23 +322,27 @@ def skopeo_layers(image, args=None, layers=None):
             shutil.rmtree(temp_dir)
     return temp_dir
 
-def skopeo_standalone_sign(image, manifest_file_name, fingerprint, signature_path):
-    cmd = ['skopeo', 'standalone-sign', manifest_file_name,
-                       image, fingerprint, "-o", signature_path]
+def skopeo_subprocess(cmd):
     try:
         results = subp(cmd)
     except Exception as e: # pylint: disable=broad-except
         raise ValueError(e)
     if results.return_code is not 0:
         raise ValueError(results.stderr)
+    return results
+
+def skopeo_standalone_sign(image, manifest_file_name, fingerprint, signature_path):
+    cmd = ['skopeo', 'standalone-sign', manifest_file_name,
+                       image, fingerprint, "-o", signature_path]
+    return skopeo_subprocess(cmd)
 
 def skopeo_manifest_digest(manifest_file):
     cmd = ['skopeo', 'manifest-digest', manifest_file]
-    try:
-        results = subp(cmd)
-    except Exception: #pylint: disable=broad-except
-        raise ValueError(results.stderr)
-    return results.stdout.rstrip().decode()
+    return skopeo_subprocess(cmd).stdout.rstrip().decode()
+
+def skopeo_copy(source, destination):
+    cmd = ['skopeo', 'copy', source, destination]
+    return skopeo_subprocess(cmd)
 
 def check_v1_registry(image):
     # Skopeo cannot interact with a v1 registry
