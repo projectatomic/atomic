@@ -48,7 +48,7 @@ Sign the foobar image with a specific signature name.
 
 Sign the busybox image with the identify of foo@bar.com
 
-    atomic --signed-by foo@bar.com privateregistry.example.com
+    atomic sign --signed-by foo@bar.com privateregistry.example.com
 
 
 # HISTORY
