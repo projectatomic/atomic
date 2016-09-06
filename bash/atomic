@@ -39,7 +39,7 @@ __docker_q() {
 
 _atomic_atomic() {
 	local boolean_options="
-		--help -h
+		--help -h --version -v --debug --assumeyes -y
 	"
 	case "$prev" in
 		$main_options_with_args_glob )
