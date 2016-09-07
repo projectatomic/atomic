@@ -650,7 +650,7 @@ class SystemContainers(object):
 
     def _is_service_active(self, name):
         try:
-            return self._systemctl_command("is-active", name).replace("\n", "") == "active"
+            return self._systemctl_command("is-active", name, quiet=True).replace("\n", "") == "active"
         except subprocess.CalledProcessError:
             return False
 
@@ -660,14 +660,15 @@ class SystemContainers(object):
         if not self.display:
             util.check_call(cmd)
 
-    def _systemctl_command(self, command, name=None):
+    def _systemctl_command(self, command, name=None, quiet=False):
         cmd = ["systemctl"]
         if self.user:
             cmd.append("--user")
         cmd.append(command)
         if name:
             cmd.append(name)
-        util.write_out(" ".join(cmd))
+        if not quiet:
+            util.write_out(" ".join(cmd))
         if not self.display:
             return util.check_output(cmd, stderr=DEVNULL)
         return None
