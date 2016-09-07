@@ -130,6 +130,8 @@ class SystemContainers(object):
             pass
 
     def _pull_image_to_ostree(self, repo, image, upgrade):
+        if not repo:
+            raise ValueError("Cannot find a configured OSTree repo")
         if image.startswith("ostree:"):
             self._check_system_ostree_image(repo, image, upgrade)
         elif self.args.image.startswith("docker:"):
