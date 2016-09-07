@@ -74,7 +74,7 @@ class Sign(Atomic):
 
     @staticmethod
     def get_fingerprint(signer):
-        cmd = ['gpg', '--no-permission-warning', '--with-colons', '--fingerprint', signer]
+        cmd = ['gpg2', '--no-permission-warning', '--with-colons', '--fingerprint', signer]
         return_code, stdout, stderr = util.subp(cmd, newline=True)
         if return_code is not 0:
             raise ValueError(stderr)
@@ -88,7 +88,7 @@ class Sign(Atomic):
             # TODO
             # perhaps revisit directory permissions
             # when complete use-cases are known
-            os.makedirs(sig_path, '0777')
+            os.makedirs(sig_path)
 
     @staticmethod
     def get_sig_name2(sig_path):
