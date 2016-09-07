@@ -1,3 +1,10 @@
+## 1.12 (2016-9-7)
+Fixes for syscontainers
+Add atomic images generate to generate mtree meta data
+Fix up atomic with overlay backend
+Add atomic sign to allow simple signing of images
+Add atomic pull support for signatures
+
 ## 1.11 (2016-8-9)
 Add support for system containers
 Add support for managing storage
