@@ -29,5 +29,5 @@ class Pull(Atomic):
         tag = tag if tag != "" else "latest"
         fq_name = skopeo_inspect("docker://{}".format(self.args.image))['Name']
         image = "docker-daemon:{}:{}".format(fq_name, tag)
-        skopeo_copy("docker://{}".format(self.args.image), image)
+        skopeo_copy("docker://{}".format(self.args.image), image, debug=self.args.debug)
 

@@ -331,17 +331,29 @@ def skopeo_subprocess(cmd):
         raise ValueError(results.stderr)
     return results
 
-def skopeo_standalone_sign(image, manifest_file_name, fingerprint, signature_path):
-    cmd = ['skopeo', 'standalone-sign', manifest_file_name,
-                       image, fingerprint, "-o", signature_path]
+def skopeo_standalone_sign(image, manifest_file_name, fingerprint, signature_path, debug=False):
+    cmd = ['skopeo']
+    if debug:
+        cmd = cmd + ['--debug']
+    cmd = cmd + ['standalone-sign', manifest_file_name, image,
+                 fingerprint, "-o", signature_path]
     return skopeo_subprocess(cmd)
 
-def skopeo_manifest_digest(manifest_file):
-    cmd = ['skopeo', 'manifest-digest', manifest_file]
+def skopeo_manifest_digest(manifest_file, debug=False):
+    cmd = ['skopeo']
+    if debug:
+        cmd = cmd + ['--debug']
+    cmd = cmd  + ['manifest-digest', manifest_file]
     return skopeo_subprocess(cmd).stdout.rstrip().decode()
 
-def skopeo_copy(source, destination):
-    cmd = ['skopeo', 'copy', source, destination]
+def skopeo_copy(source, destination, debug=False):
+    cmd = ['skopeo']
+    if debug:
+        cmd = cmd + ['--debug']
+    cmd = cmd + ['copy']
+    if destination.startswith("docker-daemon"):
+        cmd = cmd + ['--remove-signatures']
+    cmd = cmd + [source, destination]
     return skopeo_subprocess(cmd)
 
 def check_v1_registry(image):

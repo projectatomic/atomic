@@ -47,7 +47,8 @@ class Sign(Atomic):
                 manifest_file.write(manifest)
                 manifest_file.close()
                 manifest_hash = str(util.skopeo_manifest_digest(manifest_file.name))
-
+                _, _, tag = util.decompose(sign_image)
+                tag = ":{}".format(tag) if tag != "" else ":latest"
                 expanded_image_name = str(remote_inspect_info['Name'])
                 sigstore_path = "{}/{}/{}@{}".format(self.args.signature_path, os.path.dirname(expanded_image_name),
                                                      os.path.basename(expanded_image_name), manifest_hash)
@@ -58,7 +59,7 @@ class Sign(Atomic):
                     raise ValueError("The signature {} already exists.  If you wish to "
                                      "overwrite it, please delete this file first")
 
-                util.skopeo_standalone_sign(expanded_image_name, manifest_file.name,
+                util.skopeo_standalone_sign(expanded_image_name + tag, manifest_file.name,
                                             self.get_fingerprint(signer), fq_sig_path)
                 util.write_out("Created: {}".format(fq_sig_path))
 
