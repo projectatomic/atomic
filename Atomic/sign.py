@@ -2,10 +2,15 @@ from . import util
 from . import Atomic
 import os
 import tempfile
-from .atomic import AtomicError
+try:
+    from urlparse import urlparse #pylint: disable=import-error
+except ImportError:
+    from urllib.parse import urlparse #pylint: disable=no-name-in-module,import-error
 
 
 ATOMIC_CONFIG = util.get_atomic_config()
+READ_URIS = ['file', 'http', 'https']
+WRITE_URIS = ['file']
 
 def cli(subparser):
     # atomic sign
@@ -25,24 +30,34 @@ def cli(subparser):
                        help=_("Define an alternate directory to store signatures"))
 
 class Sign(Atomic):
-    def sign(self):
+    def __init__(self):
+        super(Sign, self).__init__()
+
+    def sign(self, in_signature_path=None, images=None):
         def no_reg_no_default_error(image, registry_path):
             return "Unable to associate {} with configurations in {} and " \
                    "no 'default_store' is defined.".format(image,
                                                            registry_path)
 
-        if self.args.debug:
+        if in_signature_path is None and getattr(self.args, 'signature_path', None) is not None:
+            in_signature_path = self.args.signature_path
+
+        if images is None:
+            images = self.args.images
+
+        if self.debug:
             util.write_out(str(self.args))
 
         signer = self.args.sign_by
-        if signer is None:
+
+        if self.args.sign_by is None:
             raise ValueError("No default identity (default_signer) was defined in /etc/atomic.conf "
                              "and no --sign-by identity was provided.  You must provide an identity")
         registry_config_path = util.get_atomic_config_item(["registry_confdir"], ATOMIC_CONFIG)
         registry_config_path = '/etc/containers/registries.d' if registry_config_path is None else registry_config_path
         registry_configs, default_store = util.get_registry_configs(registry_config_path)
 
-        for sign_image in self.args.images:
+        for sign_image in images:
             remote_inspect_info = util.skopeo_inspect("docker://{}".format(sign_image))
             manifest = util.skopeo_inspect('docker://{}'.format(sign_image), args=['--raw'], return_json=False)
             try:
@@ -54,10 +69,10 @@ class Sign(Atomic):
                 tag = ":{}".format(tag) if tag != "" else ":latest"
                 expanded_image_name = str(remote_inspect_info['Name'])
 
-                if self.args.signature_path:
-                    if not os.path.exists(self.args.signature_path):
-                        raise ValueError("The path {} does not exist".format(self.args.signature_path))
-                    signature_path = self.args.signature_path
+                if in_signature_path:
+                    if not os.path.exists(in_signature_path):
+                        raise ValueError("The path {} does not exist".format(in_signature_path))
+                    signature_path = in_signature_path
 
 
                 else:
@@ -72,13 +87,13 @@ class Sign(Atomic):
                     if signature_path is None:
                         raise ValueError("No write path for {}/{} was "
                                          "found in {}".format(reg, repo, registry_config_path))
-                    elif signature_path.startswith("http"):
-                        raise ValueError("Writing to {} is not supported. Use a "
-                                         "file:///location instead.".format(signature_path))
+                    elif urlparse(signature_path).scheme not in WRITE_URIS:
+                        raise ValueError("Writing to {} is not supported. Use a supported scheme {} "
+                                         "instead.".format(urlparse(signature_path).scheme, WRITE_URIS))
 
                     # Deal with write path prepends
-                    if signature_path.startswith("file://"):
-                        signature_path = signature_path.replace("file://", "")
+                    if urlparse(signature_path).scheme in WRITE_URIS:
+                        signature_path = urlparse(signature_path).path
 
                     # Make sure signature path exists
                     if not os.path.exists(signature_path):
@@ -99,13 +114,6 @@ class Sign(Atomic):
 
             finally:
                 os.remove(manifest_file.name)
-
-    def check_input_validity(self):
-        try:
-            for image in self.args.images:
-                self._is_image(image)
-        except AtomicError:
-            raise ValueError("{} is not a valid image".format(image))
 
     @staticmethod
     def get_fingerprint(signer):

@@ -17,6 +17,8 @@ import tempfile
 import shutil
 import re
 import requests
+import ipaddress
+import socket
 
 # Atomic Utility Module
 
@@ -339,15 +341,25 @@ def skopeo_manifest_digest(manifest_file, debug=False):
     cmd = cmd  + ['manifest-digest', manifest_file]
     return check_output(cmd).rstrip().decode()
 
-def skopeo_copy(source, destination, debug=False):
+def skopeo_copy(source, destination, debug=False, sign_by=None, insecure=False):
     cmd = ['skopeo']
     if debug:
         cmd = cmd + ['--debug']
+    if insecure:
+        cmd = cmd + ['--tls-verify=false']
     cmd = cmd + ['copy']
-    if destination.startswith("docker-daemon"):
+    if destination.startswith("docker"):
         cmd = cmd + ['--remove-signatures']
+    elif destination.startswith("atomic") and not sign_by:
+        cmd = cmd + ['--remove-signatures']
+
+    if sign_by:
+        cmd = cmd + ['--sign-by', sign_by]
     cmd = cmd + [source, destination]
+    if debug:
+        write_out("Executing: {}".format(" ".join(cmd)))
     return check_call(cmd)
+
 
 class NoDockerDaemon(Exception):
     def __init__(self):
@@ -635,3 +647,64 @@ def get_signature_read_path(reg_info):
     # Return the defined path for where signatures should be read
     # or none if no entry is found
     return reg_info.get('sigstore', None)
+
+def strip_port(_input):
+    ip, _, _ = _input.rpartition(':')
+    if ip is '':
+        return _input
+    return ip.strip("[]")
+
+def is_insecure_registry(registry_config, registry):
+    if is_python2 and not isinstance(registry, unicode): #pylint: disable=undefined-variable,unicode-builtin
+        registry = unicode(registry) #pylint: disable=unicode-builtin,undefined-variable
+
+    ip_registries = []
+    ipv4_regs = []
+    ipv6_regs = []
+    registry_ips = []
+
+    def is_ipv4(_ip):
+        if is_python2 and not isinstance(_ip, unicode): #pylint: disable=unicode-builtin,undefined-variable
+            _ip = unicode(_ip) #pylint: disable=unicode-builtin,undefined-variable
+        if ipaddress.ip_address(_ip).version == 4:
+            return True
+        return False
+
+    def get_ips_from_host(_host):
+        return list(set([x[4][0] for x in socket.getaddrinfo(_host, None)]))
+
+    try:
+        ipaddress.ip_address(registry)
+        registry_ips.append(registry)
+    except ValueError:
+        for r in get_ips_from_host(registry):
+            registry_ips.append(r)
+
+    insecure_cidrs = registry_config['InsecureRegistryCIDRs']
+    insecure_registries = [strip_port(v['Name']) for _, v in registry_config['IndexConfigs'].items() if not v['Secure']]
+    for i in insecure_registries:
+        try:
+            ipaddress.ip_address(i)
+            ip_registries.append(i)
+        except ValueError:
+            for j in get_ips_from_host(i):
+                ip_registries.append(j)
+
+    for ip in ip_registries:
+        if is_ipv4(ip):
+            ipv4_regs.append(ip)
+        else:
+            ipv6_regs.append(ip)
+
+    # Everything is now in IP notation or CIDR
+    for registry_ip in registry_ips:
+        # Check IP addresses associated with known insecure registries
+        if is_python2 and not isinstance(registry_ip, unicode): #pylint: disable=unicode-builtin, undefined-variable
+            registry_ip = unicode(registry_ip) #pylint: disable=unicode-builtin, undefined-variable
+        if registry_ip in ipv4_regs or registry_ip in ipv6_regs:
+            return True
+        # Check if the IP falls in the the CIDR notation
+        for cidr_subnet in insecure_cidrs:
+            if ipaddress.ip_address(registry_ip ) in ipaddress.ip_network(cidr_subnet):
+                return True
+

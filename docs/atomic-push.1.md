@@ -13,6 +13,8 @@ atomic-push - push Image to repository
 [**-p**][**--password**[=*PASSWORD*]]
 [**-r**][**--repository_id**[=*REPOSITORY_ID*]]
 [**--satellite**]
+[**--sign-by**]
+[**--t**][**--type**]
 [**-u**][**--username**[=*USERNAME*]]
 [**-U**][**--url**[=*URL*]]
 [**--verify_ssl**[=*VERIFY_SSL*]]
@@ -42,6 +44,14 @@ atomic-push - push Image to repository
 **--satellite**
   Upload using the satellite protocol; defaults to using docker push  
 
+**--sign-by**
+  Override the default signing identity defined in /etc/atomic.conf. Atomic push will always sign if there is a default
+  identity or you pass an indentity here.  If there is a default identity, you can pass **None** to **--sign-by** and
+   signing will be disabled.
+
+**-t REGISTRY_TYPE** **--type REGISTRY_TYPE**
+  Change the registry type.  Currently only **atomic** is the only other supported registry type.
+
 **-u USERNAME** **--username USERNAME**
   Username for remote registry
 
@@ -57,3 +67,5 @@ April 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)
 July 2015, Edited by Jenny Ramseyer (jramseye at redhat dot com)
 
 September 2015, Edited by Daniel Walsh (dwalsh at redhat dot com)
+
+September 2016, Updated by Brent Baude (bbaude at redhat dot com)
