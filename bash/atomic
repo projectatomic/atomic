@@ -315,6 +315,7 @@ _atomic_pull() {
 
 _atomic_containers() {
   local subcommands="
+    delete
     list
     trim
   "
@@ -330,6 +331,27 @@ _atomic_containers() {
       ;;
   esac
   return 0
+}
+
+_atomic_containers_delete() {
+
+	local all_options="$options_with_args
+		--all -a
+		--force -f
+		--help
+	"
+
+	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
+
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+			;;
+		*)
+		    __atomic_containers_all
+		    ;;
+
+	esac
 }
 
 _atomic_containers_list() {

@@ -10,6 +10,15 @@ atomic-containers - operations on containers
 atomic containers allows the user to view and operate on containers
 
 # COMMANDS
+**delete**
+
+delete specified container(s).
+
+# DESCRIPTION
+**atomic containers delete**, delete specified container image from the system.
+
+Using --all will delete all the installed containers.
+
 **list**
 
 list containers on your system.
@@ -35,6 +44,13 @@ Trimming container id 9bb990da1203
 # OPTIONS:
 **-h** **--help**
   Print usage statement
+
+# delete OPTIONS:
+**-a** **--all**
+  Delete all the installed containers
+
+**-f** **--force**
+  Force the deletion of specified running containers
 
 # list OPTIONS:
 **-a** **--all**
