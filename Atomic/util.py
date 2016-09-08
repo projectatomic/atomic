@@ -52,7 +52,9 @@ def check_if_python2():
 input, is_python2 = check_if_python2() # pylint: disable=redefined-builtin
 
 def decompose(compound_name):
-    # '[reg/]repo[:tag]' -> (reg, repo, tag)
+    # TODO: this doesn't behave when the registry is omitted or using hub "library" images
+    #       we should really decompose into reg, repo, image and tag components
+    # 'reg/repo/image[:tag]' -> (reg, repo, image, tag)
     reg, repo, tag = '', compound_name, ''
     if '/' in repo:
         reg, repo = repo.split('/', 1)
@@ -245,14 +247,15 @@ def urllib3_disable_warnings():
             if hasattr(urllib3, 'disable_warnings'):
                 urllib3.disable_warnings()
 
-def skopeo_inspect(image, args=None, return_json=True, newline=False):
+def skopeo_inspect(image, args=None, return_json=True, newline=False, quiet=False):
     if not args:
         args=[]
 
     # Performs remote inspection of an image on a registry
     # :param image: fully qualified name
     # :param args: additional parameters to pass to Skopeo
-    # :return: Returns json formatted data
+    # :param fail_silent: return false if failed
+    # :return: Returns json formatted data or false
 
     # Adding in --verify-tls=false to deal with the change in skopeo
     # policy. The prior inspections were also false.  We need to define
@@ -266,6 +269,8 @@ def skopeo_inspect(image, args=None, return_json=True, newline=False):
     except OSError:
         raise ValueError("skopeo must be installed to perform remote inspections")
     if results.return_code is not 0:
+        if quiet:
+            return False
         raise ValueError(results)
     else:
         if return_json:
@@ -367,6 +372,53 @@ def get_atomic_config(atomic_config=None):
         raise ValueError("{} does not exist".format(atomic_config))
     with open(atomic_config, 'r') as conf_file:
         return yaml_load(conf_file)
+
+def write_registry_config(scope):
+    """
+    Write registry sigstore configuration file
+    :param scope: registry string
+    :return: True on success
+    """
+    # FIXME: pending agreement on registry sigstore layout
+    registry_dir = get_atomic_config_item(['registry_sigstore_dir'], get_atomic_config())
+    write_out("TODO: Writing trust config for %s to %s" % (scope, registry_dir))
+    return False
+
+def install_pubkey(key_name, key_url):
+    """
+    Installs public key to system config directory
+    :param key_name: id of key used as filename
+    :param key_url: download URI of public key
+    :return: pubkey path string or False
+    """
+    pubkeys_dir = get_atomic_config_item(['pubkeys_dir'], get_atomic_config())
+    pubkey_file = "%s/%s" % (pubkeys_dir, key_name)
+    if not os.path.exists(pubkeys_dir):
+        os.mkdir(pubkeys_dir)
+    if os.path.exists(pubkey_file):
+        write_out("Public key %s already installed at %s" % (key_name, pubkey_file))
+    else:
+        r = requests.get(key_url)
+        if r.status_code == 200:
+            with open(pubkey_file, 'w') as pubfile:
+                pubfile.write(r.content)
+            write_out("Installed public key %s" % pubkey_file)
+        else:
+            write_out("WARNING: Could not download public key using URL %s." % key_url)
+            write_out("Download the public key manually and install as %s" % pubkey_file)
+    return pubkey_file
+
+def update_trust_policy(trust_scope, pubkey_path, sigstore_url):
+    """
+    Add trust policy for the specified registry scope
+    :param trust_scope: registry/repository scope
+    :param pubkey_path: absolute public key path
+    :param sigstore_url: url of sigstore
+    :return: True if success
+    """
+    # FIXME: pending feedback on manage policy
+    write_out("TODO: Adding trust policy: %s %s %s" % (trust_scope, pubkey_path, sigstore_url))
+    return False
 
 def add_opt(sub):
     sub.add_argument("--opt1", dest="opt1",help=argparse.SUPPRESS)
