@@ -2,7 +2,7 @@ try:
     from . import Atomic
 except ImportError:
     from atomic import Atomic  # pylint: disable=relative-import
-from .util import skopeo_copy, get_atomic_config, skopeo_inspect, decompose
+from .util import skopeo_copy, get_atomic_config, skopeo_inspect, decompose, write_out
 
 ATOMIC_CONFIG = get_atomic_config()
 
@@ -21,13 +21,23 @@ def cli(subparser):
 
 
 class Pull(Atomic):
-    def pull_image(self):
-        if self.args.backend == 'ostree':
-            return self.syscontainers.pull_image()
+    def pull_docker_image(self):
         _, _, tag = decompose(self.args.image)
         # If no tag is given, we assume "latest"
         tag = tag if tag != "" else "latest"
         fq_name = skopeo_inspect("docker://{}".format(self.args.image))['Name']
         image = "docker-daemon:{}:{}".format(fq_name, tag)
         skopeo_copy("docker://{}".format(self.args.image), image, debug=self.args.debug)
+
+    def pull_image(self):
+        handlers = {
+            "ostree" : self.syscontainers.pull_image,
+            "docker" : self.pull_docker_image
+        }
+
+        handler = handlers.get(self.args.backend)
+        if handler is None:
+            raise ValueError("Destination not known, please choose --storage=%s" % "|".join(handlers.keys()))
+        write_out("Image %s is being pulled to %s ..." % (self.args.image, self.args.backend))
+        handler()
 
