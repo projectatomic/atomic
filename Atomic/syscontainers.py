@@ -461,8 +461,10 @@ class SystemContainers(object):
             tmpfiles_template = SystemContainers._generate_tmpfiles_data(missing_bind_paths, values["STATE_DIRECTORY"])
 
         _write_template(unitfile, systemd_template, values, unitfileout)
+        shutil.copyfile(unitfileout, os.path.join(destination, "%s.service" % name))
         if (tmpfiles_template):
             _write_template(unitfile, tmpfiles_template, values, tmpfilesout)
+            shutil.copyfile(unitfileout, os.path.join(destination, "tmpfiles-%s.conf" % name))
 
         sym = "%s/%s" % (self._get_system_checkout_path(), name)
         if os.path.exists(sym):

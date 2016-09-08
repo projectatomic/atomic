@@ -89,6 +89,9 @@ trap teardown EXIT
 ${ATOMIC} install --name=${NAME} --set=RECEIVER=${SECRET} --system oci:atomic-test-system
 test -e /etc/tmpfiles.d/${NAME}.conf
 
+test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/${NAME}.service
+test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/tmpfiles-${NAME}.conf
+
 systemctl start ${NAME}
 
 ${ATOMIC} update --container ${NAME} > update.out
@@ -137,6 +140,8 @@ ${ATOMIC} update --container ${NAME} > update.out
 assert_matches "Latest version already installed" update.out
 
 ${ATOMIC} update --set=PORT=8082 --container ${NAME}
+test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/${NAME}.service
+test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/tmpfiles-${NAME}.conf
 
 # Check that the same SECRET value is kept, and that $PORT gets the new value
 assert_matches ${SECRET} ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/config.json
