@@ -205,7 +205,7 @@ assert_not_matches "Pulling layer" second.pull.out
 
 ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
 assert_matches busybox refs
-${ATOMIC} images delete -f busybox
+${ATOMIC} -y images delete -f busybox
 ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
 OUTPUT=$(! grep -c busybox refs)
 if test $OUTPUT \!= 0; then
@@ -227,14 +227,14 @@ test $(wc -l < images.out) -lt $(wc -l < images.all.out)
 assert_matches '<none>' images.all.out
 assert_not_matches '<none>' images.out
 
-${ATOMIC} images delete -f busybox
+${ATOMIC} -y images delete -f busybox
 ${ATOMIC} images prune
 
 # Test there are still intermediate layers left after prune
 ${ATOMIC} images list -f type=system --all > images.all.out
 assert_matches "<none>" images.all.out
 
-${ATOMIC} images delete -f atomic-test-system
+${ATOMIC} -y images delete -f atomic-test-system
 ${ATOMIC} images prune
 
 # Test there are not intermediate layers left layers now
