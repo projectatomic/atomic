@@ -14,7 +14,7 @@ class Delete(Atomic):
         :return: 0 if all images marked for deletion, otherwise 2 on any failure
         """
 
-        if not self.args.force_delete:
+        if not self.args.assumeyes:
             confirm = util.input("Do you wish to delete {}? (y/N) ".format(self.args.delete_targets))
             confirm = confirm.strip().lower()
             if not confirm in ['y', 'yes']:
@@ -24,7 +24,7 @@ class Delete(Atomic):
         if self.args.remote_delete:
             results = self._delete_remote(self.args.delete_targets)
         else:
-            results = self._delete_local(self.args.delete_targets)
+            results = self._delete_local(self.args.delete_targets, self.args.force)
         return results
 
     def prune_images(self):
@@ -67,14 +67,14 @@ class Delete(Atomic):
                 results = 2
         return results
 
-    def _delete_local(self, targets):
+    def _delete_local(self, targets, force=False):
         results = 0
         for target in targets:
             if self.syscontainers.has_system_container_image(target):
                 self.syscontainers.delete_image(target)
             else:
                 try:
-                    self.d.remove_image(target)
+                    self.d.remove_image(target, force=force)
                 except NotFound as e:
                     util.write_err("Failed to delete Image {}: {}".format(target, e))
                     results = 2

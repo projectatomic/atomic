@@ -47,8 +47,11 @@ Directory in which to temporarily store the files (can be an existing
 directory, or the command will create one). If no directory is specified,
 /var/lib/atomic/migrate would be used as default.
 
-**-f** **--force**
-Force the removal of dangling images
+# Note:
+Atomic --assumeyes option can be used
+
+[**-y|--assumeyes**]
+  Delete image(s) without conformation from the user
 
 # import OPTIONS
 **-h** **--help**

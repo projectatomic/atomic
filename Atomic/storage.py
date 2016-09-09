@@ -38,9 +38,6 @@ def cli(subparser):
     exportp.add_argument("--dir", dest="export_location",
                          default="/var/lib/atomic/migrate",
                          help=_("Path for exporting container's content (Default: /var/lib/atomic/migrate)"))
-    exportp.add_argument("-f", "--force", default=False, dest="force",
-                         action="store_true",
-                         help=_("Force removal of dangling images"))
 
     # atomic storage import
     importp = storage_subparser.add_parser("import", help=_("import containers associated contents from a filesystem directory"),
@@ -208,7 +205,7 @@ class Storage(Atomic):
 
     def Export(self):
         try:
-            export_docker(self.args.graph, self.args.export_location, self.force)
+            export_docker(self.args.graph, self.args.export_location, self.args.assumeyes)
         except requests.exceptions.ConnectionError:
             raise NoDockerDaemon()
 

@@ -64,13 +64,14 @@ def cli(subparser):
                                                 "when invoked will recover used disk space")
     delete_parser.set_defaults(_class=Delete, func='delete_image')
 
-    delete_parser.add_argument("-f", "--force", default=False, dest="force_delete",
-                               action="store_true",
-                               help=_("Delete image without user confirmation"))
+    deletegroup = delete_parser.add_mutually_exclusive_group()
+    deletegroup.add_argument("-f", "--force", default=False, dest="force",
+                             action="store_true",
+                             help=_("Force removal of local images, even if containers based on it exist.  Default is False"))
 
-    delete_parser.add_argument("--remote", default=False, dest="remote_delete",
-                               action="store_true",
-                               help=_("Delete image from remote repository"))
+    deletegroup.add_argument("--remote", default=False, dest="remote_delete",
+                             action="store_true",
+                             help=_("Delete image from remote repository"))
 
     delete_parser.add_argument("delete_targets", nargs=argparse.ONE_OR_MORE,
                                help=_("container image(s)"))

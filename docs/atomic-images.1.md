@@ -12,26 +12,19 @@ atomic images allows the user to view and operate on container images in a docke
 # COMMANDS
 **list**
 
-List all installed container images on your system.
+  List all installed container images on your system.
 
-A `>` preceding the image name indicates that the image is used by a container.
+  A  **>** preceding the image name indicates that the image is used by a container.
 
-A `*` in the first column indicates a dangling image.
-
-`Dangling` images are those with no name/tag and which are not used by any
-other images. Since they are not used, they waste system space.  Dangling
-images are usually caused by using 'docker build' to update an image without
-also removing the older version of the image.
+  A **\*** in the first column indicates a dangling image. **Dangling** images are images with no name/tag and which are not used by any other images. Since they are not used, they waste system space.  Dangling images can be caused by using 'docker build' to update an image without removing the older version of the image.
 
 **delete**
 
-Mark given container image(s) for deletion. Remote disk space will not be freed until
-the ```registry garabage-collection``` command is invoked for the remote registry.
+  Delete the specified container image(s). If you use the **--remote option** remote disk space will not be freed until the **registry garbage-collection** command is invoked for the remote registry.
 
 **prune**
 
-Using the `prune` command will free wasted disk space by deleting all unused
-`dangling` images.
+  Prune/delete all **dangling** images, freeing wasted disk space.
 
 # list OPTIONS
 [**-h|--help**]
@@ -61,10 +54,17 @@ will list all images that has "foo" as part of their repository name.
   Print usage statement
 
 [**-f|--force**]
-  Delete image(s) without conformation from the user
+  Force the deletion of specified local images, even if they are in use.
 
 [**--remote**]
-  Delete images in remote registry
+  Delete images in remote registry.  *--force* is not supported with this option.
+
+# Note:
+Atomic --assumeyes option can be used
+
+[**-y|--assumeyes**]
+  Delete image(s) without conformation from the user
+
 
 # HISTORY
 July 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)
