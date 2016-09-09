@@ -12,17 +12,26 @@ atomic images allows the user to view and operate on container images in a docke
 # COMMANDS
 **list**
 
-list all installed container images on your system.
+List all installed container images on your system.
 
 A `>` preceding the image name indicates that the image is used by a container.
 
 A `*` in the first column indicates a dangling image.
 
-
 `Dangling` images are those with no name/tag and which are not used by any
 other images. Since they are not used, they waste system space.  Dangling
 images are usually caused by using 'docker build' to update an image without
 also removing the older version of the image.
+
+**delete**
+
+Mark given container image(s) for deletion. Remote disk space will not be freed until
+the ```registry garabage-collection``` command is invoked for the remote registry.
+
+**prune**
+
+Using the `prune` command will free wasted disk space by deleting all unused
+`dangling` images.
 
 # list OPTIONS
 [**-h|--help**]
@@ -47,30 +56,17 @@ will list all images that has "foo" as part of their repository name.
 **--json**
   Output in the form of JSON.
 
-**delete IMAGES...**
-
-Mark given container image(s) for deletion. Remote disk space will not be freed until the
-```registry garabage-collection``` command is invoked for the remote registry.
-
 # delete OPTIONS
+[**-h|--help**]
+  Print usage statement
+
 [**-f|--force**]
   Delete image(s) without conformation from the user
 
 [**--remote**]
   Delete images in remote registry
 
-
-**prune**
-
-Using the `prune` command will free wasted disk space by deleting all unused `dangling` images.
-
-**generate**
-  Generates a gomtree validation manifest for all images.  Gomtree is
-  required for this feature to be available.
-
 # HISTORY
 July 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)
-
-
 July 2016, Updated to reflect images sub-command changes (jhonce at redhat dot com)
 July 2016, Added sub-commands all, filter and quiet to list (jerzhang at redhat dot com)
