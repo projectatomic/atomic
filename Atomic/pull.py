@@ -15,8 +15,8 @@ def cli(subparser):
     pullp.set_defaults(_class=Pull, func='pull_image')
     pullp.add_argument("--storage", dest="backend", default=backend,
                        help=_("Specify the storage. Default is currently '%s'.  You can"
-                              "change the default by editing /etc/atomic.conf and changing"
-                              "the 'default_storage' field." % backend))
+                              " change the default by editing /etc/atomic.conf and changing"
+                              " the 'default_storage' field." % backend))
     pullp.add_argument("image", help=_("image id"))
 
 
