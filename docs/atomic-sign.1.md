@@ -20,9 +20,9 @@ Only use **atomic sign** if you trust the remote registry which contains the ima
 
 # DESCRIPTION
 **atomic sign** will create a local signature for one or more local images that have 
-been pulled from a registry. Unless overridden, the signature will end up in the 
-the default storage location (/var/lib/atomic/containers) for signatures.  A different
-default location can be defined in /etc/atomic.conf with the key **default-sigstore-path**.
+been pulled from a registry. By default, the signature will be written into a directory
+derived from the registry configuration files as configured by **registry_confdir**
+in /etc/atomic.conf.  
 
 # OPTIONS
 **-h** **--help**
@@ -42,7 +42,7 @@ Sign the foobar image from privateregistry.example.com
 
     atomic sign privateregistry.example.com/foobar
     
-Sign the foobar image with a specific signature name.
+Sign the foobar image and save the signature in /tmp/signatures/.
 
     atomic sign -d /tmp/signatures privateregistry.example.com
 
