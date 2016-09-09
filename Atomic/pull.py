@@ -90,7 +90,7 @@ class Pull(Atomic):
         """
         valid = False
         if labels:
-            expected_keys = ["pubkey-id", "pubkey-fingerprint", "pubkey-url", "sigstore-url"]
+            expected_keys = ["pubkey-id", "pubkey-fingerprint", "pubkey-url", "sigstore-url", "sigstore-type"]
             for k in expected_keys:
                 valid = k in labels
         return valid
