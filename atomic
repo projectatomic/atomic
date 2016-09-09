@@ -48,6 +48,7 @@ from Atomic import stop
 from Atomic import uninstall
 from Atomic import update
 from Atomic import sign
+from Atomic import trust
 from Atomic.util import write_err, NoDockerDaemon
 import traceback
 from Atomic.mount import MountError
@@ -153,6 +154,7 @@ def create_parser(help_text):
     stop.cli(subparser)
     storage.cli(subparser)
     top.cli(subparser)
+    trust.cli(subparser)
 
     # atomic rhost (if commctl.cli is available)
     try:
