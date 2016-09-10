@@ -324,29 +324,20 @@ def skopeo_layers(image, args=None, layers=None):
             shutil.rmtree(temp_dir)
     return temp_dir
 
-def skopeo_subprocess(cmd):
-    try:
-        results = subp(cmd)
-    except Exception as e: # pylint: disable=broad-except
-        raise ValueError(e)
-    if results.return_code is not 0:
-        raise ValueError(results.stderr)
-    return results
-
 def skopeo_standalone_sign(image, manifest_file_name, fingerprint, signature_path, debug=False):
     cmd = ['skopeo']
     if debug:
         cmd = cmd + ['--debug']
     cmd = cmd + ['standalone-sign', manifest_file_name, image,
                  fingerprint, "-o", signature_path]
-    return skopeo_subprocess(cmd)
+    return check_call(cmd)
 
 def skopeo_manifest_digest(manifest_file, debug=False):
     cmd = ['skopeo']
     if debug:
         cmd = cmd + ['--debug']
     cmd = cmd  + ['manifest-digest', manifest_file]
-    return skopeo_subprocess(cmd).stdout.rstrip().decode()
+    return check_output(cmd).rstrip().decode()
 
 def skopeo_copy(source, destination, debug=False):
     cmd = ['skopeo']
@@ -356,7 +347,7 @@ def skopeo_copy(source, destination, debug=False):
     if destination.startswith("docker-daemon"):
         cmd = cmd + ['--remove-signatures']
     cmd = cmd + [source, destination]
-    return skopeo_subprocess(cmd)
+    return check_call(cmd)
 
 def check_v1_registry(image):
     # Skopeo cannot interact with a v1 registry

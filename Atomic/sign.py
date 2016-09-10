@@ -32,7 +32,11 @@ class Sign(Atomic):
             util.write_out(str(self.args))
 
         signer = self.args.sign_by
+        if signer is None:
+            raise ValueError("No default identity (default_signer) was defined in /etc/atomic.conf "
+                             "and no --sign-by identity was provided.  You must provide an identity")
         registry_config_path = util.get_atomic_config_item(["registry_confdir"], ATOMIC_CONFIG)
+        registry_config_path = '/etc/containers/registries.d' if registry_config_path is None else registry_config_path
         registry_configs, default_store = util.get_registry_configs(registry_config_path)
 
         for sign_image in self.args.images:
@@ -101,9 +105,7 @@ class Sign(Atomic):
     @staticmethod
     def get_fingerprint(signer):
         cmd = ['gpg2', '--no-permission-warning', '--with-colons', '--fingerprint', signer]
-        return_code, stdout, stderr = util.subp(cmd, newline=True)
-        if return_code is not 0:
-            raise ValueError(stderr)
+        stdout = util.check_output(cmd)
         for line in stdout.splitlines():
             if line.startswith('fpr:'):
                 return line.split(":")[9]
