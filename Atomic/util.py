@@ -10,7 +10,9 @@ import os
 import selinux
 from .client import AtomicDocker
 from yaml import load as yaml_load
+from yaml import safe_load
 from yaml import YAMLError
+from yaml.scanner import ScannerError
 import tempfile
 import shutil
 import re
@@ -322,29 +324,20 @@ def skopeo_layers(image, args=None, layers=None):
             shutil.rmtree(temp_dir)
     return temp_dir
 
-def skopeo_subprocess(cmd):
-    try:
-        results = subp(cmd)
-    except Exception as e: # pylint: disable=broad-except
-        raise ValueError(e)
-    if results.return_code is not 0:
-        raise ValueError(results.stderr)
-    return results
-
 def skopeo_standalone_sign(image, manifest_file_name, fingerprint, signature_path, debug=False):
     cmd = ['skopeo']
     if debug:
         cmd = cmd + ['--debug']
     cmd = cmd + ['standalone-sign', manifest_file_name, image,
                  fingerprint, "-o", signature_path]
-    return skopeo_subprocess(cmd)
+    return check_call(cmd)
 
 def skopeo_manifest_digest(manifest_file, debug=False):
     cmd = ['skopeo']
     if debug:
         cmd = cmd + ['--debug']
     cmd = cmd  + ['manifest-digest', manifest_file]
-    return skopeo_subprocess(cmd).stdout.rstrip().decode()
+    return check_output(cmd).rstrip().decode()
 
 def skopeo_copy(source, destination, debug=False):
     cmd = ['skopeo']
@@ -354,7 +347,7 @@ def skopeo_copy(source, destination, debug=False):
     if destination.startswith("docker-daemon"):
         cmd = cmd + ['--remove-signatures']
     cmd = cmd + [source, destination]
-    return skopeo_subprocess(cmd)
+    return check_call(cmd)
 
 def check_v1_registry(image):
     # Skopeo cannot interact with a v1 registry
@@ -589,3 +582,54 @@ def expandvars(path, environ=None):
             i = len(path)
             path += tail
     return path
+
+def get_registry_configs(yaml_dir):
+    regs = {}
+    default_store = None
+    # Get list of files that end in .yaml and are in fact files
+    for yaml_file in [os.path.join(yaml_dir, x) for x in os.listdir(yaml_dir) if x.endswith('.yaml')
+            and os.path.isfile(os.path.join(yaml_dir, x))]:
+        with open(yaml_file, 'r') as conf_file:
+            try:
+                temp_conf = safe_load(conf_file)
+                if isinstance(temp_conf, dict):
+                    def_store = temp_conf.get('default-docker', None)
+                    if def_store is not None and default_store is not None:
+                        raise ValueError("There are duplicate entries for 'default-docker' in {}.".format(yaml_dir))
+                    elif default_store is None and def_store is not None:
+                        default_store = def_store
+                    registries = temp_conf.get('docker', None)
+                else:
+                    break
+                if registries is None:
+                    break
+                for k,v in registries.items():
+                    if k not in regs:
+                        regs[k] = v
+                    else:
+                        raise ValueError("There is a duplicate entry for {} in {}".format(k, yaml_dir))
+            except ScannerError:
+                raise ValueError("{} appears to not be properly formatted YAML.".format(yaml_file))
+    return regs, default_store
+
+
+def have_match_registry(fq_name, reg_config):
+    # Returns a matching dict or None
+    search_obj = fq_name
+    for _ in fq_name.split('/'):
+        if search_obj in reg_config:
+            return reg_config[search_obj]
+        search_obj = search_obj.rsplit('/', 1)[0]
+    # If no match is found, returning nothing.
+    return None
+
+
+def get_signature_write_path(reg_info):
+    # Return the defined path for where signatures should be written
+    # or none if no entry is found
+    return reg_info.get('sigstore-write', reg_info.get('sigstore', None))
+
+def get_signature_read_path(reg_info):
+    # Return the defined path for where signatures should be read
+    # or none if no entry is found
+    return reg_info.get('sigstore', None)
