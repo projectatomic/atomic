@@ -6,6 +6,13 @@ try:
 except ImportError:
     from atomic import Atomic # pylint: disable=relative-import
 
+def _add_remainder_arg(parser):
+    parser.add_argument("args", nargs=argparse.REMAINDER,
+                        help=_("Additional arguments appended to the "
+                               "invocation.  Use `-- --OPTION=VAL` "
+                               "if you want to pass additional "
+                               "unwrapped arguments to rpm-ostree."))
+
 def cli(subparser):
     # atomic host
     hostp = subparser.add_parser("host", help=_("execute Atomic host "
@@ -20,11 +27,7 @@ def cli(subparser):
                            action="store_true",
                            help=_("initiate a reboot after rollback is "
                                   "prepared"))
-    rollbackp.add_argument("args", nargs=argparse.REMAINDER,
-                           help=_("Additional arguments appended to the "
-                                  "rollback method.  Use `-- --OPTION=VAL` "
-                                  "if you want to pass additional "
-                                  "unsupported arguments to rpm-ostree."))
+    _add_remainder_arg(rollbackp)
 
 
     # atomic host status
@@ -37,11 +40,7 @@ def cli(subparser):
                          action="store_true",
                          help=_("This option is deprecated and no "
                                 "longer has any effect"))
-    statusp.add_argument("args", nargs=argparse.REMAINDER,
-                         help=_("Additional arguments appended to the "
-                                "status method.  Use `-- --OPTION=VAL` "
-                                "if you want to pass additional "
-                                "unsupported arguments to rpm-ostree."))
+    _add_remainder_arg(statusp)
 
     statusp.set_defaults(_class=Host, func='host_status')
 
@@ -62,11 +61,7 @@ def cli(subparser):
     upgradep.add_argument("--check-diff", dest="diff",
                           action="store_true",
                           help=_("Check for upgrades and print package diff only"))
-    upgradep.add_argument("args", nargs=argparse.REMAINDER,
-                          help=_("Additional arguments appended to the "
-                                 "upgrade method.  Use `-- --OPTION=VAL` "
-                                 "if you want to pass additional "
-                                 "unsupported arguments to rpm-ostree."))
+    _add_remainder_arg(upgradep)
 
     # atomic host rebase
     rebasep = host_subparser.add_parser(
@@ -76,11 +71,7 @@ def cli(subparser):
                          help=_("Operate on provided OSNAME"))
     rebasep.add_argument("refspec",
                          help=_("Origin refspec for new deployment"))
-    rebasep.add_argument("args", nargs=argparse.REMAINDER,
-                         help=_("Additional arguments appended to the "
-                                "rebase method.  Use `-- --OPTION=VAL` "
-                                "if you want to pass additional "
-                                "unsupported arguments to rpm-ostree."))
+    _add_remainder_arg(rebasep)
 
     # atomic host deploy
     deployp = host_subparser.add_parser(
@@ -95,11 +86,7 @@ def cli(subparser):
     deployp.add_argument("--preview", dest="preview",
                          action="store_true",
                          help=_("Just preview package differences"))
-    deployp.add_argument("args", nargs=argparse.REMAINDER,
-                         help=_("Additional arguments appended to the "
-                                "deploy method.  Use `-- --OPTION=VAL` "
-                                "if you want to pass additional "
-                                "unsupported arguments to rpm-ostree."))
+    _add_remainder_arg(deployp)
 
     # atomic host unlock
     unlockp = host_subparser.add_parser(
@@ -108,11 +95,8 @@ def cli(subparser):
     unlockp.add_argument("--hotfix", dest="hotfix",
                          action="store_true",
                          help=_("Retain any changes after reboot"))
-    unlockp.add_argument("args", nargs=argparse.REMAINDER,
-                         help=_("Additional arguments appended to the "
-                                "unlock method.  Use `-- --OPTION=VAL` "
-                                "if you want to pass additional "
-                                "unsupported arguments to ostree."))
+    _add_remainder_arg(unlockp)
+
 class Host(Atomic):
     def __init__(self):
         super(Host, self).__init__()
