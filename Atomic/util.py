@@ -584,6 +584,7 @@ def expandvars(path, environ=None):
     return path
 
 def get_registry_configs(yaml_dir):
+    # Returns a dictionary of registries and a str of the default_store if applicable
     regs = {}
     default_store = None
     # Get list of files that end in .yaml and are in fact files
@@ -606,8 +607,11 @@ def get_registry_configs(yaml_dir):
                 for k,v in registries.items():
                     if k not in regs:
                         regs[k] = v
+                        # Add filename of yaml into registry config
+                        regs[k]['filename'] = yaml_file
                     else:
                         raise ValueError("There is a duplicate entry for {} in {}".format(k, yaml_dir))
+
             except ScannerError:
                 raise ValueError("{} appears to not be properly formatted YAML.".format(yaml_file))
     return regs, default_store
