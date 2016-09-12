@@ -97,6 +97,16 @@ def cli(subparser):
                          help=_("Retain any changes after reboot"))
     _add_remainder_arg(unlockp)
 
+    # atomic host install/uninstall
+    p = host_subparser.add_parser(
+        "install", help=_("Install a (layered) RPM package"))
+    p.set_defaults(_class=Host, func='host_install')
+    _add_remainder_arg(p)
+    p = host_subparser.add_parser(
+        "uninstall", help=_("Remove a layered RPM package"))
+    p.set_defaults(_class=Host, func='host_uninstall')
+    _add_remainder_arg(p)
+
 class Host(Atomic):
     def __init__(self):
         super(Host, self).__init__()
@@ -148,6 +158,14 @@ class Host(Atomic):
         if self.args.hotfix:
             argv.append("--hotfix")
         self._ostreeadmin(argv)
+
+    def host_install(self):
+        argv = ['install']
+        self._rpmostree(argv)
+
+    def host_uninstall(self):
+        argv = ['uninstall']
+        self._rpmostree(argv)
 
     def _passthrough(self, args):
         cmd = args[0]
