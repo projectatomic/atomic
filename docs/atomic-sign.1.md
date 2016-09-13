@@ -48,7 +48,7 @@ Sign the foobar image and save the signature in /tmp/signatures/.
 
 Sign the busybox image with the identify of foo@bar.com
 
-    atomic --sign-by foo@bar.com privateregistry.example.com
+    atomic sign --sign-by foo@bar.com privateregistry.example.com
 
 # HISTORY
 Initial revision by Brent Baude (bbaude at redhat dot com) August 2016
