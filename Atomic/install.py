@@ -84,7 +84,7 @@ class Install(Atomic):
             return self.syscontainers.install_user_container(self.image, self.name)
         elif self.system:
             return self.syscontainers.install_system_container(self.image, self.name)
-        elif self.args.setvalues:
+        elif OSTREE_PRESENT and self.args.setvalues:
             raise ValueError("--set is valid only when used with --system or --user")
 
         self._check_if_image_present()
