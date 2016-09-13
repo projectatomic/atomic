@@ -15,8 +15,12 @@ dnf install atomic
 On Fedora, You need to install required build dependencies
 ```
 yum-builddep atomic
+yum install -y python-requests libselinux-python python-docker-py \
+    python-dateutil python-yaml pylint python-slip-dbus python-gobject
 # or
 dnf builddep atomic
+dnf install -y python-requests libselinux-python python-docker-py \
+    python-dateutil python-yaml pylint python-slip-dbus python-gobject
 ```
 
 Optionally, to use the builddep plugin in DNF you need to install dnf-plugins-core
