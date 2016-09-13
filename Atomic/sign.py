@@ -27,6 +27,10 @@ def cli(subparser):
 
 class Sign(Atomic):
     def sign(self):
+        def no_reg_no_default_error(image, registry_path):
+            return "Unable to associate {} with configurations in {} and " \
+                   "no 'default-docker' is defined.".format(image,
+                                                            registry_path)
 
         if self.args.debug:
             util.write_out(str(self.args))
@@ -59,13 +63,12 @@ class Sign(Atomic):
 
                 else:
                     reg, repo, _ = util.decompose(expanded_image_name)
+                    if not registry_configs and not default_store:
+                        raise ValueError(no_reg_no_default_error(sign_image, registry_config_path))
                     reg_info = util.have_match_registry("{}/{}".format(reg, repo), registry_configs)
                     if not reg_info:
                         reg_info = default_store
-                    if not reg_info:
-                        raise ValueError("Unable to associate {} with "
-                                         "configurations in {} and no 'default-docker' "
-                                         "is defined.".format(sign_image, registry_config_path))
+
                     signature_path = util.get_signature_write_path(reg_info)
                     if signature_path is None:
                         raise ValueError("No write path for {}/{} was "

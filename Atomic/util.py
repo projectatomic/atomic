@@ -587,6 +587,8 @@ def get_registry_configs(yaml_dir):
     # Returns a dictionary of registries and a str of the default_store if applicable
     regs = {}
     default_store = None
+    if not os.path.exists(yaml_dir):
+        return None, default_store
     # Get list of files that end in .yaml and are in fact files
     for yaml_file in [os.path.join(yaml_dir, x) for x in os.listdir(yaml_dir) if x.endswith('.yaml')
             and os.path.isfile(os.path.join(yaml_dir, x))]:
