@@ -43,6 +43,23 @@ Your install will now be complete!
 1.8
 ```
 
+##Test
+
+To test the checked out tree, install dependencies
+```
+dnf install -y python3-pylint /usr/bin/coverage2
+```
+
+Start the docker daemon
+```
+systemctl start docker
+```
+
+Run the tests
+```
+make test
+```
+
 ##Notes
 
 Warning: Atomic no longer packages the CLI as an egg and thus upgrading from `atomic` 1.5 to 1.8 requires removing conflicting folders.
