@@ -16,24 +16,25 @@ def cli(subparser):
                           Trust policy allows for nested scope.
                           Example: registry.example.com defines trust for entire registry.
                           Example: registry.example.com/acme defines trust for specific repository."""
-    sigstore_help="""Signature server type (default: docker)
-                     dir: local file 
-                     docker: static web server 
+    sigstore_help="""Signature server type (default: web)
+                     local: local file 
+                     web: remote web server 
                      atomic: openshift-based atomic registry"""
-    commonp.add_argument("-k", "--pubkeys", dest="pubkeys",
+    commonp.add_argument("-k", "--pubkeys", nargs='?', default=[],
+                         action="append", dest="pubkeys",
                          help=_("Absolute path of installed public key(s) to trust for TARGET. "
-                                "May be a comma-separated list of multiple trusted public keys. "
+                                "May used multiple times to define multiple public keys. "
                                 "File(s) must exist before using this command. "
                                 "Default directory is %s" % pubkeys_dir))
-    commonp.add_argument("-s", "--sigstoretype", dest="sigstoretype", default="docker",
-                         choices=['dir', 'docker', 'atomic'],
+    commonp.add_argument("--sigstoretype", dest="sigstoretype", default="web",
+                         choices=['local', 'web', 'atomic'],
                          help=sigstore_help)
     commonp.add_argument("-t", "--type", dest="trust_type", default="signedBy",
                          choices=['signedBy', 'insecureAcceptAnything', 'reject'],
                          help="Trust type (default: signedBy)")
     commonp.add_argument("--keytype", dest="keytype", default="GPGKeys",
                          help="Public key type (default: GPGKeys)")
-    commonp.add_argument("-u", "--sigstore", dest="sigstore",
+    commonp.add_argument("-s", "--sigstore", dest="sigstore",
                          help=_("URL and path of remote signature server, "
                                 "https://sigstore.example.com/signatures. "
                                 "Ignored with 'atomic' sigstoretype."))
@@ -43,12 +44,17 @@ def cli(subparser):
     addp = subparsers.add_parser("add", parents=[commonp],
                                  help="Add a new trust policy for a registry")
     addp.set_defaults(_class=Trust, func="add")
+    defaultp = subparsers.add_parser("default",
+                                 help="Modify default trust policy")
+    defaultp.add_argument("default_policy", choices=["reject", "accept"],
+                                 help="Default policy action")
+    defaultp.set_defaults(_class=Trust, func="default")
     deletep = subparsers.add_parser("delete",
                                     help="Delete a trust policy for a registry")
     deletep.add_argument("registry",
                          help=registry_help)
-    deletep.add_argument("-s", "--sigstoretype", dest="sigstoretype", default="docker",
-                         choices=['dir', 'docker', 'atomic'],
+    deletep.add_argument("--sigstoretype", dest="sigstoretype", default="web",
+                         choices=['local', 'web', 'atomic'],
                          help=sigstore_help)
     deletep.set_defaults(_class=Trust, func="delete")
 
@@ -65,54 +71,59 @@ class Trust(Atomic):
         """
         Add or prompt to modify policy.json file and registries.d registry configuration
         """
+        sstype = self.get_sigstore_type_map(self.args.sigstoretype)
         with open(self.policy_filename, 'r+') as policy_file:
             policy = json.load(policy_file)
             policy = self.check_policy(policy)
-            if self.args.registry in policy["transports"][self.args.sigstoretype]:
+            if self.args.registry in policy["transports"][sstype]:
                 confirm = None
                 if self.args.assumeyes:
                     confirm = "yes"
                 else:
                     confirm = util.input("Trust policy already defined for %s:%s\nDo you want to overwrite? (y/N) " % (self.args.sigstoretype, self.args.registry))
                 if not "y" in confirm.lower():
-                    util.write_out("Trust policy not modified")
                     exit(0)
             payload = []
-            if self.args.pubkeys:
-                keys = self.args.pubkeys.split(",")
-                for k in keys:
-                    if not os.path.exists(k):
-                        raise ValueError("The public key file %s was not found. This file must exist to proceed." % k)
-                    payload.append({ "type": self.args.trust_type, "keyType": self.args.keytype, "keyPath": k })
-            elif self.args.trust_type:
-                if (self.args.trust_type == "signedBy" and not self.args.pubkeys):
+            for k in self.args.pubkeys:
+                if not os.path.exists(k):
+                    raise ValueError("The public key file %s was not found. This file must exist to proceed." % k)
+                payload.append({ "type": self.args.trust_type, "keyType": self.args.keytype, "keyPath": k })
+            if self.args.trust_type == "signedBy":
+                if len(self.args.pubkeys) == 0:
                     raise ValueError("At least one public key must be defined for type 'signedBy'")
-                else:
-                    payload.append({ "type": self.args.trust_type })
-            policy["transports"][self.args.sigstoretype][self.args.registry] = payload
+            else:
+                payload.append({ "type": self.args.trust_type })
+            policy["transports"][sstype][self.args.registry] = payload
             policy_file.seek(0)
             json.dump(policy, policy_file, indent=4)
             policy_file.truncate()
             if self.args.sigstore:
-                if self.args.sigstoretype == "atomic":
-                    util.write_out("Sigstore cannot be defined for sigstoretype 'atomic'")
+                if sstype == "atomic":
+                    raise ValueError("Sigstore cannot be defined for sigstoretype 'atomic'")
                 else:
                     self.modify_registry_config(self.args.registry, self.args.sigstore)
-            util.write_out("Added trust policy for %s transport %s" % (self.args.sigstoretype, self.args.registry))
 
     def delete(self):
+        sstype = self.get_sigstore_type_map(self.args.sigstoretype)
         with open(self.policy_filename, 'r+') as policy_file:
             policy = json.load(policy_file)
             try:
-                del policy["transports"][self.args.sigstoretype][self.args.registry]
+                del policy["transports"][sstype][self.args.registry]
             except KeyError:
-                util.write_out("Could not find trust policy defined for %s transport %s" % 
+                raise ValueError("Could not find trust policy defined for %s transport %s" % 
                               (self.args.sigstoretype, self.args.registry))
-                exit(1)
             policy_file.seek(0)
             json.dump(policy, policy_file, indent=4)
             policy_file.truncate()
-            util.write_out("Removed trust policy for %s:%s" % (self.args.sigstoretype, self.args.registry))
+
+    def default(self):
+        with open(self.policy_filename, 'r+') as policy_file:
+            policy = json.load(policy_file)
+            default_type_map = { "accept": "insecureAcceptAnything", "reject": "reject" }
+            policy["default"][0]["type"] = default_type_map[self.args.default_policy]
+            policy_file.seek(0)
+            json.dump(policy, policy_file, indent=4)
+            policy_file.truncate()
 
     def check_policy(self, policy):
         """
@@ -120,10 +131,11 @@ class Trust(Atomic):
         :param policy: policy data
         :return: modified policy
         """
+        sstype = self.get_sigstore_type_map(self.args.sigstoretype)
         if not "transports" in policy:
             policy["transports"] = {}
-        if not self.args.sigstoretype in policy["transports"]:
-            policy["transports"][self.args.sigstoretype] = {}
+        if not sstype in policy["transports"]:
+            policy["transports"][sstype] = {}
         return policy
 
     def modify_registry_config(self, registry, sigstore):
@@ -142,7 +154,6 @@ class Trust(Atomic):
                 with open(reg_yaml_file, 'w') as reg_file:
                     d = { "docker": { registry: { "sigstore": sigstore }}}
                     yaml.dump(d, reg_file, default_flow_style=False)
-                    util.write_out("Added registry config file %s" % reg_yaml_file)
             elif os.path.exists(reg_yaml_file):
                 # The filename we expect to use already exists
                 # Open an existing file and add a new key for this registry
@@ -154,8 +165,6 @@ class Trust(Atomic):
                 self.write_registry_config_file(registry_configs[registry]["filename"],
                                                 registry,
                                                 sigstore)
-            else:
-                util.write_out("No change to registry sigstore")
 
     def write_registry_config_file(self, reg_file, registry, sigstore):
         """
@@ -170,5 +179,12 @@ class Trust(Atomic):
             f.seek(0)
             yaml.dump(d, f, default_flow_style=False)
             f.truncate()
-            util.write_out("Updated registry config file %s" % reg_file)
 
+    def get_sigstore_type_map(self, sigstore_type):
+        """
+        Get the skopeo trust policy type for user-friendly value
+        :param sigstore_type: one of web,local,atomic
+        :return: skopeo trust policy type string
+        """
+        t = { "web": "docker", "local": "dir", "atomic": "atomic" }
+        return t[sigstore_type]

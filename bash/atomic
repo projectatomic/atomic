@@ -658,6 +658,7 @@ _atomic_trust() {
   local subcommands="
     add
     delete
+    default
   "
 
   __atomic_subcommands "$subcommands" && return
@@ -676,10 +677,10 @@ _atomic_trust() {
 _atomic_trust_add() {
 	local options_with_args="
                 --pubkeys -k
-                --sigstoretype -s
+                --sigstoretype
                 --type -t
                 --keytype
-                --sigstore -u
+                --sigstore -s
 	"
         local all_options="$options_with_args
                 --help -h

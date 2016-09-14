@@ -16,15 +16,19 @@ class TestAtomicTrust(unittest.TestCase):
         def __init__(self):
             self.sigstoretype = "atomic"
             self.registry = "docker.io"
-            self.pubkeys = os.path.join(FIXTURE_DIR, "key1.pub")
+            self.pubkeys = [os.path.join(FIXTURE_DIR, "key1.pub")]
             self.sigstore = "https://sigstore.example.com/sigs"
             self.trust_type = "signedBy"
             self.keytype = "GPGKeys"
             self.assumeyes = True
 
+    def test_sigstoretype_map_web(self):
+        testobj = Trust()
+        self.assertEqual(testobj.get_sigstore_type_map("web"), "docker")
+
     def test_setup_default_policy(self):
         args = self.Args()
-        args.sigstoretype = "docker"
+        args.sigstoretype = "web"
         testobj = Trust()
         testobj.set_args(args)
         with open(os.path.join(FIXTURE_DIR, "default_policy.json"), 'r') as default:
@@ -66,6 +70,7 @@ class TestAtomicTrust(unittest.TestCase):
 
     def test_add_trust_keys(self):
         args = self.Args()
+        args.sigstore = None
         testobj = Trust(policy_filename = os.path.join(FIXTURE_DIR, "etc/containers/policy.json"))
         testobj.atomic_config = util.get_atomic_config(atomic_config = os.path.join(FIXTURE_DIR, "atomic.conf"))
         testobj.set_args(args)
@@ -77,7 +82,8 @@ class TestAtomicTrust(unittest.TestCase):
 
     def test_modify_trust_2_keys(self):
         args = self.Args()
-        args.pubkeys = "%s,%s" % (os.path.join(FIXTURE_DIR, "key1.pub"), os.path.join(FIXTURE_DIR, "key2.pub"))
+        args.sigstore = None
+        args.pubkeys = [os.path.join(FIXTURE_DIR, "key1.pub"), os.path.join(FIXTURE_DIR, "key2.pub")]
         testobj = Trust(policy_filename = os.path.join(FIXTURE_DIR, "etc/containers/policy.json"))
         testobj.atomic_config = util.get_atomic_config(atomic_config = os.path.join(FIXTURE_DIR, "atomic.conf"))
         testobj.set_args(args)
@@ -90,8 +96,8 @@ class TestAtomicTrust(unittest.TestCase):
     def test_add_reject_type(self):
         args = self.Args()
         args.trust_type = "reject"
-        args.sigstoretype = "docker"
-        args.pubkeys = None
+        args.sigstoretype = "web"
+        args.pubkeys = []
         args.registry = "registry.example.com/foo"
         testobj = Trust(policy_filename = os.path.join(FIXTURE_DIR, "etc/containers/policy.json"))
         testobj.atomic_config = util.get_atomic_config(atomic_config = os.path.join(FIXTURE_DIR, "atomic.conf"))
@@ -104,7 +110,8 @@ class TestAtomicTrust(unittest.TestCase):
 
     def test_delete_trust(self):
         args = self.Args()
-        args.sigstoretype = "docker"
+        args.pubkeys = []
+        args.sigstoretype = "web"
         args.registry = "registry.example.com/foo"
         args.pubkeys = None
         testobj = Trust(policy_filename = os.path.join(FIXTURE_DIR, "etc/containers/policy.json"))

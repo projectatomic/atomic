@@ -6,14 +6,14 @@ atomic-trust - Manage system container trust policy
 
 
 # SYNOPSIS
-**atomic trust add|delete**
+**atomic trust add|delete|default**
 [**-h**|**--help**]
 
-[**-k**|**--pubkeys** KEY1[,KEY2,...]]
+[**-k**|**--pubkeys** KEY1 [**-k**|**--pubkeys** KEY2,...]]
 [**--keytype** GPGKeys]
 [**-t**|**--type** signedBy|insecureAcceptAnything|reject]
-[**-u**|**--sigstore** https://URL[:PORT][/PATH]|file:///PATH]
-[**-s**|**--sigstoretype** docker|atomic|dir]
+[**-s**|**--sigstore** https://URL[:PORT][/PATH]|file:///PATH]
+[**--sigstoretype** web|atomic|local]
 REGISTRY[/REPOSITORY]
 
 # DESCRIPTION
@@ -37,12 +37,14 @@ or a remote web server (https://URL).
 
 Trust may be updated using the command **atomic trust add** for an existing trust scope.
 
+The default trust policy is managed by the default command. Options are **accept** or **reject**.
+
 # OPTIONS
 **-h** **--help**
   Print usage statement.
 
 **-k** **--pubkeys**
-  A comma-separated list of absolute paths to installed public keys. Required
+  An absolute path to installed public key. May be used multiple times. Required
   for **signedBy** type.
 
 **--keytype**
@@ -62,9 +64,9 @@ Trust may be updated using the command **atomic trust add** for an existing trus
 
 **-s** **--sigstoretype**
   Type of signature transport. Accepted values:
-    **docker** (default): remote web server
+    **web** (default): remote web server
     **atomic**: OpenShift-based Atomic Registry API
-    **dir**: Local filesystem
+    **local**: Local filesystem path
 
 
 # EXAMPLES
@@ -79,7 +81,8 @@ Modify a trust scope, adding a second public key and changing
 the sigstore web server
 
     atomic trust add \
-           --pubkeys /etc/pki/containers/foo@example.com,/etc/pki/containers/bar@example.com \
+           --pubkeys /etc/pki/containers/foo@example.com \
+           --pubkeys /etc/pki/containers/bar@example.com \
            --sigstore https://server.example.com/foobar/sigstore/ \
            docker.io/foobar
 
@@ -90,6 +93,10 @@ Accept all unsigned images from a registry
 Remove a trust scope
 
     atomic trust delete docker.io
+
+Modify default trust policy
+
+    atomic trust default reject
 
 # HISTORY
 September 2016, originally compiled by Aaron Weitekamp (aweiteka at redhat dot com)
