@@ -365,7 +365,7 @@ class DockerObjectNotFound(ValueError):
     def __init__(self, msg):
         super(DockerObjectNotFound, self).__init__("Unable to associate '{}' with an image or container".format(msg))
 
-def get_atomic_config():
+def get_atomic_config(ATOMIC_CONF=ATOMIC_CONF):
     # Returns the atomic configuration file (/etc/atomic.conf)
     # in a dict
     # :return: dict based structure of the atomic config file

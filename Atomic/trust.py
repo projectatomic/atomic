@@ -6,7 +6,6 @@ import json
 import yaml
 
 ATOMIC_CONFIG = util.get_atomic_config()
-POLICY_FILE = "/etc/containers/policy.json"
 
 def cli(subparser):
     # atomic trust
@@ -56,22 +55,31 @@ def cli(subparser):
     removep.set_defaults(_class=Trust, func="remove")
 
 class Trust(Atomic):
+    def __init__(self):
+        super(Trust, self).__init__()
+        self.policy_filename = "/etc/containers/policy.json"
+        self.atomic_config = util.get_atomic_config()
 
     def add(self):
         """
         Add or prompt to modify policy.json file and registries.d registry configuration
         """
-        with open(POLICY_FILE, 'r+') as policy_file:
+        with open(self.policy_filename, 'r+') as policy_file:
             policy = json.load(policy_file)
             policy = self.check_policy(policy)
             if self.args.registry in policy["transports"][self.args.sigstoretype]:
-                overwrite = util.input("Trust policy already defined for %s:%s\nDo you want to overwrite? (y/N) " % (self.args.sigstoretype, self.args.registry))
-                if not "y" in overwrite.lower():
+                confirm = None
+                if self.args.assumeyes:
+                    confirm = "yes"
+                else:
+                    confirm = util.input("Trust policy already defined for %s:%s\nDo you want to overwrite? (y/N) " % (self.args.sigstoretype, self.args.registry))
+                if not "y" in confirm.lower():
                     util.write_out("Trust policy not modified")
                     exit(0)
             payload = []
             if self.args.pubkeys:
-                for k in self.args.pubkeys:
+                keys = self.args.pubkeys.split(" ")
+                for k in keys:
                     if not os.path.exists(k):
                         raise ValueError("The public key file %s was not found. This file must exist to proceed." % k)
                     payload.append({ "type": self.args.trust_type, "keyType": self.args.keytype, "keyPath": k })
@@ -92,7 +100,7 @@ class Trust(Atomic):
             util.write_out("Added trust policy for %s transport %s" % (self.args.sigstoretype, self.args.registry))
 
     def remove(self):
-        with open(POLICY_FILE, 'r+') as policy_file:
+        with open(self.policy_filename, 'r+') as policy_file:
             policy = json.load(policy_file)
             try:
                 del policy["transports"][self.args.sigstoretype][self.args.registry]
@@ -123,11 +131,11 @@ class Trust(Atomic):
         :param registry: a registry name
         :param sigstore: a file:/// or https:// URL
         """
-        registry_config_path = util.get_atomic_config_item(["registry_confdir"], ATOMIC_CONFIG)
+        registry_config_path = util.get_atomic_config_item(["registry_confdir"], self.atomic_config)
         registry_configs, _ = util.get_registry_configs(registry_config_path)
         reg_info = util.have_match_registry(registry, registry_configs)
-        reg_yaml_file = "%s/%s.yaml" % (registry_config_path, registry.replace("/", "-"))
-        if not reg_info:
+        reg_yaml_file = "%s.yaml" % os.path.join(registry_config_path, registry.replace("/", "-"))
+        if (not reg_info or registry not in registry_configs):
             # no existing configuration found for this registry
             if not os.path.exists(reg_yaml_file):
                 with open(reg_yaml_file, 'w') as reg_file:
