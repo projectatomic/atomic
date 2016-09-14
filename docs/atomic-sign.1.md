@@ -50,5 +50,36 @@ Sign the busybox image with the identify of foo@bar.com
 
     atomic sign --sign-by foo@bar.com privateregistry.example.com
 
+# RELATED CONFIGURATION
+
+The write (and read) location for signatures is defined in YAML-based
+configuration files in /etc/containers/registries.d/.  When you sign
+an image, atomic will use those configuration files to determine
+where to write the signature based on the the name of the originating
+registry or a default storage value unless overriden with the -d 
+option. For example, consider the following configuration file.
+
+docker:
+  privateregistry.example.com:
+    sigstore: file:///var/lib/atomic/signature
+
+When signing an image preceeded with the registry name 'privateregistrt.example.com',
+the signature will be written into subdirectories of 
+/var/lib/atomic/signature/privateregistry.example.com. The use of 'sigstore' also means
+the signature will be 'read' from that same location on a pull-related function.
+
+You can also scope the registry definitions by repository and even name.  Consider the
+following addition to the configuration above.
+
+  privateregistry.exaple.com/john:
+    sigstore-write: file:///mnt/export/signatures
+    sigstore: https://www.example.com/signatures/
+
+Now any image from the john repository will use the sigstore-write location of
+'/mnt/export/signatures'.  Also note the use of sigstore-write versus sigstore. This
+means that signatures should be written to that location but read should occur from
+the http URL provided.
+
 # HISTORY
 Initial revision by Brent Baude (bbaude at redhat dot com) August 2016
+Updated by Brent Baude (bbaude at redhat dot com) September 2016

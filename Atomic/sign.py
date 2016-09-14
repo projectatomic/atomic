@@ -3,7 +3,6 @@ from . import Atomic
 import os
 import tempfile
 from .atomic import AtomicError
-import re
 
 
 ATOMIC_CONFIG = util.get_atomic_config()
@@ -58,8 +57,8 @@ class Sign(Atomic):
                 if self.args.signature_path:
                     if not os.path.exists(self.args.signature_path):
                         raise ValueError("The path {} does not exist".format(self.args.signature_path))
-                    fq_sig_path = os.path.join(self.args.signature_path,
-                                               self.get_sig_name(self.args.signature_path))
+                    signature_path = self.args.signature_path
+
 
                 else:
                     reg, repo, _ = util.decompose(expanded_image_name)
@@ -78,18 +77,18 @@ class Sign(Atomic):
                     if signature_path.startswith("file://"):
                         signature_path = signature_path.replace("file://", "")
 
-                        # Make sure signature path exists
-                        if not os.path.exists(signature_path):
-                            raise ValueError("The signature path {} does not exist".format(signature_path))
+                    # Make sure signature path exists
+                    if not os.path.exists(signature_path):
+                        raise ValueError("The signature path {} does not exist".format(signature_path))
 
-                    sigstore_path = "{}/{}/{}@{}".format(signature_path, os.path.dirname(expanded_image_name),
-                                                         os.path.basename(expanded_image_name), manifest_hash)
-                    self.make_sig_dirs(sigstore_path)
-                    sig_name = self.get_sig_name(sigstore_path)
-                    fq_sig_path = os.path.join(sigstore_path, sig_name)
-                    if os.path.exists(fq_sig_path):
-                        raise ValueError("The signature {} already exists.  If you wish to "
-                                         "overwrite it, please delete this file first")
+                sigstore_path = "{}/{}/{}@{}".format(signature_path, os.path.dirname(expanded_image_name),
+                                                     os.path.basename(expanded_image_name), manifest_hash)
+                self.make_sig_dirs(sigstore_path)
+                sig_name = self.get_sig_name(sigstore_path)
+                fq_sig_path = os.path.join(sigstore_path, sig_name)
+                if os.path.exists(fq_sig_path):
+                    raise ValueError("The signature {} already exists.  If you wish to "
+                                     "overwrite it, please delete this file first")
 
                 util.skopeo_standalone_sign(expanded_image_name + tag, manifest_file.name,
                                             self.get_fingerprint(signer), fq_sig_path)
@@ -120,37 +119,6 @@ class Sign(Atomic):
             # perhaps revisit directory permissions
             # when complete use-cases are known
             os.makedirs(sig_path)
-
-    @staticmethod
-    def get_sig_name2(sig_path):
-        def missing_ints(aoi):
-            # Returns a list of integers in range
-            start, end = 1, max(aoi) + 1
-            if start == end and start is not 1:
-                start = 1
-            _diff = sorted(set(range(start, end)).difference(aoi))
-            if len(_diff) == 0:
-                return end
-            else:
-                return min(_diff)
-
-        sigs = []
-        for sig in os.listdir(sig_path):
-            if re.match(r"signature-\b[0-9]+\b(?!\.[0-9])", sig):
-                sigs.append(int(sig.replace("signature-", "")))
-
-        sigs.sort()
-        if len(sigs) == 0:
-            return "signature-1"
-        # In the event signature-0 exists
-        if sigs[0] == 0:
-            del sigs[0]
-        missing = missing_ints(sigs)
-        if missing == 0:
-            sig_int = max(sigs) + 1
-        else:
-            sig_int = missing
-        return "signature-{}".format(sig_int)
 
     @staticmethod
     def get_sig_name(sig_path):
