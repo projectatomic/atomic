@@ -63,7 +63,7 @@ docker:
   privateregistry.example.com:
     sigstore: file:///var/lib/atomic/signature
 
-When signing an image preceeded with the registry name 'privateregistrt.example.com',
+When signing an image preceeded with the registry name 'privateregistry.example.com',
 the signature will be written into subdirectories of 
 /var/lib/atomic/signature/privateregistry.example.com. The use of 'sigstore' also means
 the signature will be 'read' from that same location on a pull-related function.

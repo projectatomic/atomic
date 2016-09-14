@@ -72,6 +72,9 @@ class Sign(Atomic):
                     if signature_path is None:
                         raise ValueError("No write path for {}/{} was "
                                          "found in {}".format(reg, repo, registry_config_path))
+                    elif signature_path.startswith("http"):
+                        raise ValueError("Writing to {} is not supported. Use a "
+                                         "file:///location instead.".format(signature_path))
 
                     # Deal with write path prepends
                     if signature_path.startswith("file://"):
