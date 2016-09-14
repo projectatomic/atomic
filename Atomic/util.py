@@ -411,11 +411,10 @@ def get_scanners():
         with open(f, 'r') as conf_file:
             try:
                 temp_conf = yaml_load(conf_file)
-            except YAMLError:
-                write_err("Error: Unable to load scannerfile %s.  Continuing..." %f)
-            try:
                 if temp_conf.get('type') == "scanner":
                     scanners.append(temp_conf)
+            except YAMLError:
+                write_err("Error: Unable to load scannerfile %s.  Continuing..." %f)
             except AttributeError:
                 pass
     return scanners
