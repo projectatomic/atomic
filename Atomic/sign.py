@@ -28,8 +28,8 @@ class Sign(Atomic):
     def sign(self):
         def no_reg_no_default_error(image, registry_path):
             return "Unable to associate {} with configurations in {} and " \
-                   "no 'default-docker' is defined.".format(image,
-                                                            registry_path)
+                   "no 'default_store' is defined.".format(image,
+                                                           registry_path)
 
         if self.args.debug:
             util.write_out(str(self.args))
