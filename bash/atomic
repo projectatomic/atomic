@@ -654,6 +654,50 @@ _atomic_sign() {
 	return 0
 }
 
+_atomic_trust() {
+  local subcommands="
+    add
+    delete
+  "
+
+  __atomic_subcommands "$subcommands" && return
+
+  case "$cur" in
+    -*)
+      COMPREPLY=( $( compgen -W "--help" -- "$cur" ) )
+      ;;
+    *)
+      COMPREPLY=( $( compgen -W "$subcommands" -- "$cur" ) )
+      ;;
+  esac
+  return 0
+}
+
+_atomic_trust_add() {
+	local options_with_args="
+                --pubkeys -k
+                --sigstoretype -s
+                --type -t
+                --keytype
+                --sigstore -u
+	"
+        local all_options="$options_with_args
+                --help -h
+        "
+
+        local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
+
+        case "$cur" in
+                -*)
+                        COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+                        ;;
+                *)
+                        local counter=$( __atomic_pos_first_nonflag $( __atomic_to_alternatives "$options_with_args" ) )
+                        ;;
+
+        esac
+}
+
 _atomic_mount() {
 	local options_with_args="
 		--options -o
@@ -1106,6 +1150,7 @@ _atomic() {
 		sign
 		stop
 		top
+                trust
 		verify
 		version
 		uninstall
