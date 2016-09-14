@@ -6,14 +6,14 @@ atomic-trust - Manage system container trust policy
 
 
 # SYNOPSIS
-**atomic trust add|remove**
+**atomic trust add|delete**
 [**-h**|**--help**]
 
-[**--pubkeys** KEY1 [KEY2][...]]
+[**-k**|**--pubkeys** KEY1[,KEY2,...]]
 [**--keytype** GPGKeys]
-[**--type** signedBy|insecureAcceptAnything|reject]
-[**--sigstore** https://URL[:PORT][/PATH]|file:///PATH]
-[**--sigstoretype** docker|atomic|dir]
+[**-t**|**--type** signedBy|insecureAcceptAnything|reject]
+[**-u**|**--sigstore** https://URL[:PORT][/PATH]|file:///PATH]
+[**-s**|**--sigstoretype** docker|atomic|dir]
 REGISTRY[/REPOSITORY]
 
 # DESCRIPTION
@@ -41,14 +41,14 @@ Trust may be updated using the command **atomic trust add** for an existing trus
 **-h** **--help**
   Print usage statement.
 
-**--pubkeys**
-  A space-separated list of absolute paths to installed public keys. Required
-  for **signedBy** type. Default: signedBy
+**-k** **--pubkeys**
+  A comma-separated list of absolute paths to installed public keys. Required
+  for **signedBy** type.
 
 **--keytype**
   The public key type. Default: GPGKeys (only supported value)
 
-**--type**
+**-t** **--type**
   The trust type for this policy entry. Accepted values:
     **signedBy** (default): Require signatures with corresponding list of
                             public keys
@@ -56,11 +56,11 @@ Trust may be updated using the command **atomic trust add** for an existing trus
                                 registry scope
     **reject**: do not accept images for this registry scope
 
-**--sigstore**
+**-u** **--sigstore**
   A path or remote URL where signatures are found. Prefix filesystem path with
   **file:///PATH** and remote web server with **https://URL[:PORT][/PATH/TO/SIGNATURES]**.
 
-**--sigstoretype**
+**-s** **--sigstoretype**
   Type of signature transport. Accepted values:
     **docker** (default): remote web server
     **atomic**: OpenShift-based Atomic Registry API
@@ -79,8 +79,7 @@ Modify a trust scope, adding a second public key and changing
 the sigstore web server
 
     atomic trust add \
-           --pubkeys /etc/pki/containers/foo@example.com \
-                     /etc/pki/containers/bar@example.com \
+           --pubkeys /etc/pki/containers/foo@example.com,/etc/pki/containers/bar@example.com \
            --sigstore https://server.example.com/foobar/sigstore/ \
            docker.io/foobar
 
@@ -90,7 +89,7 @@ Accept all unsigned images from a registry
 
 Remove a trust scope
 
-    atomic trust remove docker.io
+    atomic trust delete docker.io
 
 # HISTORY
 September 2016, originally compiled by Aaron Weitekamp (aweiteka at redhat dot com)

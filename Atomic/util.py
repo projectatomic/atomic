@@ -365,13 +365,17 @@ class DockerObjectNotFound(ValueError):
     def __init__(self, msg):
         super(DockerObjectNotFound, self).__init__("Unable to associate '{}' with an image or container".format(msg))
 
-def get_atomic_config(ATOMIC_CONF=ATOMIC_CONF):
-    # Returns the atomic configuration file (/etc/atomic.conf)
-    # in a dict
-    # :return: dict based structure of the atomic config file
-    if not os.path.exists(ATOMIC_CONF):
-        raise ValueError("{} does not exist".format(ATOMIC_CONF))
-    with open(ATOMIC_CONF, 'r') as conf_file:
+def get_atomic_config(atomic_config=None):
+    """
+    Get the atomic configuration file (/etc/atomic.conf) as a dict
+    :param atomic_conf: path to override atomic.conf, primarily for testing
+    :return: dict based structure of the atomic config file
+    """
+    if not atomic_config:
+        atomic_config = ATOMIC_CONF
+    if not os.path.exists(atomic_config):
+        raise ValueError("{} does not exist".format(atomic_config))
+    with open(atomic_config, 'r') as conf_file:
         return yaml_load(conf_file)
 
 def add_opt(sub):

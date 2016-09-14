@@ -5,11 +5,9 @@ import argparse
 import json
 import yaml
 
-ATOMIC_CONFIG = util.get_atomic_config()
-
 def cli(subparser):
     # atomic trust
-    pubkeys_dir = util.get_atomic_config_item(['pubkeys_dir'], atomic_config=ATOMIC_CONFIG)
+    pubkeys_dir = util.get_atomic_config_item(['pubkeys_dir'])
 
     trustp = subparser.add_parser("trust",
                                  description="Manage trust policy for registries")
@@ -22,20 +20,20 @@ def cli(subparser):
                      dir: local file 
                      docker: static web server 
                      atomic: openshift-based atomic registry"""
-    commonp.add_argument("--pubkeys", dest="pubkeys", nargs='*',
+    commonp.add_argument("-k", "--pubkeys", dest="pubkeys",
                          help=_("Absolute path of installed public key(s) to trust for TARGET. "
-                                "May be a list of multiple trusted public keys. "
+                                "May be a comma-separated list of multiple trusted public keys. "
                                 "File(s) must exist before using this command. "
                                 "Default directory is %s" % pubkeys_dir))
-    commonp.add_argument("--sigstoretype", dest="sigstoretype", default="docker",
+    commonp.add_argument("-s", "--sigstoretype", dest="sigstoretype", default="docker",
                          choices=['dir', 'docker', 'atomic'],
                          help=sigstore_help)
-    commonp.add_argument("--type", dest="trust_type", default="signedBy",
+    commonp.add_argument("-t", "--type", dest="trust_type", default="signedBy",
                          choices=['signedBy', 'insecureAcceptAnything', 'reject'],
                          help="Trust type (default: signedBy)")
     commonp.add_argument("--keytype", dest="keytype", default="GPGKeys",
                          help="Public key type (default: GPGKeys)")
-    commonp.add_argument("--sigstore", dest="sigstore",
+    commonp.add_argument("-u", "--sigstore", dest="sigstore",
                          help=_("URL and path of remote signature server, "
                                 "https://sigstore.example.com/signatures. "
                                 "Ignored with 'atomic' sigstoretype."))
@@ -45,19 +43,22 @@ def cli(subparser):
     addp = subparsers.add_parser("add", parents=[commonp],
                                  help="Add a new trust policy for a registry")
     addp.set_defaults(_class=Trust, func="add")
-    removep = subparsers.add_parser("remove",
-                                    help="Remove a trust policy for a registry")
-    removep.add_argument("registry", 
+    deletep = subparsers.add_parser("delete",
+                                    help="Delete a trust policy for a registry")
+    deletep.add_argument("registry",
                          help=registry_help)
-    removep.add_argument("--sigstoretype", dest="sigstoretype", default="docker",
+    deletep.add_argument("-s", "--sigstoretype", dest="sigstoretype", default="docker",
                          choices=['dir', 'docker', 'atomic'],
                          help=sigstore_help)
-    removep.set_defaults(_class=Trust, func="remove")
+    deletep.set_defaults(_class=Trust, func="delete")
 
 class Trust(Atomic):
-    def __init__(self):
+    def __init__(self, policy_filename="/etc/containers/policy.json"):
+        """
+        :param policy_filename: override policy filename
+        """
         super(Trust, self).__init__()
-        self.policy_filename = "/etc/containers/policy.json"
+        self.policy_filename = policy_filename
         self.atomic_config = util.get_atomic_config()
 
     def add(self):
@@ -78,7 +79,7 @@ class Trust(Atomic):
                     exit(0)
             payload = []
             if self.args.pubkeys:
-                keys = self.args.pubkeys.split(" ")
+                keys = self.args.pubkeys.split(",")
                 for k in keys:
                     if not os.path.exists(k):
                         raise ValueError("The public key file %s was not found. This file must exist to proceed." % k)
@@ -99,7 +100,7 @@ class Trust(Atomic):
                     self.modify_registry_config(self.args.registry, self.args.sigstore)
             util.write_out("Added trust policy for %s transport %s" % (self.args.sigstoretype, self.args.registry))
 
-    def remove(self):
+    def delete(self):
         with open(self.policy_filename, 'r+') as policy_file:
             policy = json.load(policy_file)
             try:
