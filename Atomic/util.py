@@ -17,10 +17,6 @@ import tempfile
 import shutil
 import re
 import requests
-try:
-    from urlparse import urlparse #pylint: disable=import-error
-except ImportError:
-    from urllib.parse import urlparse #pylint: disable=no-name-in-module,import-error
 
 # Atomic Utility Module
 
@@ -258,15 +254,19 @@ def skopeo_inspect(image, args=None, return_json=True, newline=False):
     # :param args: additional parameters to pass to Skopeo
     # :return: Returns json formatted data
 
-    cmd = ['skopeo', 'inspect'] + args + [image]
+    # Adding in --verify-tls=false to deal with the change in skopeo
+    # policy. The prior inspections were also false.  We need to define
+    # a way to determine if the registry is insecure according to the
+    # docker configuration. If so, then use false in the future.  This
+    # is complicated by the fact that CIDR notation can be used in the
+    # docker conf
+    cmd = ['skopeo', '--tls-verify=false', 'inspect'] + args + [image]
     try:
         results = subp(cmd, newline=newline)
     except OSError:
         raise ValueError("skopeo must be installed to perform remote inspections")
     if results.return_code is not 0:
-        # Need to check if we are dealing with a v1 registry
-        check_v1_registry(image)
-        raise ValueError("Unable to interact with this registry: {}".format(results.stderr))
+        raise ValueError(results)
     else:
         if return_json:
             return json.loads(results.stdout.decode('utf-8'))
@@ -284,15 +284,13 @@ def skopeo_delete(image, args=None):
     if not args:
         args=[]
 
-    cmd = ['skopeo', 'delete'] + args + [image]
+    cmd = ['skopeo', 'tls-verify=false', 'delete'] + args + [image]
     try:
         results = subp(cmd)
     except OSError:
         raise ValueError("skopeo must be installed to perform remote operations")
     if results.return_code is not 0:
-        # Only v2 registries supported
-        check_v1_registry(image)
-        raise ValueError("Unable to interact with this registry: {}".format(results.stderr))
+        raise ValueError(results)
     else:
         return True
 
@@ -311,11 +309,10 @@ def skopeo_layers(image, args=None, layers=None):
     success = False
     temp_dir = tempfile.mkdtemp()
     try:
-        args = ['skopeo', 'layers'] + args + [image] + layers
+        args = ['skopeo', '--tls-verify=false', 'layers'] + args + [image] + layers
         r = subp(args, cwd=temp_dir)
         if r.return_code != 0:
-            check_v1_registry(image)
-            raise ValueError("Unable to interact with this registry: {}".format(r.stderr))
+            raise ValueError(r)
         success = True
     except OSError:
         raise ValueError("skopeo must be installed to perform remote inspections")
@@ -348,13 +345,6 @@ def skopeo_copy(source, destination, debug=False):
         cmd = cmd + ['--remove-signatures']
     cmd = cmd + [source, destination]
     return check_call(cmd)
-
-def check_v1_registry(image):
-    # Skopeo cannot interact with a v1 registry
-    netloc = (urlparse(image)).netloc
-    v1_url = "https://{}/v1/_ping".format(netloc)
-    if requests.get(v1_url).status_code == 200:
-        raise ValueError("\nUnable to interact with a V1 registry.")
 
 class NoDockerDaemon(Exception):
     def __init__(self):
