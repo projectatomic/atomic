@@ -84,8 +84,6 @@ class Containers(Atomic):
                 info = self.syscontainers.get_container_runtime_info(container)
                 if 'status' in info:
                     status = info["status"]
-                    if 'created' in info:
-                        created = info['created']
 
                 if not self.args.all and status != "running":
                     continue

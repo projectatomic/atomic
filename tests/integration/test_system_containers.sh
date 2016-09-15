@@ -74,6 +74,8 @@ teardown () {
     runc delete $NAME &> /dev/null  || true
     runc kill $NAME-remote 9 &> /dev/null || true
     runc delete $NAME-remote &> /dev/null || true
+    runc kill $NAME-failed 9 &> /dev/null || true
+    runc delete $NAME-failed &> /dev/null || true
 
     # Ensure there is no systemd service left running
     systemctl stop $NAME &> /dev/null || true
@@ -82,6 +84,9 @@ teardown () {
     systemctl stop $NAME-remote &> /dev/null || true
     systemctl disable $NAME-remote &> /dev/null || true
     rm -rf /etc/systemd/system/${NAME}-remote.service || true
+    systemctl stop $NAME-failed &> /dev/null || true
+    systemctl disable $NAME-failed &> /dev/null || true
+    rm -rf /etc/systemd/system/${NAME}-failed.service || true
 }
 
 trap teardown EXIT
@@ -120,10 +125,22 @@ ${ATOMIC} containers list --all --no-trunc --filter id=test-system | grep "test-
 # Check the command is included in the output
 assert_matches "run.sh" ps.out
 
+# Testing for container states
+${ATOMIC} containers list --all | grep "test-system" > ps.out
+assert_matches "running" ps.out
+
+# A duplicate will fail due to using the same port
+${ATOMIC} install --name=${NAME}-failed --set=RECEIVER=${SECRET} --system oci:atomic-test-system
+systemctl start ${NAME}-failed
+${ATOMIC} containers list --all | grep "test-system" > ps.out
+assert_matches "failed" ps.out
+
 systemctl stop ${NAME}
+systemctl stop ${NAME}-failed
+${ATOMIC} uninstall ${NAME}-failed
 
 ${ATOMIC} containers list --all | grep "test-system" > ps.out
-assert_matches "exited" ps.out
+assert_matches "inactive" ps.out
 
 ${ATOMIC} containers list --quiet > ps.out
 assert_not_matches "test-system" ps.out

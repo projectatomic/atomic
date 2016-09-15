@@ -12,7 +12,6 @@ import subprocess
 import time
 from .client import AtomicDocker
 from ctypes import cdll, CDLL
-from dateutil.parser import parse as dateparse
 
 try:
     import gi
@@ -549,17 +548,14 @@ class SystemContainers(object):
         self._checkout_system_container(repo, name, image, next_deployment, True, values, remote=self.args.remote)
 
     def get_container_runtime_info(self, container):
-        if self.user:
-            return {'status' : "running" if self._is_service_active(container) else "exited"}
 
-        try:
-            inspect_stdout = util.check_output([util.RUNC_PATH, "state", container], stderr=DEVNULL)
-            ret = json.loads(inspect_stdout.decode())
-            status = ret["status"]
-            created = dateparse(ret['created'])
-            return {"status" : status, "created" : created}
-        except (subprocess.CalledProcessError):
-            return {}
+        if self._is_service_active(container):
+            return {'status' : "running"}
+        elif self._is_service_failed(container):
+            return {'status' : "failed"}
+        else:
+            # The container is newly created or stopped, and can be started with 'systemctl start'
+            return {'status' : "inactive"}
 
     def get_system_containers(self):
         checkouts = self._get_system_checkout_path()
@@ -651,6 +647,29 @@ class SystemContainers(object):
             return self._systemctl_command("is-active", name, quiet=True).replace("\n", "") == "active"
         except subprocess.CalledProcessError:
             return False
+
+    def _is_service_failed(self, name):
+        try:
+            is_failed = self._systemctl_command("is-failed", name, quiet=True).replace("\n", "")
+        except subprocess.CalledProcessError as e:
+            is_failed = e.output
+            if is_failed.replace("\n", "") != "inactive":
+                return True
+
+        if is_failed == "failed":
+            return True
+        elif is_failed == "active":
+            return False
+        else:
+            # in case of "inactive", could be a stopped container or failed process
+            try:
+                status = self._systemctl_command("status", name, quiet=True)
+            except subprocess.CalledProcessError as e:
+                status = e.output
+            if 'FAILURE' in status:
+                return True
+            else:
+                return False
 
     def _systemd_tmpfiles(self, command, name):
         cmd = ["systemd-tmpfiles"] + [command, name]
