@@ -636,7 +636,7 @@ def have_match_registry(fq_name, reg_config):
 def get_signature_write_path(reg_info):
     # Return the defined path for where signatures should be written
     # or none if no entry is found
-    return reg_info.get('sigstore-write', reg_info.get('sigstore', None))
+    return reg_info.get('sigstore-staging', reg_info.get('sigstore', None))
 
 def get_signature_read_path(reg_info):
     # Return the defined path for where signatures should be read

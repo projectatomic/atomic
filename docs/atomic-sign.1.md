@@ -72,11 +72,11 @@ You can also scope the registry definitions by repository and even name.  Consid
 following addition to the configuration above.
 
   privateregistry.exaple.com/john:
-    sigstore-write: file:///mnt/export/signatures
+    sigstore-staging: file:///mnt/export/signatures
     sigstore: https://www.example.com/signatures/
 
-Now any image from the john repository will use the sigstore-write location of
-'/mnt/export/signatures'.  Also note the use of sigstore-write versus sigstore. This
+Now any image from the john repository will use the sigstore-staging location of
+'/mnt/export/signatures'.  Also note the use of sigstore-staging versus sigstore. This
 means that signatures should be written to that location but read should occur from
 the http URL provided.
 
