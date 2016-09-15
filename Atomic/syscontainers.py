@@ -610,8 +610,8 @@ class SystemContainers(object):
         commit_rev = repo.resolve_rev(imagebranch, False)[1]
         commit = repo.load_commit(commit_rev)[1]
 
-        branch_id = imagebranch.replace(OSTREE_OCIIMAGE_PREFIX, "")
-        tag = ":".join(branch_id.rsplit('-', 1))
+        branch_id = SystemContainers._decode_from_ostree_ref(imagebranch.replace(OSTREE_OCIIMAGE_PREFIX, ""))
+        tag = ":".join(branch_id.rsplit(':', 1))
         timestamp = OSTree.commit_get_timestamp(commit)
         labels = {}
 
@@ -892,8 +892,8 @@ class SystemContainers(object):
                     with open(manifest_file, 'r') as mfile:
                         manifest = mfile.read()
                     for m in json.loads(manifest):
-                        _, image, tag = SystemContainers._parse_imagename(m["RepoTags"][0])
-                        imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image.replace("sha256:", ""), tag)
+                        imagename = m["RepoTags"][0]
+                        imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(imagename))
                         input_layers = m["Layers"]
                         self._pull_dockertar_layers(repo, imagebranch, temp_dir, input_layers)
                 else:
@@ -901,8 +901,8 @@ class SystemContainers(object):
                     repositories_file = os.path.join(temp_dir, "repositories")
                     with open(repositories_file, 'r') as rfile:
                         repositories = rfile.read()
-                    _, image, tag = SystemContainers._parse_imagename(list(json.loads(repositories).keys())[0])
-                    imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image, tag)
+                    imagename = list(json.loads(repositories).keys())[0]
+                    imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(imagename))
                     input_layers = []
                     for name in os.listdir(temp_dir):
                         if name == "repositories":
@@ -921,8 +921,7 @@ class SystemContainers(object):
         return repo.pull(remote, [branch], 0, None)
 
     def _check_system_oci_image(self, repo, img, upgrade):
-        _, image, tag = SystemContainers._parse_imagename(img.replace("oci:", ""))
-        imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image.replace("sha256:", ""), tag)
+        imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(img))
         current_rev = repo.resolve_rev(imagebranch, True)
         if not upgrade and current_rev[1]:
             return False
@@ -982,12 +981,43 @@ class SystemContainers(object):
         return self._checkout_system_container(repo, img, img, 0, False, destination=destination, extract_only=True)
 
     @staticmethod
+    def _encode_to_ostree_ref(name):
+        def convert(x):
+            return (x if str.isalnum(str(x)) or x in '.-' else "_%02X" % ord(x))
+
+        if name.startswith("oci:"):
+            name = name[len("oci:"):]
+        registry, image, tag = SystemContainers._parse_imagename(name)
+        if registry:
+            fullname = "%s/%s:%s" % (registry, image, tag)
+        else:
+            fullname = "%s:%s" % (image, tag)
+
+        ret = "".join([convert(i) for i in fullname])
+        return ret
+
+    @staticmethod
+    def _decode_from_ostree_ref(name):
+        try:
+            l = []
+            i = 0
+            while i < len(name):
+                if name[i] == '_':
+                    l.append(str(chr(int(name[i+1:i+3], 16))))
+                    i = i + 3
+                else:
+                    l.append(name[i])
+                    i = i + 1
+            return "".join(l)
+        except ValueError:
+            return name
+
+    @staticmethod
     def _get_ostree_image_branch(img):
         if "ostree:" in img:
             imagebranch = img.replace("ostree:", "")
         else: # assume "oci:" image
-            _, image, tag = SystemContainers._parse_imagename(img.replace("oci:", "").replace("docker:", ""))
-            imagebranch = "%s%s-%s" % (OSTREE_OCIIMAGE_PREFIX, image.replace("sha256:", ""), tag)
+            imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(img.replace("sha256:", "")))
         return imagebranch
 
     def has_system_container_image(self, img):
