@@ -1,0 +1,3 @@
+docker:
+  docker.io:
+    sigstore: https://sigstore.example.com/update
