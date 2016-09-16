@@ -26,6 +26,10 @@ class TestAtomicTrust(unittest.TestCase):
         testobj = Trust()
         self.assertEqual(testobj.get_sigstore_type_map("web"), "docker")
 
+    def test_sigstoretype_map_local(self):
+        testobj = Trust()
+        self.assertEqual(testobj.get_sigstore_type_map("local"), "dir")
+
     def test_setup_default_policy(self):
         args = self.Args()
         args.sigstoretype = "web"
@@ -33,7 +37,7 @@ class TestAtomicTrust(unittest.TestCase):
         testobj.set_args(args)
         with open(os.path.join(FIXTURE_DIR, "default_policy.json"), 'r') as default:
             policy_default = json.load(default)
-        policy_default = testobj.check_policy(policy_default)
+        policy_default = testobj.check_policy(policy_default, "docker")
         policy_expected = {"default": [{"type": "insecureAcceptAnything" }], "transports": {"docker": {}}}
         self.assertEqual(policy_default, policy_expected)
 
@@ -74,7 +78,7 @@ class TestAtomicTrust(unittest.TestCase):
         testobj = Trust(policy_filename = os.path.join(FIXTURE_DIR, "etc/containers/policy.json"))
         testobj.atomic_config = util.get_atomic_config(atomic_config = os.path.join(FIXTURE_DIR, "atomic.conf"))
         testobj.set_args(args)
-        testobj.add()
+        testobj.add(confirm="y")
         with open(testobj.policy_filename, 'r') as f:
             d = json.load(f)
             self.assertEqual(d["transports"]["atomic"]["docker.io"][0]["keyPath"], 
@@ -87,7 +91,7 @@ class TestAtomicTrust(unittest.TestCase):
         testobj = Trust(policy_filename = os.path.join(FIXTURE_DIR, "etc/containers/policy.json"))
         testobj.atomic_config = util.get_atomic_config(atomic_config = os.path.join(FIXTURE_DIR, "atomic.conf"))
         testobj.set_args(args)
-        testobj.add()
+        testobj.add(confirm="y")
         with open(testobj.policy_filename, 'r') as f:
             d = json.load(f)
             self.assertEqual(d["transports"]["atomic"]["docker.io"][1]["keyPath"], 
