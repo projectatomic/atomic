@@ -78,7 +78,7 @@ class TestAtomicTrust(unittest.TestCase):
         testobj = Trust(policy_filename = os.path.join(FIXTURE_DIR, "etc/containers/policy.json"))
         testobj.atomic_config = util.get_atomic_config(atomic_config = os.path.join(FIXTURE_DIR, "atomic.conf"))
         testobj.set_args(args)
-        testobj.add()
+        testobj.add(confirm="y")
         with open(testobj.policy_filename, 'r') as f:
             d = json.load(f)
             self.assertEqual(d["transports"]["atomic"]["docker.io"][0]["keyPath"], 
@@ -91,7 +91,7 @@ class TestAtomicTrust(unittest.TestCase):
         testobj = Trust(policy_filename = os.path.join(FIXTURE_DIR, "etc/containers/policy.json"))
         testobj.atomic_config = util.get_atomic_config(atomic_config = os.path.join(FIXTURE_DIR, "atomic.conf"))
         testobj.set_args(args)
-        testobj.add()
+        testobj.add(confirm="y")
         with open(testobj.policy_filename, 'r') as f:
             d = json.load(f)
             self.assertEqual(d["transports"]["atomic"]["docker.io"][1]["keyPath"], 

@@ -136,10 +136,10 @@ class Trust(Atomic):
         with open(self.policy_filename, 'r+') as policy_file:
             policy = json.load(policy_file)
             try:
-                del policy["transports"][sstype][self.args.registry]
+                del policy["transports"][sstype][registry]
             except KeyError:
                 raise ValueError("Could not find trust policy defined for %s transport %s" % 
-                              (self.args.sigstoretype, self.args.registry))
+                              (sigstoretype, registry))
             policy_file.seek(0)
             json.dump(policy, policy_file, indent=4)
             policy_file.truncate()
