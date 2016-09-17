@@ -75,17 +75,20 @@ class Trust(Atomic):
         Add or prompt to modify policy.json file and registries.d registry configuration
         """
         sstype = self.get_sigstore_type_map(self.args.sigstoretype)
-        with open(self.policy_filename, 'r+') as policy_file:
-            policy = json.load(policy_file)
-            policy = self.check_policy(policy)
-            if self.args.registry in policy["transports"][sstype]:
-                confirm = None
-                if self.args.assumeyes:
-                    confirm = "yes"
-                else:
-                    confirm = util.input("Trust policy already defined for %s:%s\nDo you want to overwrite? (y/N) " % (self.args.sigstoretype, self.args.registry))
-                if not "y" in confirm.lower():
-                    exit(0)
+
+        mode = "r+" if os.path.exists(self.policy_filename) else "w+"
+        with open(self.policy_filename, mode) as policy_file:
+            if mode == "r+":
+                policy = json.load(policy_file)
+                policy = self.check_policy(policy)
+                if self.args.registry in policy["transports"][sstype]:
+                    if not self.args.assumeyes:
+                        confirm = util.input("Trust policy already defined for %s:%s\nDo you want to overwrite? (y/N) " % (self.args.sigstoretype, self.args.registry))
+                        if not "y" in confirm.lower():
+                            exit(0)
+            else:
+                policy={"transports":{sstype:{}}}
+
             payload = []
             for k in self.args.pubkeys:
                 if not os.path.exists(k):
@@ -120,8 +123,13 @@ class Trust(Atomic):
             policy_file.truncate()
 
     def default(self):
-        with open(self.policy_filename, 'r+') as policy_file:
-            policy = json.load(policy_file)
+        mode = "r+" if os.path.exists(self.policy_filename) else "w+"
+        with open(self.policy_filename, mode) as policy_file:
+            if mode == "r+":
+                policy = json.load(policy_file)
+            else:
+                policy = { "default": [ { "type": "insecureAcceptAnything" }] }
+
             default_type_map = { "accept": "insecureAcceptAnything", "reject": "reject" }
             policy["default"][0]["type"] = default_type_map[self.args.default_policy]
             policy_file.seek(0)
