@@ -30,10 +30,10 @@ def cli(subparser):
                                 "File(s) must exist before using this command. "
                                 "Default directory is %s" % pubkeys_dir))
     commonp.add_argument("--sigstoretype", dest="sigstoretype", default="web",
-                         choices=['local', 'web', 'atomic'],
+                         choices=['atomic', 'local', 'web'],
                          help=sigstore_help)
     commonp.add_argument("-t", "--type", dest="trust_type", default="signedBy",
-                         choices=['signedBy', 'insecureAcceptAnything', 'reject'],
+                         choices=['insecureAcceptAnything', 'reject', 'signedBy'],
                          help="Trust type (default: signedBy)")
     commonp.add_argument("--keytype", dest="keytype", default="GPGKeys",
                          help="Public key type (default: GPGKeys)")
@@ -57,7 +57,7 @@ def cli(subparser):
     deletep.add_argument("registry",
                          help=registry_help)
     deletep.add_argument("--sigstoretype", dest="sigstoretype", default="web",
-                         choices=['local', 'web', 'atomic'],
+                         choices=['atomic', 'local', 'web'],
                          help=sigstore_help)
     deletep.set_defaults(_class=Trust, func="delete")
 

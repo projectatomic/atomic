@@ -397,14 +397,14 @@ _atomic_containers_list() {
 
 _atomic_containers_trim() {
 	local all_options="
-                --help
-        "
+		--help
+	"
 
 	case "$cur" in
-                -*)
-                        COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
-                        ;;
-        esac
+		-*)
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+			;;
+	esac
 }
 
 _atomic_update() {
@@ -674,29 +674,88 @@ _atomic_trust() {
   return 0
 }
 
+_atomic_trust_default() {
+  local subcommands="
+    accept
+    reject
+  "
+  local all_options="$options_with_args
+		      --help -h
+		      "
+
+	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
+
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+			;;
+		*)
+			COMPREPLY=( $( compgen -W "$subcommands" -- "$cur" ) )
+			;;
+	esac
+}
 _atomic_trust_add() {
 	local options_with_args="
-                --pubkeys -k
-                --sigstoretype
-                --type -t
-                --keytype
-                --sigstore -s
+		--pubkeys -k
+		--sigstoretype
+		--type -t
+		--keytype
+		--sigstore -s
 	"
-        local all_options="$options_with_args
-                --help -h
-        "
+	local all_options="$options_with_args
+		--help -h
+	"
 
-        local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
+	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
 
-        case "$cur" in
-                -*)
-                        COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
-                        ;;
-                *)
-                        local counter=$( __atomic_pos_first_nonflag $( __atomic_to_alternatives "$options_with_args" ) )
-                        ;;
+	case "$prev" in
+		--keytype)
+			COMPREPLY=( $( compgen -W "GPGKeys" -- "$cur" ) )
+			;;
+		--sigstoretype)
+			COMPREPLY=( $( compgen -W "atomic local web" -- "$cur" ) )
+			;;
+		--type|-t)
+			COMPREPLY=( $( compgen -W "signedBy insecureAcceptAnything reject" -- "$cur" ) )
+			;;
+	esac
 
-        esac
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+			;;
+		*)
+			local counter=$( __atomic_pos_first_nonflag $( __atomic_to_alternatives "$options_with_args" ) )
+			;;
+
+	esac
+}
+
+_atomic_trust_delete() {
+	local options_with_args="
+		--sigstoretype
+	"
+	local all_options="$options_with_args
+		--help -h
+	"
+
+	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
+
+	case "$prev" in
+		--sigstoretype)
+			COMPREPLY=( $( compgen -W "atomic local web" -- "$cur" ) )
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+			;;
+		*)
+			local counter=$( __atomic_pos_first_nonflag $( __atomic_to_alternatives "$options_with_args" ) )
+			;;
+
+	esac
 }
 
 _atomic_mount() {
@@ -1151,7 +1210,7 @@ _atomic() {
 		sign
 		stop
 		top
-                trust
+		trust
 		verify
 		version
 		uninstall
