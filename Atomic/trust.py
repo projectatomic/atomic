@@ -5,6 +5,9 @@ import argparse
 import json
 import yaml
 import requests
+import collections
+
+TRANSPORT_TYPES = ["docker", "atomic", "web"]
 
 def cli(subparser):
     # atomic trust
@@ -61,6 +64,10 @@ def cli(subparser):
                          choices=['atomic', 'local', 'web'],
                          help=sigstore_help)
     deletep.set_defaults(_class=Trust, func="delete")
+    showp = subparsers.add_parser("show",
+                                  help="Display trust policy for the system")
+    showp.add_argument('-j', '--json', action='store_true', help="Output policy file as raw json")
+    showp.set_defaults(_class=Trust, func="show")
 
 class Trust(Atomic):
     def __init__(self, policy_filename="/etc/containers/policy.json"):
@@ -136,10 +143,10 @@ class Trust(Atomic):
         with open(self.policy_filename, 'r+') as policy_file:
             policy = json.load(policy_file)
             try:
-                del policy["transports"][sstype][registry]
+                del policy["transports"][sstype][self.args.registry]
             except KeyError:
                 raise ValueError("Could not find trust policy defined for %s transport %s" % 
-                              (sigstoretype, registry))
+                              (self.args.sigstoretype, self.args.registry))
             policy_file.seek(0)
             json.dump(policy, policy_file, indent=4)
             policy_file.truncate()
@@ -334,3 +341,46 @@ class Trust(Atomic):
             if not "y" in confirm.lower():
                 return False
         return True
+
+    def show(self):
+        """
+        Display trust policy
+        If policy.json doesn't exist, create it, then display
+        """
+        registry_config_path = util.get_atomic_config_item(["registry_confdir"], self.atomic_config)
+        registry_configs, _ = util.get_registry_configs(registry_config_path)
+        policy = None
+        mode = "r+" if os.path.exists(self.policy_filename) else "w+"
+        with open(self.policy_filename, mode) as policy_file:
+            if mode == "r+":
+                policy = json.load(policy_file)
+            else:
+                policy={ "default": [{ "type": "insecureAcceptAnything" }] }
+                policy_file.seek(0)
+                json.dump(policy, policy_file, indent=4)
+                policy_file.truncate()
+            if self.args.json:
+                util.output_json(policy)
+            else:
+                table = {}
+                if "transports" in policy:
+                    for tt in TRANSPORT_TYPES:
+                        if tt in policy["transports"]:
+                            for key, value in policy["transports"][tt].items():
+                                table[key] = { "type": value[0]["type"] }
+                                reg_info = util.have_match_registry(key, registry_configs)
+                                if reg_info:
+                                    table[key]["sigstore"] = reg_info["sigstore"]
+                                else:
+                                    table[key]["sigstore"] = ""
+
+                sorted_table = collections.OrderedDict(sorted(table.items()))
+                for key, value in sorted_table.items():
+                    util.write_out('{0:<35} {1:<8} {2}'.format(key, self.trusttype_map(value["type"]), value["sigstore"]))
+                util.write_out('{0:<35} {1:<8}'.format("* (default)", self.trusttype_map(policy["default"][0]["type"])))
+
+    def trusttype_map(self, trust_type):
+        t = { "insecureAcceptAnything": "accept", "signedBy": "signed", "reject": "reject" }
+        if trust_type not in t:
+            raise ValueError("Invalid trust type %s" % trust_type)
+        return t[trust_type]

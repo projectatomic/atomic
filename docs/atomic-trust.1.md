@@ -6,7 +6,7 @@ atomic-trust - Manage system container trust policy
 
 
 # SYNOPSIS
-**atomic trust add|delete|default**
+**atomic trust add|delete|default|show**
 [**-h**|**--help**]
 
 [**-k**|**--pubkeys** KEY1 [**-k**|**--pubkeys** KEY2,...]]
@@ -97,6 +97,14 @@ Remove a trust scope
 Modify default trust policy
 
     atomic trust default reject
+
+Display system trust policy
+
+    atomic trust show
+
+Display system trust policy as raw JSON
+
+    atomic trust show --json
 
 # HISTORY
 September 2016, originally compiled by Aaron Weitekamp (aweiteka at redhat dot com)

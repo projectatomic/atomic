@@ -1,0 +1,3 @@
+docker:
+  docker.io/centos:
+    sigstore: https://centos.org/sigstore/

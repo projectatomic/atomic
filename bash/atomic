@@ -659,6 +659,7 @@ _atomic_trust() {
     add
     delete
     default
+    show
   "
 
   __atomic_subcommands "$subcommands" && return
