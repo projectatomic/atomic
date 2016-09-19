@@ -23,7 +23,8 @@ def convert_size(size):
 
 def cli(subparser):
     # atomic images
-    imagesp = subparser.add_parser("images")
+    imagesp = subparser.add_parser("images",
+                                   help=_("operate on images"))
     images_subparser = imagesp.add_subparsers(title='images subcommands',
                                               description="operate on images",
                                               help='additional help')

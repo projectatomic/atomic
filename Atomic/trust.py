@@ -11,7 +11,7 @@ def cli(subparser):
     pubkeys_dir = util.get_atomic_config_item(['pubkeys_dir'])
 
     trustp = subparser.add_parser("trust",
-                                  help="Manage system container trust policy",
+                                  help=_("Manage system container trust policy"),
                                   epilog="Manages the trust policy of the host system. "
                                          "Trust policy describes a registry scope "
                                          "that must be signed by public keys.")

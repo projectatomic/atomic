@@ -60,7 +60,7 @@ def cli(subparser):
                                              help=_('install a system container'))
         installp.add_argument("--rootfs", dest="remote",
                               help=_("choose an existing exploded container/image to use "
-                                     "its rootfs as a remote, read-only rootfs for the"
+                                     "its rootfs as a remote, read-only rootfs for the "
                                      "container to be installed"))
         installp.add_argument("--set", dest="setvalues",
                               action='append',

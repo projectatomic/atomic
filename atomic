@@ -135,17 +135,17 @@ def create_parser(help_text):
     except ImportError:
         pass
 
+    containers.cli(subparser)
     diff.cli(subparser)
     Help.cli(subparser)
+    images.cli(subparser)
 
     if os.path.exists("/usr/bin/rpm-ostree") and os.path.exists("/run/ostree-booted"):
         host.cli(subparser)
     info.cli(subparser)
 
     install.cli(subparser)
-    images.cli(subparser)
     mount.cli(subparser)
-    containers.cli(subparser)
     push.cli(subparser)
     pull.cli(subparser)
     run.cli(subparser)
