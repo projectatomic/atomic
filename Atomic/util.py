@@ -247,7 +247,7 @@ def urllib3_disable_warnings():
             if hasattr(urllib3, 'disable_warnings'):
                 urllib3.disable_warnings()
 
-def skopeo_inspect(image, args=None, return_json=True, newline=False, quiet=False):
+def skopeo_inspect(image, args=None, return_json=True, newline=False):
     if not args:
         args=[]
 
@@ -269,8 +269,6 @@ def skopeo_inspect(image, args=None, return_json=True, newline=False, quiet=Fals
     except OSError:
         raise ValueError("skopeo must be installed to perform remote inspections")
     if results.return_code is not 0:
-        if quiet:
-            return False
         raise ValueError(results)
     else:
         if return_json:

@@ -128,24 +128,18 @@ class Trust(Atomic):
                 else:
                     self.modify_registry_config(registry, sigstore)
 
-    def delete(self, sigstoretype=None, registry=None):
+    def delete(self):
         """
         Remove trust policy entry
-        :param sigstoretype: unmapped sigstore type string
-        :param registry: policy scope string
         """
-        if not sigstoretype:
-            sigstoretype = self.args.sigstoretype
-        if not registry:
-            registry = self.args.registry
-        sstype = self.get_sigstore_type_map(sigstoretype)
+        sstype = self.get_sigstore_type_map(self.args.sigstoretype)
         with open(self.policy_filename, 'r+') as policy_file:
             policy = json.load(policy_file)
             try:
-                del policy["transports"][sstype][registry]
+                del policy["transports"][sstype][self.args.registry]
             except KeyError:
                 raise ValueError("Could not find trust policy defined for %s transport %s" % 
-                              (sigstoretype, registry))
+                              (self.args.sigstoretype, self.args.registry))
             policy_file.seek(0)
             json.dump(policy, policy_file, indent=4)
             policy_file.truncate()
@@ -298,9 +292,11 @@ class Trust(Atomic):
             sigstoreimage = '/'.join([registry, repo, _img])
         else:
             sigstoreimage = '/'.join([registry, _img])
-        data = util.skopeo_inspect("docker://" + sigstoreimage, args=None, quiet=True)
+        try:
+            data = util.skopeo_inspect("docker://" + sigstoreimage, args=None)
+        except ValueError:
+            data = None
         if data:
-            util.write_out("Found registry sigstore metadata image %s" % sigstoreimage)
             return data['Labels']
         else:
             return False
