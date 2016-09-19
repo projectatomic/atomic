@@ -71,7 +71,7 @@ class Trust(Atomic):
         self.policy_filename = policy_filename
         self.atomic_config = util.get_atomic_config()
 
-    def add(self, registry=None, pubkeys=None, sigstore=None, sigstoretype=None, keytype=None, trust_type=None, confirm=None):
+    def add(self, registry=None, pubkeys=None, sigstore=None, sigstoretype=None, keytype=None, trust_type=None):
         """
         Add trust to policy.json file and optionally update registries.d registry configuration
         :param sigstoretype: string, human-readable sigstore type, one of "atomic", "web", "local"
@@ -99,7 +99,7 @@ class Trust(Atomic):
         with open(self.policy_filename, mode) as policy_file:
             if mode == "r+":
                 policy = json.load(policy_file)
-                policy = self.check_policy(policy)
+                policy = self.check_policy(policy, sstype)
                 if self.args.registry in policy["transports"][sstype]:
                     if not self.args.assumeyes:
                         confirm = util.input("Trust policy already defined for %s:%s\nDo you want to overwrite? (y/N) " % (self.args.sigstoretype, self.args.registry))
@@ -150,7 +150,6 @@ class Trust(Atomic):
             json.dump(policy, policy_file, indent=4)
             policy_file.truncate()
 
-<<<<<<< 1a869111587964dddadf90fc48de49010db70fb4
     def modify_default(self):
         """
         Modify global trust policy default
@@ -258,12 +257,11 @@ class Trust(Atomic):
             raise ValueError("Invalid sigstore type %s" % sigstore_type)
         return t[sigstore_type]
 
-    def discover_sigstore(self, pull_image, confirm=None):
+    def discover_sigstore(self, pull_image):
         """
         Check for registry/repo/sigstore metadata image
         prompt user for trust on first use workflow
         :param pull_image: image being pulled, used to discover matching sigstore meta image
-        :param confirm: string
         """
         if not util.get_atomic_config_item(['discover_sigstores'], util.get_atomic_config()):
             return True
@@ -281,7 +279,7 @@ class Trust(Atomic):
                 if not scope in registry_configs:
                     sigstore_labels = self.get_sigstore_image_metadata(registry)
         if self._validate_sigstore_labels(sigstore_labels):
-            if self.prompt_trust(sigstore_labels, confirm=confirm):
+            if self.prompt_trust(sigstore_labels):
                 pubkey_path = self.install_pubkey(sigstore_labels['pubkey-id'], sigstore_labels['pubkey-url'])
                 explicit_sigstoretype = "web"
                 if sigstore_labels['sigstore-type']:
@@ -322,20 +320,17 @@ class Trust(Atomic):
                 is_valid = k in labels
         return is_valid
 
-    def prompt_trust(self, labels, confirm=None):
+    def prompt_trust(self, labels):
         """
         Prompt user for trust on first use workflow
         :param labels: dict of metadata labels defining sigstore trust
-        :param confirm: string or none
         :return: True if user accepts
         """
         util.write_out("ID: " + labels['pubkey-id'])
         util.write_out("Fingerprint: " + labels['pubkey-fingerprint'])
         util.write_out("Public key download URL: %s" % labels['pubkey-url'])
-        if confirm:
-            confirm = "yes"
-        else:
+        if not self.args.assumeyes:
             confirm = util.input("Do you want to add trust policy for this registry? (y/N) ")
-        if not "y" in confirm.lower():
-            return False
+            if not "y" in confirm.lower():
+                return False
         return True
