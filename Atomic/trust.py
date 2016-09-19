@@ -153,10 +153,14 @@ class Trust(Atomic):
             if mode == "r+":
                 policy = json.load(policy_file)
             else:
-                policy = { "default": [ { "type": "insecureAcceptAnything" }] }
+                policy = {}
 
             default_type_map = { "accept": "insecureAcceptAnything", "reject": "reject" }
-            policy["default"][0]["type"] = default_type_map[self.args.default_policy]
+            if "default" in policy:
+                policy["default"][0]["type"] = default_type_map[self.args.default_policy]
+            else:
+                policy["default"] = [ { "type": default_type_map[self.args.default_policy] }]
+
             policy_file.seek(0)
             json.dump(policy, policy_file, indent=4)
             policy_file.truncate()
