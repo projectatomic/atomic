@@ -509,6 +509,12 @@ class SystemContainers(object):
         repo.open(None)
         return repo
 
+    def version(self, image):
+        image_inspect = self.inspect_system_image(image)
+        if image_inspect:
+            return image_inspect['ImageId']
+        return None
+
     def update_system_container(self, name):
         repo = self._get_ostree_repo()
         if not repo:
