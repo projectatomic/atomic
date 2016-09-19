@@ -28,13 +28,17 @@ def cli_version(subparser):
     versionp.add_argument("-r", "--recurse", default=False, dest="recurse",
                           action="store_true",
                           help=_("recurse through all layers"))
-    versionp.set_defaults(_class=Info, func='info')
+    versionp.set_defaults(_class=Info, func='version')
     versionp.add_argument("image", help=_("container image"))
 
 
 class Info(Atomic):
     def __init__(self):
         super(Info, self).__init__()
+
+    def version(self):
+        self.args.force_remote_info = False
+        self.info()
 
     def info(self):
         """
