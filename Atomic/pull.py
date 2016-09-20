@@ -37,7 +37,7 @@ class Pull(Atomic):
         fq_name = skopeo_inspect("{}{}".format(pull_uri, self.args.image))['Name']
         image = "docker-daemon:{}:{}".format(fq_name, tag)
         trust = Trust()
-        trust.args.assumeyes=self.args.assumeyes
+        trust.set_args(self.args)
         trust.discover_sigstore(fq_name)
         skopeo_copy("docker://{}".format(self.args.image), image, debug=self.args.debug, insecure=insecure)
 
