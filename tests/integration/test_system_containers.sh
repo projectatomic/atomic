@@ -47,7 +47,7 @@ export ATOMIC_OSTREE_CHECKOUT_PATH=${WORK_DIR}/checkout
 
 docker save atomic-test-system > ${WORK_DIR}/atomic-test-system.tar
 
-${ATOMIC} pull dockertar:/${WORK_DIR}/atomic-test-system.tar
+${ATOMIC} pull --storage ostree dockertar:/${WORK_DIR}/atomic-test-system.tar
 
 # Check that the branch is created in the OSTree repository
 ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
@@ -216,8 +216,8 @@ test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0
 test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1
 
 
-${ATOMIC} pull docker.io/busybox
-${ATOMIC} pull docker.io/busybox > second.pull.out
+${ATOMIC} pull --storage ostree docker.io/busybox
+${ATOMIC} pull --storage ostree docker.io/busybox > second.pull.out
 assert_not_matches "Pulling layer" second.pull.out
 
 ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
@@ -228,7 +228,7 @@ OUTPUT=$(! grep -c busybox refs)
 if test $OUTPUT \!= 0; then
     exit 1
 fi
-${ATOMIC} pull docker.io/busybox
+${ATOMIC} pull --storage ostree docker.io/busybox
 ostree --repo=${ATOMIC_OSTREE_REPO} refs | grep busybox
 
 ${ATOMIC} verify busybox > verify.out

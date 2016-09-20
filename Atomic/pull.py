@@ -11,7 +11,7 @@ ATOMIC_CONFIG = get_atomic_config()
 
 def cli(subparser):
     # atomic pull
-    backend = ATOMIC_CONFIG.get('default_storage', "ostree")
+    backend = ATOMIC_CONFIG.get('default_storage', "docker")
     pullp = subparser.add_parser("pull", help=_("pull latest image from a repository"),
                                  epilog="pull the latest specified image from a repository.")
     pullp.set_defaults(_class=Pull, func='pull_image')
