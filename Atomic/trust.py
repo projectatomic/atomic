@@ -279,7 +279,7 @@ class Trust(Atomic):
             if self.prompt_trust(sigstore_labels):
                 pubkey_path = self.install_pubkey(sigstore_labels['pubkey-id'], sigstore_labels['pubkey-url'])
                 explicit_sigstoretype = "web"
-                if sigstore_labels['sigstore-type']:
+                if "sigstore-type" in sigstore_labels:
                     explicit_sigstoretype = sigstore_labels['sigstore-type']
                 self.add(registry=scope, trust_type="signedBy", sigstoretype=explicit_sigstoretype, keytype="GPGKeys", pubkeys=[pubkey_path], sigstore=sigstore_labels['sigstore-url'])
 
