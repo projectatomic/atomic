@@ -20,7 +20,7 @@ def cli(subparser):
                               " change the default by editing /etc/atomic.conf and changing"
                               " the 'default_storage' field." % backend))
     pullp.add_argument("-t", "--type", dest="reg_type", default=None,
-                       help=_("Push to an alternative registry type."))
+                       help=_("Pull from an alternative registry type."))
     pullp.add_argument("image", help=_("image id"))
 
 

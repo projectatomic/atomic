@@ -306,10 +306,74 @@ _atomic_version() {
 }
 
 _atomic_pull() {
+	local options_with_args="
+	      -t --type
+	      --storage
+	"
+	local all_options="$options_with_args
+	      -h, --help
+	"
+
+	case "$prev" in
+		--storage)
+			COMPREPLY=( $( compgen -W "docker ostree" -- "$cur" ) )
+			;;
+		-t | --type)
+			COMPREPLY=( $( compgen -W "atomic docker" -- "$cur" ) )
+			;;
+		$options_with_args_glob )
+			return
+			;;
+	esac
+
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "--storage" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
 			;;
+	esac
+}
+
+_atomic_push() {
+	local options_with_args="
+	      -U --url
+	      -u --username
+	      -p --password
+	      -a --activation_key
+	      -r --repository_id
+	      --sign-by
+	      -t --type
+	"
+
+	local all_options="$options_with_args
+	      -h, --help
+	      --pulp
+	      --satellite
+	      --verify_ssl
+	      --debug
+	      --all -a
+	      --force -f
+	      --help
+	"
+
+	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
+
+	case "$prev" in
+		-t | --type)
+			COMPREPLY=( $( compgen -W "atomic docker" -- "$cur" ) )
+			;;
+		$options_with_args_glob )
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+			;;
+		*)
+		    __atomic_image_repos_and_tags
+		    ;;
+
 	esac
 }
 
@@ -1205,6 +1269,7 @@ _atomic() {
 		storage
 		mount
 		pull
+		push
 		rhost
 		run
 		scan
