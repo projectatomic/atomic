@@ -100,16 +100,16 @@ class Trust(Atomic):
             trust_type=self.args.trust_type
         if sigstore is None:
             sigstore=self.args.sigstore
-        sstype = self.get_sigstore_type_map(self.args.sigstoretype)
+        sstype = self.get_sigstore_type_map(sigstoretype)
 
         mode = "r+" if os.path.exists(self.policy_filename) else "w+"
         with open(self.policy_filename, mode) as policy_file:
             if mode == "r+":
                 policy = json.load(policy_file)
                 policy = self.check_policy(policy, sstype)
-                if self.args.registry in policy["transports"][sstype]:
+                if registry in policy["transports"][sstype]:
                     if not self.args.assumeyes:
-                        confirm = util.input("Trust policy already defined for %s:%s\nDo you want to overwrite? (y/N) " % (self.args.sigstoretype, self.args.registry))
+                        confirm = util.input("Trust policy already defined for %s:%s\nDo you want to overwrite? (y/N) " % (sigstoretype, registry))
                         if not "y" in confirm.lower():
                             exit(0)
             else:
@@ -219,34 +219,27 @@ class Trust(Atomic):
         registry_configs, _ = util.get_registry_configs(registry_config_path)
         reg_info = util.have_match_registry(registry, registry_configs)
         reg_yaml_file = "%s.yaml" % os.path.join(registry_config_path, registry.replace("/", "-"))
+        mode = "r+"
         if (not reg_info or registry not in registry_configs):
-            # no existing configuration found for this registry
             if not os.path.exists(reg_yaml_file):
-                with open(reg_yaml_file, 'w') as reg_file:
-                    d = { "docker": { registry: { "sigstore": sigstore }}}
-                    yaml.dump(d, reg_file, default_flow_style=False)
-            elif os.path.exists(reg_yaml_file):
-                # The filename we expect to use already exists
-                # Open an existing file and add a new key for this registry
-                self.write_registry_config_file(reg_yaml_file, registry, sigstore)
+                mode="w+"
         else:
             if not sigstore == registry_configs[registry]["sigstore"]:
-                # We're modifying an existing configuration
-                # use the same filename
-                self.write_registry_config_file(registry_configs[registry]["filename"],
-                                                registry,
-                                                sigstore)
+                reg_yaml_file = registry_configs[registry]["filename"]
+        self.write_registry_config_file(reg_yaml_file, registry, sigstore, mode=mode)
 
-    def write_registry_config_file(self, reg_file, registry, sigstore):
+    def write_registry_config_file(self, reg_file, registry, sigstore, mode="r+"):
         """
         Utility method to modify existing registry config file
         :param reg_file: registry filename
         :param registry: registry name
         :param sigstore: sigstore server
+        :param mode: file open mode
         """
-        with open(reg_file, 'r+') as f:
+        with open(reg_file, mode) as f:
             d = yaml.load(f)
-            d["docker"][registry] = { "sigstore": sigstore }
+            d = { "docker": {}}
+            d["docker"][str(registry)] = { "sigstore": str(sigstore) }
             f.seek(0)
             yaml.dump(d, f, default_flow_style=False)
             f.truncate()
@@ -271,14 +264,13 @@ class Trust(Atomic):
         if not util.get_atomic_config_item(['discover_sigstores'], util.get_atomic_config()):
             return True
         (registry, repo, _) = util.decompose(pull_image)
-        # This should be handled in util.decompose
-        repo, _ = repo.split('/')
+        repo = repo.split('/')
         registry_config_path = util.get_atomic_config_item(["registry_confdir"], self.atomic_config)
         registry_configs, _ = util.get_registry_configs(registry_config_path)
         sigstore_labels = False
-        scope = '/'.join([registry, repo])
+        scope = '/'.join([registry, repo[0]])
         if not scope in registry_configs:
-            sigstore_labels = self.get_sigstore_image_metadata(registry, repo)
+            sigstore_labels = self.get_sigstore_image_metadata(registry, repo[0])
             if not sigstore_labels:
                 scope = registry
                 if not scope in registry_configs:
