@@ -219,10 +219,9 @@ class Containers(Atomic):
         docker_targets=[]
         if self.args.all:
             for c in self.get_containers():
-                if c["Type"] == "system":
-                    sys_targets.append(c["Id"])
-                else:
-                    docker_targets.append(c["Id"])
+                docker_targets.append(c["Id"])
+            for c in self.syscontainers.get_system_containers():
+                sys_targets.append(c["Id"])
         else:
             for c in self.args.containers:
                 if self.syscontainers.get_system_container_checkout(c):
