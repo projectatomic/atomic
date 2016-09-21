@@ -28,6 +28,10 @@ class Stop(Atomic):
         super(Stop, self).__init__()
 
     def stop(self):
+        if self.syscontainers.get_system_container_checkout(self.name) is not None:
+            self.syscontainers.stop_service(self.name)
+            return
+
         self.inspect = self._inspect_container()
         if self.inspect is None:
             self.inspect = self._inspect_image()

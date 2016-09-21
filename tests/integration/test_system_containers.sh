@@ -142,6 +142,15 @@ ${ATOMIC} uninstall ${NAME}-failed
 ${ATOMIC} containers list --all | grep "test-system" > ps.out
 assert_matches "inactive" ps.out
 
+# Test that containers can be started/stopped with run/stop
+
+${ATOMIC} run ${NAME}
+${ATOMIC} containers list --all | grep "test-system" > ps.out
+assert_matches "running" ps.out
+${ATOMIC} stop ${NAME}
+${ATOMIC} containers list --all | grep "test-system" > ps.out
+assert_matches "inactive" ps.out
+
 ${ATOMIC} containers list --quiet > ps.out
 assert_not_matches "test-system" ps.out
 

@@ -11,8 +11,8 @@ atomic-stop - Execute container image stop method
 IMAGE [ARG...]
 
 # DESCRIPTION
-**atomic stop** attempts to read the `LABEL STOP` field in the container
-IMAGE.
+**atomic stop** attempts to stop a running container, first reading the
+`LABEL STOP` field in the container IMAGE.
 
 If the container image has a `LABEL STOP` instruction like the following:
 

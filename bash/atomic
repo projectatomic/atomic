@@ -110,6 +110,11 @@ __atomic_system_containers_containers() {
 	COMPREPLY+=( $(compgen -W "$containers" -- "$cur") )
 }
 
+__atomic_system_containers_containers_running() {
+        local containers=( $(atomic containers list --no-trunc -q -f runtime=runc) )
+        COMPREPLY+=( $(compgen -W "${containers[*]}" -- "$cur") )
+}
+
 __atomic_image_repos_and_tags_and_ids() {
 	local images
 	if test $_system == "0"; then
@@ -557,7 +562,7 @@ _atomic_run() {
 			local counter=$( __atomic_pos_first_nonflag $( __atomic_to_alternatives "$options_with_args" ) )
 
 			if [ $cword -eq $counter ]; then
-				__atomic_image_repos_and_tags_and_ids
+				__atomic_containers_and_images
 			fi
 			;;
 	esac
@@ -923,6 +928,7 @@ _atomic_stop() {
 			;;
 		*)
 			__atomic_containers_running
+			__atomic_system_containers_containers_running
 			;;
 	esac
 }

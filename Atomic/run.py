@@ -35,8 +35,10 @@ def cli(subparser):
     # atomic run
     runp = subparser.add_parser(
         "run", help=_("execute container image run method"),
-        epilog="atomic run defaults to the following command, if image "
-        "does not specify LABEL run\n'%s'" % Run.print_run())
+        epilog="atomic run attempts to start an existing container if a container "
+        "name is specified, or execute container image run method if an image "
+        "name is specified.  Defaults to the following command, if image does "
+        "not specify LABEL run:\n'%s'" % Run.print_run())
     runp.set_defaults(_class=Run, func='run')
     run_group = runp.add_mutually_exclusive_group()
     util.add_opt(runp)
@@ -48,7 +50,7 @@ def cli(subparser):
     runp.add_argument("image", help=_("container image"))
     runp.add_argument("command", nargs=argparse.REMAINDER,
                       help=_("command to execute within the container. "
-                             "If container is not running, command is appended"
+                             "If container is not running, command is appended "
                              "to the image run method"))
     run_group.add_argument("--quiet", "-q", action="store_true",
                       help=_("Be less verbose."))
@@ -65,8 +67,11 @@ class Run(Atomic):
         super(Run, self).__init__()
 
     def run(self):
-        self.inspect = self._inspect_container()
+        if self.syscontainers.get_system_container_checkout(self.name) is not None:
+            self.syscontainers.start_service(self.name)
+            return
 
+        self.inspect = self._inspect_container()
         if self.inspect:
             self._check_latest()
             # Container exists

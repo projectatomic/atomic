@@ -677,6 +677,18 @@ class SystemContainers(object):
             else:
                 return False
 
+    def start_service(self, name):
+        try:
+            self._systemctl_command("start", name)
+        except subprocess.CalledProcessError as e:
+            raise ValueError(e.output)
+
+    def stop_service(self, name):
+        try:
+            self._systemctl_command("stop", name)
+        except subprocess.CalledProcessError as e:
+            raise ValueError(e.output)
+
     def _systemd_tmpfiles(self, command, name):
         cmd = ["systemd-tmpfiles"] + [command, name]
         util.write_out(" ".join(cmd))

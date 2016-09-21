@@ -14,8 +14,8 @@ atomic-run - Execute container image run method
 IMAGE [COMMAND] [ARG...]
 
 # DESCRIPTION
-**atomic run** attempts to read the `LABEL RUN` field in the container
-IMAGE.
+**atomic run** attempts to start an existing container or run a container
+from an image,  first reading the `LABEL RUN` field in the container IMAGE.
 
 
 If the container image has a LABEL RUN instruction like the following:
