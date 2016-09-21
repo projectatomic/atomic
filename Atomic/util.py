@@ -62,7 +62,7 @@ def decompose(compound_name):
         reg, repo = repo.split('/', 1)
     if ':' in repo:
         repo, tag = repo.rsplit(':', 1)
-    return reg, repo, tag
+    return str(reg), str(repo), str(tag)
 
 def image_by_name(img_name, images=None):
     # Returns a list of image data for images which match img_name. Will

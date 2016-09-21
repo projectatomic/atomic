@@ -26,8 +26,7 @@ def cli(subparser):
 
 class Pull(Atomic):
     def pull_docker_image(self):
-        registry, _, tag = decompose(self.args.image)
-        insecure = True if is_insecure_registry(self.d.info()['RegistryConfig'], strip_port(registry)) else False
+        _, _, tag = decompose(self.args.image)
         # If no tag is given, we assume "latest"
         tag = tag if tag != "" else "latest"
         if self.args.reg_type == "atomic":
@@ -35,7 +34,9 @@ class Pull(Atomic):
         else:
             pull_uri = 'docker://'
         fq_name = skopeo_inspect("{}{}".format(pull_uri, self.args.image))['Name']
+        registry, _, _ = decompose(fq_name)
         image = "docker-daemon:{}:{}".format(fq_name, tag)
+        insecure = True if is_insecure_registry(self.d.info()['RegistryConfig'], strip_port(registry)) else False
         trust = Trust()
         trust.set_args(self.args)
         trust.discover_sigstore(fq_name)
