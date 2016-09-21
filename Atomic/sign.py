@@ -28,6 +28,13 @@ def cli(subparser):
                        default=None,
                        dest="signature_path",
                        help=_("Define an alternate directory to store signatures"))
+    signp.add_argument("-g", "--gnupghome",
+                       default=None,
+                       dest="gnupghome",
+                       help=_("Set the GNUPGHOME environment variable to "
+                              "use an alternate user's GPG keyring. "
+                              "Useful when running with sudo, "
+                              "e.g. set to '~/.gnupg'."))
 
 class Sign(Atomic):
     def __init__(self):
@@ -56,6 +63,15 @@ class Sign(Atomic):
         registry_config_path = util.get_atomic_config_item(["registry_confdir"], ATOMIC_CONFIG)
         registry_config_path = '/etc/containers/registries.d' if registry_config_path is None else registry_config_path
         registry_configs, default_store = util.get_registry_configs(registry_config_path)
+
+        # we honor GNUPGHOME if set, override with atomic.conf, arg overrides all
+        gpghomedir =  None
+        if self.args.gnupghome:
+            gpghomedir = self.args.gnupghome
+        else:
+            gpghomedir = util.get_atomic_config_item(['gnupg_homedir'])
+        if gpghomedir:
+            os.environ['GNUPGHOME'] = gpghomedir
 
         for sign_image in images:
             remote_inspect_info = util.skopeo_inspect("docker://{}".format(sign_image))

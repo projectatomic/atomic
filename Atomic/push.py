@@ -60,6 +60,13 @@ def cli(subparser):
     pushp.add_argument("--sign-by", dest="sign_by", default=signer,
                        help=_("Name of the signing key. Currently %s, "
                               "default can be defined in /etc/atomic.conf" % signer))
+    pushp.add_argument("-g", "--gnupghome",
+                       default=None,
+                       dest="gnupghome",
+                       help=_("Set the GNUPGHOME environment variable to "
+                              "use an alternate user's GPG keyring for signing. "
+                              "Useful when running with sudo, "
+                              "e.g. set to '~/.gnupg'."))
     # pushp.add_argument("--activation_key_name",
     #                      default=None,
     #                      dest="activation_key_name",
