@@ -26,6 +26,7 @@ def cli(subparser):
 
 class Pull(Atomic):
     def pull_docker_image(self):
+        self.ping()
         _, _, tag = decompose(self.args.image)
         # If no tag is given, we assume "latest"
         tag = tag if tag != "" else "latest"
