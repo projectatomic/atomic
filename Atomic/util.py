@@ -32,7 +32,7 @@ ATOMIC_VAR_LIB = os.environ.get('ATOMIC_VAR_LIB', '/var/lib/atomic')
 GOMTREE_PATH = "/usr/bin/gomtree"
 BWRAP_OCI_PATH = "/usr/bin/bwrap-oci"
 RUNC_PATH = "/bin/runc"
-
+SKOPEO_PATH = "/usr/bin/skopeo"
 
 def gomtree_available():
     return os.path.exists(GOMTREE_PATH)
@@ -265,7 +265,7 @@ def skopeo_inspect(image, args=None, return_json=True, newline=False):
     # docker configuration. If so, then use false in the future.  This
     # is complicated by the fact that CIDR notation can be used in the
     # docker conf
-    cmd = ['skopeo', '--tls-verify=false', 'inspect'] + args + [image]
+    cmd = [SKOPEO_PATH, '--tls-verify=false', 'inspect'] + args + [image]
     try:
         results = subp(cmd, newline=newline)
     except OSError:
@@ -289,7 +289,7 @@ def skopeo_delete(image, args=None):
     if not args:
         args=[]
 
-    cmd = ['skopeo', 'tls-verify=false', 'delete'] + args + [image]
+    cmd = [SKOPEO_PATH, 'tls-verify=false', 'delete'] + args + [image]
     try:
         results = subp(cmd)
     except OSError:
@@ -327,7 +327,7 @@ def skopeo_layers(image, args=None, layers=None):
     return temp_dir
 
 def skopeo_standalone_sign(image, manifest_file_name, fingerprint, signature_path, debug=False):
-    cmd = ['skopeo']
+    cmd = [SKOPEO_PATH]
     if debug:
         cmd = cmd + ['--debug']
     cmd = cmd + ['standalone-sign', manifest_file_name, image,
@@ -335,14 +335,14 @@ def skopeo_standalone_sign(image, manifest_file_name, fingerprint, signature_pat
     return check_call(cmd)
 
 def skopeo_manifest_digest(manifest_file, debug=False):
-    cmd = ['skopeo']
+    cmd = [SKOPEO_PATH]
     if debug:
         cmd = cmd + ['--debug']
     cmd = cmd  + ['manifest-digest', manifest_file]
     return check_output(cmd).rstrip().decode()
 
 def skopeo_copy(source, destination, debug=False, sign_by=None, insecure=False):
-    cmd = ['skopeo']
+    cmd = [SKOPEO_PATH]
     if debug:
         cmd = cmd + ['--debug']
     if insecure:
