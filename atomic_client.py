@@ -1,12 +1,11 @@
+#! /usr/bin/python3 -Es
 import sys
-import json
 import dbus
 import time
-import dbus.service
-import dbus.mainloop.glib
 from Atomic import util
 from slip.dbus import polkit
-
+import dbus.service
+import dbus.mainloop.glib
 
 class AtomicDBus (object):
     def __init__(self):
@@ -14,43 +13,81 @@ class AtomicDBus (object):
         self.dbus_object = self.bus.get_object("org.atomic", "/org/atomic/object")
 
     @polkit.enable_proxy
-    def version(self, image, recurse):
-        ret = self.dbus_object.Version(image, recurse, dbus_interface="org.atomic")
-        return ret
+    def ContainersList(self):
+        return self.dbus_object.ContainersList(dbus_interface="org.atomic")
 
     @polkit.enable_proxy
-    def verify(self, image):
-        ret = self.dbus_object.Verify(image, dbus_interface="org.atomic")
-        return ret
+    def ContainersDelete(self, containers, containers_all=False):
+        if not isinstance(containers, (list, tuple)):
+            containers = [ containers ]
+        return self.dbus_object.ContainersDelete(containers, containers_all, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
-    def storage_reset(self):
-        self.dbus_object.StorageReset(dbus_interface="org.atomic")
+    def ContainersTrim(self):
+        return self.dbus_object.ContainersTrim(dbus_interface="org.atomic", timeout = 2147400)
 
     @polkit.enable_proxy
-    def storage_import(self, graph, import_location):
-        self.dbus_object.StorageImport(graph, import_location, dbus_interface="org.atomic")
+    def Diff(self, first, second, rpms=False, no_files=False, names_only=False):
+        return self.dbus_object.Diff(first, second, rpms, no_files, names_only, dbus_interface="org.atomic", timeout = 2147400)
 
     @polkit.enable_proxy
-    def storage_export(self, graph, export_location, force):
+    def HostDeploy(self, revision, reboot, os):
+        return self.dbus_object.HostDeploy(revision, reboot, os, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def HostDeployPreview(self, revision, os=None):
+        return self.dbus_object.HostDeployPreview(revision, os, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def HostInstall(self, rpms):
+        return self.dbus_object.HostInstall(rpms, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def HostRebase(self, refspec, os=None):
+        return self.dbus_object.HostRebase(refspec, os, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def HostRollBack(self, reboot=False):
+        return self.dbus_object.HostRollBack(reboot, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def HostStatus(self):
+        return self.dbus_object.HostStatus(dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def HostUninstall(self, rpms):
+        return self.dbus_object.HostUninstall(rpms, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def HostUnlock(self, hotfix=False):
+        return self.dbus_object.HostUnlock(hotfix, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def HostUpgrade(self, reboot=False, downgrade=False, os=None):
+        return self.dbus_object.HostUpgrade(reboot, downgrade, os, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def HostUpgradeDiff(self, os=None):
+        return self.dbus_object.HostUpgradeDiff(os, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def StorageExport(self, graph, export_location, force):
         self.dbus_object.StorageExport(graph, export_location, force, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
-    def storage_modify(self, devices, driver):
+    def StorageImport(self, graph, import_location):
+        self.dbus_object.StorageImport(graph, import_location, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def StorageModify(self, devices, driver):
         self.dbus_object.StorageModify(devices, driver, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
-    def diff(self, first, second):
-        ret = self.dbus_object.Diff(first, second, dbus_interface="org.atomic", timeout = 2147400)
-        return ret
+    def StorageReset(self):
+        self.dbus_object.StorageReset(dbus_interface="org.atomic")
 
     @polkit.enable_proxy
-    def scan_list(self):
-        ret = self.dbus_object.ScanList(dbus_interface="org.atomic")
-        return ret
-
-    @polkit.enable_proxy
-    def async_scan(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):
+    def AsyncScan(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):
         token = self.dbus_object.ScheduleScan(scan_targets, scanner, scan_type, rootfs, _all, images, containers, dbus_interface="org.atomic", timeout = 2147400)
         while(True):
             ret = self.dbus_object.GetScanResults(token, dbus_interface="org.atomic")
@@ -61,25 +98,89 @@ class AtomicDBus (object):
         return ret
 
     @polkit.enable_proxy
-    def scan(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):
-        ret = self.dbus_object.Scan(scan_targets, scanner, scan_type, rootfs, _all, images, containers, dbus_interface="org.atomic", timeout = 2147400)
+    def ImagesDelete(self, images, force=False, remote=False):
+        if not isinstance(images, (list, tuple)):
+            images = [ images ]
+        return self.dbus_object.ImagesDelete(images, remote, force, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def ImagesHelp(self, image):
+        return self.dbus_object.ImagesHelp(image, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def ImagesInfo(self, image, remote=False):
+        return self.dbus_object.ImagesInfo(image, remote, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def ImagesList(self):
+        return self.dbus_object.ImagesList(dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def ImagesPrune(self):
+        return self.dbus_object.ImagesPrune(dbus_interface="org.atomic")
+
+    def ImagesUpdate(self, images, force=False):
+        if not isinstance(images, (list, tuple)):
+            images = [ images ]
+        return self.dbus_object.ImagesInfo(images, force, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def ImagesVersion(self, images, recurse=False):
+        if not isinstance(images, (list, tuple)):
+            images = [ images ]
+        ret = self.dbus_object.Version(images, recurse, dbus_interface="org.atomic")
         return ret
 
     @polkit.enable_proxy
-    def update(self, image):
-        self.dbus_object.Update(image, dbus_interface="org.atomic", timeout = 2147400)
+    def MountImage(self, src, dest, options="", live=False, shared=False):
+        ret = self.dbus_object.MountImage(src, dest, options, live, shared, dbus_interface="org.atomic")
+        return ret
 
     @polkit.enable_proxy
-    def images(self):
-        return self.dbus_object.Images(dbus_interface="org.atomic", timeout = 2147400)
+    def Scan(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):
+        return self.dbus_object.Scan(scan_targets, scanner, scan_type, rootfs, _all, images, containers, dbus_interface="org.atomic", timeout = 2147400)
+
+    @polkit.enable_proxy
+    def ScanList(self):
+        ret = self.dbus_object.ScanList(dbus_interface="org.atomic")
+        return ret
+
+    @polkit.enable_proxy
+    def Sign(self, images, sign_by, signature_path = "", gnupghome=""):
+        if not isinstance(images, (list, tuple)):
+            images = [ images ]
+        return self.dbus_object.Sign(images, sign_by, signature_path, gnupghome, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def TrustAdd(self, registry, trusttype="reject", pubkeys="", keytype="GPGKeys", sigstore="", sigstoretype="web"):
+        return self.dbus_object.TrustAdd(registry, trusttype, pubkeys, keytype, sigstore, sigstoretype, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def TrustDefaultPolicy(self, policy):
+        return self.dbus_object.TrustDefaultPolicy(policy, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def TrustDelete(self, registry, trusttype="None"):
+        return self.dbus_object.TrustDelete(registry, trusttype, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def TrustShow(self):
+        return self.dbus_object.TrustShow(dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def UnmountImage(self, dest):
+        ret = self.dbus_object.UnmountImage(dest, dbus_interface="org.atomic")
+        return ret
+
+    @polkit.enable_proxy
+    def Verify(self, image):
+        ret = self.dbus_object.Verify(image, dbus_interface="org.atomic")
+        return ret
 
     @polkit.enable_proxy
     def vulnerable(self):
-        return self.dbus_object.VulnerableInfo(dbus_interface="org.atomic", timeout = 2147400)
+        return self.dbus_object.VulnerableInfo(dbus_interface="org.atomic")
 
-    @polkit.enable_proxy
-    def ps(self):
-        return self.dbus_object.Ps(dbus_interface="org.atomic", timeout = 2147400)
 #For outputting the list of scanners
 def print_scan_list(all_scanners):
     if len(all_scanners) == 0:
@@ -104,72 +205,38 @@ def print_scan_list(all_scanners):
         util.write_out("\n* denotes defaults")
         sys.exit(0)
 
-if __name__ == "__main__":
+def is_number(var):
     try:
-        dbus_proxy = AtomicDBus()
-        if(sys.argv[1] == "version"):
-            if sys.argv[2] == "-r":
-                resp = dbus_proxy.version(sys.argv[3:], True)
-            else:
-                resp = dbus_proxy.version(sys.argv[2:], False)
+        int(var)
+        return True
+    except ValueError:
+        return False
 
-            for r in resp:
-                for v in r["Version"]:
-                    print(str(v["Id"]), str(v["Version"]), str(v["Tag"]))
+def convert_str(val):
+    if val in ("True", "False"):
+        return val
+    if is_number(val):
+        return val
+    if val[0] == "[":
+        return val
+    return "\"%s\"" % val
 
-        elif(sys.argv[1] == "verify"):
-            resp = json.loads(dbus_proxy.verify(sys.argv[2:]))
-            for each in resp:
-                print(each["Image"])
-                verification = each["Verification"]
-                for verify in verification:
-                    print(verify)
+if __name__ == "__main__":
+    dbus_proxy = AtomicDBus()
+    cmd="dbus_proxy.%s(" % sys.argv[1]
 
-        elif(sys.argv[1] == "storage"):
-            #handles atomic storage export
-            if(sys.argv[2] == "export"):
-                dbus_proxy.storage_export("/var/lib/Docker", "/var/lib/atomic/migrate", False)
+    if len(sys.argv[2:]) > 0:
+        cmd+=convert_str(sys.argv[2])
 
-            #handles atomic storage import
-            elif(sys.argv[2] == "import"):
-                dbus_proxy.storage_import("/var/lib/Docker", "/var/lib/atomic/migrate")
-
-            #handles atomic storage reset
-            elif(sys.argv[2] == "reset"):
-                dbus_proxy.storage_reset()
-
-        elif(sys.argv[1] == "diff"):
-            #case where rpms flag is passed in
-            resp = json.loads(dbus_proxy.diff(sys.argv[2], sys.argv[3]))
-            print(resp)
-
-        elif(sys.argv[1] == "scan"):
-            if(sys.argv[2] == "--list"):
-                print_scan_list(json.loads(dbus_proxy.scan_list()))
-
-            elif(sys.argv[2] == "--all"):
-                print (json.loads(dbus_proxy.scan([], '', '', [], True, False, False)))
-
-            elif(sys.argv[2] == "--images"):
-                print (json.loads(dbus_proxy.scan([], '', '', [], False, True, False)))
-
-            elif(sys.argv[2] == "--containers"):
-                print (json.loads(dbus_proxy.scan([], '', '', [], False, False, True)))
-
-            else:
-                print (json.loads(dbus_proxy.scan([sys.argv[2]], '', '', [], False, False, False)))
-
-        elif(sys.argv[1] == "update"):
-            dbus_proxy.update(sys.argv[2])
-
-        elif(sys.argv[1] == "images"):
-            print(json.loads(dbus_proxy.images()))
-
-        elif(sys.argv[1] == "vulnerable"):
-            print(json.loads(dbus_proxy.vulnerable()))
-
-        elif(sys.argv[1] == "ps"):
-            print(json.loads(dbus_proxy.ps()))
-
-    except dbus.DBusException as e:
-        print (e)
+    for i in sys.argv[3:]:
+        cmd+=","
+        cmd+=convert_str(i)
+    cmd+=")"
+    print(cmd)
+    try:
+        s = eval(cmd) # pylint: disable=eval-used
+        if s:
+            print(s)
+    except dbus.exceptions.DBusException as e:
+        print(e.get_dbus_message())
+        sys.exit(-1)

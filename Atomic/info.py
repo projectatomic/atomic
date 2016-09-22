@@ -13,8 +13,8 @@ def cli(subparser):
         "info", help=_("display label information about an image"),
         epilog="atomic info attempts to read and display the LABEL "
         "information about an image")
-    infop.set_defaults(_class=Info, func='info')
-    infop.add_argument("--remote", dest="force_remote_info",
+    infop.set_defaults(_class=Info, func='info_tty')
+    infop.add_argument("--remote", dest="force",
                        action='store_true', default=False,
                        help=_('ignore local images and only scan registries'))
     infop.add_argument("image", help=_("container image"))
@@ -37,23 +37,26 @@ class Info(Atomic):
         super(Info, self).__init__()
 
     def version(self):
-        self.args.force_remote_info = False
-        self.info()
+        self.args.force = False
+        self.info_tty()
+
+    def info_tty(self):
+        util.write_out(self.info())
 
     def info(self):
         """
         Retrieve and print all LABEL information for a given image.
         """
+        buf = ""
         def _no_label():
             raise ValueError("'{}' has no label information."
                              .format(self.args.image))
         # Check if the input is an image id associated with more than one
         # repotag.  If so, error out.
         if self.syscontainers.has_system_container_image(self.image):
-            if not self.args.force_remote_info:
+            if not self.args.force:
                 version = self.syscontainers.version(self.image)
-                util.write_out('{0}: {1}'.format(self.image, version))
-                return
+                return ('{0}: {1}'.format(self.image, version))
         elif self.is_iid():
             self.get_fq_name(self._inspect_image())
         # The input is not an image id
@@ -62,13 +65,13 @@ class Info(Atomic):
                 iid = self._is_image(self.image)
                 self.image = self.get_fq_name(self._inspect_image(iid))
             except AtomicError:
-                if self.args.force_remote_info:
+                if self.args.force:
                     self.image = util.find_remote_image(self.d, self.image)
                 if self.image is None:
                     self._no_such_image()
-        util.write_out("Image Name: {}".format(self.image))
+        buf += ("Image Name: {}".format(self.image))
         inspection = None
-        if not self.args.force_remote_info:
+        if not self.args.force:
             inspection = self._inspect_image(self.image)
             # No such image locally, but fall back to remote
         if inspection is None:
@@ -86,9 +89,10 @@ class Info(Atomic):
 
         if labels is not None and len(labels) is not 0:
             for label in labels:
-                util.write_out('{0}: {1}'.format(label, labels[label]))
+                buf += ('{0}: {1}\n'.format(label, labels[label]))
         else:
             _no_label()
+        return buf
 
     def print_version(self):
         for layer in self.version():

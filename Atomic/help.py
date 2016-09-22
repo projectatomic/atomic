@@ -12,14 +12,16 @@ def cli(subparser):
     helpp = subparser.add_parser(
     "help", help=_("Display help associated with the image"),
     epilog="atomic help 'image'")
-    helpp.set_defaults(_class=AtomicHelp, func='help')
+    helpp.set_defaults(_class=AtomicHelp, func='help_tty')
     helpp.add_argument("image", help=_("Image ID or name"))
 
 class AtomicHelp(Atomic):
-
+    ATOMIC_DIR="/run/atomic"
     def __init__(self):
         super(AtomicHelp, self).__init__()
-        self.mount_location = tempfile.mkdtemp(prefix='/run/atomic/')
+        if not os.path.exists(self.ATOMIC_DIR):
+            os.makedirs(self.ATOMIC_DIR)
+        self.mount_location = tempfile.mkdtemp(prefix=self.ATOMIC_DIR)
         self.help_file_name = 'help.1'
         self.docker_object = None
         self.is_container = True
@@ -27,6 +29,15 @@ class AtomicHelp(Atomic):
         self.alt_help_cmd = None
         self.image = None
         self.inspect = None
+
+    def help_tty(self):
+        result = self.help()
+        if sys.stdout.isatty():
+            util.write_out("\n{}\n".format(result))
+        else:
+            # Call the pager
+            os.environ['PAGER'] = '/usr/bin/less -R'
+            pager(result)
 
     def help(self):
         """
@@ -49,11 +60,11 @@ class AtomicHelp(Atomic):
         self.alt_help_cmd = None if len(labels) == 0 else labels.get('HELP')
 
         if self.alt_help_cmd is not None:
-            self.display_alt_help()
+            return self.alt_help()
         else:
-            self.display_man_help(docker_id)
+            return self.man_help(docker_id)
 
-    def display_man_help(self, docker_id):
+    def man_help(self, docker_id):
         """
         Display the help for a container or image using the default
         method of displaying a man formatted page
@@ -61,14 +72,9 @@ class AtomicHelp(Atomic):
         :return: None
         """
         if not os.path.exists(self.mount_location):
-            os.mkdir(self.mount_location)
+            os.makedirs(self.mount_location)
         # Set the pager to less -R
         enc = sys.getdefaultencoding()
-        if sys.stdout.isatty():
-            os.environ['PAGER'] = '/usr/bin/less -R'
-        else:
-            # There is no tty
-            self.use_pager = False
         dm = mount.DockerMount(self.mount_location, mnt_mkdir=True)
         mnt_path = dm.mount(docker_id)
         help_path = os.path.join(mnt_path, self.help_file_name)
@@ -84,21 +90,16 @@ class AtomicHelp(Atomic):
         c2 = subprocess.Popen(cmd2, stdin=help_file, stdout=subprocess.PIPE, close_fds=True)
         result = c2.communicate()[0].decode(enc)
         help_file.close()
-        if not self.use_pager:
-            util.write_out("\n{}\n".format(result))
-        else:
-            # Call the pager
-            pager(result)
-
         # Clean up
         dm.unmount(path=mnt_path)
+        return result
 
-    def display_alt_help(self):
+    def alt_help(self):
         """
-        Displays help when the HELP LABEL override is being used.
+        Returns help when the HELP LABEL override is being used.
         :return: None
         """
         cmd = self.gen_cmd(self.alt_help_cmd.split(" "))
         cmd = self.sub_env_strings(cmd)
         self.display(cmd)
-        util.check_call(cmd, env=self.cmd_env())
+        return util.check_output(cmd, env=self.cmd_env())

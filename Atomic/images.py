@@ -70,7 +70,7 @@ def cli(subparser):
                              action="store_true",
                              help=_("Force removal of local images, even if containers based on it exist.  Default is False"))
 
-    deletegroup.add_argument("--remote", default=False, dest="remote_delete",
+    deletegroup.add_argument("--remote", default=False, dest="remote",
                              action="store_true",
                              help=_("Delete image from remote repository"))
 

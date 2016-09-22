@@ -24,8 +24,8 @@ def cli(subparser):
                      Example: registry.example.com defines trust for entire registry.
                      Example: registry.example.com/acme defines trust for specific repository."""
     sigstore_help="""Signature server type (default: web)
-                     local: local file 
-                     web: remote web server 
+                     local: local file
+                     web: remote web server
                      atomic: openshift-based atomic registry"""
     commonp.add_argument("-k", "--pubkeys", nargs='?', default=[],
                          action="append", dest="pubkeys",
@@ -45,7 +45,7 @@ def cli(subparser):
                          help=_("URL and path of remote signature server, "
                                 "https://sigstore.example.com/signatures. "
                                 "Ignored with 'atomic' sigstoretype."))
-    commonp.add_argument("registry", 
+    commonp.add_argument("registry",
                          help=registry_help)
     subparsers = trustp.add_subparsers()
     addp = subparsers.add_parser("add", parents=[commonp],
@@ -145,7 +145,7 @@ class Trust(Atomic):
             try:
                 del policy["transports"][sstype][self.args.registry]
             except KeyError:
-                raise ValueError("Could not find trust policy defined for %s transport %s" % 
+                raise ValueError("Could not find trust policy defined for %s transport %s" %
                               (self.args.sigstoretype, self.args.registry))
             policy_file.seek(0)
             json.dump(policy, policy_file, indent=4)
@@ -370,6 +370,7 @@ class Trust(Atomic):
                 for key, value in sorted_table.items():
                     util.write_out('{0:<35} {1:<8} {2}'.format(key, self.trusttype_map(value["type"]), value["sigstore"]))
                 util.write_out('{0:<35} {1:<8}'.format("* (default)", self.trusttype_map(policy["default"][0]["type"])))
+        return policy
 
     def trusttype_map(self, trust_type):
         t = { "insecureAcceptAnything": "accept", "signedBy": "signed", "reject": "reject" }

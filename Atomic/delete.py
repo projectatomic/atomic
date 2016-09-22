@@ -21,7 +21,7 @@ class Delete(Atomic):
                 util.write_err("User aborted delete operation for {}".format(self.args.delete_targets))
                 sys.exit(2)
 
-        if self.args.remote_delete:
+        if self.args.remote:
             results = self._delete_remote(self.args.delete_targets)
         else:
             results = self._delete_local(self.args.delete_targets, self.args.force)
