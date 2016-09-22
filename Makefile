@@ -87,6 +87,8 @@ install-only:
 
 	install -m 644 default.yaml $(DESTDIR)/etc/containers/registries.d
 
+	install -d $(DESTDIR)/var/lib/atomic/sigstore
+
 .PHONY: install
 install: all install-only
 
