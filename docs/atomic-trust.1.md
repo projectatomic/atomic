@@ -39,6 +39,10 @@ Trust may be updated using the command **atomic trust add** for an existing trus
 
 The default trust policy is managed by the default command. Options are **accept** or **reject**.
 
+The default **/etc/containers/policy.json** file may be overriden using
+environment variable **TRUST_POLICY**. This is typically only useful for
+testing.
+
 # OPTIONS
 **-h** **--help**
   Print usage statement.

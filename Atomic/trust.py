@@ -75,7 +75,7 @@ class Trust(Atomic):
         :param policy_filename: override policy filename
         """
         super(Trust, self).__init__()
-        self.policy_filename = policy_filename
+        self.policy_filename = os.environ.get('TRUST_POLICY', policy_filename)
         self.atomic_config = util.get_atomic_config()
 
     def add(self, registry=None, pubkeys=None, sigstore=None, sigstoretype=None, keytype=None, trust_type=None):
