@@ -1,6 +1,5 @@
 import getpass
 
-from .sign import Sign
 from . import util
 from . import pulp
 from . import satellite
@@ -149,11 +148,9 @@ class Push(Atomic):
             if self.args.password and self.args.username:
                 self.d.login(username=self.args.username, password=self.args.password, registry=reg)
 
-            sign_local = True
             local_image = "docker-daemon:{}".format(self.image)
             if self.args.reg_type == "atomic":
                 remote_image = "atomic:{}".format(self.image)
-                sign_local = False
             else:
                 remote_image = "docker://{}".format(self.image)
 
@@ -166,17 +163,10 @@ class Push(Atomic):
             # We must push the file to the registry first prior to performing a
             # local signature because the manifest file must be on the registry
             return_code = util.skopeo_copy(local_image, remote_image, debug=self.args.debug,
-                                           sign_by=self.args.sign_by if not sign_local else None, insecure=insecure)
+                                           sign_by=self.args.sign_by if sign else None, insecure=insecure)
 
             if return_code != 0:
                 raise ValueError("Pushing {} failed.".format(self.image))
             if self.args.debug:
                 util.write_out("Pushed: {}".format(self.image))
-
-            if sign_local and sign:
-                if self.args.debug:
-                    util.write_out("Need to create a local signature")
-                atomic_sign = Sign()
-                atomic_sign.set_args(self.args)
-                atomic_sign.sign(in_signature_path=None, images=[self.image])
 
