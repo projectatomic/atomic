@@ -341,8 +341,12 @@ def skopeo_manifest_digest(manifest_file, debug=False):
     cmd = cmd  + ['manifest-digest', manifest_file]
     return check_output(cmd).rstrip().decode()
 
-def skopeo_copy(source, destination, debug=False, sign_by=None, insecure=False):
+def skopeo_copy(source, destination, debug=False, sign_by=None, insecure=False, policy_filename=None):
+
     cmd = [SKOPEO_PATH]
+    if policy_filename:
+        cmd = cmd + [ "--policy=%s" % policy_filename ]
+
     if debug:
         cmd = cmd + ['--debug']
     if insecure:

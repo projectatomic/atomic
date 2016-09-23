@@ -81,6 +81,13 @@ def cli(subparser):
     #                      help=_("Organization Name"))
 
 class Push(Atomic):
+    def __init__(self, policy_filename=None):
+        """
+        :param policy_filename: override policy filename
+        """
+        super(Push, self).__init__()
+        self.policy_filename=policy_filename
+
     def push(self):
         self.ping()
         if self.args.debug:
@@ -170,10 +177,10 @@ class Push(Atomic):
             # We must push the file to the registry first prior to performing a
             # local signature because the manifest file must be on the registry
             return_code = util.skopeo_copy(local_image, remote_image, debug=self.args.debug,
+                                           policy_filename=self.policy_filename,
                                            sign_by=self.args.sign_by if sign else None, insecure=insecure)
 
             if return_code != 0:
                 raise ValueError("Pushing {} failed.".format(self.image))
             if self.args.debug:
                 util.write_out("Pushed: {}".format(self.image))
-

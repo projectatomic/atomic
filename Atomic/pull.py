@@ -25,6 +25,13 @@ def cli(subparser):
 
 
 class Pull(Atomic):
+    def __init__(self, policy_filename=None):
+        """
+        :param policy_filename: override policy filename
+        """
+        super(Pull, self).__init__()
+        self.policy_filename=policy_filename
+
     def pull_docker_image(self):
         self.ping()
         _, _, tag = decompose(self.args.image)
@@ -41,7 +48,9 @@ class Pull(Atomic):
         trust = Trust()
         trust.set_args(self.args)
         trust.discover_sigstore(fq_name)
-        skopeo_copy("docker://{}".format(self.args.image), image, debug=self.args.debug, insecure=insecure)
+        skopeo_copy("docker://{}".format(self.args.image), image,
+                    debug=self.args.debug, insecure=insecure,
+                    policy_filename=self.policy_filename)
 
     def pull_image(self):
         handlers = {
@@ -54,4 +63,3 @@ class Pull(Atomic):
             raise ValueError("Destination not known, please choose --storage=%s" % "|".join(handlers.keys()))
         write_out("Image %s is being pulled to %s ..." % (self.args.image, self.args.backend))
         handler()
-
