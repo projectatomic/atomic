@@ -6,7 +6,8 @@ atomic \- Atomic Management Tool
 
 # SYNOPSIS
 **atomic** [OPTIONS] COMMAND [arg...]
-  {diff,host,images,info,install,mount,run,scan,stop,storage,uninstall,unmount,update,upload,verify,version}
+  {containers,diff,help,images,info,install,mount,pull,push,run,scan,sign,stop,storage,migrate,top,trust,uninstall,unmount,umount,update,verify,version}
+
 [**-h**|**--help**]
 
 # DESCRIPTION
@@ -34,6 +35,9 @@ overridden with the _ATOMIC_CONF_ environment variable
 overridden with the _ATOMIC_CONFD_ environment variable.
 
 # COMMANDS
+**atomic-containers(1)**
+operations on installed containers
+
 **atomic-diff(1)**
 show the differences between two images|containers' RPMs
 
@@ -46,7 +50,7 @@ execute commands to manage an Atomic host.
 Note: only available on atomic host platforms.
 
 **atomic-images(1)**
-operations on locally installed container images
+operations on container images
 
 **atomic-info(1)**
 execute read and display LABEL information about a container image
@@ -69,6 +73,9 @@ execute image run method (default)
 **atomic-scan(1)**
 scan an image or container for CVEs
 
+**atomic-sign(1)**
+sign an image
+
 **atomic-stop(1)**
 execute container image stop method
 
@@ -77,6 +84,9 @@ manage the container storage on the system
 
 **atomic-top(1)**
 display a top-like list of container processes
+
+**atomic-trust(1)**
+manage system container trust policy
 
 **atomic-uninstall(1)**
 uninstall container from system

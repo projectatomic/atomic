@@ -146,8 +146,8 @@ def create_parser(help_text):
 
     install.cli(subparser)
     mount.cli(subparser)
-    push.cli(subparser)
     pull.cli(subparser)
+    push.cli(subparser)
     run.cli(subparser)
     scan.cli(subparser)
     sign.cli(subparser)
