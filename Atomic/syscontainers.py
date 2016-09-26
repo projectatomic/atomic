@@ -760,7 +760,15 @@ class SystemContainers(object):
                 if len(i) == len(OSTREE_OCIIMAGE_PREFIX) + 64:
                     refs[i] = False
                 else:
-                    app_refs.append(i)
+                    invalid_encoding = False
+                    for c in i.replace(OSTREE_OCIIMAGE_PREFIX, ""):
+                        if not str.isalnum(str(c)) and c not in '.-_':
+                            invalid_encoding = True
+                            break
+                    if invalid_encoding:
+                        refs[i] = False
+                    else:
+                        app_refs.append(i)
 
         def visit(rev):
             manifest = self._image_manifest(repo, repo.resolve_rev(rev, True)[1])
