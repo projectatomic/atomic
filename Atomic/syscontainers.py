@@ -866,9 +866,33 @@ class SystemContainers(object):
                 return OSTree.RepoCommitFilterResult.ALLOW
 
             modifier = OSTree.RepoCommitModifier.new(0, filter_func, None)
-            repo.write_archive_to_mtree(Gio.File.new_for_path(tar), mtree, modifier, True)
-            root = repo.write_mtree(mtree)[1]
+
             metav = GLib.Variant("a{sv}", {'docker.layer': GLib.Variant('s', layer)})
+
+            imported = False
+            try:
+                repo.write_archive_to_mtree(Gio.File.new_for_path(tar), mtree, modifier, True)
+                root = repo.write_mtree(mtree)[1]
+                csum = repo.write_commit(None, "", None, metav, root)[1]
+                imported = True
+            except GLib.GError as e:  #pylint: disable=catching-non-exception
+                # libarchive which is used internally by OSTree to import a tarball doesn't support correctly
+                # files with xattrs.  If that happens, extract the tarball and import the directory.
+                if e.domain != "g-io-error-quark":  # pylint: disable=no-member
+                    raise e  #pylint: disable=raising-non-exception
+
+            if not imported:
+                try:
+                    temp_dir = tempfile.mkdtemp()
+                    with tarfile.open(tar, 'r') as t:
+                        t.extractall(temp_dir)
+                    repo.write_directory_to_mtree(Gio.File.new_for_path(temp_dir), mtree, modifier)
+                    root = repo.write_mtree(mtree)[1]
+                    csum = repo.write_commit(None, "", None, metav, root)[1]
+                finally:
+                    shutil.rmtree(temp_dir)
+
+            root = repo.write_mtree(mtree)[1]
             csum = repo.write_commit(None, "", None, metav, root)[1]
             repo.transaction_set_ref(None, "%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), csum)
 
