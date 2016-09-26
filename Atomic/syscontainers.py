@@ -262,6 +262,11 @@ class SystemContainers(object):
                     shutil.rmtree(unitfileout)
             except OSError:
                 pass
+            try:
+                if not upgrade:
+                    shutil.rmtree(tmpfilesout)
+            except OSError:
+                pass
             raise e
 
     def _do_checkout_system_container(self, repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote):
