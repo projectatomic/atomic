@@ -189,7 +189,7 @@ class Containers(Atomic):
             ret["Type"] = "docker"
             ret["vulnerable"] = ret["Image"] in vuln_ids
             if ret["vulnerable"]:
-                ret["vuln_info"] = all_vuln_info[ret["ImageId"]]
+                ret["vuln_info"] = all_vuln_info[ret["Image"]]
             else:
                 ret["vuln_info"] = dict()
             all_containers.append(ret)
