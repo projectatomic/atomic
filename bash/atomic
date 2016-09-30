@@ -686,6 +686,7 @@ _atomic_sign() {
     local options_with_args="
 	  --sign-by
 	  -d --directory
+	  -g, --gnupghome
     "
     local all_options="$options_with_args
 	  --help -h
@@ -695,6 +696,10 @@ _atomic_sign() {
 
 	case "$prev" in
 		"-d"|"--directory")
+			COMPREPLY=( $( compgen -d "$cur" ) )
+			return 0
+			;;
+		"-g"|"--gnupghome")
 			COMPREPLY=( $( compgen -d "$cur" ) )
 			return 0
 			;;

@@ -13,7 +13,6 @@ Only use **atomic sign** if you trust the remote registry which contains the ima
 # SYNOPSIS
 **atomic sign**
 [**-h**|**--help**]
-
 [**-d**, **--directory**]
 [**--sign-by**]
 [**-g**, **--gnupghome**]
@@ -39,6 +38,8 @@ in /etc/atomic.conf.
 **-g** **--gnupghome**
   Specify the GNUPGHOME directory to use for signing, e.g. &#126;/.gnupg. This
   argument will override the value of **gnupg_homedir** in /etc/atomic.conf.
+  Defaults to the homedir or the uid defined in /proc/self/loginuid if it exists, or
+  $SUDO_UID if it is defined, or current UID.
 
 # EXAMPLES
 Sign the foobar image from privateregistry.example.com

@@ -14,7 +14,9 @@ WRITE_URIS = ['file']
 
 def cli(subparser):
     # atomic sign
-    signer = ATOMIC_CONFIG.get('default_signer', None)
+    signer = util.get_atomic_config_item(['default_signer'])
+    gnupghome = util.getgnuhome()
+
     signp = subparser.add_parser("sign",
                                  help="Sign an image",
                                  epilog="Create a signature for an image which can be "
@@ -29,12 +31,14 @@ def cli(subparser):
                        dest="signature_path",
                        help=_("Define an alternate directory to store signatures"))
     signp.add_argument("-g", "--gnupghome",
-                       default=None,
+                       default=gnupghome,
                        dest="gnupghome",
                        help=_("Set the GNUPGHOME environment variable to "
                               "use an alternate user's GPG keyring. "
                               "Useful when running with sudo, "
-                              "e.g. set to '~/.gnupg'."))
+                              "e.g. set to '~/.gnupg'. "
+                              "Default is %s" % gnupghome
+                       ))
 
 class Sign(Atomic):
     def __init__(self):
@@ -66,18 +70,12 @@ class Sign(Atomic):
         if self.args.sign_by is None:
             raise ValueError("No default identity (default_signer) was defined in /etc/atomic.conf "
                              "and no --sign-by identity was provided.  You must provide an identity")
-        registry_config_path = util.get_atomic_config_item(["registry_confdir"], ATOMIC_CONFIG)
-        registry_config_path = '/etc/containers/registries.d' if registry_config_path is None else registry_config_path
+        registry_config_path = util.get_atomic_config_item(["registry_confdir"], ATOMIC_CONFIG, '/etc/containers/registries.d')
         registry_configs, default_store = util.get_registry_configs(registry_config_path)
 
         # we honor GNUPGHOME if set, override with atomic.conf, arg overrides all
-        gpghomedir =  None
         if self.args.gnupghome:
-            gpghomedir = self.args.gnupghome
-        else:
-            gpghomedir = util.get_atomic_config_item(['gnupg_homedir'])
-        if gpghomedir:
-            os.environ['GNUPGHOME'] = gpghomedir
+            os.environ['GNUPGHOME'] = self.args.gnupghome
 
         for sign_image in images:
             remote_inspect_info = util.skopeo_inspect("docker://{}".format(sign_image))

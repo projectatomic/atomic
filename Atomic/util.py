@@ -1,6 +1,7 @@
 import argparse
 import errno
 import shlex
+import pwd
 import sys
 import json
 import subprocess
@@ -392,7 +393,7 @@ def add_opt(sub):
     sub.add_argument("--opt2", dest="opt2",help=argparse.SUPPRESS)
     sub.add_argument("--opt3", dest="opt3",help=argparse.SUPPRESS)
 
-def get_atomic_config_item(config_items, atomic_config=None):
+def get_atomic_config_item(config_items, atomic_config=None, default=None):
     """
     Lookup and return the atomic configuration file value
     for a given structure. Returns None if the option
@@ -413,7 +414,11 @@ def get_atomic_config_item(config_items, atomic_config=None):
         return yaml_struct
     if atomic_config is None:
         atomic_config = get_atomic_config()
-    return _recursive_get(atomic_config, config_items)
+    val = _recursive_get(atomic_config, config_items)
+    if val:
+        return val
+    else:
+        return default
 
 def get_scanners():
     scanners = []
@@ -712,3 +717,22 @@ def is_insecure_registry(registry_config, registry):
             if ipaddress.ip_address(registry_ip ) in ipaddress.ip_network(cidr_subnet):
                 return True
 
+def getgnuhome():
+    defaulthome = get_atomic_config_item(['gnupg_homedir'])
+    if defaulthome:
+        return defaulthome
+
+    try:
+        fd=open("/proc/self/loginuid")
+        uid=int(fd.read())
+        fd.close()
+        return ("%s/.gnupg" % pwd.getpwuid(uid).pw_dir)
+    except (KeyError, IOError):
+        if "SUDO_UID" in os.environ:
+            uid = int(os.environ["SUDO_UID"])
+        else:
+            uid = os.getuid()
+    try:
+        return ("%s/.gnupg" % pwd.getpwuid(uid).pw_dir)
+    except KeyError:
+        return None
