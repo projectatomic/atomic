@@ -108,7 +108,10 @@ class Atomic(object):
         self.ping()
         if self.force:
             self.force_delete_containers()
-        return util.check_call([self.docker_binary(), "pull", self.image])
+        registry, _, _ = util.decompose(self.image)
+        return util.skopeo_copy("docker://{}".format(self.image),
+                                "docker-daemon:{}".format(self.image),
+                                util.is_insecure_registry(self.d.info()['RegistryConfig'], util.strip_port(registry)))
 
     def pull(self):
         prevstatus = ""
