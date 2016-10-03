@@ -52,6 +52,12 @@ class Sign(Atomic):
         if images is None:
             images = self.args.images
 
+        for reg_check in images:
+            reg, _, _ = util.decompose(reg_check)
+            if not reg:
+                raise ValueError("Signing can only sign images stored on a registry. Image '{}' is "
+                                 "not preceeded with a registry name. See man atomic-sign".format(reg_check))
+
         if self.debug:
             util.write_out(str(self.args))
 
