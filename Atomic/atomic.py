@@ -109,7 +109,7 @@ class Atomic(object):
         self.ping()
         if self.force:
             self.force_delete_containers()
-        registry, _, _ = util.decompose(self.image)
+        registry, _, _, _ = util.decompose(self.image)
         return util.skopeo_copy("docker://{}".format(self.image),
                                 "docker-daemon:{}".format(self.image),
                                 util.is_insecure_registry(self.d.info()['RegistryConfig'], util.strip_port(registry)))

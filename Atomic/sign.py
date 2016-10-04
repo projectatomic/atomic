@@ -57,7 +57,7 @@ class Sign(Atomic):
             images = self.args.images
 
         for reg_check in images:
-            reg, _, _ = util.decompose(reg_check)
+            reg, _, _, _ = util.decompose(reg_check)
             if not reg:
                 raise ValueError("Signing can only sign images stored on a registry. Image '{}' is "
                                  "not preceeded with a registry name. See man atomic-sign".format(reg_check))
@@ -85,7 +85,7 @@ class Sign(Atomic):
                 manifest_file.write(manifest)
                 manifest_file.close()
                 manifest_hash = str(util.skopeo_manifest_digest(manifest_file.name))
-                _, _, tag = util.decompose(sign_image)
+                _, _, _, tag = util.decompose(sign_image)
                 tag = ":{}".format(tag) if tag != "" else ":latest"
                 expanded_image_name = str(remote_inspect_info['Name'])
 
@@ -96,7 +96,7 @@ class Sign(Atomic):
 
 
                 else:
-                    reg, repo, _ = util.decompose(expanded_image_name)
+                    reg, repo, _, _ = util.decompose(expanded_image_name)
                     if not registry_configs and not default_store:
                         raise ValueError(no_reg_no_default_error(sign_image, registry_config_path))
                     reg_info = util.have_match_registry("{}/{}".format(reg, repo), registry_configs)

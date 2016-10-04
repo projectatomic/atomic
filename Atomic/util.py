@@ -20,7 +20,6 @@ import re
 import requests
 import ipaddress
 import socket
-
 # Atomic Utility Module
 
 ReturnTuple = collections.namedtuple('ReturnTuple',
@@ -54,22 +53,49 @@ def check_if_python2():
 
 input, is_python2 = check_if_python2() # pylint: disable=redefined-builtin
 
+
+def get_registries():
+    registries = []
+    with AtomicDocker() as c:
+        rconf = c.info()['RegistryConfig']['IndexConfigs']
+    # docker.io is special
+    if 'docker.io' in rconf:
+        registries.append({'hostname': 'registry-1.docker.io', 'name': 'docker.io'})
+        # remove docker.io
+        del(rconf['docker.io'])
+    for i in rconf:
+        registries.append({'hostname': i, 'name': i})
+    return registries
+
+
 def decompose(compound_name):
-    # this doesn't behave when the registry is omitted or using hub "library" images
-    #       we should really decompose into reg, repo, image and tag components
-    # 'reg/repo/image[:tag]' -> (reg, repo, image, tag)
-    reg, repo, tag = '', compound_name, ''
+    registries = [x['name'] for x in get_registries()]
+    reg, repo, image, tag = '', compound_name, '', ''
     if '/' in repo:
         reg, repo = repo.split('/', 1)
+        if reg not in registries:
+            repo = '{}/{}'.format(reg, repo)
+            reg = ''
     if ':' in repo:
         repo, tag = repo.rsplit(':', 1)
-    return str(reg), str(repo), str(tag)
+    if "/" in repo:
+        repo, image = repo.rsplit("/", 1)
+    if not image and repo:
+        image = repo
+        repo = ''
+    if reg == 'docker.io' and repo == '':
+        repo = 'library'
+    if not tag:
+        tag = "latest"
+
+    return str(reg), str(repo), str(image), str(tag)
+
 
 def image_by_name(img_name, images=None):
     # Returns a list of image data for images which match img_name. Will
     # optionally take a list of images from a docker.Client.images
     # query to avoid multiple docker queries.
-    i_reg, i_rep, i_tag = decompose(img_name)
+    i_reg, i_rep, i_img, i_tag = decompose(img_name)
 
     # Correct for bash-style matching expressions.
     if not i_reg:
@@ -87,15 +113,14 @@ def image_by_name(img_name, images=None):
         if not i["RepoTags"]:
             continue
         for t in i['RepoTags']:
-            reg, rep, tag = decompose(t)
+            reg, rep, d_image, tag = decompose(t)
             if matches(reg, i_reg) \
                     and matches(rep, i_rep) \
-                    and matches(tag, i_tag):
+                    and matches(tag, i_tag) \
+                    and matches(d_image, i_img):
                 valid_images.append(i)
                 break
-            # Some repo after decompose end up with the img_name
-            # at the end.  i.e. rhel7/rsyslog
-            if rep.endswith(img_name):
+            if matches(i_img, d_image) and matches(i_tag, tag):
                 valid_images.append(i)
                 break
     return valid_images

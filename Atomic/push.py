@@ -159,7 +159,7 @@ class Push(Atomic):
                                                      self.args.debug)
 
         else:
-            reg, _, tag = util.decompose(self.image)
+            reg, _, _, tag = util.decompose(self.image)
             # Check if any local tokens exist
             if reg not in [x for x in self.get_local_tokens()]:
                 # If we find a token for the registry, we don't
