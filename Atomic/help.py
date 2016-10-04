@@ -1,4 +1,5 @@
 from . import Atomic
+import argparse
 import subprocess
 import tempfile
 from pydoc import pager
@@ -7,11 +8,16 @@ from . import mount
 import sys
 from . import util
 
-def cli(subparser):
+def cli(subparser, hidden=False):
     #atomic help
-    helpp = subparser.add_parser(
-    "help", help=_("Display help associated with the image"),
-    epilog="atomic help 'image'")
+    if hidden:
+        helpp = subparser.add_parser("help", argument_default=argparse.SUPPRESS)
+
+    else:
+        helpp = subparser.add_parser("help",
+                                     help=_("display help associated with the image"),
+                                     epilog="atomic help 'image'")
+
     helpp.set_defaults(_class=AtomicHelp, func='help_tty')
     helpp.add_argument("image", help=_("Image ID or name"))
 

@@ -6,7 +6,7 @@ atomic \- Atomic Management Tool
 
 # SYNOPSIS
 **atomic** [OPTIONS] COMMAND [arg...]
-  {containers,diff,help,images,info,install,mount,pull,push,run,scan,sign,stop,storage,migrate,top,trust,uninstall,unmount,umount,update,verify,version}
+  {containers,diff,images,install,mount,pull,push,run,scan,sign,stop,storage,migrate,top,trust,uninstall,unmount,umount,update,verify,version}
 
 [**-h**|**--help**]
 
@@ -41,9 +41,6 @@ operations on installed containers
 **atomic-diff(1)**
 show the differences between two images|containers' RPMs
 
-**atomic-help(1)**
-show help associated with a container or image
-
 **atomic-host(1)**
 execute commands to manage an Atomic host.
 
@@ -51,9 +48,6 @@ Note: only available on atomic host platforms.
 
 **atomic-images(1)**
 operations on container images
-
-**atomic-info(1)**
-execute read and display LABEL information about a container image
 
 **atomic-install(1)**
 execute commands on installed images
@@ -96,13 +90,6 @@ unmount previously mounted image or container
 
 **atomic-update(1)**
 Downloads the latest container image. 
-
-**atomic-verify(1)**
-verify image is fully updated
-
-**atomic-version(1)**
-display image 'Name Version Release' label
-
 
 # CONNECTING TO DOCKER ENGINE
 

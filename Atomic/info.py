@@ -1,4 +1,5 @@
 from . import util
+import argparse
 
 try:
     from . import Atomic
@@ -7,24 +8,32 @@ except ImportError:
 
 from .atomic import AtomicError
 
-def cli(subparser):
+def cli(subparser, hidden=False):
     # atomic info
-    infop = subparser.add_parser(
-        "info", help=_("display label information about an image"),
-        epilog="atomic info attempts to read and display the LABEL "
-        "information about an image")
+    if hidden:
+        infop = subparser.add_parser("info", argument_default=argparse.SUPPRESS)
+
+    else:
+        infop = subparser.add_parser(
+            "info", help=_("display label information about an image"),
+            epilog="atomic info attempts to read and display the LABEL "
+            "information about an image")
+
     infop.set_defaults(_class=Info, func='info_tty')
     infop.add_argument("--remote", dest="force",
                        action='store_true', default=False,
                        help=_('ignore local images and only scan registries'))
     infop.add_argument("image", help=_("container image"))
 
-def cli_version(subparser):
-    # atomic version
-    versionp = subparser.add_parser(
-        "version", help=_("display image 'Name Version Release' label"),
-        epilog="atomic version displays the image version information, if "
-        "it is provided")
+def cli_version(subparser, hidden=False):
+    if hidden:
+        versionp = subparser.add_parser("version", argument_default=argparse.SUPPRESS)
+
+    else:
+        versionp = subparser.add_parser(
+            "version", help=_("display image 'Name Version Release' label"),
+            epilog="atomic version displays the image version information, if "
+            "it is provided")
     versionp.add_argument("-r", "--recurse", default=False, dest="recurse",
                           action="store_true",
                           help=_("recurse through all layers"))

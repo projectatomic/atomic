@@ -137,12 +137,12 @@ def create_parser(help_text):
 
     containers.cli(subparser)
     diff.cli(subparser)
-    Help.cli(subparser)
+    Help.cli(subparser,hidden=True)
     images.cli(subparser)
 
     if os.path.exists("/usr/bin/rpm-ostree") and os.path.exists("/run/ostree-booted"):
         host.cli(subparser)
-    info.cli(subparser)
+    info.cli(subparser, hidden=True)
 
     install.cli(subparser)
     mount.cli(subparser)
@@ -169,8 +169,8 @@ def create_parser(help_text):
 
     mount.cli_unmount(subparser)
     update.cli(subparser)
-    verify.cli(subparser)
-    info.cli_version(subparser)
+    verify.cli(subparser, hidden=True)
+    info.cli_version(subparser, hidden=True)
 
     return parser
 

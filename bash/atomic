@@ -172,14 +172,14 @@ __atomic_to_extglob() {
 	echo "@($extglob)"
 }
 
-_atomic_help() {
+_atomic_images_help() {
 	local counter=$(__atomic_pos_first_nonflag)
 	if [ $cword -eq $counter ]; then
 		COMPREPLY=( $( compgen -W "${commands[*]}" -- "$cur" ) )
 	fi
 }
 
-_atomic_info() {
+_atomic_images_info() {
 	case "$cur" in
 		-*)
 			COMPREPLY=( $( compgen -W "-h" -- "$cur" ) )
@@ -287,7 +287,7 @@ _atomic_top() {
 	return 0
 }
 
-_atomic_verify() {
+_atomic_images_verify() {
 	case "$cur" in
 		-*)
 			COMPREPLY=( $( compgen -W "--no-validate" ) )
@@ -298,7 +298,7 @@ _atomic_verify() {
 	esac
 }
 
-_atomic_version() {
+_atomic_images_version() {
 	case "$cur" in
 		-*)
 			COMPREPLY=( $( compgen -W "--recurse -r" -- "$cur" ) )
@@ -605,10 +605,14 @@ _atomic_install() {
 
 _atomic_images() {
   local subcommands="
-    list
     delete
-    prune
     generate
+    help
+    info
+    list
+    prune
+    version
+    verify
   "
 
   __atomic_subcommands "$subcommands" && return
@@ -1010,7 +1014,7 @@ _atomic_host_host() {
 	esac
 }
 
-_atomic_help() {
+_atomic_images_help() {
 	case "$cur" in
 		-*)
 			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
@@ -1275,7 +1279,6 @@ _atomic() {
 		containers
 		host
 		diff
-		info
 		install
 		images
 		storage
@@ -1289,8 +1292,6 @@ _atomic() {
 		stop
 		top
 		trust
-		verify
-		version
 		uninstall
 		unmount
 		update
