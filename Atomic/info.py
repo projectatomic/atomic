@@ -55,8 +55,12 @@ class Info(Atomic):
         # repotag.  If so, error out.
         if self.syscontainers.has_system_container_image(self.image):
             if not self.args.force:
-                version = self.syscontainers.version(self.image)
-                return ('{0}: {1}'.format(self.image, version))
+                buf += ("Image Name: {}".format(self.image))
+                manifest = self.syscontainers.inspect_system_image(self.image)
+                labels = manifest["Labels"]
+                for label in labels:
+                    buf += ('\n{0}: {1}'.format(label, labels[label]))
+                return buf
         elif self.is_iid():
             self.get_fq_name(self._inspect_image())
         # The input is not an image id
@@ -89,7 +93,7 @@ class Info(Atomic):
 
         if labels is not None and len(labels) is not 0:
             for label in labels:
-                buf += ('{0}: {1}\n'.format(label, labels[label]))
+                buf += ('\n{0}: {1}'.format(label, labels[label]))
         else:
             _no_label()
         return buf

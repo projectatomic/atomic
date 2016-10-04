@@ -306,6 +306,7 @@ _atomic_version() {
 			;;
 		*)
 		    __atomic_image_repos_and_tags
+		    __atomic_system_containers_images
 		    ;;
 	esac
 }
@@ -678,6 +679,7 @@ _atomic_images_delete() {
 	;;
       *)
 	__atomic_image_repos_and_tags
+	__atomic_system_containers_images
 	;;
   esac
 }

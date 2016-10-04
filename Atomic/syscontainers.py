@@ -958,10 +958,15 @@ class SystemContainers(object):
                     with open(manifest_file, 'r') as mfile:
                         manifest = mfile.read()
                     for m in json.loads(manifest):
+                        if "Config" in m:
+                            config_file = os.path.join(temp_dir, m["Config"])
+                            with open(config_file, 'r') as config:
+                                config = json.loads(config.read())
+                                labels = config['config']['Labels']
                         imagename = m["RepoTags"][0]
                         imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(imagename))
                         input_layers = m["Layers"]
-                        self._pull_dockertar_layers(repo, imagebranch, temp_dir, input_layers)
+                        self._pull_dockertar_layers(repo, imagebranch, temp_dir, input_layers, labels=labels)
                 else:
                     repositories = ""
                     repositories_file = os.path.join(temp_dir, "repositories")
@@ -1099,7 +1104,7 @@ class SystemContainers(object):
                     return True
             return False
 
-    def _pull_dockertar_layers(self, repo, imagebranch, temp_dir, input_layers):
+    def _pull_dockertar_layers(self, repo, imagebranch, temp_dir, input_layers, labels=None):
         layers = {}
         next_layer = {}
         top_layer = None
@@ -1126,7 +1131,7 @@ class SystemContainers(object):
             layers_ordered.append(layers_map[it])
             it = next_layer.get(it)
 
-        manifest = json.dumps({"Layers" : layers_ordered})
+        manifest = json.dumps({"Layers" : layers_ordered, "Labels" : labels})
 
         layers_to_import = {}
         for k, v in layers.items():
