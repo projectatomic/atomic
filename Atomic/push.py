@@ -89,6 +89,13 @@ class Push(Atomic):
         self.policy_filename=policy_filename
 
     def push(self):
+        def prompt():
+            if not self.args.username:
+                self.args.username = util.input("Registry Username: ")
+
+            if not self.args.password:
+                self.args.password = getpass.getpass("Registry Password: ")
+
         self.ping()
         if self.args.debug:
             util.write_out(str(self.args))
@@ -122,15 +129,12 @@ class Push(Atomic):
         if self.args.verify_ssl is None:
             self.args.verify_ssl = False
 
-        if not self.args.username:
-            self.args.username = util.input("Registry Username: ")
-
-        if not self.args.password:
-            self.args.password = getpass.getpass("Registry Password: ")
-
         if (self.args.satellite | self.args.pulp):
+            prompt()
             if not self.args.url:
                 self.args.url = util.input("URL: ")
+
+        sign = True if self.args.sign_by else False
 
         if self.args.pulp:
             return pulp.push_image_to_pulp(self.image, self.args.url,
@@ -156,6 +160,12 @@ class Push(Atomic):
 
         else:
             reg, _, tag = util.decompose(self.image)
+            # Check if any local tokens exist
+            if reg not in [x for x in self.get_local_tokens()]:
+                # If we find a token for the registry, we don't
+                # prompt for a username or password
+                prompt()
+
             if not tag:
                 raise ValueError("The image being pushed must have a tag")
 
@@ -168,7 +178,6 @@ class Push(Atomic):
             else:
                 remote_image = "docker://{}".format(self.image)
 
-            sign = True if self.args.sign_by else False
             if sign and self.args.debug:
                 util.write_out("\nSigning with '{}'\n".format(self.args.sign_by))
 

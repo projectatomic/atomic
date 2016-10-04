@@ -67,6 +67,7 @@ class Atomic(object):
         self.syscontainers = SystemContainers()
         self.run_opts = None
         self.atomic_config = util.get_atomic_config()
+        self.local_tokens = {}
 
     def __enter__(self):
         return self
@@ -677,6 +678,28 @@ class Atomic(object):
             return vuln_ids
         except IOError:
             return []
+
+    def get_local_tokens(self):
+        if len(self.local_tokens) < 1:
+            self.local_tokens = self.load_local_tokens()
+        return self.local_tokens
+
+    @staticmethod
+    def load_local_tokens():
+        tokens = {}
+        token_file_name = os.path.expanduser('~/.docker/config.json')
+        if not os.path.exists(token_file_name):
+            return {}
+        with open(token_file_name) as token_file:
+            token_data = json.load(token_file)
+        try:
+            for registry in token_data['auths']:
+                tokens[registry] = token_data['auths'][registry]['auth']
+        except KeyError:
+            # Just return a blank dict
+            pass
+        return tokens
+
 
 class AtomicError(Exception):
     pass
