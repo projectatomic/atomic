@@ -659,7 +659,7 @@ def get_signature_read_path(reg_info):
 
 def strip_port(_input):
     ip, _, _ = _input.rpartition(':')
-    if ip is '':
+    if ip == '':
         return _input
     return ip.strip("[]")
 
