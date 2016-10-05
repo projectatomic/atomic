@@ -107,7 +107,7 @@ class SystemContainers(object):
                             stdin=DEVNULL,
                             stdout=DEVNULL,
                             stderr=DEVNULL)
-                        
+
     def set_args(self, args):
         self.args = args
 
@@ -270,12 +270,27 @@ class SystemContainers(object):
                 pass
             raise e
 
+    # Accept both name and version Id, and return the ostree rev
+    def _resolve_image(self, repo, img):
+        # image specified by Id
+        if len(img) == 64 and str.isalnum(str(img)):
+            for i in self.get_system_images(get_all=True, repo=repo):
+                if i['Id'] == img:
+                    return i['OSTree-rev']
+        else:
+            imagebranch = SystemContainers._get_ostree_image_branch(img)
+            return repo.resolve_rev(imagebranch, False)[1]
+        return None
+
     def _do_checkout_system_container(self, repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote):
         if not values:
             values = {}
 
         remote_path = self._resolve_remote_path(remote)
-        imagebranch = SystemContainers._get_ostree_image_branch(img)
+
+        rev = self._resolve_image(repo, img)
+        if rev is None:
+            raise ValueError("Image %s not found" % img)
 
         if remote_path:
             remote_rootfs = os.path.join(remote_path, "rootfs")
@@ -327,7 +342,6 @@ class SystemContainers(object):
         else:
             os.makedirs(rootfs)
 
-        rev = repo.resolve_rev(imagebranch, False)[1]
         manifest = self._image_manifest(repo, rev)
 
         if not remote_path:
@@ -609,11 +623,13 @@ class SystemContainers(object):
         repo = self._get_ostree_repo()
         if not repo:
             return None
-        imagebranch = SystemContainers._get_ostree_image_branch(image)
-        return self._inspect_system_branch(repo, imagebranch)
+        return self._inspect_system_branch(repo, image)
 
     def _inspect_system_branch(self, repo, imagebranch):
-        commit_rev = repo.resolve_rev(imagebranch, False)[1]
+        if imagebranch.startswith(OSTREE_OCIIMAGE_PREFIX):
+            commit_rev = repo.resolve_rev(imagebranch, False)[1]
+        else:
+            commit_rev = self._resolve_image(repo, imagebranch)
         commit = repo.load_commit(commit_rev)[1]
 
         branch_id = SystemContainers._decode_from_ostree_ref(imagebranch.replace(OSTREE_OCIIMAGE_PREFIX, ""))
