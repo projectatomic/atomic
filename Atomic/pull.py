@@ -3,8 +3,7 @@ try:
 except ImportError:
     from atomic import Atomic  # pylint: disable=relative-import
 from .trust import Trust
-from .util import skopeo_copy, get_atomic_config, skopeo_inspect,\
-    decompose, write_out, strip_port, is_insecure_registry
+from .util import skopeo_copy, get_atomic_config, decompose, write_out, strip_port, is_insecure_registry
 
 ATOMIC_CONFIG = get_atomic_config()
 
@@ -34,21 +33,22 @@ class Pull(Atomic):
 
     def pull_docker_image(self):
         self.ping()
-        _, _, _, tag = decompose(self.args.image)
-        # If no tag is given, we assume "latest"
-        tag = tag if tag != "" else "latest"
-        if self.args.reg_type == "atomic":
-            pull_uri = 'atomic:'
-        else:
-            pull_uri = 'docker://'
-        fq_name = skopeo_inspect("{}{}".format(pull_uri, self.args.image))['Name']
-        registry, _, _, _ = decompose(fq_name)
-        image = "docker-daemon:{}:{}".format(fq_name, tag)
+        # Add this when atomic registry is incorporated.
+        # if self.args.reg_type == "atomic":
+        #     pull_uri = 'atomic:'
+        # else:
+        #     pull_uri = 'docker://'
+        fq_name = self.get_fq_image_name(self.args.image)
+        registry, _, _, tag = decompose(fq_name)
+        image = "docker-daemon:{}".format(self.args.image)
+        if not self.args.image.endswith(tag):
+            image += ":{}".format(tag)
         insecure = True if is_insecure_registry(self.d.info()['RegistryConfig'], strip_port(registry)) else False
         trust = Trust()
         trust.set_args(self.args)
         trust.discover_sigstore(fq_name)
-        skopeo_copy("docker://{}".format(self.args.image), image,
+        write_out("Pulling {} ...".format(fq_name))
+        skopeo_copy("docker://{}".format(fq_name), image,
                     debug=self.args.debug, insecure=insecure,
                     policy_filename=self.policy_filename)
 

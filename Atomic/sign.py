@@ -1,7 +1,10 @@
 from . import util
 from . import Atomic
+from . import discovery
 import os
 import tempfile
+import json
+
 try:
     from urlparse import urlparse #pylint: disable=import-error
 except ImportError:
@@ -56,13 +59,7 @@ class Sign(Atomic):
         if images is None:
             images = self.args.images
 
-        for reg_check in images:
-            reg, _, _, _ = util.decompose(reg_check)
-            if not reg:
-                raise ValueError("Signing can only sign images stored on a registry. Image '{}' is "
-                                 "not preceeded with a registry name. See man atomic-sign".format(reg_check))
-
-        if self.debug:
+        if self.args.debug:
             util.write_out(str(self.args))
 
         signer = self.args.sign_by
@@ -78,16 +75,16 @@ class Sign(Atomic):
             os.environ['GNUPGHOME'] = self.args.gnupghome
 
         for sign_image in images:
-            remote_inspect_info = util.skopeo_inspect("docker://{}".format(sign_image))
-            manifest = util.skopeo_inspect('docker://{}'.format(sign_image), args=['--raw'], return_json=False)
+            registry, repo, image, tag = util.decompose(sign_image)
+            ri = discovery.RegistryInspect(registry, repo, image, tag, debug=self.args.debug, orig_input=sign_image)
+            manifest = ri.rc.manifest_json
+
             try:
                 manifest_file = tempfile.NamedTemporaryFile(mode="wb", delete=False)
-                manifest_file.write(manifest)
+                manifest_file.write(json.dumps(manifest))
                 manifest_file.close()
                 manifest_hash = str(util.skopeo_manifest_digest(manifest_file.name))
-                _, _, _, tag = util.decompose(sign_image)
-                tag = ":{}".format(tag) if tag != "" else ":latest"
-                expanded_image_name = str(remote_inspect_info['Name'])
+                expanded_image_name = ri.assemble_fqdn(include_tag=True)
 
                 if in_signature_path:
                     if not os.path.exists(in_signature_path):
@@ -128,7 +125,7 @@ class Sign(Atomic):
                     raise ValueError("The signature {} already exists.  If you wish to "
                                      "overwrite it, please delete this file first")
 
-                util.skopeo_standalone_sign(expanded_image_name + tag, manifest_file.name,
+                util.skopeo_standalone_sign(expanded_image_name, manifest_file.name,
                                             self.get_fingerprint(signer), fq_sig_path)
                 util.write_out("Created: {}".format(fq_sig_path))
 

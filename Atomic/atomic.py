@@ -17,6 +17,7 @@ from . import util
 import re
 from .util import NoDockerDaemon, DockerObjectNotFound
 from docker.errors import NotFound
+from .discovery import RegistryInspect
 
 def find_repo_tag(d, Id, image_name):
     def image_in_repotags(image_name, repotags):
@@ -109,9 +110,10 @@ class Atomic(object):
         self.ping()
         if self.force:
             self.force_delete_containers()
-        registry, _, _, _ = util.decompose(self.image)
+        fq_name = self.get_fq_image_name(self.image)
+        registry, _, _, _ = util.decompose(fq_name)
         return util.skopeo_copy("docker://{}".format(self.image),
-                                "docker-daemon:{}".format(self.image),
+                                "docker-daemon:{}".format(fq_name),
                                 util.is_insecure_registry(self.d.info()['RegistryConfig'], util.strip_port(registry)))
 
     def pull(self):
@@ -699,6 +701,16 @@ class Atomic(object):
             # Just return a blank dict
             pass
         return tokens
+
+    def get_fq_image_name(self, input_image):
+        registry, repo, image, tag = util.decompose(input_image)
+        if not image:
+            raise ValueError('Error parsing input: "{}" invalid'.format(input_image))
+        if all([True if x else False for x in [registry, image, tag]]):
+            return input_image
+        if not registry:
+            ri = RegistryInspect(registry, repo, image, tag, debug=self.args.debug, orig_input=self.image)
+            return ri.find_image_on_registry()
 
 
 class AtomicError(Exception):

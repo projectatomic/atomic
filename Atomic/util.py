@@ -57,14 +57,17 @@ input, is_python2 = check_if_python2() # pylint: disable=redefined-builtin
 def get_registries():
     registries = []
     with AtomicDocker() as c:
-        rconf = c.info()['RegistryConfig']['IndexConfigs']
+        dconf = c.info()
+    search_regs = [x['Name'] for x in dconf['Registries']]
+    rconf = dconf['RegistryConfig']['IndexConfigs']
     # docker.io is special
     if 'docker.io' in rconf:
-        registries.append({'hostname': 'registry-1.docker.io', 'name': 'docker.io'})
+        registries.append({'hostname': 'registry-1.docker.io', 'name': 'docker.io', 'search': True, 'secure': True})
         # remove docker.io
         del(rconf['docker.io'])
     for i in rconf:
-        registries.append({'hostname': i, 'name': i})
+        search_bool = True if i in search_regs else False
+        registries.append({'hostname': i, 'name': i, 'search': search_bool, 'secure': rconf[i]['Secure'] })
     return registries
 
 
