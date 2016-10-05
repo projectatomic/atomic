@@ -254,16 +254,17 @@ class SystemContainers(object):
             return self._do_checkout_system_container(repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote)
         except (ValueError, OSError) as e:
             try:
-                shutil.rmtree(destination)
+                if not extract_only:
+                    shutil.rmtree(destination)
             except OSError:
                 pass
             try:
-                if not upgrade:
+                if not extract_only and not upgrade:
                     shutil.rmtree(unitfileout)
             except OSError:
                 pass
             try:
-                if not upgrade:
+                if not extract_only and not upgrade:
                     shutil.rmtree(tmpfilesout)
             except OSError:
                 pass
