@@ -97,9 +97,8 @@ __atomic_image_repos_and_tags() {
 }
 
 __atomic_system_containers_images() {
-	local images
-	REPO_DIR=`test -e /etc/atomic.conf && grep "^ostree_repository:" /etc/atomic.conf | cut -d' ' -f2`
-	images="$(ostree --repo=${REPO_DIR:-/ostree/repo} refs | sed -n  -e '/ociimage/ { /-/ { s|ociimage/||;s|\(.*\)-|\1:|;p }}')"
+	local images="$(atomic images list --no-trunc -f type=system |
+			awk 'NR>1 { if ($1 == ">" || $1 == "*") print $2; else print $1; }')"
 	COMPREPLY+=( $(compgen -W "$images" -- "$cur") )
 }
 
