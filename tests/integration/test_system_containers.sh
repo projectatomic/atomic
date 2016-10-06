@@ -239,7 +239,10 @@ assert_not_matches "Pulling layer" second.pull.out
 ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
 assert_matches busybox refs
 ${ATOMIC} --assumeyes images delete -f docker.io/busybox
-${ATOMIC} --assumeyes images delete -f busybox
+
+BUSYBOX_IMAGE_ID=$(${ATOMIC} images list -f type=system | grep busybox | awk '{print $3}')
+${ATOMIC} --assumeyes images delete -f ${BUSYBOX_IMAGE_ID}
+
 ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
 OUTPUT=$(! grep -c busybox refs)
 if test $OUTPUT \!= 0; then

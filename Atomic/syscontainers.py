@@ -272,15 +272,26 @@ class SystemContainers(object):
 
     # Accept both name and version Id, and return the ostree rev
     def _resolve_image(self, repo, img):
-        # image specified by Id
-        if len(img) == 64 and str.isalnum(str(img)):
-            for i in self.get_system_images(get_all=True, repo=repo):
-                if i['Id'] == img:
-                    imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(i['RepoTags'][0]))
-                    return imagebranch, i['OSTree-rev']
-        else:
-            imagebranch = SystemContainers._get_ostree_image_branch(img)
-            return imagebranch, repo.resolve_rev(imagebranch, False)[1]
+        imagebranch = SystemContainers._get_ostree_image_branch(img)
+        rev = repo.resolve_rev(imagebranch, True)[1]
+        if rev:
+            return imagebranch, rev
+
+        # if we could not find an image with the specified name, check if it is the prefix
+        # of an ID, and allow it only for tagged images.
+        if not str.isalnum(str(img)):
+            return None, None
+
+        tagged_images = [i for i in self.get_system_images(get_all=True, repo=repo) if i['RepoTags']]
+        matches = [i for i in tagged_images if i['Id'].startswith(img)]
+        if len(matches) == 1:
+            # only one image, use it
+            i = matches[0]
+            imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(i['RepoTags'][0]))
+            return imagebranch, i['OSTree-rev']
+        elif len(matches) > 1:
+            # more than one match, error out
+            raise ValueError("more images matching prefix `%s`" % img)
         return None, None
 
     def _do_checkout_system_container(self, repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote):
@@ -630,6 +641,8 @@ class SystemContainers(object):
             commit_rev = repo.resolve_rev(imagebranch, False)[1]
         else:
             _, commit_rev = self._resolve_image(repo, imagebranch)
+            if commit_rev is None:
+                raise ValueError("Image %s not found" % imagebranch)
         commit = repo.load_commit(commit_rev)[1]
 
         branch_id = SystemContainers._decode_from_ostree_ref(imagebranch.replace(OSTREE_OCIIMAGE_PREFIX, ""))
@@ -1095,14 +1108,8 @@ class SystemContainers(object):
         repo = self._get_ostree_repo()
         if not repo:
             return False
-        try:
-            imagebranch = SystemContainers._get_ostree_image_branch(img)
-            return repo.resolve_rev(imagebranch, False)[0]
-        except: #pylint: disable=bare-except
-            for i in self.get_system_images(get_all=True):
-                if i['Id'].startswith(img):
-                    return True
-            return False
+        _, rev = self._resolve_image(repo, img)
+        return True if rev else False
 
     def _pull_dockertar_layers(self, repo, imagebranch, temp_dir, input_layers, labels=None):
         layers = {}
