@@ -83,7 +83,7 @@ class Install(Atomic):
                 raise ValueError("--user does not work for privileged user")
             return self.syscontainers.install_user_container(self.image, self.name)
         elif self.system:
-            return self.syscontainers.install_system_container(self.image, self.name)
+            return self.syscontainers.install(self.image, self.name)
         elif OSTREE_PRESENT and self.args.setvalues:
             raise ValueError("--set is valid only when used with --system or --user")
 

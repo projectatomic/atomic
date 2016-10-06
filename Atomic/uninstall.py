@@ -36,8 +36,8 @@ class Uninstall(Atomic):
         super(Uninstall, self).__init__()
 
     def uninstall(self):
-        if self.syscontainers.get_system_container_checkout(self.args.image):
-            return self.syscontainers.uninstall_system_container(self.args.image)
+        if self.syscontainers.get_checkout(self.args.image):
+            return self.syscontainers.uninstall(self.args.image)
 
         self.inspect = self._inspect_container()
         if self.inspect and self.force:

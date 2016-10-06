@@ -175,7 +175,7 @@ class Containers(Atomic):
         all_vuln_info = json.loads(self.get_all_vulnerable_info())
 
         # Collect the system containers
-        for i in self.syscontainers.get_system_containers():
+        for i in self.syscontainers.get_containers():
             i["vulnerable"] = i['Id'] in vuln_ids
             if i["vulnerable"]:
                 i["vuln_info"] = all_vuln_info[i['Id']]
@@ -220,11 +220,11 @@ class Containers(Atomic):
         if self.args.all:
             for c in self.get_containers():
                 docker_targets.append(c["Id"])
-            for c in self.syscontainers.get_system_containers():
+            for c in self.syscontainers.get_containers():
                 sys_targets.append(c["Id"])
         else:
             for c in self.args.containers:
-                if self.syscontainers.get_system_container_checkout(c):
+                if self.syscontainers.get_checkout(c):
                     sys_targets.append(c)
                 else:
                     docker_targets.append(c)
@@ -241,7 +241,7 @@ class Containers(Atomic):
 
         for target in sys_targets:
             try:
-                self.syscontainers.uninstall_system_container(target)
+                self.syscontainers.uninstall(target)
             except IOError as e:
                 util.write_err("Failed to delete container {}: {}".format(target, e))
                 results += 1

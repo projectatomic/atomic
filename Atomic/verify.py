@@ -96,7 +96,7 @@ class Verify(Atomic):
         # Set debug bool
         self.set_debug()
 
-        if self.syscontainers.has_system_container_image(self.image):
+        if self.syscontainers.has_image(self.image):
             imgs = self.syscontainers.get_system_images()
             for img in imgs:
                 if img['Id'].startswith(self.image):

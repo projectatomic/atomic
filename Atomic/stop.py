@@ -28,7 +28,7 @@ class Stop(Atomic):
         super(Stop, self).__init__()
 
     def stop(self):
-        if self.syscontainers.get_system_container_checkout(self.name) is not None:
+        if self.syscontainers.get_checkout(self.name) is not None:
             self.syscontainers.stop_service(self.name)
             return
 

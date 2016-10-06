@@ -100,8 +100,8 @@ class Atomic(object):
 
     def update(self):
         if hasattr(self.args, 'container') and self.args.container:
-            if self.syscontainers.get_system_container_checkout(self.args.image):
-                return self.syscontainers.update_system_container(self.args.image)
+            if self.syscontainers.get_checkout(self.args.image):
+                return self.syscontainers.update(self.args.image)
             raise ValueError("Container '%s' is not installed" % self.args.image)
         elif self.setvalues:
             raise ValueError("--set is valid only when used with --system")
@@ -254,7 +254,7 @@ class Atomic(object):
     def _inspect_image(self, image=None):
         image = image or self.image
         try:
-            if self.syscontainers.has_system_container_image(image):
+            if self.syscontainers.has_image(image):
                 return self.syscontainers.inspect_system_image(image)
             return self.d.inspect_image(image)
         except (NotFound, requests.exceptions.ConnectionError):
@@ -388,7 +388,7 @@ class Atomic(object):
 
     def _container_exists(self, name):
         try:
-            return self.syscontainers.get_system_container_checkout(name) or self._inspect_container(name)
+            return self.syscontainers.get_checkout(name) or self._inspect_container(name)
         except ValueError:
             return None
 
@@ -594,10 +594,10 @@ class Atomic(object):
         except AtomicError:
             pass
 
-        if self.syscontainers.has_system_container_image(identifier):
+        if self.syscontainers.has_image(identifier):
             return identifier
 
-        if self.syscontainers.get_system_container_checkout(identifier):
+        if self.syscontainers.get_checkout(identifier):
             return identifier
 
         raise DockerObjectNotFound(identifier)
@@ -634,7 +634,7 @@ class Atomic(object):
         if not self.containers:
             self.containers = self.d.containers(all=True)
 
-        return self.containers + self.syscontainers.get_system_containers()
+        return self.containers + self.syscontainers.get_containers()
 
     def get_active_containers(self, refresh=False):
         '''

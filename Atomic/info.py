@@ -53,7 +53,7 @@ class Info(Atomic):
                              .format(self.args.image))
         # Check if the input is an image id associated with more than one
         # repotag.  If so, error out.
-        if self.syscontainers.has_system_container_image(self.image):
+        if self.syscontainers.has_image(self.image):
             if not self.args.force:
                 buf += ("Image Name: {}".format(self.image))
                 manifest = self.syscontainers.inspect_system_image(self.image)

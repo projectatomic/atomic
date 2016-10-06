@@ -70,7 +70,7 @@ class Delete(Atomic):
     def _delete_local(self, targets, force=False):
         results = 0
         for target in targets:
-            if self.syscontainers.has_system_container_image(target):
+            if self.syscontainers.has_image(target):
                 self.syscontainers.delete_image(target)
             else:
                 try:

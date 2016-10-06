@@ -153,9 +153,9 @@ class SystemContainers(object):
             raise ValueError("Cannot install the container: systemctl does not support --user")
 
         # Same entrypoint
-        return self.install_system_container(image, name)
+        return self.install(image, name)
 
-    def install_system_container(self, image, name):
+    def install(self, image, name):
         repo = self._get_ostree_repo()
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
@@ -171,11 +171,11 @@ class SystemContainers(object):
 
         self._pull_image_to_ostree(repo, image, False)
 
-        if self.get_system_container_checkout(name):
+        if self.get_checkout(name):
             util.write_out("%s already present" % (name))
             return
 
-        return self._checkout_system_container(repo, name, image, 0, False, remote=self.args.remote)
+        return self._checkout(repo, name, image, 0, False, remote=self.args.remote)
 
     def _check_oci_configuration_file(self, conf_path, remote=None):
         with open(conf_path, 'r') as conf:
@@ -241,7 +241,7 @@ class SystemContainers(object):
             raise ValueError("The container's rootfs is set to remote, but the remote rootfs does not exist")
         return real_path
 
-    def _checkout_system_container(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False, remote=None):
+    def _checkout(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False, remote=None):
         destination = destination or "%s/%s.%d" % (self._get_system_checkout_path(), name, deployment)
         unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
 
@@ -251,7 +251,7 @@ class SystemContainers(object):
                     raise ValueError("The file %s already exists." % f)
 
         try:
-            return self._do_checkout_system_container(repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote)
+            return self._do_checkout(repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote)
         except (ValueError, OSError) as e:
             try:
                 if not extract_only:
@@ -294,7 +294,7 @@ class SystemContainers(object):
             raise ValueError("more images matching prefix `%s`" % img)
         return None, None
 
-    def _do_checkout_system_container(self, repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote):
+    def _do_checkout(self, repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote):
         if not values:
             values = {}
 
@@ -547,7 +547,7 @@ class SystemContainers(object):
             return image_inspect['ImageId']
         return None
 
-    def update_system_container(self, name):
+    def update(self, name):
         repo = self._get_ostree_repo()
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
@@ -583,7 +583,7 @@ class SystemContainers(object):
         if os.path.exists("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment)):
             shutil.rmtree("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment))
 
-        self._checkout_system_container(repo, name, image, next_deployment, True, values, remote=self.args.remote)
+        self._checkout(repo, name, image, next_deployment, True, values, remote=self.args.remote)
 
     def get_container_runtime_info(self, container):
 
@@ -595,7 +595,7 @@ class SystemContainers(object):
             # The container is newly created or stopped, and can be started with 'systemctl start'
             return {'status' : "inactive"}
 
-    def get_system_containers(self):
+    def get_containers(self):
         checkouts = self._get_system_checkout_path()
         if not os.path.exists(checkouts):
             return []
@@ -743,14 +743,14 @@ class SystemContainers(object):
             return util.check_output(cmd, stderr=DEVNULL)
         return None
 
-    def get_system_container_checkout(self, name):
+    def get_checkout(self, name):
         path = "%s/%s" % (self._get_system_checkout_path(), name)
         if os.path.exists(path):
             return path
         else:
             return None
 
-    def uninstall_system_container(self, name):
+    def uninstall(self, name):
         unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
 
         try:
@@ -1058,11 +1058,11 @@ class SystemContainers(object):
             return None
         return metadata[key]
 
-    def extract_system_container(self, img, destination):
+    def extract(self, img, destination):
         repo = self._get_ostree_repo()
         if not repo:
             return False
-        return self._checkout_system_container(repo, img, img, 0, False, destination=destination, extract_only=True)
+        return self._checkout(repo, img, img, 0, False, destination=destination, extract_only=True)
 
     @staticmethod
     def _encode_to_ostree_ref(name):
@@ -1104,7 +1104,7 @@ class SystemContainers(object):
             imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(img.replace("sha256:", "")))
         return imagebranch
 
-    def has_system_container_image(self, img):
+    def has_image(self, img):
         repo = self._get_ostree_repo()
         if not repo:
             return False

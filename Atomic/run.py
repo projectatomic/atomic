@@ -67,7 +67,7 @@ class Run(Atomic):
         super(Run, self).__init__()
 
     def run(self):
-        if self.syscontainers.get_system_container_checkout(self.name) is not None:
+        if self.syscontainers.get_checkout(self.name) is not None:
             self.syscontainers.start_service(self.name)
             return
 

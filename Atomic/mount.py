@@ -736,10 +736,10 @@ class OSTreeMount(Mount):
             raise MountError('xattr required to mount OSTree images.')
 
     def has_container(self, container_id):
-        return self.syscontainers.get_system_container_checkout(container_id)
+        return self.syscontainers.get_checkout(container_id)
 
     def has_image(self, image_id):
-        return self.syscontainers.has_system_container_image(image_id)
+        return self.syscontainers.has_image(image_id)
 
     def has_identifier(self, _id):
         return self.has_container(_id) or self.has_image(_id)
@@ -764,13 +764,13 @@ class OSTreeMount(Mount):
             if self.user:
                 raise MountError('Need to be root to mount a container.')
             typ = "container"
-            source = os.path.join(self.syscontainers.get_system_container_checkout(identifier), "rootfs")
+            source = os.path.join(self.syscontainers.get_checkout(identifier), "rootfs")
             Mount.mount_path(source, self.mountpoint, bind=True)
         elif has_image:
             typ = "image"
             if len(os.listdir(self.mountpoint)):
                 raise MountError('The destination path is not empty.')
-            self.syscontainers.extract_system_container(identifier, self.mountpoint)
+            self.syscontainers.extract(identifier, self.mountpoint)
             if not self.user:
                 Mount.mount_path(self.mountpoint, self.mountpoint, bind=True)
         else:
