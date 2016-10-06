@@ -17,10 +17,10 @@ class AtomicDBus (object):
         return self.dbus_object.ContainersList(dbus_interface="org.atomic")
 
     @polkit.enable_proxy
-    def ContainersDelete(self, containers, containers_all=False):
+    def ContainersDelete(self, containers, containers_all=False, force=False):
         if not isinstance(containers, (list, tuple)):
             containers = [ containers ]
-        return self.dbus_object.ContainersDelete(containers, containers_all, dbus_interface="org.atomic")
+        return self.dbus_object.ContainersDelete(containers, containers_all, force, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
     def ContainersTrim(self):
@@ -150,6 +150,14 @@ class AtomicDBus (object):
         if not isinstance(images, (list, tuple)):
             images = [ images ]
         return self.dbus_object.Sign(images, sign_by, signature_path, gnupghome, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def Top(self, containers=None, options=""):
+        if not containers:
+            containers=[]
+        if not isinstance(containers, (list, tuple)):
+            containers = [ containers ]
+        return self.dbus_object.Top(containers, options, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
     def TrustAdd(self, registry, trusttype="reject", pubkeys="", keytype="GPGKeys", sigstore="", sigstoretype="web"):

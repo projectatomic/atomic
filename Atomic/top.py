@@ -1,6 +1,7 @@
 from . import Atomic
 from . import util
 import argparse
+import json as Json
 import tty
 import sys
 import termios
@@ -104,6 +105,32 @@ class Top(Atomic):
                 max_widths = [len(x[header['shortname']]) for x in ps_info]
                 max_width = header['_min_width'] if not max_widths else max(max_widths)
                 header['field'] = header['_field'].replace('WIDTH', str(max_width))
+
+    def json(self):
+        """
+        Main sub-function for top
+        :return: None
+        """
+        # Make sure the docker daemon is running
+        self.ping()
+        # Activate optional columns
+        self._activate_optionals()
+        proc_info = []
+        if len(self.args.containers) < 1:
+            try:
+                con_ids = [x['Id'] for x in self.get_active_containers(refresh=True)]
+            except requests.exceptions.ConnectionError:
+                raise NoDockerDaemon()
+        else:
+            con_ids = []
+            self.get_active_containers(refresh=True)
+            # verify the inputs are valid
+            for user_input in self.args.containers:
+                con_ids.append(self.get_input_id(user_input))
+        for cid in con_ids:
+            proc_info += self.get_pids_by_container(cid)
+
+        return Json.dumps(self.reformat_ps_info(proc_info))
 
     def atomic_top(self):
         """

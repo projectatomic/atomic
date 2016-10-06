@@ -20,6 +20,7 @@ from Atomic.mount import Mount
 from Atomic.scan import Scan
 from Atomic.sign import Sign
 from Atomic.storage import Storage
+from Atomic.top import Top
 from Atomic.verify import Verify
 import Atomic.trust as Trust
 
@@ -69,6 +70,7 @@ class atomic_dbus(slip.dbus.service.Object):
             self.default_policy = None
             self.mountpoint = None
             self.options = None
+            self.optional = None
             self.os = None
             self.revision = None
             self.reboot=False
@@ -253,11 +255,12 @@ class atomic_dbus(slip.dbus.service.Object):
     # atomic containers section
     # The ContainersDelete method will delete one or more containers on the system.
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='asb', out_signature='')
-    def ContainersDelete(self, containers, all_containers):
+    @dbus.service.method("org.atomic", in_signature='asbb', out_signature='')
+    def ContainersDelete(self, containers, all_containers, force):
         c = Containers()
         args = self.Args()
         args.containers = containers
+        args.force = force
         args.all = all_containers
         c.set_args(args)
         return c.delete()
@@ -501,6 +504,17 @@ class atomic_dbus(slip.dbus.service.Object):
         args.driver = driver
         storage.set_args(args)
         storage.modify()
+
+    # atomic top section
+    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @dbus.service.method("org.atomic", in_signature='ass', out_signature='s')
+    def Top(self, containers, optional):
+        top = Top()
+        args = self.Args()
+        args.containers = containers
+        args.optional = optional
+        top.set_args(args)
+        return top.json()
 
     # atomic trust section
     # The TrustShow displays system trust policy
