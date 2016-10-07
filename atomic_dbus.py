@@ -15,6 +15,7 @@ from Atomic.diff import Diff
 from Atomic.help import AtomicHelp
 from Atomic.host import Host
 from Atomic.info import Info
+from Atomic.install import Install
 from Atomic.images import Images
 from Atomic.mount import Mount
 from Atomic.pull import Pull
@@ -24,6 +25,7 @@ from Atomic.sign import Sign
 from Atomic.storage import Storage
 from Atomic.top import Top
 import Atomic.trust as Trust
+from Atomic.uninstall import Uninstall
 from Atomic.verify import Verify
 
 class atomic_dbus(slip.dbus.service.Object):
@@ -38,6 +40,7 @@ class atomic_dbus(slip.dbus.service.Object):
             self.reboot=False
             self.force = False
             self.image = None
+            self.system = False
             self.spc = False
             self.storage = None
             self.reg_type = None
@@ -53,9 +56,11 @@ class atomic_dbus(slip.dbus.service.Object):
             self.json = True
             self.no_files = False
             self.name = None
+            self.user = None
             self.names_only = False
             self.rpms = False
             self.verbose = False
+            self.setvalues = []
             self.scan_targets = []
             self.scanner = None
             self.scan_type = None
@@ -368,6 +373,21 @@ class atomic_dbus(slip.dbus.service.Object):
         return self.atomic.get_all_vulnerable_info()
 
     # atomic install section
+    # The Install method will install the specified image
+    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
+    @dbus.service.method("org.atomic", in_signature='sssbsasas', out_signature='')
+    def Install(self, image, name, user, system, remote, setvalues, extra_args):
+        i = Install()
+        args = self.Args()
+        args.image = image
+        args.name = name
+        args.user = user
+        args.system = system
+        args.remote = remote
+        args.setvalues = setvalues
+        args.args = extra_args
+        i.set_args(args)
+        return i.install()
 
     # atomic mount section
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
@@ -595,6 +615,19 @@ class atomic_dbus(slip.dbus.service.Object):
         return trust.modify_default()
 
     # atomic uninstall section
+    # The Uninstall method will uninstall the specified image
+    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
+    @dbus.service.method("org.atomic", in_signature='ssbas', out_signature='')
+    def Uninstall(self, image, name, force, extra_args):
+        i = Uninstall()
+        args = self.Args()
+        args.image = image
+        args.name = name
+        args.force = force
+        args.args = extra_args
+        i.set_args(args)
+        return i.uninstall()
+
     # atomic upload section
     # atomic verify section
     # The Verify method takes in an image name and returns whether or not the

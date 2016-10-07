@@ -137,6 +137,20 @@ class AtomicDBus (object):
         return ret
 
     @polkit.enable_proxy
+    def Install(self, image, name=None, user="", system=False, remote="", setvalues=None, extra_args=None):
+        if not name:
+            name = image
+        if not setvalues:
+            setvalues = []
+        if not isinstance(setvalues, (list, tuple)):
+            setvalues = [ setvalues ]
+        if not extra_args:
+            extra_args = []
+        if not isinstance(extra_args, (list, tuple)):
+            extra_args = [ extra_args ]
+        return self.dbus_object.Install(image, name, user, system, remote, setvalues, extra_args, dbus_interface="org.atomic", timeout = 2147400)
+
+    @polkit.enable_proxy
     def MountImage(self, src, dest, options="", live=False, shared=False):
         ret = self.dbus_object.MountImage(src, dest, options, live, shared, dbus_interface="org.atomic")
         return ret
@@ -190,6 +204,16 @@ class AtomicDBus (object):
     @polkit.enable_proxy
     def TrustShow(self):
         return self.dbus_object.TrustShow(dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
+    def Uninstall(self, image, name=None, force=False, extra_args=None):
+        if not name:
+            name = image
+        if not extra_args:
+            extra_args = []
+        if not isinstance(extra_args, (list, tuple)):
+            extra_args = [ extra_args ]
+        return self.dbus_object.Install(image, name, force, extra_args, dbus_interface="org.atomic", timeout = 2147400)
 
     @polkit.enable_proxy
     def UnmountImage(self, dest):
