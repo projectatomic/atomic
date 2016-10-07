@@ -21,6 +21,7 @@ from Atomic.mount import Mount
 from Atomic.pull import Pull
 from Atomic.run import Run
 from Atomic.scan import Scan
+from Atomic.stop import Stop
 from Atomic.sign import Sign
 from Atomic.storage import Storage
 from Atomic.top import Top
@@ -505,6 +506,17 @@ class atomic_dbus(slip.dbus.service.Object):
 
 
     # atomic stop section
+    # The Stop method will stop the specified image
+    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
+    @dbus.service.method("org.atomic", in_signature='ssas', out_signature='')
+    def Stop(self, image, name, extra_args):
+        i = Stop()
+        args = self.Args()
+        args.image = image
+        args.name = name
+        args.args = extra_args
+        i.set_args(args)
+        return i.stop()
 
     # atomic storage section
     # The StorageReset method deletes all containers and images from a system.

@@ -71,6 +71,16 @@ class AtomicDBus (object):
         return self.dbus_object.HostUpgradeDiff(os, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
+    def Stop(self, image, name=None, extra_args=None):
+        if not name:
+            name = image
+        if not extra_args:
+            extra_args = []
+        if not isinstance(extra_args, (list, tuple)):
+            extra_args = [ extra_args ]
+        return self.dbus_object.Install(image, name, extra_args, dbus_interface="org.atomic", timeout = 2147400)
+
+    @polkit.enable_proxy
     def StorageExport(self, graph, export_location, force):
         self.dbus_object.StorageExport(graph, export_location, force, dbus_interface="org.atomic")
 
