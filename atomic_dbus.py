@@ -18,6 +18,7 @@ from Atomic.info import Info
 from Atomic.images import Images
 from Atomic.mount import Mount
 from Atomic.pull import Pull
+from Atomic.run import Run
 from Atomic.scan import Scan
 from Atomic.sign import Sign
 from Atomic.storage import Storage
@@ -37,6 +38,7 @@ class atomic_dbus(slip.dbus.service.Object):
             self.reboot=False
             self.force = False
             self.image = None
+            self.spc = False
             self.storage = None
             self.reg_type = None
             self.recurse = False
@@ -47,8 +49,10 @@ class atomic_dbus(slip.dbus.service.Object):
             self.import_location = None
             self.export_location = None
             self.compares = []
+            self.command = []
             self.json = True
             self.no_files = False
+            self.name = None
             self.names_only = False
             self.rpms = False
             self.verbose = False
@@ -388,6 +392,18 @@ class atomic_dbus(slip.dbus.service.Object):
         return mount.unmount()
 
     # atomic run section
+    # The Run method will run the specified image
+    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
+    @dbus.service.method("org.atomic", in_signature='ssbs', out_signature='')
+    def Run(self, image, name, spc, command):
+        r = Run()
+        args = self.Args()
+        args.image = image
+        args.name = name
+        args.spc = spc
+        args.command = command
+        r.set_args(args)
+        return r.run()
 
     # atomic scan section
     # The ScanList method will return a list of all scanners.

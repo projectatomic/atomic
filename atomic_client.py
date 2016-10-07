@@ -141,6 +141,17 @@ class AtomicDBus (object):
         ret = self.dbus_object.MountImage(src, dest, options, live, shared, dbus_interface="org.atomic")
         return ret
 
+    # The Run method will create and run a container on the specified image
+    @polkit.enable_proxy
+    def Run(self, image, name=None, spc=False, command=None):
+        if not name:
+            name = image
+        if not command:
+            command = []
+        if not isinstance(command, (list, tuple)):
+            command = [ command ]
+        return self.dbus_object.Run(image, name, spc, command, dbus_interface="org.atomic", timeout = 2147400)
+
     @polkit.enable_proxy
     def Scan(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):
         return self.dbus_object.Scan(scan_targets, scanner, scan_type, rootfs, _all, images, containers, dbus_interface="org.atomic", timeout = 2147400)
