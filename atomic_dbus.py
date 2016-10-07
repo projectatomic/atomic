@@ -17,12 +17,13 @@ from Atomic.host import Host
 from Atomic.info import Info
 from Atomic.images import Images
 from Atomic.mount import Mount
+from Atomic.pull import Pull
 from Atomic.scan import Scan
 from Atomic.sign import Sign
 from Atomic.storage import Storage
 from Atomic.top import Top
-from Atomic.verify import Verify
 import Atomic.trust as Trust
+from Atomic.verify import Verify
 
 class atomic_dbus(slip.dbus.service.Object):
     default_polkit_auth_required = "org.atomic.readwrite"
@@ -30,11 +31,14 @@ class atomic_dbus(slip.dbus.service.Object):
     class Args():
         def __init__(self):
             self.display = False
+            self.quiet = True
             self.assumeyes = True
             self.remote = False
             self.reboot=False
             self.force = False
             self.image = None
+            self.storage = None
+            self.reg_type = None
             self.recurse = False
             self.debug = False
             self.devices = None
@@ -327,6 +331,19 @@ class atomic_dbus(slip.dbus.service.Object):
         d = Delete()
         return d.prune_images()
 
+    # The ImagesPull method will pull the specified image
+    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
+    @dbus.service.method("org.atomic", in_signature='sss', out_signature='')
+    def ImagePull(self, image, storage, reg_type):
+        p = Pull()
+        args = self.Args()
+        args.image = image
+        args.storage = storage
+        if reg_type != "":
+            args.reg_type = reg_type
+        p.set_args(args)
+        return p.pull_image()
+
     # The ImagesUpdate method downloads the latest container image.
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     @dbus.service.method("org.atomic", in_signature='sb', out_signature='')
@@ -346,7 +363,6 @@ class atomic_dbus(slip.dbus.service.Object):
         self.atomic.set_args(args)
         return self.atomic.get_all_vulnerable_info()
 
-    # atomic info section
     # atomic install section
 
     # atomic mount section
@@ -588,7 +604,7 @@ class atomic_dbus(slip.dbus.service.Object):
     @slip.dbus.polkit.require_auth("org.atomic.read")
     @dbus.service.method("org.atomic", in_signature='asb',
                          out_signature='aa{sv}')
-    def ImageVersion(self, images, recurse=False):
+    def ImagesVersion(self, images, recurse=False):
         versions = []
         for image in images:
             args = self.Args()
@@ -603,7 +619,7 @@ if __name__ == "__main__":
     mainloop = GLib.MainLoop()
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
     system_bus = dbus.SystemBus()
-    name = dbus.service.BusName("org.atomic", system_bus)
+    dbus.service.BusName("org.atomic", system_bus)
     atomic_dbus(system_bus, "/org/atomic/object")
     slip.dbus.service.set_mainloop(mainloop)
     mainloop.run()

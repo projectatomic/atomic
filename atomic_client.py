@@ -119,6 +119,11 @@ class AtomicDBus (object):
     def ImagesPrune(self):
         return self.dbus_object.ImagesPrune(dbus_interface="org.atomic")
 
+    # The ImagesPull method will pull the specified image
+    @polkit.enable_proxy
+    def ImagePull(self, image, storage="docker", reg_type=""):
+        return self.dbus_object.ImagePull(image, storage, reg_type, dbus_interface="org.atomic", timeout = 2147400)
+
     def ImagesUpdate(self, images, force=False):
         if not isinstance(images, (list, tuple)):
             images = [ images ]
@@ -128,7 +133,7 @@ class AtomicDBus (object):
     def ImagesVersion(self, images, recurse=False):
         if not isinstance(images, (list, tuple)):
             images = [ images ]
-        ret = self.dbus_object.Version(images, recurse, dbus_interface="org.atomic")
+        ret = self.dbus_object.ImagesVersion(images, recurse, dbus_interface="org.atomic")
         return ret
 
     @polkit.enable_proxy

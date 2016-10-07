@@ -10,14 +10,14 @@ ATOMIC_CONFIG = get_atomic_config()
 
 def cli(subparser):
     # atomic pull
-    backend = ATOMIC_CONFIG.get('default_storage', "docker")
+    storage = ATOMIC_CONFIG.get('default_storage', "docker")
     pullp = subparser.add_parser("pull", help=_("pull latest image from a repository"),
                                  epilog="pull the latest specified image from a repository.")
     pullp.set_defaults(_class=Pull, func='pull_image')
-    pullp.add_argument("--storage", dest="backend", default=backend,
+    pullp.add_argument("--storage", dest="storage", default=storage,
                        help=_("Specify the storage. Default is currently '%s'.  You can"
                               " change the default by editing /etc/atomic.conf and changing"
-                              " the 'default_storage' field." % backend))
+                              " the 'default_storage' field." % storage))
     pullp.add_argument("-t", "--type", dest="reg_type", default=None,
                        help=_("Pull from an alternative registry type."))
     pullp.add_argument("image", help=_("image id"))
@@ -58,8 +58,8 @@ class Pull(Atomic):
             "docker" : self.pull_docker_image
         }
 
-        handler = handlers.get(self.args.backend)
+        handler = handlers.get(self.args.storage)
         if handler is None:
             raise ValueError("Destination not known, please choose --storage=%s" % "|".join(handlers.keys()))
-        write_out("Image %s is being pulled to %s ..." % (self.args.image, self.args.backend))
+        write_out("Image %s is being pulled to %s ..." % (self.args.image, self.args.storage))
         handler()
