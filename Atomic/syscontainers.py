@@ -744,6 +744,8 @@ class SystemContainers(object):
         return None
 
     def get_checkout(self, name):
+        if len(name) == 0:
+            raise ValueError("Invalid container name")
         path = "%s/%s" % (self._get_system_checkout_path(), name)
         if os.path.exists(path):
             return path
