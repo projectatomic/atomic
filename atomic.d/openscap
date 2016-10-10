@@ -5,10 +5,10 @@ default_scan: cve
 custom_args: ['-v', '/etc/oscapd:/etc/oscapd:ro']
 scans: [ 
       { name: cve,
-        args: ['oscapd-evaluate', 'scan',  '--no-standard-compliance', '--targets', 'chroots-in-dir:///scanin',  '--output', '/scanout'],
+        args: ['oscapd-evaluate', 'scan',  '--no-standard-compliance', '--targets', 'chroots-in-dir:///scanin',  '--output', '/scanout', '-j1'],
         description: "Performs a CVE scan based on known CVE data"},
       { name: standards_compliance,
-        args: ['oscapd-evaluate', 'scan', '--targets', 'chroots-in-dir:///scanin',  '--output', '/scanout', '--no-cve-scan'],
+        args: ['oscapd-evaluate', 'scan', '--targets', 'chroots-in-dir:///scanin',  '--output', '/scanout', '--no-cve-scan', '-j1'],
         description: "Performs a standard scan"
       }
 ]
