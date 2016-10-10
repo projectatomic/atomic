@@ -64,7 +64,9 @@ class TestAtomicUtil(unittest.TestCase):
                   ('busybox', ('', '', 'busybox', 'latest')),
                   ('busybox:2.1', ('', '', 'busybox', '2.1')),
                   ('library/busybox', ('', 'library', 'busybox', 'latest')),
-                  ('library/busybox:2.1', ('', 'library', 'busybox', '2.1'))
+                  ('library/busybox:2.1', ('', 'library', 'busybox', '2.1')),
+                  ('registry.access.redhat.com/rhel7:latest', ('registry.access.redhat.com', '', 'rhel7', 'latest')),
+                  ('registry.access.redhat.com/rhel7', ('registry.access.redhat.com', '', 'rhel7', 'latest'))
                   ]
 
         for image in images:

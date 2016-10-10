@@ -707,7 +707,11 @@ class Atomic(object):
         if not image:
             raise ValueError('Error parsing input: "{}" invalid'.format(input_image))
         if all([True if x else False for x in [registry, image, tag]]):
-            return input_image
+            img = registry
+            if repo:
+                img += "/{}".format(repo)
+            img += "/{}:{}".format(image, tag)
+            return img
         if not registry:
             ri = RegistryInspect(registry, repo, image, tag, debug=self.args.debug, orig_input=self.image)
             return ri.find_image_on_registry()

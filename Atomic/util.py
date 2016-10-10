@@ -72,11 +72,17 @@ def get_registries():
 
 
 def decompose(compound_name):
-    registries = [x['name'] for x in get_registries()]
+    def is_network_address(_input):
+        try:
+            socket.gethostbyname(_input)
+        except socket.gaierror:
+            return False
+        return True
+
     reg, repo, image, tag = '', compound_name, '', ''
     if '/' in repo:
         reg, repo = repo.split('/', 1)
-        if reg not in registries:
+        if not is_network_address(reg):
             repo = '{}/{}'.format(reg, repo)
             reg = ''
     if ':' in repo:
@@ -90,6 +96,10 @@ def decompose(compound_name):
         repo = 'library'
     if not tag:
         tag = "latest"
+
+    if reg and not repo and not is_network_address(repo):
+        repo = reg
+        reg = ''
 
     return str(reg), str(repo), str(image), str(tag)
 
