@@ -29,12 +29,15 @@ def cli(subparser):
                                dest="force",
                                default=False,
                                help=_("Force removal of specified running containers"))
-    delete_parser.add_argument("-a", "--all", action='store_true',dest="all",
+    delete_group = delete_parser.add_mutually_exclusive_group()
+    delete_group.add_argument("-a", "--all", action='store_true',dest="all",
                                default=False,
                                help=_("Delete all containers"))
+    delete_group.add_argument("container", nargs='?', action="append", 
+                              help=_("Specify one or more containers. Must be final arguments."))
+    delete_parser.add_argument("containers", nargs=argparse.REMAINDER, 
+                               help=argparse.SUPPRESS)
     delete_parser.set_defaults(_class=Containers, func='delete')
-    delete_parser.add_argument("containers", nargs=argparse.REMAINDER,
-                               help=_("container container(s)"))
 
 
     # atomic containers list
@@ -223,7 +226,9 @@ class Containers(Atomic):
             for c in self.syscontainers.get_containers():
                 sys_targets.append(c["Id"])
         else:
-            for c in self.args.containers:
+            if not self.args.container and len(self.args.containers) == 0:
+                raise ValueError("No containers selected")
+            for c in self.args.container + self.args.containers:
                 if self.syscontainers.get_checkout(c):
                     sys_targets.append(c)
                 else:
