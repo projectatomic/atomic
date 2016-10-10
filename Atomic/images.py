@@ -147,7 +147,8 @@ class Images(Atomic):
             for image in _images:
                 if self.args.filter:
                     image_info = {"repo" : image['repo'], "tag" : image['tag'], "id" : image['id'],
-                                  "created" : image['created'], "size" : image['virtual_size'], "type" : image['type']}
+                                  "created" : image['created'], "size" : image['virtual_size'], "type" : image['type'],
+                                  "dangling": "{}".format(image['is_dangling'])}
                     if not self._filter_include_image(image_info):
                         continue
                 if self.args.quiet:
@@ -172,7 +173,6 @@ class Images(Atomic):
     def images(self):
         _images = self.get_images(get_all=self.args.all)
         all_image_info = []
-
         if len(_images) >= 0:
             vuln_ids = self.get_vulnerable_ids()
             all_vuln_info = json.loads(self.get_all_vulnerable_info())
@@ -250,7 +250,7 @@ class Images(Atomic):
             shutil.rmtree(tmpdir)
 
     def _filter_include_image(self, image_info):
-        filterables = ["repo", "tag", "id", "created", "size", "type"]
+        filterables = ["repo", "tag", "id", "created", "size", "type", "dangling"]
         for i in self.args.filter:
             var, value = str(i).split("=")
             var = var.lower()
