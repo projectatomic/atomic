@@ -74,7 +74,7 @@ def get_registries():
 def decompose(compound_name):
     def is_network_address(_input):
         try:
-            socket.gethostbyname(_input)
+            socket.gethostbyname(strip_port(_input))
         except socket.gaierror:
             return False
         return True
@@ -702,6 +702,8 @@ def strip_port(_input):
     return ip.strip("[]")
 
 def is_insecure_registry(registry_config, registry):
+    if registry is "":
+        raise ValueError("Registry value cannot be blank")
     if is_python2 and not isinstance(registry, unicode): #pylint: disable=undefined-variable,unicode-builtin
         registry = unicode(registry) #pylint: disable=unicode-builtin,undefined-variable
 
