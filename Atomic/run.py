@@ -1,4 +1,3 @@
-import argparse
 import sys
 import os
 from . import util
@@ -48,10 +47,11 @@ def cli(subparser):
                       help=_("use super privileged container mode: '%s'" %
                              Run.print_spc()))
     runp.add_argument("image", help=_("container image"))
-    runp.add_argument("command", nargs=argparse.REMAINDER,
-                      help=_("command to execute within the container. "
+    runp.add_argument("command", nargs="*",
+                      help=_("optional command to execute within the container. "
                              "If container is not running, command is appended "
                              "to the image run method"))
+
     run_group.add_argument("--quiet", "-q", action="store_true",
                       help=_("Be less verbose."))
 
