@@ -364,14 +364,17 @@ class Atomic(object):
             return " ".join(args)
 
     def get_fq_name(self, image_info):
+        if not image_info['RepoTags']:
+            return None
+
         if len(image_info['RepoTags']) > 1:
             if self.image in image_info['RepoTags']:
                 return self.image
 
             raise ValueError("\n{} is tagged with multiple repositories. "
                              "Please use a repository name instead.\n".format(self.image))
-        else:
-            return image_info['RepoTags'][0]
+
+        return image_info['RepoTags'][0]
 
     def is_iid(self):
         for i in self.get_images():
