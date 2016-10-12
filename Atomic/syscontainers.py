@@ -335,15 +335,17 @@ class SystemContainers(object):
         elif remote_path:
             rootfs = os.path.join(remote_path, "rootfs")
         else:
-            # Under Atomic, get the real deployment location.  It is needed to create the hard links.
-            try:
-                sysroot = OSTree.Sysroot()
-                sysroot.load()
-                osname = sysroot.get_booted_deployment().get_osname()
-                destination = os.path.join("/ostree/deploy/", osname, os.path.relpath(destination, "/"))
-                destination = os.path.realpath(destination)
-            except: #pylint: disable=bare-except
-                pass
+            # Under Atomic, get the real deployment location if we're using the
+            # system repo. It is needed to create the hard links.
+            if self.get_ostree_repo_location() == '/ostree/repo':
+                try:
+                    sysroot = OSTree.Sysroot()
+                    sysroot.load()
+                    osname = sysroot.get_booted_deployment().get_osname()
+                    destination = os.path.join("/ostree/deploy/", osname, os.path.relpath(destination, "/"))
+                    destination = os.path.realpath(destination)
+                except: #pylint: disable=bare-except
+                    pass
             rootfs = os.path.join(destination, "rootfs")
 
         if os.path.exists(destination):
