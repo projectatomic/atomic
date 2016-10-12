@@ -50,7 +50,7 @@ atomic-push - push Image to repository
    signing will be disabled.
 
 **-t REGISTRY_TYPE** **--type REGISTRY_TYPE**
-  Change the registry type.  Currently only **atomic** is the only other supported registry type.
+  Change the registry type, **docker|atomic**.  atomic registry type is an OpenShift-based registry with an API supporting image signatures. Default is **docker**.
 
 **-u USERNAME** **--username USERNAME**
   Username for remote registry
