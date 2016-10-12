@@ -263,7 +263,7 @@ class Trust(Atomic):
         """
         if not util.get_atomic_config_item(['discover_sigstores'], util.get_atomic_config()):
             return True
-        (registry, repo, _, _) = util.decompose(pull_image)
+        registry, repo, _, _, _ = util.Decompose(pull_image).all
         repo = repo.split('/')
         registry_config_path = util.get_atomic_config_item(["registry_confdir"], self.atomic_config)
         registry_configs, _ = util.get_registry_configs(registry_config_path)

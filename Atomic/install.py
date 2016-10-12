@@ -105,7 +105,7 @@ class Install(Atomic):
             if self.args.display:
                 self.display("Need to pull %s" % self.image)
                 return
-            _, _, _, tag = util.decompose(self.image)
+            tag = util.Decompose(self.image).tag
             # skopeo requires the use of tags or it will fail
             # if not tag is found, use 'latest'
             if not tag:

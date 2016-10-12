@@ -239,7 +239,7 @@ class Verify(Atomic):
                                        if x['Id'] == iid] for _repo in repos]
         results = []
         for repo_ in similar:
-            (reg, _, _, _) = util.decompose(repo_)
+            reg  = util.Decompose(repo_).registry
             results.append(self.is_registry_local(reg))
         return all(results)
 

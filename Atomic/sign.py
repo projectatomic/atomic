@@ -75,7 +75,7 @@ class Sign(Atomic):
             os.environ['GNUPGHOME'] = self.args.gnupghome
 
         for sign_image in images:
-            registry, repo, image, tag = util.decompose(sign_image)
+            registry, repo, image, tag, _ = util.Decompose(sign_image).all
             ri = discovery.RegistryInspect(registry, repo, image, tag, debug=self.args.debug, orig_input=sign_image)
             manifest = ri.rc.manifest_json
 
@@ -93,7 +93,7 @@ class Sign(Atomic):
 
 
                 else:
-                    reg, repo, _, _ = util.decompose(expanded_image_name)
+                    reg, repo, _, _, _ = util.Decompose(expanded_image_name).all
                     if not registry_configs and not default_store:
                         raise ValueError(no_reg_no_default_error(sign_image, registry_config_path))
                     reg_info = util.have_match_registry("{}/{}".format(reg, repo), registry_configs)

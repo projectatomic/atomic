@@ -71,44 +71,11 @@ def get_registries():
     return registries
 
 
-def decompose(compound_name):
-    def is_network_address(_input):
-        try:
-            socket.gethostbyname(strip_port(_input))
-        except socket.gaierror:
-            return False
-        return True
-
-    reg, repo, image, tag = '', compound_name, '', ''
-    if '/' in repo:
-        reg, repo = repo.split('/', 1)
-        if not is_network_address(reg):
-            repo = '{}/{}'.format(reg, repo)
-            reg = ''
-    if ':' in repo:
-        repo, tag = repo.rsplit(':', 1)
-    if "/" in repo:
-        repo, image = repo.rsplit("/", 1)
-    if not image and repo:
-        image = repo
-        repo = ''
-    if reg == 'docker.io' and repo == '':
-        repo = 'library'
-    if not tag:
-        tag = "latest"
-
-    if reg and not repo and not is_network_address(repo):
-        repo = reg
-        reg = ''
-
-    return str(reg), str(repo), str(image), str(tag)
-
-
 def image_by_name(img_name, images=None):
     # Returns a list of image data for images which match img_name. Will
     # optionally take a list of images from a docker.Client.images
     # query to avoid multiple docker queries.
-    i_reg, i_rep, i_img, i_tag = decompose(img_name)
+    i_reg, i_rep, i_img, i_tag, _ = Decompose(img_name).all
 
     # Correct for bash-style matching expressions.
     if not i_reg:
@@ -126,7 +93,7 @@ def image_by_name(img_name, images=None):
         if not i["RepoTags"]:
             continue
         for t in i['RepoTags']:
-            reg, rep, d_image, tag = decompose(t)
+            reg, rep, d_image, tag, _ = Decompose(t).all
             if matches(reg, i_reg) \
                     and matches(rep, i_rep) \
                     and matches(tag, i_tag) \
@@ -776,3 +743,89 @@ def getgnuhome():
         return ("%s/.gnupg" % pwd.getpwuid(uid).pw_dir)
     except KeyError:
         return None
+
+
+class Decompose(object):
+    """
+    Class for decomposing an input string in its respective parts like registry,
+    repository, image, tag, and digest.
+
+    return: Nothing by default
+
+    Example usage:
+        registry, repo, image, tag, digest = Decompose("docker.io/library/busybox:latest").all
+        repo = Decompose("docker.io/library/busybox:latest").repo
+        digest = Decompose("docker.io/fedora@sha256:64a02df6aac27d1200c2...67ce4af994ba5dc3669e").digest
+    """
+
+    def __init__(self, input_name):
+        self._registry = None
+        self._repo = None
+        self._image = None
+        self._tag = None
+        self._digest = None
+        self._decompose(input_name)
+
+    def _decompose(self, input_name):
+        def is_network_address(_input):
+            try:
+                socket.gethostbyname(_input)  # Remember to add in strip port here!
+            except socket.gaierror:
+                return False
+            return True
+
+        reg, repo, image, tag = '', input_name, '', ''
+        digest = None
+        if '/' in repo:
+            reg, repo = repo.split('/', 1)
+            if not is_network_address(reg):
+                repo = '{}/{}'.format(reg, repo)
+                reg = ''
+        if '@sha256:' in repo:
+            repo, _, digest = repo.rpartition("@")
+
+        if ':' in repo:
+            repo, tag = repo.rsplit(':', 1)
+        if "/" in repo:
+            repo, image = repo.rsplit("/", 1)
+        if not image and repo:
+            image = repo
+            repo = ''
+        if reg == 'docker.io' and repo == '':
+            repo = 'library'
+        if not tag and not digest:
+            tag = "latest"
+
+        if reg and not repo and not is_network_address(repo):
+            repo = reg
+            reg = ''
+
+        self._registry = str(reg) if reg else ''
+        self._repo = str(repo) if repo else ''
+        self._image = str(image) if image else ''
+        self._tag = str(tag) if tag else ''
+        self._digest = str(digest) if digest else ''
+
+    @property
+    def registry(self):
+        return self._registry
+
+    @property
+    def repo(self):
+        return self._repo
+
+    @property
+    def image(self):
+        return self._image
+
+    @property
+    def tag(self):
+        return self._tag
+
+    @property
+    def digest(self):
+        return self._digest
+
+    @property
+    def all(self):
+        return self._registry, self._repo, self._image, self._tag, self._digest

@@ -3,7 +3,7 @@ try:
 except ImportError:
     from atomic import Atomic  # pylint: disable=relative-import
 from .trust import Trust
-from .util import skopeo_copy, get_atomic_config, decompose, write_out, strip_port, is_insecure_registry
+from .util import skopeo_copy, get_atomic_config, Decompose, write_out, strip_port, is_insecure_registry
 
 ATOMIC_CONFIG = get_atomic_config()
 
@@ -39,7 +39,7 @@ class Pull(Atomic):
         # else:
         #     pull_uri = 'docker://'
         fq_name = self.get_fq_image_name(self.args.image)
-        registry, _, _, tag = decompose(fq_name)
+        registry, _, _, tag, _ = Decompose(fq_name).all
         image = "docker-daemon:{}".format(self.args.image)
         if not self.args.image.endswith(tag):
             image += ":{}".format(tag)

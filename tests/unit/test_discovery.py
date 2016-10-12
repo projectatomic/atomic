@@ -5,7 +5,7 @@ from Atomic import discovery
 
 class TestAtomicUtil(unittest.TestCase):
     IMAGE = 'docker.io/library/busybox:latest'
-    I_REGISTRY, I_REPO, I_IMAGE, I_TAG = util.decompose(IMAGE)
+    I_REGISTRY, I_REPO, I_IMAGE, I_TAG, _ = util.Decompose(IMAGE).all
 
     def test_ping(self):
         ri = discovery.RegistryInspect(registry=self.I_REGISTRY,
@@ -19,7 +19,7 @@ class TestAtomicUtil(unittest.TestCase):
     def test_find_image_on_registry(self):
         fq = 'docker.io/library/busybox:latest'
         for img in ['docker.io/library/busybox:latest', 'docker.io/library/busybox', 'docker.io/busybox', 'busybox']:
-            registry, repo, image, tag = util.decompose(img)
+            registry, repo, image, tag, _ = util.Decompose(img).all
             ri = discovery.RegistryInspect(registry=registry, repo=repo, image=image, tag=tag)
             self.assertEqual(ri.find_image_on_registry(), fq)
 

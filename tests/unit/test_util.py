@@ -56,21 +56,24 @@ class TestAtomicUtil(unittest.TestCase):
         self.assertTrue(exception_raised)
 
     def test_decompose(self):
-        images = [('docker.io/library/busybox', ('docker.io', 'library','busybox', 'latest')),
-                  ('docker.io/library/foobar/busybox', ('docker.io', 'library/foobar', 'busybox', 'latest')),
-                  ('docker.io/library/foobar/busybox:2.1', ('docker.io', 'library/foobar', 'busybox', '2.1')),
-                  ('docker.io/busybox:2.1', ('docker.io', 'library', 'busybox', '2.1')),
-                  ('docker.io/busybox', ('docker.io', 'library', 'busybox', 'latest')),
-                  ('busybox', ('', '', 'busybox', 'latest')),
-                  ('busybox:2.1', ('', '', 'busybox', '2.1')),
-                  ('library/busybox', ('', 'library', 'busybox', 'latest')),
-                  ('library/busybox:2.1', ('', 'library', 'busybox', '2.1')),
-                  ('registry.access.redhat.com/rhel7:latest', ('registry.access.redhat.com', '', 'rhel7', 'latest')),
-                  ('registry.access.redhat.com/rhel7', ('registry.access.redhat.com', '', 'rhel7', 'latest'))
+        images = [('docker.io/library/busybox', ('docker.io', 'library','busybox', 'latest', '')),
+                  ('docker.io/library/foobar/busybox', ('docker.io', 'library/foobar', 'busybox', 'latest', '')),
+                  ('docker.io/library/foobar/busybox:2.1', ('docker.io', 'library/foobar', 'busybox', '2.1', '')),
+                  ('docker.io/busybox:2.1', ('docker.io', 'library', 'busybox', '2.1', '')),
+                  ('docker.io/busybox', ('docker.io', 'library', 'busybox', 'latest', '')),
+                  ('busybox', ('', '', 'busybox', 'latest', '')),
+                  ('busybox:2.1', ('', '', 'busybox', '2.1', '')),
+                  ('library/busybox', ('', 'library', 'busybox', 'latest', '')),
+                  ('library/busybox:2.1', ('', 'library', 'busybox', '2.1', '')),
+                  ('registry.access.redhat.com/rhel7:latest', ('registry.access.redhat.com', '', 'rhel7', 'latest', '')),
+                  ('registry.access.redhat.com/rhel7', ('registry.access.redhat.com', '', 'rhel7', 'latest', '')),
+                  ('fedora@sha256:64a02df6aac27d1200c2572fe4b9949f1970d05f74d367ce4af994ba5dc3669e', ('', '', 'fedora', '', 'sha256:64a02df6aac27d1200c2572fe4b9949f1970d05f74d367ce4af994ba5dc3669e')),
+                  ('docker.io/library/fedora@sha256:64a02df6aac27d1200c2572fe4b9949f1970d05f74d367ce4af994ba5dc3669e', ('docker.io', 'library', 'fedora', '', 'sha256:64a02df6aac27d1200c2572fe4b9949f1970d05f74d367ce4af994ba5dc3669e')),
+                  ('docker.io/fedora@sha256:64a02df6aac27d1200c2572fe4b9949f1970d05f74d367ce4af994ba5dc3669e', ('docker.io', 'library', 'fedora', '', 'sha256:64a02df6aac27d1200c2572fe4b9949f1970d05f74d367ce4af994ba5dc3669e'))
                   ]
 
         for image in images:
-            self.assertEqual(util.decompose(image[0]), image[1])
+            self.assertEqual(util.Decompose(image[0]).all, image[1])
 
 
 if __name__ == '__main__':
