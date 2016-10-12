@@ -199,7 +199,7 @@ if __name__ == '__main__':
         if aparser:
             aparser.print_usage()
         else:
-            traceback.print_exc(file=sys.stdout)
+            traceback.print_exc(file=sys.stderr)
         sys.exit(1)
     except MountError as e:
         if str(e).find("Permission denied") > 0:
@@ -217,4 +217,4 @@ if __name__ == '__main__':
         sys.exit(e.code)
     finally:
         if 'args' in locals() and args.debug:
-            traceback.print_exc(file=sys.stdout)
+            traceback.print_exc(file=sys.stderr)
