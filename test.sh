@@ -144,25 +144,31 @@ if [[ ! -x "${COVERAGE_BIN}" ]]; then
   COVERAGE_BIN="/usr/bin/coverage2"
 fi
 
-set +e
-COVERAGE="${COVERAGE_BIN}
+if [[ -x "${COVERAGE_BIN}" ]]; then
+    COVERAGE="${COVERAGE_BIN}
 run
 --source=./Atomic/
 --branch"
+else
+    COVERAGE="${PYTHON:-/usr/bin/python}"
+fi
 
+set +e
 ${COVERAGE} -m unittest discover ./tests/unit/ | tee -a ${LOG}
 _UNIT_FAIL="$?"
-
 set -e
 
 # CLI integration tests.
 let failures=0 || true
 printf "\nINTEGRATION TESTS:\n" | tee -a ${LOG}
 
-export ATOMIC="${COVERAGE}
---append
-atomic
+export ATOMIC="atomic
 --debug"
+if [[ -x "${COVERAGE_BIN}" ]]; then
+    export ATOMIC="${COVERAGE}
+--append
+$ATOMIC"
+fi
 
 for tf in `find ./tests/integration/ -name test_*.sh`; do
 
@@ -180,7 +186,7 @@ for tf in `find ./tests/integration/ -name test_*.sh`; do
         continue
     fi
 
-    printf "Running test %-40.40s" "$(basename ${tf})...."
+    printf "Running %-40.40s" "$(basename ${tf})...."
     printf "\n==== ${tf} ====\n" >> ${LOG}
 
     if ${tf} &>> ${LOG}; then
@@ -195,9 +201,10 @@ for tf in `find ./tests/integration/ -name test_*.sh`; do
     fi
 done
 
-echo "Coverage report:" | tee -a ${LOG}
-
-${COVERAGE_BIN} report | tee -a ${LOG}
+if [[ -x "${COVERAGE_BIN}" ]]; then
+    echo "Coverage report:" | tee -a ${LOG}
+    ${COVERAGE_BIN} report | tee -a ${LOG}
+fi
 
 if [[ "${failures}" -eq "0" ]]; then
     if [[ $_UNIT_FAIL -eq 0 ]]; then
