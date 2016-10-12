@@ -610,7 +610,7 @@ class SystemContainers(object):
             with open(os.path.join(fullpath, "info"), "r") as info_file:
                 info = json.load(info_file)
                 revision = info["revision"] if "revision" in info else ""
-                created = info["created"] if "created" in info else ""
+                created = info["created"] if "created" in info else 0
                 image = info["image"] if "image" in info else ""
 
             with open(os.path.join(fullpath, "config.json"), "r") as config_file:
