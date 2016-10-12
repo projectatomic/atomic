@@ -38,7 +38,7 @@ class AtomicHelp(Atomic):
 
     def help_tty(self):
         result = self.help()
-        if sys.stdout.isatty():
+        if not sys.stdout.isatty():
             util.write_out("\n{}\n".format(result))
         else:
             # Call the pager
