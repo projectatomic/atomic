@@ -25,6 +25,8 @@ class TestAtomicTrust(unittest.TestCase):
             self.keytype = "GPGKeys"
             self.assumeyes = True
             self.json = False
+            self.debug = False
+            self.savesigstore = None
 
     def test_sigstoretype_map_web(self):
         testobj = Trust()
@@ -48,7 +50,7 @@ class TestAtomicTrust(unittest.TestCase):
     def test_new_registry_sigstore(self):
         testobj = Trust(policy_filename = TEST_POLICY)
         testobj.atomic_config = util.get_atomic_config(atomic_config = os.path.join(FIXTURE_DIR, "atomic.conf"))
-        testobj.modify_registry_config("docker.io", "https://sigstore.example.com/sigs")
+        testobj.modify_registry_config("docker.io", "docker", "https://sigstore.example.com/sigs")
         with open(os.path.join(FIXTURE_DIR, "configs/docker.io.yaml"), 'r') as f:
             conf_expected = yaml.load(f)
         with open(os.path.join(FIXTURE_DIR, "etc/containers/registries.d/docker.io.yaml"), 'r') as f:
@@ -58,7 +60,7 @@ class TestAtomicTrust(unittest.TestCase):
     def test_update_registry_sigstore(self):
         testobj = Trust(policy_filename = TEST_POLICY)
         testobj.atomic_config = util.get_atomic_config(atomic_config = os.path.join(FIXTURE_DIR, "atomic.conf"))
-        testobj.modify_registry_config("docker.io", "https://sigstore.example.com/update")
+        testobj.modify_registry_config("docker.io", "docker", "https://sigstore.example.com/update")
         with open(os.path.join(FIXTURE_DIR, "configs/docker.io.updated.yaml"), 'r') as f:
             conf_expected = yaml.load(f)
         with open(os.path.join(FIXTURE_DIR, "etc/containers/registries.d/docker.io.yaml"), 'r') as f:
@@ -68,7 +70,7 @@ class TestAtomicTrust(unittest.TestCase):
     def test_add_repo_sigstore(self):
         testobj = Trust(policy_filename = TEST_POLICY)
         testobj.atomic_config = util.get_atomic_config(atomic_config = os.path.join(FIXTURE_DIR, "atomic.conf"))
-        testobj.modify_registry_config("docker.io/repo", "https://sigstore.acme.com/sigs")
+        testobj.modify_registry_config("docker.io/repo", "docker", "https://sigstore.acme.com/sigs")
         with open(os.path.join(FIXTURE_DIR, "configs/docker.io-repo.yaml"), 'r') as f:
             conf_expected = yaml.load(f)
         with open(os.path.join(FIXTURE_DIR, "etc/containers/registries.d/docker.io-repo.yaml"), 'r') as f:

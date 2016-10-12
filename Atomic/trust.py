@@ -63,6 +63,8 @@ def cli(subparser):
     deletep.add_argument("--sigstoretype", dest="sigstoretype", default="web",
                          choices=['atomic', 'local', 'web'],
                          help=sigstore_help)
+    deletep.add_argument("--save-sigstore", dest="savesigstore", default=True, action="store_false",
+                         help="Do not remove the registry sigstore configuration")
     deletep.set_defaults(_class=Trust, func="delete")
     showp = subparsers.add_parser("show",
                                   help="Display trust policy for the system")
@@ -133,11 +135,11 @@ class Trust(Atomic):
                 if sstype == "atomic":
                     raise ValueError("Sigstore cannot be defined for sigstoretype 'atomic'")
                 else:
-                    self.modify_registry_config(registry, sigstore)
+                    self.modify_registry_config(registry, sstype, sigstore)
 
     def delete(self):
         """
-        Remove trust policy entry
+        Remove trust policy entry and sigstore
         """
         sstype = self.get_sigstore_type_map(self.args.sigstoretype)
         with open(self.policy_filename, 'r+') as policy_file:
@@ -150,6 +152,8 @@ class Trust(Atomic):
             policy_file.seek(0)
             json.dump(policy, policy_file, indent=4)
             policy_file.truncate()
+        if self.args.savesigstore:
+            self.modify_registry_config(self.args.registry, self.get_sigstore_type_map(self.args.sigstoretype))
 
     def modify_default(self):
         """
@@ -209,11 +213,12 @@ class Trust(Atomic):
             policy["transports"][sstype] = {}
         return policy
 
-    def modify_registry_config(self, registry, sigstore):
+    def modify_registry_config(self, registry, sstype, sigstore=None):
         """
         Modify the registries.d configuration for a registry
         :param registry: a registry name
-        :param sigstore: a file:/// or https:// URL
+        :param sstype: mapped sigstore type
+        :param sigstore: a file:/// or https:// URL. Optional
         """
         registry_config_path = util.get_atomic_config_item(["registry_confdir"], self.atomic_config)
         registry_configs, _ = util.get_registry_configs(registry_config_path)
@@ -226,20 +231,24 @@ class Trust(Atomic):
         else:
             if not sigstore == registry_configs[registry]["sigstore"]:
                 reg_yaml_file = registry_configs[registry]["filename"]
-        self.write_registry_config_file(reg_yaml_file, registry, sigstore, mode=mode)
+        self.write_registry_config_file(reg_yaml_file, registry, sstype, sigstore, mode=mode)
 
-    def write_registry_config_file(self, reg_file, registry, sigstore, mode="r+"):
+    def write_registry_config_file(self, reg_file, registry, sstype="docker", sigstore=None, mode="r+"):
         """
         Utility method to modify existing registry config file
         :param reg_file: registry filename
         :param registry: registry name
-        :param sigstore: sigstore server
+        :param sstype: mapped sigstore type
+        :param sigstore: sigstore server. If None the sigstore section is deleted.
         :param mode: file open mode
         """
         with open(reg_file, mode) as f:
             d = yaml.load(f)
-            d = { "docker": {}}
-            d["docker"][str(registry)] = { "sigstore": str(sigstore) }
+            if not sigstore:
+                del d[sstype][registry]
+            else:
+                d = { sstype: {}}
+                d[sstype][str(registry)] = { "sigstore": str(sigstore) }
             f.seek(0)
             yaml.dump(d, f, default_flow_style=False)
             f.truncate()
@@ -370,7 +379,6 @@ class Trust(Atomic):
                 for key, value in sorted_table.items():
                     util.write_out('{0:<35} {1:<8} {2}'.format(key, self.trusttype_map(value["type"]), value["sigstore"]))
                 util.write_out('{0:<35} {1:<8}'.format("* (default)", self.trusttype_map(policy["default"][0]["type"])))
-        return policy
 
     def trusttype_map(self, trust_type):
         t = { "insecureAcceptAnything": "accept", "signedBy": "signed", "reject": "reject" }
