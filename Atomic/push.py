@@ -55,8 +55,9 @@ def cli(subparser):
                          default=None,
                          dest="repo_id",
                          help=_("Repository ID"))
-    pushp.add_argument("-t", "--type", dest="reg_type", default=None,
-                       help=_("Push to an alternative registry type."))
+    pushp.add_argument("-t", "--type", dest="reg_type", default="docker",
+                       choices=['docker', 'atomic'],
+                       help=_("Registry type"))
     pushp.add_argument("--sign-by", dest="sign_by", default=signer,
                        help=_("Name of the signing key. Currently %s, "
                               "default can be defined in /etc/atomic.conf" % signer))
