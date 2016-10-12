@@ -811,6 +811,19 @@ _atomic_trust_add() {
 	esac
 }
 
+_atomic_trust_show() {
+    local all_options="$options_with_args
+        -j --json
+        --raw
+    "
+
+    case "$cur" in
+        -*)
+            COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+            ;;
+    esac
+}
+
 _atomic_trust_delete() {
 	local options_with_args="
 		--sigstoretype

@@ -1,5 +1,6 @@
-docker.io                           reject   
-docker.io/centos                    signed   https://centos.org/sigstore/
-private.example.com                 signed   
-registry.access.redhat.com          signed   https://cdn.redhat.com/containers/signatures
-* (default)                         accept  
+* (default)                         accept                               
+docker.io                           reject                               
+docker.io/centos                    signed Billy Bob                     https://centos.org/sigstore/
+localhost                           signed Billy Bob                     
+private.example.com                 signed Billy Bob                     
+registry.access.redhat.com          signed security@redhat.com           https://cdn.redhat.com/containers/signatures

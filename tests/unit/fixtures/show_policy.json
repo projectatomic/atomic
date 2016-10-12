@@ -13,14 +13,14 @@
             ],
             "registry.access.redhat.com": [
                 {
-                    "keyPath": "/home/aweiteka/dev/proj/atomic/tests/unit/fixtures/key2.pub",
+                    "keyPath": "tests/unit/fixtures/key1.pub",
                     "keyType": "GPGKeys",
                     "type": "signedBy"
                 }
             ],
             "docker.io/centos": [
                 {
-                    "keyPath": "/home/aweiteka/dev/proj/atomic/tests/unit/fixtures/key1.pub",
+                    "keyPath": "tests/unit/fixtures/key2.pub",
                     "keyType": "GPGKeys",
                     "type": "signedBy"
                 }
@@ -29,7 +29,7 @@
         "atomic": {
             "private.example.com": [
                 {
-                    "keyPath": "/home/aweiteka/dev/proj/atomic/tests/unit/fixtures/key1.pub",
+                    "keyPath": "tests/unit/fixtures/key2.pub",
                     "keyType": "GPGKeys",
                     "type": "signedBy"
                 }
@@ -38,7 +38,7 @@
         "dir": {
             "localhost": [
                 {
-                    "keyPath": "/home/aweiteka/dev/proj/atomic/tests/unit/fixtures/key2.pub",
+                    "keyPath": "tests/unit/fixtures/key2.pub",
                     "keyType": "GPGKeys",
                     "type": "signedBy"
                 }

@@ -7,7 +7,7 @@ import yaml
 import requests
 import collections
 
-TRANSPORT_TYPES = ["docker", "atomic", "web"]
+TRANSPORT_TYPES = ["docker", "atomic", "dir"]
 
 def cli(subparser):
     # atomic trust
@@ -68,7 +68,8 @@ def cli(subparser):
     deletep.set_defaults(_class=Trust, func="delete")
     showp = subparsers.add_parser("show",
                                   help="Display trust policy for the system")
-    showp.add_argument('-j', '--json', action='store_true', help="Output policy file as raw json")
+    showp.add_argument('--raw', action='store_true', help="Output raw policy file")
+    showp.add_argument('-j', '--json', action='store_true', help="Output as json")
     showp.set_defaults(_class=Trust, func="show")
 
 class Trust(Atomic):
@@ -360,25 +361,71 @@ class Trust(Atomic):
                 policy_file.seek(0)
                 json.dump(policy, policy_file, indent=4)
                 policy_file.truncate()
-            if self.args.json:
+            if self.args.raw:
                 util.output_json(policy)
             else:
                 table = {}
                 if "transports" in policy:
                     for tt in TRANSPORT_TYPES:
                         if tt in policy["transports"]:
-                            for key, value in policy["transports"][tt].items():
-                                table[key] = { "type": value[0]["type"] }
+                            for key, values in policy["transports"][tt].items():
+                                table[key] = { "type": values[0]["type"] }
+                                table[key]["keys"] = []
+                                for v in values:
+                                    if "keyPath" in v:
+                                        table[key]["keys"].append(v["keyPath"])
+                                    if "keyData" in v:
+                                        table[key]["keys"].append(v["keyData"])
                                 reg_info = util.have_match_registry(key, registry_configs)
                                 if reg_info:
                                     table[key]["sigstore"] = reg_info["sigstore"]
                                 else:
                                     table[key]["sigstore"] = ""
-
+                if "default" in policy:
+                    table["* (default)"] = { "type": policy["default"][0]["type"], "keys": None, "sigstore": "" }
                 sorted_table = collections.OrderedDict(sorted(table.items()))
-                for key, value in sorted_table.items():
-                    util.write_out('{0:<35} {1:<8} {2}'.format(key, self.trusttype_map(value["type"]), value["sigstore"]))
-                util.write_out('{0:<35} {1:<8}'.format("* (default)", self.trusttype_map(policy["default"][0]["type"])))
+                if self.args.json:
+                    util.write_out(json.dumps(sorted_table, indent=4))
+                    return
+                else:
+                    for key, value in sorted_table.items():
+                        util.write_out('{0:<35} {1:<6} {2:<29} {3}'.format(key, self.trusttype_map(value["type"]), self.get_gpg_id(value["keys"]), value["sigstore"]))
+
+    def get_gpg_id(self, keys):
+        """
+        Return GPG identity, either bracketed <email> or ID string
+        comma separated if more than one key
+        see gpg2 parsing documentation:
+            http://git.gnupg.org/cgi-bin/gitweb.cgi?p=gnupg.git;a=blob_plain;f=doc/DETAILS
+        :param keys: list of gpg key file paths (keyPath) and/or inline key payload (keyData)
+        :return: comma-separated string of key ids or empty string
+        """
+        if not keys:
+            return ""
+        keylist = None
+        for key in keys:
+            if not os.path.exists(key):
+                # extend when we support parsing inline 'keyData' base64 encoded key
+                return ""
+            else:
+                cmd = ["gpg2", "--with-colons", key]
+            try:
+                results = util.check_output(cmd)
+            except util.FileNotFound:
+                results = ""
+            lines = results.split(b'\n')
+            for line in lines:
+                if "uid" in str(line):
+                    uid = str(line).split(':')[9]
+                    # bracketed email
+                    parsed_uid = uid.partition('<')[-1].rpartition('>')[0]
+                    if not parsed_uid:
+                        parsed_uid = uid
+                    if keylist:
+                        keylist = ",".join([keylist, parsed_uid])
+                    else:
+                        keylist = parsed_uid
+        return keylist
 
     def trusttype_map(self, trust_type):
         t = { "insecureAcceptAnything": "accept", "signedBy": "signed", "reject": "reject" }

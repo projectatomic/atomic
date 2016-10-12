@@ -27,6 +27,7 @@ class TestAtomicTrust(unittest.TestCase):
             self.json = False
             self.debug = False
             self.savesigstore = None
+            self.raw = False
 
     def test_sigstoretype_map_web(self):
         testobj = Trust()
@@ -165,6 +166,23 @@ class TestAtomicTrust(unittest.TestCase):
             expected = f.read()
             actual = out.getvalue()
             self.assertEqual(expected, actual)
+
+    def test_trust_gpg_email_id(self):
+        args = self.Args()
+        testobj = Trust(policy_filename = os.path.join(FIXTURE_DIR, "show_policy.json"))
+        testobj.atomic_config = util.get_atomic_config(atomic_config = os.path.join(FIXTURE_DIR, "atomic.conf"))
+        testobj.set_args(args)
+        actual = testobj.get_gpg_id(args.pubkeys)
+        self.assertEqual("security@redhat.com", actual)
+
+    def test_trust_gpg_noemail_id(self):
+        args = self.Args()
+        args.pubkeys = [os.path.join(FIXTURE_DIR, "key1.pub"), os.path.join(FIXTURE_DIR, "key2.pub")]
+        testobj = Trust(policy_filename = os.path.join(FIXTURE_DIR, "show_policy.json"))
+        testobj.atomic_config = util.get_atomic_config(atomic_config = os.path.join(FIXTURE_DIR, "atomic.conf"))
+        testobj.set_args(args)
+        actual = testobj.get_gpg_id(args.pubkeys)
+        self.assertEqual("security@redhat.com,Billy Bob", actual)
 
     def tearDown(self):
         test_artifacts = ["docker.io-repo.yaml", "docker.io.yaml", "registry.example.com-foo.yaml"]

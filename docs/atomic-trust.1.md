@@ -8,7 +8,8 @@ atomic-trust - Manage system container trust policy
 # SYNOPSIS
 **atomic trust add|delete|default|show**
 [**-h**|**--help**]
-
+[**-j**|**--json**]
+[**--raw**]
 [**-k**|**--pubkeys** KEY1 [**-k**|**--pubkeys** KEY2,...]]
 [**--keytype** GPGKeys]
 [**-t**|**--type** signedBy|insecureAcceptAnything|reject]
@@ -77,6 +78,18 @@ testing.
 **--save-sigstore**
   Do not remove local sigstore configuration.
 
+# default OPTIONS
+
+  The default trust policy is managed by the default command. Options are **accept** or **reject**.
+
+# show OPTIONS
+
+**--raw**
+  Output trust policy file as raw JSON
+
+**-j** **--json**
+  Output trust as JSON for machine parsing
+
 
 # EXAMPLES
 Add public key trust to specific registry repository
@@ -115,7 +128,11 @@ Display system trust policy
 
     atomic trust show
 
-Display system trust policy as raw JSON
+Display trust policy file
+
+    atomic trust show --raw
+
+Display trust as JSON
 
     atomic trust show --json
 
