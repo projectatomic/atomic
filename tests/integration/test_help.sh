@@ -17,7 +17,9 @@ IFS=$'\n\t'
 OUTPUT=$(/bin/true)
 
 # Test standard help in man format
-${ATOMIC} help atomic-test-1 1>/dev/null
+if [ -x /usr/bin/groff ]; then
+    ${ATOMIC} help atomic-test-1 1>/dev/null
+fi
 
 # Test override label
 ${ATOMIC} help atomic-test-3 1>/dev/null

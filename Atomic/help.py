@@ -92,7 +92,10 @@ class AtomicHelp(Atomic):
             dm.unmount(path=mnt_path)
             raise ValueError("Unable to find help file for {}".format(self.docker_object))
 
-        cmd2 = ['groff', '-man', '-Tascii']
+        cmd2 = ['/usr/bin/groff', '-man', '-Tascii']
+        if not os.path.exists(cmd2[0]):
+            raise IOError("Cannot display help file for {}: groff unavailable".format(self.docker_object))
+
         c2 = subprocess.Popen(cmd2, stdin=help_file, stdout=subprocess.PIPE, close_fds=True)
         result = c2.communicate()[0].decode(enc)
         help_file.close()
