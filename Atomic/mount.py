@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Red Hat, All rights reserved.
+# Copyright (C) 2015-2016 Red Hat, All rights reserved.
 # AUTHORS: William Temple <wtemple@redhat.com>
 #          Brent Baude    <bbaude@redhat.com>
 #
@@ -388,10 +388,10 @@ class DockerMount(Mount):
         return desc['device_id'], desc['size']
 
     @staticmethod
-    def _no_gd_api_overlay(cid):
-        prefix = os.path.join('/var/lib/docker/overlay/', cid)
+    def _no_gd_api_overlay(cid, driver):
+        prefix = os.path.join('/var/lib/docker/%s/' % driver, cid)
         ld_metafile = open(os.path.join(prefix, 'lower-id'))
-        ld_loc = os.path.join('/var/lib/docker/overlay/', ld_metafile.read())
+        ld_loc = os.path.join('/var/lib/docker/%s/' % driver, ld_metafile.read())
         return (os.path.join(ld_loc, 'root'), os.path.join(prefix, 'upper'),
                 os.path.join(prefix, 'work'))
 
@@ -524,7 +524,10 @@ class DockerMount(Mount):
                     pass
             raise de
 
-    def _mount_overlay(self, identifier, options):
+    def _mount_overlay2(self, identifier, options):
+        return self._mount_overlay(identifier, options, "overlay2")
+
+    def _mount_overlay(self, identifier, options, driver="overlay"):
         """
         OverlayFS mount backend.
         """
@@ -544,7 +547,7 @@ class DockerMount(Mount):
             ud = cinfo['GraphDriver']['Data']['UpperDir']
             wd = cinfo['GraphDriver']['Data']['WorkDir']
         except KeyError:
-            ld, ud, wd = DockerMount._no_gd_api_overlay(cid)
+            ld, ud, wd = DockerMount._no_gd_api_overlay(cid, driver)
 
         options += ['ro', 'lowerdir=' + ld, 'upperdir=' + ud, 'workdir=' + wd]
         optstring = ','.join(options)
@@ -643,7 +646,7 @@ class DockerMount(Mount):
         Mount._remove_thin_device(dev_name)
         self._cleanup_container(cinfo)
 
-    def _get_overlay_mount_cid(self):
+    def _get_overlay_mount_cid(self, driver):
         """
         Returns the cid of the container mounted at mountpoint.
         """
@@ -656,7 +659,7 @@ class DockerMount(Mount):
         upperdir = [o.replace('upperdir=', '') for o in optstring.split(',')
                     if o.startswith('upperdir=')][0]
         cdir = upperdir.rsplit('/', 1)[0]
-        if not cdir.startswith('/var/lib/docker/overlay/'):
+        if not cdir.startswith('/var/lib/docker/%s/' % driver ):
             raise MountError('The device mounted at %s is not a '
                              'docker container.' % self.mountpoint )
 
@@ -668,14 +671,17 @@ class DockerMount(Mount):
         raise MountError('The device mounted at %s is not a '
                          'docker container.' % self.mountpoint )
 
-    def _unmount_overlay(self, path=None):
+    def _unmount_overlay2(self, path=None):
+        self._unmount_overlay(path, "overlay2")
+
+    def _unmount_overlay(self, path=None, driver="overlay"):
         """
         OverlayFS unmount backend.
         """
         mountpoint = self.mountpoint if path is None else path
         if Mount.get_dev_at_mountpoint(mountpoint) != 'overlay':
             raise MountError('Device mounted at {} is not an atomic mount.'.format(mountpoint))
-        cid = self._get_overlay_mount_cid()
+        cid = self._get_overlay_mount_cid(driver)
         Mount.unmount_path(mountpoint)
         self._cleanup_container(self.d.inspect_container(cid))
 

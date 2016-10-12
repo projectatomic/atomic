@@ -61,7 +61,7 @@ def cli(subparser):
                          help=_("remove block devices from storage pool"))
     modifyp.add_argument('--remove-unused-devices', action='store_true',
                          help=_("remove all unused block devices from storage pool"))
-    modifyp.add_argument('--driver', dest="driver", default=None, help='The storage backend driver', choices=['devicemapper', 'overlay'])
+    modifyp.add_argument('--driver', dest="driver", default=None, help='The storage backend driver', choices=['devicemapper', 'overlay', 'overlay2'])
     modifyp.add_argument('--vgroup', dest="vgroup", default=None, help='The storage volume group')
     modifyp.set_defaults(_class=Storage, func='modify')
 
@@ -125,6 +125,7 @@ class Storage(Atomic):
         util.check_call(["docker-storage-setup", "--reset"], stdout=DEVNULL)
         util.call(["umount", root + "/devicemapper"], stderr=DEVNULL)
         util.call(["umount", root + "/overlay"], stderr=DEVNULL)
+        util.call(["umount", root + "/overlay2"], stderr=DEVNULL)
         shutil.rmtree(root)
         os.mkdir(root)
         try:

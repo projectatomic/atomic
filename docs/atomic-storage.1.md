@@ -85,7 +85,7 @@ Remove all block devices from the storage pool that are currently unused.
 
 **--driver**
 Backend storage driver for containers.  This options the storage driver.
-Drivers supported: devicemapper, overlay
+Drivers supported: devicemapper, overlay, overlay2
 
 **--vgroup**
 The name of the volume group for the storage pool.
