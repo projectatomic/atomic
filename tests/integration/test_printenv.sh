@@ -32,6 +32,8 @@ trap teardown EXIT
 
 OUTPUT=$(/bin/true)
 
+cd $(realpath $PWD)
+
 ${ATOMIC} run atomic-test-5 | grep -v ^NAME= | grep -v ^IMAGE= | grep -v ^SUDO | grep -v printenv | grep -v atomic | grep -v coverage | sort > ${TESTDIR}/atomic-test-5.1
 
 printenv | grep -v printenv | grep -v ^SUDO | grep -v atomic | grep -v coverage | sort > ${TESTDIR}/atomic-test-5.2
