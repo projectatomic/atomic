@@ -661,20 +661,17 @@ class atomic_dbus(slip.dbus.service.Object):
 
     # atomic version section
     # The Version method takes in an image name and returns its version
-    # information
+    # information in a list of dicts
     @slip.dbus.polkit.require_auth("org.atomic.read")
-    @dbus.service.method("org.atomic", in_signature='asb',
+    @dbus.service.method("org.atomic", in_signature='sb',
                          out_signature='aa{sv}')
-    def ImagesVersion(self, images, recurse=False):
-        versions = []
-        for image in images:
-            args = self.Args()
-            args.image = image
-            args.recurse = recurse
-            self.atomic.set_args(args)
-            versions.append({"Image": image,
-                             "Version": self.atomic.version()})
-        return versions
+    def ImagesVersion(self, image, recurse=False):
+        info = Info()
+        args = self.Args()
+        args.image = image
+        args.recurse = recurse
+        self.atomic.set_args(args)
+        return info.get_version()
 
 if __name__ == "__main__":
     mainloop = GLib.MainLoop()

@@ -255,12 +255,20 @@ class Atomic(object):
 
     def _inspect_image(self, image=None):
         image = image or self.image
+        dd_inspect = None
+        is_syscon = self.syscontainers.has_image(image)
+
         try:
-            if self.syscontainers.has_image(image):
-                return self.syscontainers.inspect_system_image(image)
-            return self.d.inspect_image(image)
+            dd_inspect = self.d.inspect_image(image)
         except (NotFound, requests.exceptions.ConnectionError):
-            pass
+            if is_syscon:
+                # If we find a syscontainer but not a docker image
+                return self.syscontainers.inspect_system_image(image)
+        if dd_inspect:
+            if is_syscon:
+                raise ValueError("There is a systemcontainer image and docker image with the same"
+                                 "name of '{}'. Rename or delete one of them.".format(image))
+            return dd_inspect
         return None
 
     def _inspect_container(self, name=None):
@@ -416,7 +424,7 @@ class Atomic(object):
         else:
             parent = ""
         return({"Id": image['Id'], "Name": get_label("Name"),
-                "Version": version, "Tag": find_repo_tag(self.d, image['Id'], self.image),
+                "Version": version, "RepoTags": image['RepoTags'],
                 "Parent": parent})
 
     def get_layers(self):
@@ -459,19 +467,6 @@ class Atomic(object):
             self._images.append(self._get_image_infos(image))
 
         return self._images
-
-    def version(self):
-        try:
-            self.inspect = self.d.inspect_image(self.image)
-        except NotFound:
-            self.update()
-            self.inspect = self.d.inspect_image(self.image)
-        except requests.exceptions.ConnectionError:
-            raise NoDockerDaemon()
-        if self.args.recurse:
-            return self.get_layers()
-        else:
-            return [self._get_layer(self.image)]
 
     def display(self, cmd):
         util.write_out(cmd)
