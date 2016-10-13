@@ -817,6 +817,7 @@ _atomic_trust_delete() {
 	"
 	local all_options="$options_with_args
 		--help -h
+                --sigstore
 	"
 
 	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")

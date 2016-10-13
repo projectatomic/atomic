@@ -72,6 +72,11 @@ testing.
     **atomic**: OpenShift-based Atomic Registry API
     **local**: Local filesystem path
 
+# delete OPTIONS
+
+**--save-sigstore**
+  Do not remove local sigstore configuration.
+
 
 # EXAMPLES
 Add public key trust to specific registry repository
@@ -97,6 +102,10 @@ Accept all unsigned images from a registry
 Remove a trust scope
 
     atomic trust delete docker.io
+
+Remove a trust scope but retain the sigstore configuration
+
+    atomic trust delete docker.io --sigstore
 
 Modify default trust policy
 
