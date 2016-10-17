@@ -390,7 +390,7 @@ class RegistryInspect():
             self.rc.whatever_json = results.json()
             return self.rc.whatever_json
         else:
-            raise RegistryInspectError("Unable to obtain whatever for "
+            raise RegistryInspectError("Unable to obtain blob for "
                                        "{}/{}/{}:{}".format(self.registry, self.repo, self.image, self.tag))
 
     def get_tag_list(self):
@@ -402,5 +402,4 @@ class RegistryInspect():
         else:
             raise RegistryInspectError("Unable to obtain tag information for "
                                        "{}/{}/{}:{}".format(self.registry, self.repo, self.image, self.tag))
-
 
