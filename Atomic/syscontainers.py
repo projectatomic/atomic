@@ -546,7 +546,7 @@ class SystemContainers(object):
     def version(self, image):
         image_inspect = self.inspect_system_image(image)
         if image_inspect:
-            return image_inspect['ImageId']
+            return [image_inspect]
         return None
 
     def update(self, name):
@@ -672,8 +672,8 @@ class SystemContainers(object):
         else:
             image_type = "system"
 
-        return {'Id' : image_id, 'ImageId' : image_id, 'RepoTags' : [tag], 'Names' : [], 'Created': timestamp,
-                'ImageType' : image_type, 'Labels' : labels, 'OSTree-rev' : commit_rev}
+        return {'Id' : image_id, 'Version' : tag, 'ImageId' : image_id, 'RepoTags' : [tag], 'Names' : [],
+                'Created': timestamp, 'ImageType' : image_type, 'Labels' : labels, 'OSTree-rev' : commit_rev}
 
     def get_system_images(self, get_all=False, repo=None):
         if repo is None:

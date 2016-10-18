@@ -7,7 +7,6 @@ except ImportError:
     from atomic import Atomic  # pylint: disable=relative-import
 
 from .atomic import AtomicError
-from .util import NoDockerDaemon
 from docker.errors import NotFound
 import requests.exceptions
 
@@ -50,12 +49,19 @@ class Info(Atomic):
         super(Info, self).__init__()
 
     def version(self):
+        is_syscon = self.syscontainers.has_image(self.image)
         try:
             self.inspect = self.d.inspect_image(self.image)
         except NotFound:
+            if is_syscon:
+                return self.syscontainers.version(self.image)
             self._no_such_image()
         except requests.exceptions.ConnectionError:
-            raise NoDockerDaemon()
+            if not is_syscon:
+                return None
+        if self.inspect and is_syscon:
+            raise ValueError("There is a system container image and docker image with the same "
+                             "name of '{}'. Rename or delete one of them.".format(self.image))
         if self.args.recurse:
             return self.get_layers()
         else:
@@ -64,9 +70,9 @@ class Info(Atomic):
     def get_version(self):
         versions = []
         for layer in self.version():
-            version = layer["Version"]
-            if layer["Version"] == '':
-                version = "None"
+            version = "None"
+            if "Version" in layer and layer["Version"] != '':
+                version = layer["Version"]
             versions.append({"Image": layer['RepoTags'], "Version": version, "iid": layer['Id']})
         return versions
 

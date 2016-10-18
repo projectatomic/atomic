@@ -266,7 +266,7 @@ class Atomic(object):
                 return self.syscontainers.inspect_system_image(image)
         if dd_inspect:
             if is_syscon:
-                raise ValueError("There is a systemcontainer image and docker image with the same"
+                raise ValueError("There is a system container image and docker image with the same "
                                  "name of '{}'. Rename or delete one of them.".format(image))
             return dd_inspect
         return None
