@@ -1,5 +1,7 @@
 branches:
   - master
+  - auto
+  - try
 
 host:
   distro: fedora/24/atomic
