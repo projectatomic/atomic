@@ -225,11 +225,12 @@ test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}
 test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0
 test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1
 
-# Temporarily disabling
-#${ATOMIC} pull --storage ostree docker:atomic-test-secret
-#${ATOMIC} version atomic-test-secret-ostree > version.out
-#assert_matches ${SECRET} version.out
-#${ATOMIC} --assumeyes images delete -f atomic-test-secret
+${ATOMIC} pull --storage ostree docker:atomic-test-secret
+# Move directly the OSTree reference to a new one, so that we have different names and info doesn't error out
+mv ${ATOMIC_OSTREE_REPO}/refs/heads/ociimage/atomic-test-secret_3Alatest ${ATOMIC_OSTREE_REPO}/refs/heads/ociimage/atomic-test-secret-ostree_3Alatest
+${ATOMIC} info atomic-test-secret-ostree > version.out
+assert_matches ${SECRET} version.out
+${ATOMIC} --assumeyes images delete -f atomic-test-secret-ostree
 
 ${ATOMIC} pull --storage ostree docker.io/busybox
 ${ATOMIC} pull --storage ostree busybox
