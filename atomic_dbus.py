@@ -1,32 +1,35 @@
 #!/usr/bin/python -Es
 
-import dbus
-import time
+import json
 import threading
-import dbus.service
+import time
+
+import dbus
 import dbus.mainloop.glib
 import json
 from gi.repository import GObject
 import slip.dbus.service
 import Atomic
+import dbus.service
 from Atomic.containers import Containers
 from Atomic.delete import Delete
 from Atomic.diff import Diff
 from Atomic.help import AtomicHelp
 from Atomic.info import Info
 from Atomic.install import Install
-from Atomic.images import Images
 from Atomic.mount import Mount
+from Atomic.images import Images
 from Atomic.pull import Pull
 from Atomic.run import Run
 from Atomic.scan import Scan
-from Atomic.stop import Stop
 from Atomic.sign import Sign
+from Atomic.stop import Stop
 from Atomic.storage import Storage
 from Atomic.top import Top
 from Atomic.trust import Trust
 from Atomic.uninstall import Uninstall
 from Atomic.verify import Verify
+
 
 class atomic_dbus(slip.dbus.service.Object):
     default_polkit_auth_required = "org.atomic.readwrite"
