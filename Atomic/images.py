@@ -1,10 +1,10 @@
-from . import Atomic
-from . import util
-from . import info
-from . import verify
-from . import help as Help
-from .mount import Mount
-from .delete import Delete
+from Atomic import Atomic
+from Atomic import util
+from Atomic import info
+from Atomic import verify
+from Atomic import help as Help
+from Atomic.mount import Mount
+from Atomic.delete import Delete
 import os
 import sys
 import json

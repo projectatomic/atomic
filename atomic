@@ -21,37 +21,38 @@
 #    02110-1301 USA.
 #
 #
-import os
-import sys
-import gettext
 import argparse
+import gettext
+import os
 import subprocess
+import sys
+import traceback
 
 import docker
+
 import Atomic
+from Atomic import containers, images
 from Atomic import diff
-from Atomic import images
-from Atomic import scan
-from Atomic import top
-from Atomic import mount
-from Atomic import verify
-from Atomic import storage
+from Atomic import help as Help
 from Atomic import host
 from Atomic import info
 from Atomic import install
-from Atomic import help as Help
-from Atomic import run
-from Atomic import containers
+from Atomic import mount
 from Atomic import pull
 from Atomic import push
+from Atomic import run
+from Atomic import scan
+from Atomic import sign
 from Atomic import stop
+from Atomic import storage
+from Atomic import top
+from Atomic import trust
 from Atomic import uninstall
 from Atomic import update
-from Atomic import sign
-from Atomic import trust
-from Atomic.util import write_err, NoDockerDaemon
-import traceback
+from Atomic import verify
 from Atomic.mount import MountError
+from Atomic import images
+from Atomic.util import write_err, NoDockerDaemon
 
 PROGNAME = "atomic"
 gettext.bindtextdomain(PROGNAME, "/usr/share/locale")
