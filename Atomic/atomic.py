@@ -2,7 +2,6 @@ import os
 import sys
 import json
 import pipes
-import argparse
 from .client import AtomicDocker
 from .syscontainers import SystemContainers
 
@@ -300,16 +299,6 @@ class Atomic(object):
                 "update --force %(image)s\n\n removes all containers based on "
                 "an image." % {"name": self.name, "image": self.image})
 
-    def container_run_command(self):
-        command = "%s run " % sys.argv[0]
-        if self.spc:
-            command += "--spc "
-
-        if self.name != self.image:
-            command += "--name %s " % self.name
-        command += self.image
-        return command
-
     #def ps -> Atomic/ps.py
 
     #def run -> Atomic/run.py
@@ -435,38 +424,6 @@ class Atomic(object):
             layer = self._get_layer(layer["Parent"])
             layers.append(layer)
         return layers
-
-    def _get_all_image_ids(self):
-        iids = []
-        for image in self.get_images():
-            iids.append(image['Id'])
-        return iids
-
-    def _get_all_container_ids(self):
-        cids = []
-        for con in self.get_containers():
-            cids.append(con['Id'])
-        return cids
-
-    def _get_image_infos(self, image):
-        def get_label(label):
-            return self.get_label(label, image["Id"])
-
-        return {"Id": image['Id'], "Name": get_label("Name"),
-                "Version": ("%s-%s-%s" % (get_label("Name"),
-                                          get_label("Version"),
-                                          get_label("Release"))).strip(":"),
-                "Tag": image["RepoTags"][0]}
-
-    def get_image_infos(self):
-        if len(self._images) > 0:
-            return self._images
-
-        images = self.get_images()
-        for image in images:
-            self._images.append(self._get_image_infos(image))
-
-        return self._images
 
     def display(self, cmd):
         util.write_out(cmd)
@@ -718,8 +675,3 @@ class Atomic(object):
 class AtomicError(Exception):
     pass
 
-def SetFunc(function):
-    class customAction(argparse.Action):
-        def __call__(self, parser, namespace, values, option_string=None):
-            setattr(namespace, self.dest, function)
-    return customAction

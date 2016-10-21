@@ -198,19 +198,6 @@ class Mount(Atomic):
                              r.stderr.decode(sys.getdefaultencoding()).split("\n")[0])
 
     @staticmethod
-    def _is_device_active(device):
-        """
-        Checks dmsetup to see if a device is already active
-        """
-        cmd = [DMSETUP_PATH, 'info', device]
-        dmsetup_info = util.subp(cmd)
-        for dm_line in dmsetup_info.stdout.split("\n"):
-            line = dm_line.split(':')
-            if ('State' in line[0].strip()) and ('ACTIVE' in line[1].strip()):
-                return True
-        return False
-
-    @staticmethod
     def _get_fs(thin_pathname):
         """
         Returns the file system type (xfs, ext4) of a given device
@@ -334,10 +321,6 @@ class DockerMount(Mount):
             return iid
         else:
             return self._create_temp_container(iid)
-
-    def _is_container_running(self, cid):
-        cinfo = self.d.inspect_container(cid)
-        return cinfo['State']['Running']
 
     def _identifier_as_cid(self, identifier):
         """
@@ -685,15 +668,6 @@ class DockerMount(Mount):
         Mount.unmount_path(mountpoint)
         self._cleanup_container(self.d.inspect_container(cid))
 
-    def _clean_temp_container_by_path(self, path):
-        short_cid = os.path.basename(path)
-        if not self.live:
-            self.d.remove_container(short_cid)
-        self._clean_tmp_image()
-
-    def get_driver(self):
-        return self._info()['Driver']
-
 def getxattrfuncs():
     # Python 3 has support for extended attributes in the os module, while
     # Python 2 needs the xattr library.  Detect if any is available.
@@ -746,9 +720,6 @@ class OSTreeMount(Mount):
 
     def has_image(self, image_id):
         return self.syscontainers.has_image(image_id)
-
-    def has_identifier(self, _id):
-        return self.has_container(_id) or self.has_image(_id)
 
     def mount(self, identifier, options=None): # pylint: disable=arguments-differ
         if not options:

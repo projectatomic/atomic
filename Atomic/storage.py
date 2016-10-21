@@ -70,9 +70,6 @@ def cli(subparser):
                                           help=_("delete all containers/images from your system. Reset storage to its initial configuration."))
     resetp.set_defaults(_class=Storage, func='reset')
 
-def query_lvs(lvol, vgroup, fields):
-    return util.check_output([ "lvs", "--noheadings", "-o",  fields, "--unit", "b", vgroup + "/" + lvol ]).split()
-
 def query_pvs(pv, fields):
     return util.check_output([ "pvs", "--noheadings", "-o",  fields, "--unit", "b", pv ]).split()
 

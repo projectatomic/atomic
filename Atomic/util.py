@@ -221,21 +221,6 @@ def get_mounts_by_path():
     return mount_info
 
 
-def is_dock_obj_mounted(docker_obj):
-    '''
-    Check if the provided docker object, which needs to be an ID,
-    is currently mounted and should be considered "busy"
-    :param docker_obj: str, must be in ID format
-    :return: bool True or False
-    '''
-    mount_info = get_mounts_by_path()
-    devices = [x['device'] for x in mount_info]
-    # If we can find the ID of the object in the list
-    # of devices which comes from mount, safe to assume
-    # it is busy.
-    return any(docker_obj in x for x in devices)
-
-
 def urllib3_disable_warnings():
     # On latest Fedora, this is a symlink
     if hasattr(requests, 'packages'):

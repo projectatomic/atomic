@@ -234,14 +234,3 @@ class Verify(Atomic):
             return manifestpath
         return None
 
-    @staticmethod
-    def get_local_version(name, layers):
-        for layer in layers:
-            if layer['Name'] is name:
-                return layer['Version'] if 'Version' in layer \
-                    else "Version unavailable"
-
-    @staticmethod
-    def pull_label(image, key):
-        if key in image["Labels"]:
-            return image['Labels'][key]
