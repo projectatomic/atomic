@@ -70,9 +70,30 @@ class Delete(Atomic):
     def _delete_local(self, targets, force=False):
         results = 0
         for target in targets:
-            if self.syscontainers.has_image(target):
+            if not self.args.storage:
+                if self.is_duplicate_image(target):
+                    util.write_err("Failed to delete Image {}: has duplicate naming; please specify "
+                                   "--storage to delete from a specific storage.".format(target))
+                    results = 2
+                else:
+                    if self.syscontainers.has_image(target):
+                        self.syscontainers.delete_image(target)
+                    else:
+                        try:
+                            self.d.remove_image(target, force=force)
+                        except NotFound as e:
+                            util.write_err("Failed to delete Image {}: {}".format(target, e))
+                            results = 2
+                        except APIError as e:
+                            util.write_err("Failed operation for delete Image {}: {}".format(target, e))
+                            results = 2
+
+            elif self.args.storage.lower() == "ostree":
+                if not self.syscontainers.has_image(target):
+                    util.write_err("Failed to delete Image {}: does not exist in ostree.".format(target))
                 self.syscontainers.delete_image(target)
-            else:
+
+            elif self.args.storage.lower() == "docker":
                 try:
                     self.d.remove_image(target, force=force)
                 except NotFound as e:
@@ -81,4 +102,9 @@ class Delete(Atomic):
                 except APIError as e:
                     util.write_err("Failed operation for delete Image {}: {}".format(target, e))
                     results = 2
+
+            else:
+                util.write_err("{} is not a valid storage".format(self.args.storage))
+                results = 2
+
         return results

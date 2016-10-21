@@ -254,20 +254,12 @@ class Atomic(object):
 
     def _inspect_image(self, image=None):
         image = image or self.image
-        dd_inspect = None
-        is_syscon = self.syscontainers.has_image(image)
-
         try:
-            dd_inspect = self.d.inspect_image(image)
-        except (NotFound, requests.exceptions.ConnectionError):
-            if is_syscon:
-                # If we find a syscontainer but not a docker image
+            if self.syscontainers.has_image(image):
                 return self.syscontainers.inspect_system_image(image)
-        if dd_inspect:
-            if is_syscon:
-                raise ValueError("There is a system container image and docker image with the same "
-                                 "name of '{}'. Rename or delete one of them.".format(image))
-            return dd_inspect
+            return self.d.inspect_image(image)
+        except (NotFound, requests.exceptions.ConnectionError):
+            pass
         return None
 
     def _inspect_container(self, name=None):
@@ -536,6 +528,16 @@ class Atomic(object):
             return name_search[0]['Id']
         # No dice
         raise AtomicError
+
+    def is_duplicate_image(self, image):
+        try:
+            if self.syscontainers.has_image(image) and self.d.inspect_image(image):
+                return True
+
+            return False
+        except (NotFound, requests.exceptions.ConnectionError):
+            pass
+        return False
 
     def get_input_id(self, identifier):
         '''

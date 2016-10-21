@@ -206,7 +206,12 @@ test -e ${WORK_DIR}/mount/usr/bin/greet.sh
 ${ATOMIC} umount ${WORK_DIR}/mount
 
 # mount an image
-${ATOMIC} mount atomic-test-system ${WORK_DIR}/mount
+# Since we have atomic-test-system in both ostree and docker, test that user must specify
+OUTPUT=$(! ${ATOMIC} mount atomic-test-system ${WORK_DIR}/mount 2>&1)
+grep "Found more than one Image with name atomic-test-system" <<< $OUTPUT
+
+# Now specify a storage
+${ATOMIC} mount atomic-test-system --storage ostree ${WORK_DIR}/mount
 test -e ${WORK_DIR}/mount/usr/bin/greet.sh
 ${ATOMIC} umount ${WORK_DIR}/mount
 
@@ -272,7 +277,12 @@ ${ATOMIC} images prune
 ${ATOMIC} images list -f type=system --all > images.all.out
 assert_matches "<none>" images.all.out
 
-${ATOMIC} --assumeyes images delete -f atomic-test-system
+# Check to see if deleting a duplicate image will error
+OUTPUT=$(! ${ATOMIC} --assumeyes images delete -f atomic-test-system 2>&1)
+grep "Failed to delete Image atomic-test-system: has duplicate naming" <<< $OUTPUT
+
+# Now delete from ostree
+${ATOMIC} --assumeyes images delete --storage ostree atomic-test-system
 ${ATOMIC} images prune
 
 # Test there are not intermediate layers left layers now

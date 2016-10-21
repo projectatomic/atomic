@@ -180,9 +180,23 @@ _atomic_images_help() {
 }
 
 _atomic_images_info() {
+	local options_with_args="
+		--storage
+	"
+	local all_options="$options_with_args
+		-h --help
+	"
+
+	case "$prev" in
+		--storage)
+			COMPREPLY=( $( compgen -W "docker ostree" -- "$cur" ) )
+			return 0
+			;;
+	esac
+
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "-h" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
 			;;
 		*)
 		    __atomic_image_repos_and_tags
@@ -288,9 +302,24 @@ _atomic_top() {
 }
 
 _atomic_images_verify() {
+	local options_with_args="
+                --storage
+        "
+        local all_options="$options_with_args
+                -h --help
+		--no-validate
+        "
+
+        case "$prev" in
+                --storage)
+                        COMPREPLY=( $( compgen -W "docker ostree" -- "$cur" ) )
+                        return 0
+                        ;;
+        esac
+
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "--no-validate" ) )
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
 			;;
 		*)
 		    __atomic_image_repos_and_tags
@@ -299,9 +328,24 @@ _atomic_images_verify() {
 }
 
 _atomic_images_version() {
+	local options_with_args="
+                --storage
+        "
+        local all_options="$options_with_args
+		-r --recurse
+                -h --help
+        "
+
+        case "$prev" in
+                --storage)
+                        COMPREPLY=( $( compgen -W "docker ostree" -- "$cur" ) )
+                        return 0
+                        ;;
+        esac
+
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "--recurse -r" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
 			;;
 		*)
 		    __atomic_image_repos_and_tags
@@ -316,7 +360,7 @@ _atomic_pull() {
 	      --storage
 	"
 	local all_options="$options_with_args
-	      -h, --help
+	      -h --help
 	"
 
 	case "$prev" in
@@ -350,7 +394,7 @@ _atomic_push() {
 	"
 
 	local all_options="$options_with_args
-	      -h, --help
+	      -h --help
 	      --pulp
 	      --satellite
 	      --verify_ssl
@@ -670,11 +714,21 @@ _atomic_images_list() {
 }
 
 _atomic_images_delete() {
-  local all_options="
+  local options_with_args="
+    --storage
+  "
+  local all_options="$options_with_args
     --force -f
     --help -h
     --remote
   "
+
+  case "$prev" in
+    --storage)
+      COMPREPLY=( $( compgen -W "docker ostree" -- "$cur" ) )
+      return 0
+      ;;
+  esac
 
   case "$cur" in
       -*)
@@ -855,6 +909,7 @@ _atomic_trust_delete() {
 _atomic_mount() {
 	local options_with_args="
 		--options -o
+		--storage
 	"
 	local all_options="$options_with_args
 		--help -h
@@ -865,6 +920,10 @@ _atomic_mount() {
 	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
 
 	case "$prev" in
+		--storage)
+                        COMPREPLY=( $( compgen -W "docker ostree" -- "$cur" ) )
+			return 0
+                        ;;
 		$options_with_args_glob )
 			return 0
 			;;

@@ -62,6 +62,9 @@ You can also use any of the many options to create the help file including using
 [**--remote**]
   Delete images in remote registry.  *--force* is not supported with this option.
 
+[**--storage=[ostree|docker]**]
+  Optionally specify the storage from which to delete the image from. Will prompt user to specify if the same image name exists in both ostree and docker, and the user did not specify.
+
 # Note:
 Atomic --assumeyes option can be used
 
@@ -74,6 +77,9 @@ Atomic --assumeyes option can be used
 
 [**--remote**]
   Ignore all local images, only search configured registries.
+
+[**--storage=[ostree|docker]**]
+  Optionally specify the storage of the image. Will prompt user to specify if the same image name exists in both ostree and docker, and the user did not specify.
 
 # list OPTIONS
 [**-h|--help**]
@@ -106,6 +112,9 @@ will list all images that has "foo" as part of their repository name.
 [**--no-validate**]
   Skip validation of the files contained inside the image.
 
+[**--storage=[ostree|docker]**]
+  Optionally specify the storage of the image. Will prompt user to specify if the same image name exists in both ostree and docker, and the user did not specify.
+
 [**-v|--verbose**]
    Will output the status of each base image that makes up the image being verified.
 
@@ -115,6 +124,9 @@ will list all images that has "foo" as part of their repository name.
 
 [**-r|--recurse**]
   Recurse through all layers of the specified image.
+
+[**--storage=[ostree|docker]**]
+  Optionally specify the storage of the image. Will prompt user to specify if the same image name exists in both ostree and docker, and the user did not specify.
 
 # EXAMPLES
 Verify the Red Hat rsyslog image

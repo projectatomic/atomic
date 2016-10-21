@@ -48,6 +48,11 @@ def cli(subparser):
                              action="store_true",
                              help=_("Delete image from remote repository"))
 
+    deletegroup.add_argument("--storage", default="", dest="storage",
+                       help=_("Specify the storage from which to delete the image from. "
+                              "If not specified and there are images with the same name in "
+                              "different storages, you will be propted to specify."))
+
     delete_parser.add_argument("delete_targets", nargs=argparse.ONE_OR_MORE,
                                help=_("container image(s)"))
 

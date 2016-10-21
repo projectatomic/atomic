@@ -71,6 +71,10 @@ def cli(subparser):
     mountgroup.add_argument("--shared", dest="shared", action="store_true",
                             help=_("mount a container image 'shared'. Mounts the container image with  an SELinux label "
                                    "that other containers can read."))
+    mountgroup.add_argument("--storage", dest="storage", default="",
+                            help=_("Specify the storage of the image. "
+                                   "If not specified and there are images with the same name in "
+                                   "different storages, you will be prompted to specify."))
     mountp.add_argument("image", help=_("image/container id"))
     mountp.add_argument("mountpoint", help=_("filesystem location to mount "
                                              "the image/container"))
@@ -111,6 +115,7 @@ class Mount(Atomic):
         self.mountpoint = ""
         self.live = False
         self.shared = False
+        self.storage = ""
         self.options = ""
         self.user = util.is_user_mode()
 
@@ -125,6 +130,8 @@ class Mount(Atomic):
             self.live = args.live
         if hasattr(args, "shared"):
             self.shared = args.shared
+        if hasattr(args, "storage"):
+            self.storage = args.storage
         if hasattr(args, "options"):
             self.options = [opt for opt in args.options.split(',') if opt]
         if hasattr(args, "image"):
@@ -134,25 +141,55 @@ class Mount(Atomic):
         return self.d.info()
 
     def mount(self):
-        try:
-            d = OSTreeMount(self.args, self.mountpoint, live=self.live, shared=self.shared)
-            if d.mount(self.image, self.options):
-                return
-        except GLib.Error: # pylint: disable=catching-non-exception
-            pass
-        try:
-            d = DockerMount(self.mountpoint, self.live)
-            d.shared = self.shared
-            d.mount(self.image, self.options)
+        if not self.storage:
+            if self.is_duplicate_image(self.image):
+                raise ValueError("Found more than one Image with name {}; "
+                                 "please specify with --storage.".format(self.image))
+            try:
+                d = OSTreeMount(self.args, self.mountpoint, live=self.live, shared=self.shared)
+                if d.mount(self.image, self.options):
+                    return
+            except GLib.Error: # pylint: disable=catching-non-exception
+                pass
+            try:
+                d = DockerMount(self.mountpoint, self.live)
+                d.shared = self.shared
+                d.mount(self.image, self.options)
 
-            # only need to bind-mount on the devicemapper driver
-            if self._info()['Driver'] == 'devicemapper':
-                Mount.mount_path(os.path.join(self.mountpoint, "rootfs"),
-                                 self.mountpoint,
-                                 bind=True)
+                # only need to bind-mount on the devicemapper driver
+                if self._info()['Driver'] == 'devicemapper':
+                    Mount.mount_path(os.path.join(self.mountpoint, "rootfs"),
+                                     self.mountpoint,
+                                     bind=True)
 
-        except (MountError, NoDockerDaemon) as dme:
-            raise ValueError(dme)
+            except (MountError, NoDockerDaemon) as dme:
+                raise ValueError(dme)
+
+        elif self.storage.lower() == "ostree":
+            try:
+                d = OSTreeMount(self.args, self.mountpoint, live=self.live, shared=self.shared)
+                if d.mount(self.image, self.options):
+                    return
+            except GLib.Error: # pylint: disable=catching-non-exception
+                self._no_such_image()
+
+        elif self.storage.lower() == "docker":
+            try:
+                d = DockerMount(self.mountpoint, self.live)
+                d.shared = self.shared
+                d.mount(self.image, self.options)
+
+                # only need to bind-mount on the devicemapper driver
+                if self._info()['Driver'] == 'devicemapper':
+                    Mount.mount_path(os.path.join(self.mountpoint, "rootfs"),
+                                     self.mountpoint,
+                                     bind=True)
+
+            except (MountError, NoDockerDaemon) as dme:
+                raise ValueError(dme)
+
+        else:
+            raise ValueError("{} is not a valid storage".format(self.storage))
 
     def unmount(self):
 

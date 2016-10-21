@@ -25,6 +25,10 @@ def cli(subparser, hidden=False):
     infop.add_argument("--remote", dest="force",
                        action='store_true', default=False,
                        help=_('ignore local images and only scan registries'))
+    infop.add_argument("--storage", default="", dest="storage",
+                       help=_("Specify the storage of the image. "
+                              "If not specified and there are images with the same name in "
+                              "different storages, you will be prompted to specify."))
     infop.add_argument("image", help=_("container image"))
 
 
@@ -40,6 +44,10 @@ def cli_version(subparser, hidden=False):
     versionp.add_argument("-r", "--recurse", default=False, dest="recurse",
                           action="store_true",
                           help=_("recurse through all layers"))
+    versionp.add_argument("--storage", default="", dest="storage",
+                          help=_("Specify the storage of the image. "
+                                 "If not specified and there are images with the same name in "
+                                 "different storages, you will be prompted to specify."))
     versionp.set_defaults(_class=Info, func='print_version')
     versionp.add_argument("image", help=_("container image"))
 
@@ -49,19 +57,32 @@ class Info(Atomic):
         super(Info, self).__init__()
 
     def version(self):
-        is_syscon = self.syscontainers.has_image(self.image)
-        try:
-            self.inspect = self.d.inspect_image(self.image)
-        except NotFound:
-            if is_syscon:
+        if not self.args.storage:
+            if self.is_duplicate_image(self.image):
+                raise ValueError("Found more than one Image with name {}; "
+                                 "please specify with --storage.".format(self.image))
+            else:
+                if self.syscontainers.has_image(self.image):
+                    return self.syscontainers.version(self.image)
+                try:
+                    self.d.inspect_image(self.image)
+                except (NotFound, requests.exceptions.ConnectionError):
+                    self._no_such_image()
+
+        elif self.args.storage.lower() == "ostree":
+            if self.syscontainers.has_image(self.image):
                 return self.syscontainers.version(self.image)
             self._no_such_image()
-        except requests.exceptions.ConnectionError:
-            if not is_syscon:
-                return None
-        if self.inspect and is_syscon:
-            raise ValueError("There is a system container image and docker image with the same "
-                             "name of '{}'. Rename or delete one of them.".format(self.image))
+
+        elif self.args.storage.lower() == "docker":
+            try:
+                self.d.inspect_image(self.image)
+            except (NotFound, requests.exceptions.ConnectionError):
+                self._no_such_image()
+
+        else:
+            raise ValueError("{} is not a valid storage".format(self.args.storage))
+
         if self.args.recurse:
             return self.get_layers()
         else:
@@ -89,28 +110,63 @@ class Info(Atomic):
             raise ValueError("'{}' has no label information."
                              .format(self.args.image))
 
-        # Check if the input is an image id associated with more than one
-        # repotag.  If so, error out.
-        if self.syscontainers.has_image(self.image):
-            if not self.args.force:
-                buf += ("Image Name: {}".format(self.image))
-                manifest = self.syscontainers.inspect_system_image(self.image)
-                labels = manifest["Labels"]
-                for label in labels:
-                    buf += ('\n{0}: {1}'.format(label, labels[label]))
-                return buf
-        elif self.is_iid():
-            self.get_fq_name(self._inspect_image())
-        # The input is not an image id
+        if not self.args.storage:
+            if self.is_duplicate_image(self.image):
+                raise ValueError("Found more than one Image with name {}; "
+                                 "please specify with --storage.".format(self.image))
+
+            if self.syscontainers.has_image(self.image):
+                if not self.args.force:
+                    buf += ("Image Name: {}".format(self.image))
+                    manifest = self.syscontainers.inspect_system_image(self.image)
+                    labels = manifest["Labels"]
+                    for label in labels:
+                        buf += ('\n{0}: {1}'.format(label, labels[label]))
+                    return buf
+            # Check if the input is an image id associated with more than one
+            # repotag.  If so, error out.
+            elif self.is_iid():
+                self.get_fq_name(self._inspect_image())
+            # The input is not an image id
+            else:
+                try:
+                    iid = self._is_image(self.image)
+                    self.image = self.get_fq_name(self._inspect_image(iid))
+                except AtomicError:
+                    if self.args.force:
+                        self.image = util.find_remote_image(self.d, self.image)
+                    if self.image is None:
+                        self._no_such_image()
+
+        elif self.args.storage.lower() == "ostree":
+            if self.syscontainers.has_image(self.image):
+                if not self.args.force:
+                    buf += ("Image Name: {}".format(self.image))
+                    manifest = self.syscontainers.inspect_system_image(self.image)
+                    labels = manifest["Labels"]
+                    for label in labels:
+                        buf += ('\n{0}: {1}'.format(label, labels[label]))
+                    return buf
+            else:
+                self._no_such_image()
+
+        elif self.args.storage.lower() == "docker":
+            if self.is_iid():
+                self.get_fq_name(self._inspect_image())
+            # The input is not an image id
+            else:
+                try:
+                    iid = self._is_image(self.image)
+                    self.image = self.get_fq_name(self._inspect_image(iid))
+                except AtomicError:
+                    if self.args.force:
+                        self.image = util.find_remote_image(self.d, self.image)
+                    if self.image is None:
+                        self._no_such_image()
+
         else:
-            try:
-                iid = self._is_image(self.image)
-                self.image = self.get_fq_name(self._inspect_image(iid))
-            except AtomicError:
-                if self.args.force:
-                    self.image = util.find_remote_image(self.d, self.image)
-                if self.image is None:
-                    self._no_such_image()
+            raise ValueError("{} is not a valid storage".format(self.args.storage))
+
         buf += ("Image Name: {}".format(self.image))
         inspection = None
         if not self.args.force:

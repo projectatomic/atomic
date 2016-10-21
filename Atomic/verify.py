@@ -27,12 +27,16 @@ def cli(subparser, hidden=False):
             "the sublayers have a new version available")
     verifyp.set_defaults(_class=Verify, func='verify')
     verifyp.add_argument("image", help=_("container image"))
-    verifyp.add_argument("-v", "--verbose", default=False,
-                          action="store_true",
-                          help=_("Report status of each layer"))
     verifyp.add_argument("--no-validate", default=False, dest="no_validate",
                                 action="store_true",
                                 help=_("disable validating system images"))
+    verifyp.add_argument("--storage", default="", dest="storage",
+                         help=_("Specify the storage of the image. "
+                                "If not specified and there are images with the same name in "
+                                "different storages, you will be prompted to specify."))
+    verifyp.add_argument("-v", "--verbose", default=False,
+                          action="store_true",
+                          help=_("Report status of each layer"))
 
 
 class Verify(Atomic):
@@ -56,20 +60,45 @@ class Verify(Atomic):
             return layers
         self.set_debug()
 
-        if self.syscontainers.has_image(self.image):
-            return self.verify_system_image()
+        if not self.args.storage:
+            if self.is_duplicate_image(self.image):
+                raise ValueError("Found more than one Image with name {}; "
+                                 "please specify with --storage.".format(self.image))
+            else:
+                if self.syscontainers.has_image(self.image):
+                    return self.verify_system_image()
 
-        # Check if the input is an image id associated with more than one
-        # repotag.  If so, error out.
-        if self.is_iid():
-            self.get_fq_name(self._inspect_image())
-        # The input is not an image id
-        else:
-            try:
-                iid = self._is_image(self.image)
-                self.image = self.get_fq_name(self._inspect_image(iid))
-            except AtomicError:
+                # Check if the input is an image id associated with more than one
+                # repotag.  If so, error out.
+                if self.is_iid():
+                    self.get_fq_name(self._inspect_image())
+                # The input is not an image id
+                else:
+                    try:
+                        iid = self._is_image(self.image)
+                        self.image = self.get_fq_name(self._inspect_image(iid))
+                    except AtomicError:
+                        self._no_such_image()
+
+        elif self.args.storage.lower() == "ostree":
+            if self.syscontainers.has_image(self.image):
+                return self.verify_system_image()
+            else:
                 self._no_such_image()
+
+        elif self.args.storage.lower() == "docker":
+            if self.is_iid():
+                self.get_fq_name(self._inspect_image())
+            # The input is not an image id
+            else:
+                try:
+                    iid = self._is_image(self.image)
+                    self.image = self.get_fq_name(self._inspect_image(iid))
+                except AtomicError:
+                    self._no_such_image()
+
+        else:
+            raise ValueError("{} is not a valid storage".format(self.args.storage))
 
         layers = fix_layers(self.get_layers())
         if self.debug:
