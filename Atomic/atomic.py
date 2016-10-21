@@ -16,7 +16,7 @@ from . import util
 import re
 from .util import NoDockerDaemon, DockerObjectNotFound
 from docker.errors import NotFound
-from .discovery import RegistryInspect
+from .discovery import RegistryInspect, RegistryInspectError
 
 def find_repo_tag(d, Id, image_name):
     def image_in_repotags(image_name, repotags):
@@ -360,8 +360,18 @@ class Atomic(object):
             if self.image in image_info['RepoTags']:
                 return self.image
 
+            possibles = []
+            for i in image_info['RepoTags']:
+                try:
+                    possibles.append(self.get_fq_image_name(i))
+                except RegistryInspectError:
+                    possibles.append(None)
+
+            if all(x==possibles[0] for x in possibles):
+                return possibles[0]
+
             raise ValueError("\n{} is tagged with multiple repositories. "
-                             "Please use a repository name instead.\n".format(self.image))
+                             "Try adding a tag to your input.\n".format(self.image))
 
         return image_info['RepoTags'][0]
 

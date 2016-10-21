@@ -125,9 +125,6 @@ class Info(Atomic):
                     return buf
             # Check if the input is an image id associated with more than one
             # repotag.  If so, error out.
-            elif self.is_iid():
-                self.get_fq_name(self._inspect_image())
-            # The input is not an image id
             else:
                 try:
                     iid = self._is_image(self.image)
