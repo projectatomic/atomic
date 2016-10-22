@@ -284,3 +284,27 @@ ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
 assert_not_matches "<none>" refs
 
 docker pull docker.io/busybox:latest
+
+teardown
+
+# Install from a docker tar file
+export NAME="test-dockertar-system-container-$$"
+${ATOMIC} install --name=${NAME} --set=RECEIVER=${SECRET} --system dockertar:/${WORK_DIR}/atomic-test-system.tar
+test -e /etc/tmpfiles.d/${NAME}.conf
+
+test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/${NAME}.service
+test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/tmpfiles-${NAME}.conf
+
+systemctl start ${NAME}
+
+teardown
+
+# Install from a docker local docker image
+export NAME="test-docker-system-container-$$"
+${ATOMIC} install --name=${NAME} --set=RECEIVER=${SECRET} --system docker:atomic-test-system
+test -e /etc/tmpfiles.d/${NAME}.conf
+
+test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/${NAME}.service
+test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/tmpfiles-${NAME}.conf
+
+systemctl start ${NAME}

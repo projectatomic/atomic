@@ -134,11 +134,13 @@ class SystemContainers(object):
         if image.startswith("ostree:"):
             self._check_system_ostree_image(repo, image, upgrade)
         elif self.args.image.startswith("docker:"):
-            self._pull_docker_image(repo, image.replace("docker:", ""))
+            image = self._pull_docker_image(repo, image.replace("docker:", ""))
         elif self.args.image.startswith("dockertar:"):
-            self._pull_docker_tar(repo, image.replace("dockertar:", ""))
+            image = self._pull_docker_tar(repo, image.replace("dockertar:", ""))
         else: # Assume "oci:"
             self._check_system_oci_image(repo, image, upgrade)
+
+        return image
 
     def pull_image(self):
         self._pull_image_to_ostree(self._get_ostree_repo(), self.args.image, True)
@@ -169,7 +171,7 @@ class SystemContainers(object):
             except util.FileNotFound:
                 raise ValueError("Cannot install the container: runc is needed to run system containers")
 
-        self._pull_image_to_ostree(repo, image, False)
+        image = self._pull_image_to_ostree(repo, image, False)
 
         if self.get_checkout(name):
             util.write_out("%s already present" % (name))
@@ -997,6 +999,7 @@ class SystemContainers(object):
                             continue
                         input_layers.append(name + "/layer.tar")
                     self._pull_dockertar_layers(repo, imagebranch, temp_dir, input_layers)
+            return imagename
         finally:
             shutil.rmtree(temp_dir)
 
