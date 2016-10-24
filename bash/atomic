@@ -105,7 +105,8 @@ __atomic_system_containers_images() {
 __atomic_system_containers_containers() {
 	local containers
 	CHECKOUT_DIR=`test -e /etc/atomic.conf && grep "^checkout_path:" /etc/atomic.conf | cut -d' ' -f2`
-	containers="$(ls -1 ${CHECKOUT_DIR:-/var/lib/containers/atomic/} | grep -v \.[01]$)"
+	CHECKOUT_DIR=${CHECKOUT_DIR:-/var/lib/containers/atomic/}
+	test -e ${CHECKOUT_DIR} && containers="$(ls -1 ${CHECKOUT_DIR} | grep -v \.[01]$)" || containers=""
 	COMPREPLY+=( $(compgen -W "$containers" -- "$cur") )
 }
 
