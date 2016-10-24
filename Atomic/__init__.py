@@ -5,7 +5,7 @@ from .util import write_out
 
 #https://bitbucket.org/logilab/pylint/issues/36/
 #pylint: disable=no-member
-__version__ = '1.13.1'
+__version__ = '1.13.2'
 __author__  = 'Daniel Walsh'
 __author_email__ = 'dwalsh@redhat.com>'
 

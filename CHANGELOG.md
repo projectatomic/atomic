@@ -1,3 +1,23 @@
+## 1.13 (2016-10-24)
+Add --storage option to image-related commands
+syscontainers: Fix docker: and dockertar: installs
+Atomic/images.py: Enable filter for dangling.
+Add atomic trust verb
+Add support for image signing
+Add support for overlay2 driver
+Allow pull from registry not in docker conf
+Add dbus support for atomic stop
+Add dbus support for atomic install/uninstall
+Add dbus support for atomic run
+Add dbus support for atomic pull
+Add dbus support for atomic top.
+Remove primary commands and move to images subcommand
+    atomic help
+    atomic info
+    atomic verify
+    atomic version
+Introduce registry inspect methods
+
 ## 1.12 (2016-9-7)
 Fixes for syscontainers
 Add atomic images generate to generate mtree meta data
