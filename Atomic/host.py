@@ -1,5 +1,5 @@
 import argparse
-import os
+from Atomic import util
 
 try:
     from . import Atomic
@@ -108,8 +108,9 @@ def cli(subparser):
     _add_remainder_arg(p)
 
 class Host(Atomic):
-    def __init__(self):
+    def __init__(self, tty=True):
         super(Host, self).__init__()
+        self.tty=tty
 
     def host_status(self):
         argv = ["status"]
@@ -117,7 +118,9 @@ class Host(Atomic):
             argv.append("--pretty")
         if self.args.json:
             argv.append("--json")
-        self._rpmostree(argv)
+        if not self.tty:
+            return self._rpmostree(argv)
+        util.write_out(self._rpmostree(argv))
 
     def host_upgrade(self):
         argv = ["upgrade"]
@@ -129,19 +132,25 @@ class Host(Atomic):
             argv.append("--check-diff")
         if self.args.downgrade:
             argv.append("--allow-downgrade")
-        self._rpmostree(argv)
+        if not self.tty:
+            return self._rpmostree(argv)
+        util.write_out(self._rpmostree(argv))
 
     def host_rollback(self):
         argv = ["rollback"]
         if self.args.reboot:
             argv.append("--reboot")
-        self._rpmostree(argv)
+        if not self.tty:
+            return self._rpmostree(argv)
+        util.write_out(self._rpmostree(argv))
 
     def host_rebase(self):
         argv = ["rebase", self.args.refspec]
         if self.args.os:
             argv.append("--os=" % self.args.os )
-        self._rpmostree(argv)
+        if not self.tty:
+            return self._rpmostree(argv)
+        util.write_out(self._rpmostree(argv))
 
     def host_deploy(self):
         argv = ["deploy", self.args.revision]
@@ -151,31 +160,39 @@ class Host(Atomic):
             argv.append("--os=" % self.args.os)
         if self.args.preview:
             argv.append("--preview")
-        self._rpmostree(argv)
+        if not self.tty:
+            return self._rpmostree(argv)
+        util.write_out(self._rpmostree(argv))
 
     def host_unlock(self):
         argv = ['unlock']
         if self.args.hotfix:
             argv.append("--hotfix")
-        self._ostreeadmin(argv)
+        if not self.tty:
+            return self._ostreeadmin(argv)
+        util.write_out(self._ostreeadmin(argv))
 
     def host_install(self):
         argv = ['install']
-        self._rpmostree(argv)
+        if not self.tty:
+            return self._rpmostree(argv)
+        util.write_out(self._rpmostree(argv))
 
     def host_uninstall(self):
         argv = ['uninstall']
-        self._rpmostree(argv)
+        if not self.tty:
+            return self._rpmostree(argv)
+        util.write_out(self._rpmostree(argv))
 
     def _passthrough(self, args):
         cmd = args[0]
         aargs = self.args.args
         if len(aargs) > 0 and aargs[0] == "--":
             aargs = aargs[1:]
-        os.execl("/usr/bin/" + cmd, *(args + aargs))
+        return util.check_output([ "/usr/bin/" + cmd ] + aargs)
 
     def _rpmostree(self, args):
-        self._passthrough(['rpm-ostree'] + args)
+        return self._passthrough(['rpm-ostree'] + args)
 
     def _ostreeadmin(self, args):
-        self._passthrough(['ostree', 'admin'] + args)
+        return self._passthrough(['ostree', 'admin'] + args)
