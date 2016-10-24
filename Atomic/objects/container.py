@@ -2,7 +2,7 @@ from Atomic.util import output_json
 
 
 class Container(object):
-    def __init__(self, input_name):
+    def __init__(self, input_name, backend=None):
 
         # Required
         self.name = None
@@ -12,7 +12,7 @@ class Container(object):
         self.input_name = input_name
         self.original_structure = None
         self.deep = False
-        self.__backend = None
+        self._backend = backend
         self.image = None
 
         # Optional
@@ -33,3 +33,11 @@ class Container(object):
         class_vars = dict(vars(self))
         foo = {x: class_vars[x] for x in class_vars if not callable(getattr(self, x)) and not x.startswith('__')}
         output_json(foo)
+
+    @property
+    def backend(self):
+        return self._backend
+
+    @backend.setter
+    def backend(self, value):
+        self._backend = value

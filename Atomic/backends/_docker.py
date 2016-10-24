@@ -6,28 +6,26 @@ from Atomic.client import get_docker_client
 from Atomic.objects.image import Image
 from Atomic.objects.container import Container
 from requests import exceptions
+from Atomic.trust import Trust
+from Atomic.objects.layer import Layer
 
 
 class DockerBackend(Backend):
     def __init__(self):
         self.input = None
         self.img_obj = None
+        self.inspect = None
         self.d = get_docker_client()
         self._ping()
 
     @property
-    def backend_type(self):
+    def backend(self):
         return "docker"
 
     def has_image(self, img):
-        '''
-        Checks is the img is a image ID or a matches an image name.
-        If it finds a match, it returns the full image ID. Else it will
-        return an AtomicError.
-        '''
         err_append = "Refine your search to narrow results."
         self.input = img
-        image_info = self.get_docker_images()
+        image_info = self.get_docker_images(get_all=True)
 
         inspect = self._inspect_image(image=img)
         if inspect is not None:
@@ -67,21 +65,17 @@ class DockerBackend(Backend):
     def inspect_image(self, image):
         if not self.img_obj or getattr(self.img_obj, "input_name", None) != image:
             inspect_data = self._inspect_image(image)
-            self.img_obj = self.create_image_object(image, inspect_data, deep=True)
+            self.img_obj = self._make_image(image, inspect_data, deep=True)
         return self.img_obj
 
-    @staticmethod
-    def _get_label_from_config(config, label):
-        if config.get('Labels'):
-            return config['Labels'].get(label, None)
-
-    def create_image_object(self, image, img_struct, deep=False):
-        img_obj = Image(image)
-        img_obj.id = img_struct['Id']
-        img_obj._backend = self
-        img_obj.repotags = img_struct['RepoTags']
-        img_obj.created = img_struct['Created']
-        img_obj.size = img_struct['Size']
+    def _make_image(self, image, img_struct, deep=False, remote=False):
+        img_obj = Image(image, remote=remote)
+        if not remote:
+            img_obj.id = img_struct['Id']
+            img_obj.backend = self
+            img_obj.repotags = img_struct['RepoTags']
+            img_obj.created = img_struct['Created']
+            img_obj.size = img_struct['Size']
 
         if deep:
             img_obj.deep = True
@@ -91,17 +85,18 @@ class DockerBackend(Backend):
             img_obj.os = img_struct['Os']
             img_obj.arch = img_struct['Architecture']
             img_obj.graph_driver = img_struct['GraphDriver']
-            img_obj.version = self._get_label_from_config(img_obj.config, 'Version')
-            img_obj.release = self._get_label_from_config(img_obj.config, 'Release')
+            img_obj.version = img_obj.get_label('Version')
+            img_obj.release = img_obj.get_label('Release')
+            img_obj.parent = img_struct['Parent']
         return img_obj
 
-    def create_container_object(self, container, con_struct, deep=False):
+    def _make_container(self, container, con_struct, deep=False):
         con_obj = Container(container)
         con_obj.id = con_struct['Id']
         con_obj.created = con_struct['Created']
         con_obj.original_structure = con_struct
         con_obj.input_name = container
-        con_obj.__backend = self
+        con_obj.backend = self
 
         if not deep:
             con_obj.status = con_struct['Status']
@@ -123,32 +118,43 @@ class DockerBackend(Backend):
 
     def inspect_container(self, container):
         inspect_data = self._inspect_container(container)
-        return self.create_container_object(container, inspect_data, deep=True)
+        return self._make_container(container, inspect_data, deep=True)
 
-    def get_images(self):
-        images = self.get_docker_images()
+    def get_images(self, get_all=False):
+        images = self.get_docker_images(get_all=get_all)
         image_objects = []
         for image in images:
-            image_objects.append(self.create_image_object(image['Id'], image))
+            image_objects.append(self._make_image(image['Id'], image))
         return image_objects
+
+    def make_remote_image(self, image):
+        img_obj = self._make_remote_image(image)
+        img_obj.remote_inspect()
+        return img_obj
+
+    def _make_remote_image(self, image):
+        return self._make_image(image, None, remote=True)
 
     def get_containers(self):
         containers = self.get_docker_containers()
         con_objects = []
         for con in containers:
-            #print(con)
-            con_objects.append(self.create_container_object(con['Id'], con))
+            con_objects.append(self._make_container(con['Id'], con))
         return con_objects
 
-    def get_docker_images(self):
-        return self.d.images(all=True)
+    def get_docker_images(self, get_all=False, quiet=False, filters=None):
+        if filters:
+            assert isinstance(filters, dict)
+        else:
+            filters = {}
+        return self.d.images(all=get_all, quiet=quiet, filters=filters)
 
     def get_docker_containers(self):
         return self.d.containers(all=True)
 
     def start_container(self, name):
         if not self.has_container(name):
-            raise ValueError("Unable to locate container '{}' in {} backend".format(name, self.backend_type))
+            raise ValueError("Unable to locate container '{}' in {} backend".format(name, self.backend))
         return self.d.start(name)
 
     def stop_container(self, name):
@@ -159,12 +165,29 @@ class DockerBackend(Backend):
             raise ValueError("Container '{}' is not running".format(name))
         return self.d.stop(name)
 
-    def pull_image(self):
-        # Should be replaced with Atomic.pull.pull_docker_image
-        pass
+    def pull_image(self, image, pull_args):
+        # Add this when atomic registry is incorporated.
+        # if self.args.reg_type == "atomic":
+        #     pull_uri = 'atomic:'
+        # else:
+        #     pull_uri = 'docker://'
+        img_obj = self._make_remote_image(image)
+        fq_name = img_obj.fq_name
+        insecure = True if util.is_insecure_registry(self.d.info()['RegistryConfig'], util.strip_port(img_obj.registry)) else False
 
-    def delete_container(self, id, force=False):
-        self.d.remove_container(id, force=force)
+        # This needs to be re-enabled with Aaron's help
+        trust = Trust()
+        trust.set_args(pull_args)
+        trust.discover_sigstore(fq_name)
+
+        util.write_out("Pulling {} ...".format(fq_name))
+        util.skopeo_copy("docker://{}".format(fq_name),
+                         "docker-daemon:{}".format(image),
+                         debug=pull_args.debug, insecure=insecure,
+                         policy_filename=pull_args.policy_filename)
+
+    def delete_container(self, cid, force=False):
+        self.d.remove_container(cid, force=force)
 
     def delete_containers_by_image(self, img_obj, force=False):
         containers_by_image = self.get_containers_by_image(img_obj)
@@ -206,4 +229,34 @@ class DockerBackend(Backend):
         return util.skopeo_copy("docker://{}".format(name),
                                 "docker-daemon:{}".format(img_obj.fq_name),
                                 util.is_insecure_registry(self.d.info()['RegistryConfig'], util.strip_port(registry)))
+
+    def prune(self):
+        for iid in self.get_docker_images(get_all=True, quiet=True, filters={"dangling": True}):
+            self.delete_image(iid, force=True)
+            util.write_out("Removed dangling Image {}".format(iid))
+        return 0
+
+    def install(self, image, name):
+        pass
+
+    def uninstall(self, name):
+        pass
+
+    def validate_layer(self, layer):
+        pass
+
+    def version(self, image):
+        return self.get_layers(image)
+
+    def _get_layer(self, image):
+        return Layer(self.inspect_image(image))
+
+    def get_layers(self, image):
+        layers = []
+        layer = self._get_layer(image)
+        layers.append(layer)
+        while layer.parent:
+            layer = self._get_layer(layer.parent)
+            layers.append(layer)
+        return layers
 

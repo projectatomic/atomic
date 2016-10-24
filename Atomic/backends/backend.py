@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABCMeta, abstractproperty
 
 
-class Backend(object):
+class Backend(object): #pylint: disable=metaclass-assignment
     # Mark the class as abstract
     __metaclass__ = ABCMeta
 
@@ -11,60 +11,97 @@ class Backend(object):
 
     @abstractmethod
     def inspect_image(self, image):
-        # docker
-        pass
-
-
-    @abstractmethod
-    def inspect_container(self, image):
-        # docker
+        """
+        Returns the results of an inspected image as an image object
+        :param image:
+        :return: img_obj
+        """
         pass
 
     @abstractmethod
-    def pull_image(self):
-        # docker - needs last minute move
+    def inspect_container(self, container):
+        """
+        Inspect a container
+        :param container:
+        :return: con_obj
+        """
+        pass
+
+    @abstractmethod
+    def pull_image(self, image, pull_args):
+        """
+        Pulls an image to the backend
+        :param image:
+        :param pull_args:
+        :return:
+        """
         pass
 
     @abstractmethod
     def install(self, image, name):
+        """
+        Installs an image on a backend
+        :param image:
+        :param name:
+        :return:
+        """
         pass
 
     @abstractmethod
     def uninstall(self, name):
+        """
+        Uninstalls an image from a backend
+        :param name:
+        :return:
+        """
         pass
 
     @abstractmethod
     def version(self, image):
+        """
+        Return a list of layer objects
+        :param image:
+        :return:  list of layer objects
+        """
         pass
 
     @abstractmethod
     def update(self, name, force=False):
-        # docker
         pass
 
     @abstractmethod
     def get_containers(self):
-        # docker
+        """
+        Get containers for the backend
+        :return: list of container objects
+        """
         pass
 
     @abstractmethod
     def get_images(self, get_all=False):
-        # docker
+        """
+        Get images for the backend
+        :param get_all: bool
+        :return:  list of image objects
+        """
         pass
 
     @abstractmethod
     def delete_image(self, image, force=False):
-        # docker
+        """
+        Delete image
+        :param image:
+        :param force:
+        :return:
+        """
         pass
 
     @abstractmethod
     def start_container(self, name):
-        # docker
         pass
 
     @abstractmethod
     def stop_container(self, name):
-        # docker
         pass
 
     @abstractmethod
@@ -73,12 +110,10 @@ class Backend(object):
 
     @abstractmethod
     def has_image(self, img):
-        # docker
         pass
 
     @abstractmethod
     def has_container(self, container):
-        # docker
         pass
 
     @abstractmethod
