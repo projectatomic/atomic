@@ -67,7 +67,7 @@ class DockerBackend(Backend):
     def inspect_image(self, image):
         if not self.img_obj or getattr(self.img_obj, "input_name", None) != image:
             inspect_data = self._inspect_image(image)
-            self.img_obj = self.create_image_object(image, inspect_data, deep=True)
+            self.img_obj = self._make_image(image, inspect_data, deep=True)
         return self.img_obj
 
     @staticmethod
@@ -75,7 +75,7 @@ class DockerBackend(Backend):
         if config.get('Labels'):
             return config['Labels'].get(label, None)
 
-    def create_image_object(self, image, img_struct, deep=False):
+    def _make_image(self, image, img_struct, deep=False):
         img_obj = Image(image)
         img_obj.id = img_struct['Id']
         img_obj._backend = self
@@ -95,7 +95,7 @@ class DockerBackend(Backend):
             img_obj.release = self._get_label_from_config(img_obj.config, 'Release')
         return img_obj
 
-    def create_container_object(self, container, con_struct, deep=False):
+    def _make_container(self, container, con_struct, deep=False):
         con_obj = Container(container)
         con_obj.id = con_struct['Id']
         con_obj.created = con_struct['Created']
@@ -123,13 +123,13 @@ class DockerBackend(Backend):
 
     def inspect_container(self, container):
         inspect_data = self._inspect_container(container)
-        return self.create_container_object(container, inspect_data, deep=True)
+        return self._make_container(container, inspect_data, deep=True)
 
     def get_images(self):
         images = self.get_docker_images()
         image_objects = []
         for image in images:
-            image_objects.append(self.create_image_object(image['Id'], image))
+            image_objects.append(self._make_image(image['Id'], image))
         return image_objects
 
     def get_containers(self):
@@ -137,7 +137,7 @@ class DockerBackend(Backend):
         con_objects = []
         for con in containers:
             #print(con)
-            con_objects.append(self.create_container_object(con['Id'], con))
+            con_objects.append(self._make_container(con['Id'], con))
         return con_objects
 
     def get_docker_images(self):
