@@ -31,7 +31,7 @@ class AtomicDBus (object):
         return self.dbus_object.Diff(first, second, rpms, no_files, names_only, dbus_interface="org.atomic", timeout = 2147400)
 
     @polkit.enable_proxy
-    def HostDeploy(self, revision, reboot, os):
+    def HostDeploy(self, revision, reboot=False, os=None):
         return self.dbus_object.HostDeploy(revision, reboot, os, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
@@ -40,6 +40,8 @@ class AtomicDBus (object):
 
     @polkit.enable_proxy
     def HostInstall(self, rpms):
+        if not isinstance(rpms, (list, tuple)):
+            rpms = [ rpms ]
         return self.dbus_object.HostInstall(rpms, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
@@ -56,6 +58,8 @@ class AtomicDBus (object):
 
     @polkit.enable_proxy
     def HostUninstall(self, rpms):
+        if not isinstance(rpms, (list, tuple)):
+            rpms = [ rpms ]
         return self.dbus_object.HostUninstall(rpms, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
@@ -140,11 +144,8 @@ class AtomicDBus (object):
         return self.dbus_object.ImagesInfo(images, force, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
-    def ImagesVersion(self, images, recurse=False):
-        if not isinstance(images, (list, tuple)):
-            images = [ images ]
-        ret = self.dbus_object.ImagesVersion(images, recurse, dbus_interface="org.atomic")
-        return ret
+    def ImageVersion(self, image, recurse=False):
+        return self.dbus_object.ImageVersion(image, recurse, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
     def Install(self, image, name=None, user="", system=False, remote="", setvalues=None, extra_args=None):

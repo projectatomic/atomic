@@ -10,6 +10,7 @@ export WORK_DIR=$(mktemp -p $(pwd) -d -t .tmp.XXXXXXXXXX)
 export DOCKER=${DOCKER:-"/usr/bin/docker"}
 export SECRET=`dd if=/dev/urandom bs=4096 count=1 2> /dev/null | sha256sum`
 export ATOMIC_LIBEXEC="$(pwd)"
+export ATOMIC_CLIENT="$(pwd)/atomic_client.py"
 
 mkdir $WORK_DIR/ostree-repo
 ostree --repo=$WORK_DIR/ostree-repo init --mode=bare-user

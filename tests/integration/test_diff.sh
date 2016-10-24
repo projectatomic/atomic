@@ -44,5 +44,3 @@ ${ATOMIC} diff -r -v ${id1} ${id2} 1>/dev/null
 
 # Test atomic diff with RPMs and output to json
 ${ATOMIC} diff -r --json ${id1} ${id2}  1>/dev/null
-
-
