@@ -26,7 +26,7 @@ class TestAtomicTrust(unittest.TestCase):
             self.assumeyes = True
             self.json = False
             self.debug = False
-            self.savesigstore = None
+            self.save = None
             self.raw = False
 
     def test_sigstoretype_map_web(self):

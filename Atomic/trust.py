@@ -63,7 +63,7 @@ def cli(subparser):
     deletep.add_argument("--sigstoretype", dest="sigstoretype", default="web",
                          choices=['atomic', 'local', 'web'],
                          help=sigstore_help)
-    deletep.add_argument("--save-sigstore", dest="savesigstore", default=True, action="store_false",
+    deletep.add_argument("--save-sigstore", dest="save", default=True, action="store_false",
                          help="Do not remove the registry sigstore configuration")
     deletep.set_defaults(_class=Trust, func="delete")
     showp = subparsers.add_parser("show",
@@ -153,7 +153,7 @@ class Trust(Atomic):
             policy_file.seek(0)
             json.dump(policy, policy_file, indent=4)
             policy_file.truncate()
-        if self.args.savesigstore:
+        if self.args.save:
             self.modify_registry_config(self.args.registry, self.get_sigstore_type_map(self.args.sigstoretype))
 
     def modify_default(self):
@@ -344,13 +344,7 @@ class Trust(Atomic):
                 return False
         return True
 
-    def show(self):
-        """
-        Display trust policy
-        If policy.json doesn't exist, create it, then display
-        """
-        registry_config_path = util.get_atomic_config_item(["registry_confdir"], self.atomic_config)
-        registry_configs, _ = util.get_registry_configs(registry_config_path)
+    def _get_policy(self):
         policy = None
         mode = "r+" if os.path.exists(self.policy_filename) else "w+"
         with open(self.policy_filename, mode) as policy_file:
@@ -361,35 +355,50 @@ class Trust(Atomic):
                 policy_file.seek(0)
                 json.dump(policy, policy_file, indent=4)
                 policy_file.truncate()
-            if self.args.raw:
-                util.output_json(policy)
+
+        return policy
+
+    def show_json(self, policy=None):
+        if not policy:
+            policy=self._get_policy()
+        table = {}
+        registry_config_path = util.get_atomic_config_item(["registry_confdir"], self.atomic_config)
+        registry_configs, _ = util.get_registry_configs(registry_config_path)
+        if "transports" in policy:
+            for tt in TRANSPORT_TYPES:
+                if tt in policy["transports"]:
+                    for key, values in policy["transports"][tt].items():
+                        table[key] = { "type": values[0]["type"] }
+                        table[key]["keys"] = []
+                        for v in values:
+                            if "keyPath" in v:
+                                table[key]["keys"].append(v["keyPath"])
+                            if "keyData" in v:
+                                table[key]["keys"].append(v["keyData"])
+                        reg_info = util.have_match_registry(key, registry_configs)
+                        if reg_info:
+                            table[key]["sigstore"] = reg_info["sigstore"]
+                        else:
+                            table[key]["sigstore"] = ""
+        if "default" in policy:
+            table["* (default)"] = { "type": policy["default"][0]["type"], "keys": None, "sigstore": "" }
+        return collections.OrderedDict(sorted(table.items()))
+
+    def show(self):
+        """
+        Display trust policy
+        If policy.json doesn't exist, create it, then display
+        """
+        policy=self._get_policy()
+        if self.args.raw:
+            util.output_json(policy)
+        else:
+            sorted_table = self.show_json(policy)
+            if self.args.json:
+                util.output_json(sorted_table)
             else:
-                table = {}
-                if "transports" in policy:
-                    for tt in TRANSPORT_TYPES:
-                        if tt in policy["transports"]:
-                            for key, values in policy["transports"][tt].items():
-                                table[key] = { "type": values[0]["type"] }
-                                table[key]["keys"] = []
-                                for v in values:
-                                    if "keyPath" in v:
-                                        table[key]["keys"].append(v["keyPath"])
-                                    if "keyData" in v:
-                                        table[key]["keys"].append(v["keyData"])
-                                reg_info = util.have_match_registry(key, registry_configs)
-                                if reg_info:
-                                    table[key]["sigstore"] = reg_info["sigstore"]
-                                else:
-                                    table[key]["sigstore"] = ""
-                if "default" in policy:
-                    table["* (default)"] = { "type": policy["default"][0]["type"], "keys": None, "sigstore": "" }
-                sorted_table = collections.OrderedDict(sorted(table.items()))
-                if self.args.json:
-                    util.write_out(json.dumps(sorted_table, indent=4))
-                    return
-                else:
-                    for key, value in sorted_table.items():
-                        util.write_out('{0:<35} {1:<6} {2:<29} {3}'.format(key, self.trusttype_map(value["type"]), self.get_gpg_id(value["keys"]), value["sigstore"]))
+                for key, value in sorted_table.items():
+                    util.write_out('{0:<35} {1:<6} {2:<29} {3}'.format(key, self.trusttype_map(value["type"]), self.get_gpg_id(value["keys"]), value["sigstore"]))
 
     def get_gpg_id(self, keys):
         """
