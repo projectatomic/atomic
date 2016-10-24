@@ -228,7 +228,7 @@ class Containers(Atomic):
         else:
             if not self.args.container and len(self.args.containers) == 0:
                 raise ValueError("No containers selected")
-            for c in self.args.container + self.args.containers:
+            for c in [ self.args.container ] + self.args.containers:
                 if self.syscontainers.get_checkout(c):
                     sys_targets.append(c)
                 else:
