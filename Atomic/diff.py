@@ -1,7 +1,6 @@
 import os
 import sys
 import rpm
-import json
 import tempfile
 from filecmp import dircmp
 from . import util
@@ -32,7 +31,7 @@ class Diff(Atomic):
     def diff_tty(self):
         diff_dict = self.diff()
         if self.args.json:
-            util.output_json(json.loads(diff_dict))
+            util.output_json(diff_dict)
 
     def diff(self):
         '''
@@ -69,11 +68,12 @@ class Diff(Atomic):
             # Clean up
             helpers.cleanup(image_list)
 
-            return json.dumps(helpers.json_out)
+            return helpers.json_out
 
         except KeyboardInterrupt:
             util.write_out("Quitting...")
             helpers.cleanup(image_list)
+        return []
 
 class DiffHelpers(object):
     """

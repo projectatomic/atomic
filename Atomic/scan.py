@@ -49,7 +49,7 @@ class Scan(Atomic):
         self.mount_paths = {}
 
     def get_scanners_list(self):
-        return json.dumps(self.scanners)
+        return self.scanners
 
     def scan(self):
         def get_scan_info(scanner, scan_type):
