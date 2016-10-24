@@ -597,12 +597,14 @@ class SystemContainers(object):
             # The container is newly created or stopped, and can be started with 'systemctl start'
             return {'status' : "inactive"}
 
-    def get_containers(self):
+    def get_containers(self, containers=None):
         checkouts = self._get_system_checkout_path()
         if not os.path.exists(checkouts):
             return []
         ret = []
-        for x in os.listdir(checkouts):
+        if containers is None:
+            containers = os.listdir(checkouts)
+        for x in containers:
             fullpath = os.path.join(checkouts, x)
             if not os.path.islink(fullpath):
                 continue
