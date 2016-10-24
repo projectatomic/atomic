@@ -136,17 +136,15 @@ class SystemContainers(object):
             raise ValueError("Cannot find a configured OSTree repo")
         if image.startswith("ostree:"):
             self._check_system_ostree_image(repo, image, upgrade)
-        elif self.args.image.startswith("docker:"):
-            image = self._pull_docker_image(repo, image.replace("docker:", ""))
-        elif self.args.image.startswith("dockertar:"):
-            image = self._pull_docker_tar(repo, image.replace("dockertar:", ""))
+        elif image.startswith("docker:"):
+            self._pull_docker_image(repo, image.replace("docker:", ""))
+        elif image.startswith("dockertar:"):
+            self._pull_docker_tar(repo, image.replace("dockertar:", ""))
         else: # Assume "oci:"
             self._check_system_oci_image(repo, image, upgrade)
 
-        return image
-
-    def pull_image(self):
-        self._pull_image_to_ostree(self._get_ostree_repo(), self.args.image, True)
+    def pull_image(self, image=None):
+        self._pull_image_to_ostree(self._get_ostree_repo(), image or self.args.image, True)
 
     def install_user_container(self, image, name):
         try:
@@ -611,12 +609,14 @@ class SystemContainers(object):
             # The container is newly created or stopped, and can be started with 'systemctl start'
             return {'status' : "inactive"}
 
-    def get_containers(self):
+    def get_containers(self, containers=None):
         checkouts = self._get_system_checkout_path()
         if not os.path.exists(checkouts):
             return []
         ret = []
-        for x in os.listdir(checkouts):
+        if containers is None:
+            containers = os.listdir(checkouts)
+        for x in containers:
             fullpath = os.path.join(checkouts, x)
             if not os.path.islink(fullpath):
                 continue
