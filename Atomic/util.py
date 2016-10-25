@@ -754,7 +754,7 @@ class Decompose(object):
     def _decompose(self, input_name):
         def is_network_address(_input):
             try:
-                socket.gethostbyname(_input)  # Remember to add in strip port here!
+                socket.gethostbyname(strip_port(_input))
             except socket.gaierror:
                 return False
             return True
