@@ -1168,17 +1168,19 @@ class SystemContainers(object):
             return OSTree.checksum_from_bytes(checksum_v)
 
         def traverse(it):
+            def get_out_content_checksum(obj): return obj.out_content_checksum if hasattr(obj, 'out_content_checksum') else obj[1]
+            def get_out_checksum(obj): return obj.out_checksum if hasattr(obj, 'out_checksum') else obj[1]
             while True:
                 res = it.next()  # pylint: disable=next-method-called
                 if res == OSTree.RepoCommitIterResult.DIR:
-                    dir_checksum = it.get_dir().out_content_checksum
+                    dir_checksum = get_out_content_checksum(it.get_dir())
                     dir_it = OSTree.RepoCommitTraverseIter()
                     dirtree = repo.load_variant(OSTree.ObjectType.DIR_TREE, dir_checksum)
                     dir_it.init_dirtree(repo, dirtree[1], OSTree.RepoCommitTraverseFlags.REPO_COMMIT_TRAVERSE_FLAG_NONE)
                     traverse(dir_it)
                 elif res == OSTree.RepoCommitIterResult.FILE:
-                    new_checksum = validate_ostree_file(it.get_file().out_checksum)
-                    if new_checksum != it.get_file().out_checksum:
+                    new_checksum = validate_ostree_file(get_out_checksum(it.get_file()))
+                    if new_checksum != get_out_checksum(it.get_file()):
                         ret.append({"name" : it.get_file().out_name,
                                     "old-checksum" : it.get_file().out_checksum,
                                     "new-checksum" : new_checksum})
