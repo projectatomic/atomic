@@ -158,10 +158,29 @@ else
     COVERAGE="${PYTHON:-/usr/bin/python}"
 fi
 
-set +e
-${COVERAGE} -m unittest discover ./tests/unit/ | tee -a ${LOG}
-_UNIT_FAIL="$?"
-set -e
+if [ ! -n "${TEST_INTEGRATION+ }" ]; then
+    set +e
+    # Was a single test requested?
+    if [ -n "${TEST_UNIT+ }" ]; then
+        UTEST=tests/unit/test_${TEST_UNIT}.py
+        # Make sure the test actually exists
+        if [ ! -e ${UTEST} ]; then
+            echo "Failed to find the unittest ${UTEST}"
+            exit 1
+        fi
+        ${COVERAGE} ${UTEST} | tee -a ${LOG}
+    else
+        ${COVERAGE} -m unittest discover ./tests/unit/ | tee -a ${LOG}
+    fi
+
+    _UNIT_FAIL="$?"
+    set -e
+else
+    echo "      SKIPPING UNIT TESTS..."
+    _UNIT_FAIL=0
+
+fi
+
 
 # CLI integration tests.
 let failures=0 || true
@@ -175,36 +194,41 @@ if [[ -x "${COVERAGE_BIN}" ]]; then
 $ATOMIC"
 fi
 
-for tf in `find ./tests/integration/ -name test_*.sh`; do
 
-    if [ -n "${TEST_INTEGRATION+ }" ]; then
-        tfbn=$(basename "$tf" .sh)
-        tfbn="${tfbn#test_}"
-        if [[ " $TEST_INTEGRATION " != *" $tfbn "* ]]; then
+if [ ! -n "${TEST_UNIT+ }" ]; then
+    for tf in `find ./tests/integration/ -name test_*.sh`; do
+
+        if [ -n "${TEST_INTEGRATION+ }" ]; then
+            tfbn=$(basename "$tf" .sh)
+            tfbn="${tfbn#test_}"
+            if [[ " $TEST_INTEGRATION " != *" $tfbn "* ]]; then
+                continue
+            fi
+        fi
+
+        # If it is not running with ENABLE_DESTRUCTIVE and the test has
+        # not the :test-destructive tag, skip it silently.
+        if test -z "${ENABLE_DESTRUCTIVE-}" && grep ":destructive-test" ${tf} &> /dev/null; then
             continue
         fi
-    fi
 
-    # If it is not running with ENABLE_DESTRUCTIVE and the test has
-    # not the :test-destructive tag, skip it silently.
-    if test -z "${ENABLE_DESTRUCTIVE-}" && grep ":destructive-test" ${tf} &> /dev/null; then
-        continue
-    fi
+        printf "Running %-40.40s" "$(basename ${tf})...."
+        printf "\n==== ${tf} ====\n" >> ${LOG}
 
-    printf "Running %-40.40s" "$(basename ${tf})...."
-    printf "\n==== ${tf} ====\n" >> ${LOG}
-
-    if ${tf} &>> ${LOG}; then
-        printf "PASS\n";
-    else
-        if test $? = 77; then
-            printf "SKIP\n";
+        if ${tf} &>> ${LOG}; then
+            printf "PASS\n";
         else
-            printf "FAIL\n";
-            let "failures += 1"
+            if test $? = 77; then
+                printf "SKIP\n";
+            else
+                printf "FAIL\n";
+                let "failures += 1"
+            fi
         fi
-    fi
-done
+    done
+else
+    echo "     SKIPPING INTEGRATION TESTS..."
+fi
 
 if [[ -x "${COVERAGE_BIN}" ]]; then
     echo "Coverage report:" | tee -a ${LOG}
