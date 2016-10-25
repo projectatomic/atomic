@@ -189,7 +189,7 @@ class Host(Atomic):
         aargs = self.args.args
         if len(aargs) > 0 and aargs[0] == "--":
             aargs = aargs[1:]
-        return util.check_output([ "/usr/bin/" + cmd ] + aargs)
+        return util.check_output([ "/usr/bin/" + cmd ] + args[1:] + aargs)
 
     def _rpmostree(self, args):
         return self._passthrough(['rpm-ostree'] + args)
