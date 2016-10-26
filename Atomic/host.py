@@ -1,4 +1,5 @@
 import argparse
+import os
 from Atomic import util
 
 try:
@@ -118,9 +119,7 @@ class Host(Atomic):
             argv.append("--pretty")
         if self.args.json:
             argv.append("--json")
-        if not self.tty:
-            return self._rpmostree(argv)
-        util.write_out(self._rpmostree(argv))
+        return self._rpmostree(argv)
 
     def host_upgrade(self):
         argv = ["upgrade"]
@@ -132,25 +131,19 @@ class Host(Atomic):
             argv.append("--check-diff")
         if self.args.downgrade:
             argv.append("--allow-downgrade")
-        if not self.tty:
-            return self._rpmostree(argv)
-        util.write_out(self._rpmostree(argv))
+        return self._rpmostree(argv)
 
     def host_rollback(self):
         argv = ["rollback"]
         if self.args.reboot:
             argv.append("--reboot")
-        if not self.tty:
-            return self._rpmostree(argv)
-        util.write_out(self._rpmostree(argv))
+        return self._rpmostree(argv)
 
     def host_rebase(self):
         argv = ["rebase", self.args.refspec]
         if self.args.os:
             argv.append("--os=" % self.args.os )
-        if not self.tty:
-            return self._rpmostree(argv)
-        util.write_out(self._rpmostree(argv))
+        return self._rpmostree(argv)
 
     def host_deploy(self):
         argv = ["deploy", self.args.revision]
@@ -160,36 +153,31 @@ class Host(Atomic):
             argv.append("--os=" % self.args.os)
         if self.args.preview:
             argv.append("--preview")
-        if not self.tty:
-            return self._rpmostree(argv)
-        util.write_out(self._rpmostree(argv))
+        return self._rpmostree(argv)
 
     def host_unlock(self):
         argv = ['unlock']
         if self.args.hotfix:
             argv.append("--hotfix")
-        if not self.tty:
-            return self._ostreeadmin(argv)
-        util.write_out(self._ostreeadmin(argv))
+        return self._ostreeadmin(argv)
 
     def host_install(self):
         argv = ['install']
-        if not self.tty:
-            return self._rpmostree(argv)
-        util.write_out(self._rpmostree(argv))
+        return self._rpmostree(argv)
 
     def host_uninstall(self):
         argv = ['uninstall']
-        if not self.tty:
-            return self._rpmostree(argv)
-        util.write_out(self._rpmostree(argv))
+        return self._rpmostree(argv)
 
     def _passthrough(self, args):
         cmd = args[0]
         aargs = self.args.args
         if len(aargs) > 0 and aargs[0] == "--":
             aargs = aargs[1:]
-        return util.check_output([ "/usr/bin/" + cmd ] + args[1:] + aargs)
+        if self.tty:
+            os.execl("/usr/bin/" + cmd, *(args + aargs))
+        else:
+            return util.check_output([ "/usr/bin/" + cmd ] + args[1:] + aargs)
 
     def _rpmostree(self, args):
         return self._passthrough(['rpm-ostree'] + args)
