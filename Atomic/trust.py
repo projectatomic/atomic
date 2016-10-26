@@ -419,13 +419,15 @@ class Trust(Atomic):
             else:
                 cmd = ["gpg2", "--with-colons", key]
             try:
-                results = util.check_output(cmd)
+                results = util.check_output(cmd).decode('utf-8')
             except util.FileNotFound:
                 results = ""
-            lines = results.split(b'\n')
+            lines = results.split('\n')
             for line in lines:
-                if "uid" in str(line):
-                    uid = str(line).split(':')[9]
+                if line.startswith("uid:") or line.startswith("pub:"):
+                    uid = line.split(':')[9]
+                    if not uid:   #  Newer gpg2 versions output dedicated 'uid'
+                        continue  #  lines and leave it blank on 'pub' lines.
                     # bracketed email
                     parsed_uid = uid.partition('<')[-1].rpartition('>')[0]
                     if not parsed_uid:
