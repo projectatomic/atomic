@@ -107,9 +107,7 @@ class Info(Atomic):
         buf = ""
 
         def _no_label():
-            raise ValueError("'{}' has no label information."
-                             .format(self.args.image))
-
+            return ""
         if not self.args.storage:
             if self.is_duplicate_image(self.image):
                 raise ValueError("Found more than one Image with name {}; "

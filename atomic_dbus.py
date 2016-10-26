@@ -68,6 +68,7 @@ class atomic_dbus(slip.dbus.service.Object):
             self.optional = None
             self.options = None
             self.os = None
+            self.pretty = False
             self.preview = False
             self.prune = False
             self.pubkeys = []
