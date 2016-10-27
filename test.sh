@@ -145,6 +145,10 @@ if [[ ! -x "${COVERAGE_BIN}" ]]; then
   COVERAGE_BIN="/usr/bin/coverage2"
 fi
 
+if [[ ! -x "${COVERAGE_BIN}" ]]; then
+  COVERAGE_BIN="/usr/bin/coverage3"
+fi
+
 if [[ -x "${COVERAGE_BIN}" ]]; then
     COVERAGE="${COVERAGE_BIN}
 run
