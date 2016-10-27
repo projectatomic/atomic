@@ -3,7 +3,6 @@ from . import Atomic
 from . import discovery
 import os
 import tempfile
-import json
 
 try:
     from urlparse import urlparse #pylint: disable=import-error
@@ -77,11 +76,13 @@ class Sign(Atomic):
         for sign_image in images:
             registry, repo, image, tag, _ = util.Decompose(sign_image).all
             ri = discovery.RegistryInspect(registry, repo, image, tag, debug=self.args.debug, orig_input=sign_image)
-            manifest = ri.rc.manifest_json
+            ri.ping()
+            ri.get_manifest()
+            manifest = ri.rc.orig_manifest
 
             try:
                 manifest_file = tempfile.NamedTemporaryFile(mode="wb", delete=False)
-                manifest_file.write(json.dumps(manifest))
+                manifest_file.write(manifest)
                 manifest_file.close()
                 manifest_hash = str(util.skopeo_manifest_digest(manifest_file.name))
                 expanded_image_name = ri.assemble_fqdn(include_tag=True)
@@ -90,7 +91,6 @@ class Sign(Atomic):
                     if not os.path.exists(in_signature_path):
                         raise ValueError("The path {} does not exist".format(in_signature_path))
                     signature_path = in_signature_path
-
 
                 else:
                     reg, repo, _, _, _ = util.Decompose(expanded_image_name).all
