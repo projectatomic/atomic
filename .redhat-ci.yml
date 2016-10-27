@@ -6,16 +6,39 @@ branches:
 host:
   distro: fedora/24/atomic
 
+context: fedora/24/atomic
+
 tests:
-  # https://bugzilla.redhat.com/show_bug.cgi?id=1318547#c7
-  - mount --make-rshared /
-  - systemctl start docker
-  - ostree admin unlock
-  - >
-      docker run --privileged
-      -v /root:/root -v $PWD:/code -v /:/host
-      --workdir /code fedora:24 ./rhci.sh
-  - PYTHON=python3 ./test.sh
+  - ./.redhat-ci.sh
 
 artifacts:
   - tests.log
+
+timeout: 30m
+
+---
+
+inherit: true
+
+host:
+  distro: centos/7/atomic
+  ostree: # explicitly rebase to continuous until we set up a distro stream for it
+    remote: https://ci.centos.org/artifacts/sig-atomic/rdgo/centos-continuous/ostree/repo/
+    branch: centos-atomic-host/7/x86_64/devel/continuous
+
+context: centos/7/atomic
+
+---
+
+inherit: true
+
+host:
+  distro: fedora/24/cloud
+
+context: fedora/24/cloud
+
+# we install atomic to get the runtime reqs but of course,
+# its files will get overwritten by the containerized build
+packages:
+  - atomic
+  - python3-coverage

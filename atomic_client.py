@@ -31,50 +31,6 @@ class AtomicDBus (object):
         return self.dbus_object.Diff(first, second, rpms, no_files, names_only, dbus_interface="org.atomic", timeout = 2147400)
 
     @polkit.enable_proxy
-    def HostDeploy(self, revision, reboot=False, os=None):
-        return self.dbus_object.HostDeploy(revision, reboot, os, dbus_interface="org.atomic")
-
-    @polkit.enable_proxy
-    def HostDeployPreview(self, revision, os=None):
-        return self.dbus_object.HostDeployPreview(revision, os, dbus_interface="org.atomic")
-
-    @polkit.enable_proxy
-    def HostInstall(self, rpms):
-        if not isinstance(rpms, (list, tuple)):
-            rpms = [ rpms ]
-        return self.dbus_object.HostInstall(rpms, dbus_interface="org.atomic")
-
-    @polkit.enable_proxy
-    def HostRebase(self, refspec, os=None):
-        return self.dbus_object.HostRebase(refspec, os, dbus_interface="org.atomic")
-
-    @polkit.enable_proxy
-    def HostRollBack(self, reboot=False):
-        return self.dbus_object.HostRollBack(reboot, dbus_interface="org.atomic")
-
-    @polkit.enable_proxy
-    def HostStatus(self):
-        return self.dbus_object.HostStatus(dbus_interface="org.atomic")
-
-    @polkit.enable_proxy
-    def HostUninstall(self, rpms):
-        if not isinstance(rpms, (list, tuple)):
-            rpms = [ rpms ]
-        return self.dbus_object.HostUninstall(rpms, dbus_interface="org.atomic")
-
-    @polkit.enable_proxy
-    def HostUnlock(self, hotfix=False):
-        return self.dbus_object.HostUnlock(hotfix, dbus_interface="org.atomic")
-
-    @polkit.enable_proxy
-    def HostUpgrade(self, reboot=False, downgrade=False, os=None):
-        return self.dbus_object.HostUpgrade(reboot, downgrade, os, dbus_interface="org.atomic")
-
-    @polkit.enable_proxy
-    def HostUpgradeDiff(self, os=None):
-        return self.dbus_object.HostUpgradeDiff(os, dbus_interface="org.atomic")
-
-    @polkit.enable_proxy
     def Stop(self, image, name=None, extra_args=None):
         if not name:
             name = image

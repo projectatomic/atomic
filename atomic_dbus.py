@@ -13,7 +13,6 @@ from Atomic.containers import Containers
 from Atomic.delete import Delete
 from Atomic.diff import Diff
 from Atomic.help import AtomicHelp
-from Atomic.host import Host
 from Atomic.info import Info
 from Atomic.install import Install
 from Atomic.images import Images
@@ -147,115 +146,6 @@ class atomic_dbus(slip.dbus.service.Object):
         args.rpms = rpms
         diff.set_args(args)
         return json.dumps(diff.diff())
-
-    # atomic host section
-    # The HostRollback switch to alternate installed tree at next boot
-    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='b', out_signature='')
-    def HostRollBack(self, reboot=False):
-        host=Host(False)
-        args=self.Args()
-        args.reboot=reboot
-        host.set_args(args)
-        return host.host_rollback()
-
-    # The HostStatus list information about all deployments
-    @slip.dbus.polkit.require_auth("org.atomic.read")
-    @dbus.service.method("org.atomic", in_signature='', out_signature='s')
-    def HostStatus(self):
-        host=Host(False)
-        args=self.Args()
-        args.json=True
-        host.set_args(args)
-        return host.host_status()
-
-    # The HostUpgrade upgrade to the latest Atomic tree if one is available
-    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='bbs', out_signature='')
-    def HostUpgrade(self, reboot=False, downgrade=False, os=None):
-        host=Host(False)
-        args=self.Args()
-        args.reboot=reboot
-        args.downgrade=downgrade
-        args.os=os
-        host.set_args(args)
-        return host.host_upgrade()
-
-    # The HostUpgradeDiff checks for upgrades and print package diff only
-    @slip.dbus.polkit.require_auth("org.atomic.read")
-    @dbus.service.method("org.atomic", in_signature='s', out_signature='s')
-    def HostUpgradeDiff(self, os=None):
-        host=Host(False)
-        args=self.Args()
-        args.diff=True
-        args.os=os
-        host.set_args(args)
-        return host.host_upgrade()
-
-    # The HostRebase - download and deploy a new origin refspec
-    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='sb', out_signature='')
-    def HostRebase(self, refspec, os=None):
-        host=Host(False)
-        args=self.Args()
-        args.refspec=refspec
-        args.os=os
-        host.set_args(args)
-        return host.host_rebase()
-
-    # The HostDeployPreview - download and deploy a new origin refspec
-    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='sbs', out_signature='')
-    def HostDeploy(self, revision, reboot, os):
-        host=Host(False)
-        args=self.Args()
-        args.revision=revision
-        args.reboot=reboot
-        args.os=os
-        host.set_args(args)
-        return host.host_deploy()
-
-    # The HostDeployPreview - download and deploy a new origin refspec
-    @slip.dbus.polkit.require_auth("org.atomic.read")
-    @dbus.service.method("org.atomic", in_signature='ss', out_signature='s')
-    def HostDeployPreview(self, revision, os=None):
-        host=Host(False)
-        args=self.Args()
-        args.revision=revision
-        args.preview=True
-        args.os=os
-        host.set_args(args)
-        return host.host_deploy()
-
-    # The HostUnlock - Make the current deployment mutable (for development or a hotfix)
-    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='b', out_signature='')
-    def HostUnlock(self, hotfix=False):
-        host=Host(False)
-        args=self.Args()
-        args.hotfix=hotfix
-        host.set_args(args)
-        return host.host_install()
-
-    # The HostInstall - Install a (layered) RPM package
-    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='as', out_signature='')
-    def HostInstall(self, rpms):
-        host=Host(False)
-        args=self.Args()
-        args.args=rpms
-        host.set_args(args)
-        return host.host_install()
-
-    # The HostUninstall - Remove a layered RPM package
-    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='as', out_signature='')
-    def HostUninstall(self, rpms):
-        host=Host(False)
-        args=self.Args()
-        args.args=rpms
-        host.set_args(args)
-        return host.host_uninstall()
 
     # atomic containers section
     # The ContainersList method will list all containers on the system.
