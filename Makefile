@@ -11,6 +11,7 @@ GO ?= /usr/bin/go
 PYTHONSITELIB=$(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(0))")
 VERSION=$(shell $(PYTHON) setup.py --version)
 export GOPATH = $(shell pwd)/godeps
+BOX="fedora_atomic"
 
 .PHONY: all
 all: python-build docs pylint-check dockertar-sha256-helper gotar
@@ -90,3 +91,7 @@ install: all install-only
 .PHONY: install-openscap
 install-openscap:
 	install -m 644 atomic.d/openscap $(DESTDIR)/etc/atomic.d
+
+.PHONY: vagrant-check
+vagrant-check:
+	BOX=$(BOX) sh ./vagrant.sh 

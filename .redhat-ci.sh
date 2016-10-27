@@ -7,7 +7,9 @@ mount --make-rshared /
 systemctl start docker
 
 if [ -f /run/ostree-booted ]; then
-  ostree admin unlock
+    if [ ! -e /var/tmp/ostree-unlock-ovl.* ]; then
+        ostree admin unlock
+    fi
 fi
 
 # somewhat mimic the spec conditional
