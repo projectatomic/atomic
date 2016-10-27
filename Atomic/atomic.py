@@ -304,13 +304,13 @@ class Atomic(object):
         newenv['IMAGE'] = self.image or ""
 
         if hasattr(self.args, 'opt1') and self.args.opt1:
-            newenv['OPT1'] = self.args.opt1
+            newenv['OPT1'] = os.path.expandvars(self.args.opt1)
 
         if hasattr(self.args, 'opt2') and self.args.opt2:
-            newenv['OPT2'] = self.args.opt2
+            newenv['OPT2'] = os.path.expandvars(self.args.opt2)
 
         if hasattr(self.args, 'opt3') and self.args.opt3:
-            newenv['OPT3'] = self.args.opt3
+            newenv['OPT3'] = os.path.expandvars(self.args.opt3)
 
         if not hasattr(self.args, 'PWD'):
             newenv['PWD'] = os.getcwd()
