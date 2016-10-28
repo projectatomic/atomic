@@ -85,7 +85,7 @@ class Sign(Atomic):
                 manifest_file.write(manifest)
                 manifest_file.close()
                 manifest_hash = str(util.skopeo_manifest_digest(manifest_file.name))
-                expanded_image_name = ri.assemble_fqdn(include_tag=True)
+                expanded_image_name = ri.assemble_fqdn(include_tag=False)
 
                 if in_signature_path:
                     if not os.path.exists(in_signature_path):
