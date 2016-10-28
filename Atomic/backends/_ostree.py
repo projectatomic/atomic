@@ -1,9 +1,5 @@
-from docker import errors
-
 import os
-import Atomic.util as util
 from Atomic.backends.backend import Backend
-from Atomic.client import AtomicDocker
 from Atomic.objects.image import Image
 from Atomic.objects.container import Container
 from Atomic.syscontainers import SystemContainers
@@ -22,12 +18,16 @@ class OSTreeBackend(Backend):
 
         self.syscontainers.set_args(Args())
 
+    @property
+    def backend(self):
+        return "ostree"
+
     def _make_container(self, info):
-        container = Container()
-
         container_id = info['Id']
-        runtime = self.syscontainers.get_container_runtime_info(self, container_id)
 
+        runtime = self.syscontainers.get_container_runtime_info(container_id)
+
+        container = Container(container_id, backend=self)
         container.name = container_id
         container.id = container_id
         container.created = info['Created']
@@ -35,29 +35,29 @@ class OSTreeBackend(Backend):
         container.input_name = container_id
         container.original_structure = info
         container.deep = True
-        container._backend = self
         container.image = info['Image']
 
         return container
 
     def _make_image(self, info):
-        image = Image()
+        name = info['Id']
 
-        image.name = info['Id']
-        image.id = info['Id']
+        image = Image(name, self)
+
+        image.name = name
+        image.id = name
         image.registry = None
         image.repo = None
-        image.image = info['Id']
-        image.tag = info['Id']
+        image.image = name
+        image.tag = name
         image.repotags = info['RepoTags']
         image.created = info['Created']
         image.size = None
         image.original_structure = info
-        image._backend = self
         image.input_name = info['Id']
         image.deep = True
 
-        image.fq_name = info['Id']
+        image.fq_name = name
         image.version = info['Version']
         image.release = info['Labels']['Release'] if 'Release' in info['Labels'] else None
         image.digest = None
@@ -67,10 +67,6 @@ class OSTreeBackend(Backend):
         image.graph_driver = None
 
         return image
-
-    @property
-    def backend_type(self):
-        return "ostree"
 
     def has_image(self, img):
         return self.syscontainers.has_image(img)
@@ -93,7 +89,7 @@ class OSTreeBackend(Backend):
     def stop_container(self, name):
         return self.syscontainers.stop_service(name)
 
-    def get_images(self, get_all):
+    def get_images(self, get_all=False):
         return self.syscontainers.get_system_images(get_all=get_all)
 
     def get_containers(self):
@@ -102,14 +98,16 @@ class OSTreeBackend(Backend):
     def pull_image(self, image):
         return self.syscontainers.pull_image(image)
 
-    def delete_image(image):
+    def delete_image(self, image, force=False):
         return self.syscontainers.delete_image(image)
 
     def version(self, image):
         return self.syscontainers.version(image)
 
-    def update(self, image):
-        return self.syscontainers.update(image)
+    def update(self, name, force=False):
+        if force or not self.syscontainers.has_image(name):
+            return self.syscontainers.update(name)
+        return True
 
     def install(self, image, name):
         return self.syscontainers.install(image, name)

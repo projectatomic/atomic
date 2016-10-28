@@ -159,7 +159,7 @@ class DockerBackend(Backend):
             raise ValueError("Container '{}' is not running".format(name))
         return self.d.stop(name)
 
-    def pull_image(self):
+    def pull_image(self, image):
         # Should be replaced with Atomic.pull.pull_docker_image
         pass
 

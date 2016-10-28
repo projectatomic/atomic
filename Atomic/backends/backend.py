@@ -1,6 +1,5 @@
 from abc import abstractmethod, ABCMeta, abstractproperty
 
-
 class Backend(object):
     # Mark the class as abstract
     __metaclass__ = ABCMeta
@@ -16,12 +15,12 @@ class Backend(object):
 
 
     @abstractmethod
-    def inspect_container(self, image):
+    def inspect_container(self, container):
         # docker
         pass
 
     @abstractmethod
-    def pull_image(self):
+    def pull_image(self, image):
         # docker - needs last minute move
         pass
 

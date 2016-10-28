@@ -1,10 +1,7 @@
 from Atomic.backends._docker import DockerBackend
-from Atomic.backends._ostree import OSTreeBackend
-
 from Atomic.backendutils import BackendUtils
 from Atomic.objects.image import Image
 from Atomic.objects.layer import Layer
-import sys
 
 ad = DockerBackend()
 #print(ad.inspect_image('registry.access.redhat.com/rhel7'))
@@ -13,19 +10,8 @@ ad = DockerBackend()
 #
 #print(ad.has_image('98a88a8b722a71835dd761c88451c681a8f1bc6e577f90d4dc8b234100bd4861'))
 
-ot = OSTreeBackend()
-print(vars(ot.syscontainers.args))
-print("user: %s" % ot.syscontainers.user)
-print("args user: %s" % ot.syscontainers.args.user)
-print(ot.has_image('busybox'))
-print("user: %s" % ot.syscontainers.user)
-print("@@")
-
 beu = BackendUtils()
-print(beu.get_backend_for_image('busybox'))
-sys.exit()
 #be = beu.get_backend_for_image('registry.access.redhat.com/rhel7')
-be = beu.get_backend_for_image('busybox')
 #print(be.backend_type, be.input)
 #image_object = be.inspect_image_object(be.input)
 #print(image_object.id)
@@ -58,12 +44,12 @@ be = beu.get_backend_for_image('busybox')
 #
 #be.delete_containers_by_image(img_obj, force=True)
 
-#img_obj = ad.inspect_image('alpine')
+img_obj = ad.inspect_image('alpine')
 #img_obj.dump()
 
 
-#layer_obj = Layer(img_obj)
-#layer_obj.dump()
+layer_obj = Layer(img_obj)
+layer_obj.dump()
 
 #print(img_obj.backend)
 #print(img_obj.backend.backend_type)

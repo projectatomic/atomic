@@ -3,7 +3,7 @@ from Atomic.discovery import RegistryInspect
 
 
 class Image(object):
-    def __init__(self, input_name):
+    def __init__(self, input_name, backend=None):
 
         # Required
         self.name = None
@@ -16,7 +16,7 @@ class Image(object):
         self.created = None
         self.size = None
         self.original_structure = None
-        self._backend = None
+        self._backend = backend
         self.input_name = input_name
         self.deep = False
 

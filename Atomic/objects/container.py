@@ -2,7 +2,7 @@ from Atomic.util import output_json
 
 
 class Container(object):
-    def __init__(self, input_name):
+    def __init__(self, input_name, backend=None):
 
         # Required
         self.name = None
@@ -12,7 +12,7 @@ class Container(object):
         self.input_name = input_name
         self.original_structure = None
         self.deep = False
-        self.__backend = None
+        self.__backend = backend
         self.image = None
 
         # Optional
