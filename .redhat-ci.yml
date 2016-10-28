@@ -21,10 +21,7 @@ timeout: 30m
 inherit: true
 
 host:
-  distro: centos/7/atomic
-  ostree: # explicitly rebase to continuous until we set up a distro stream for it
-    remote: https://ci.centos.org/artifacts/sig-atomic/rdgo/centos-continuous/ostree/repo/
-    branch: centos-atomic-host/7/x86_64/devel/continuous
+  distro: centos/7/atomic/continuous
 
 context: centos/7/atomic
 
