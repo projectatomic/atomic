@@ -323,6 +323,8 @@ def skopeo_standalone_sign(image, manifest_file_name, fingerprint, signature_pat
         cmd = cmd + ['--debug']
     cmd = cmd + ['standalone-sign', manifest_file_name, image,
                  fingerprint, "-o", signature_path]
+    if debug:
+        write_out("Executing: {}".format(" ".join(cmd)))
     return check_call(cmd)
 
 def skopeo_manifest_digest(manifest_file, debug=False):
