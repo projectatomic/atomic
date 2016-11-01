@@ -593,11 +593,15 @@ def expandvars(path, environ=None):
     return path
 
 def get_registry_configs(yaml_dir):
-    # Returns a dictionary of registries and a str of the default_store if applicable
+    """
+    Get concatenated registries.d sigstore configuration as a single dict of all files
+    :param yaml_dir: sigstore directory, e.g. /etc/containers/registries.d
+    :return: tuple (a dictionary of sigstores, str or None of the default_store)
+    """
     regs = {}
     default_store = None
     if not os.path.exists(yaml_dir):
-        return None, default_store
+        return regs, default_store
     # Get list of files that end in .yaml and are in fact files
     for yaml_file in [os.path.join(yaml_dir, x) for x in os.listdir(yaml_dir) if x.endswith('.yaml')
             and os.path.isfile(os.path.join(yaml_dir, x))]:
