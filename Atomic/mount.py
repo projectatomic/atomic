@@ -132,7 +132,7 @@ class Mount(Atomic):
             self.shared = args.shared
         if hasattr(args, "storage"):
             self.storage = args.storage
-        if hasattr(args, "options"):
+        if getattr(args, "options", None):
             self.options = [opt for opt in args.options.split(',') if opt]
         if hasattr(args, "image"):
             self.image = args.image
