@@ -31,7 +31,7 @@ import traceback
 import docker
 
 import Atomic
-from Atomic import containers, images
+from Atomic import containers
 from Atomic import diff
 from Atomic import help as Help
 from Atomic import host

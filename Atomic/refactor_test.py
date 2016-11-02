@@ -1,6 +1,6 @@
 from Atomic.backends._docker import DockerBackend
 from Atomic.backendutils import BackendUtils
-from Atomic.objects.image import Image
+#from Atomic.objects.image import Image
 from Atomic.objects.layer import Layer
 
 ad = DockerBackend()

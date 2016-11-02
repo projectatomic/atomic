@@ -10,13 +10,13 @@ class BackendUtils(object):
     BACKENDS = [DockerBackend, OSTreeBackend]
 
     def _get_backend_from_string(self, str_backend):
-        for backend in self.BACKENDS:
-            if backend().backend_type == str_backend:
-                return backend()
+        for backend_obj in self.BACKENDS:
+            if backend_obj().backend == str_backend:
+                return backend_obj()
         raise ValueError("Unable to associate string '{}' with backend".format(str_backend))
 
     def _get_backend_index_from_string(self, str_backend):
-        return [x().backend_type for x in self.BACKENDS].index(str_backend)
+        return [x().backend for x in self.BACKENDS].index(str_backend)
 
     @staticmethod
     def backend_has_image(backend, img):
@@ -56,7 +56,8 @@ class BackendUtils(object):
             return img_in_backends[0]
         if len(img_in_backends) == 0:
             raise ValueError("Unable to find backend associated with image'{}'".format(img))
-        raise ValueError("Found {} in multiple storage backends: {}".format(img, ', '.join([x.backend_type for x in img_in_backends])))
+        raise ValueError("Found {} in multiple storage backends: {}".
+                         format(img, ', '.join([x.backend for x in img_in_backends])))
 
     def get_backend_for_container(self, container, str_preferred_backend=None):
         """
@@ -85,7 +86,8 @@ class BackendUtils(object):
             return container_in_backends[0]
         if len(container_in_backends) == 0:
             raise ValueError("Unable to find backend associated with container '{}'".format(container))
-        raise ValueError("Found {} in multiple storage backends: {}".format(container, ', '.join([x.backend_type for x in container_in_backends])))
+        raise ValueError("Found {} in multiple storage backends: {}".
+                         format(container, ', '.join([x.backend for x in container_in_backends])))
 
 
 

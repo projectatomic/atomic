@@ -1,6 +1,7 @@
 from abc import abstractmethod, ABCMeta, abstractproperty
 
-class Backend(object):
+
+class Backend(object): #pylint: disable=metaclass-assignment
     # Mark the class as abstract
     __metaclass__ = ABCMeta
 

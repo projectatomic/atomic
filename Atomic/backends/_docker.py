@@ -12,11 +12,12 @@ class DockerBackend(Backend):
     def __init__(self):
         self.input = None
         self.img_obj = None
+        self.inspect = None
         self.d = get_docker_client()
         self._ping()
 
     @property
-    def backend_type(self):
+    def backend(self):
         return "docker"
 
     def has_image(self, img):
@@ -27,7 +28,7 @@ class DockerBackend(Backend):
         '''
         err_append = "Refine your search to narrow results."
         self.input = img
-        image_info = self.get_docker_images()
+        image_info = self.get_docker_images(get_all=True)
 
         inspect = self._inspect_image(image=img)
         if inspect is not None:
@@ -78,7 +79,7 @@ class DockerBackend(Backend):
     def _make_image(self, image, img_struct, deep=False):
         img_obj = Image(image)
         img_obj.id = img_struct['Id']
-        img_obj._backend = self
+        img_obj.backend = self
         img_obj.repotags = img_struct['RepoTags']
         img_obj.created = img_struct['Created']
         img_obj.size = img_struct['Size']
@@ -101,7 +102,7 @@ class DockerBackend(Backend):
         con_obj.created = con_struct['Created']
         con_obj.original_structure = con_struct
         con_obj.input_name = container
-        con_obj.__backend = self
+        con_obj.backend = self
 
         if not deep:
             con_obj.status = con_struct['Status']
@@ -125,8 +126,8 @@ class DockerBackend(Backend):
         inspect_data = self._inspect_container(container)
         return self._make_container(container, inspect_data, deep=True)
 
-    def get_images(self):
-        images = self.get_docker_images()
+    def get_images(self, get_all=False):
+        images = self.get_docker_images(get_all=get_all)
         image_objects = []
         for image in images:
             image_objects.append(self._make_image(image['Id'], image))
@@ -140,15 +141,15 @@ class DockerBackend(Backend):
             con_objects.append(self._make_container(con['Id'], con))
         return con_objects
 
-    def get_docker_images(self):
-        return self.d.images(all=True)
+    def get_docker_images(self, get_all=False):
+        return self.d.images(all=get_all)
 
     def get_docker_containers(self):
         return self.d.containers(all=True)
 
     def start_container(self, name):
         if not self.has_container(name):
-            raise ValueError("Unable to locate container '{}' in {} backend".format(name, self.backend_type))
+            raise ValueError("Unable to locate container '{}' in {} backend".format(name, self.backend))
         return self.d.start(name)
 
     def stop_container(self, name):
@@ -163,8 +164,8 @@ class DockerBackend(Backend):
         # Should be replaced with Atomic.pull.pull_docker_image
         pass
 
-    def delete_container(self, id, force=False):
-        self.d.remove_container(id, force=force)
+    def delete_container(self, cid, force=False):
+        self.d.remove_container(cid, force=force)
 
     def delete_containers_by_image(self, img_obj, force=False):
         containers_by_image = self.get_containers_by_image(img_obj)
@@ -207,3 +208,17 @@ class DockerBackend(Backend):
                                 "docker-daemon:{}".format(img_obj.fq_name),
                                 util.is_insecure_registry(self.d.info()['RegistryConfig'], util.strip_port(registry)))
 
+    def prune(self):
+        pass
+
+    def install(self, image, name):
+        pass
+
+    def uninstall(self, name):
+        pass
+
+    def validate_layer(self, layer):
+        pass
+
+    def version(self, image):
+        pass

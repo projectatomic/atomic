@@ -58,7 +58,7 @@ class Image(object):
         output_json(foo)
 
     def _to_deep(self):
-         return self.backend.inspect_image(self.id)
+        return self.backend.inspect_image(self.id)
 
     @property
     def fq_name(self):
@@ -82,5 +82,7 @@ class Image(object):
     def backend(self):
         return self._backend
 
-
+    @backend.setter
+    def backend(self, value):
+        self._backend = value
 

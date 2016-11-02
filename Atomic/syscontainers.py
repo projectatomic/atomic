@@ -274,7 +274,6 @@ class SystemContainers(object):
     def _resolve_image(self, repo, img):
         imagebranch = SystemContainers._get_ostree_image_branch(img)
         rev = repo.resolve_rev(imagebranch, True)[1]
-        print(rev)
         if rev:
             return imagebranch, rev
 

@@ -1,6 +1,5 @@
 #!/usr/bin/python -Es
 
-import json
 import threading
 import time
 
