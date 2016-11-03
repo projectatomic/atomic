@@ -68,6 +68,9 @@ def cli(subparser):
     # atomic storage reset
     resetp = storage_subparser.add_parser("reset",
                                           help=_("delete all containers/images from your system. Reset storage to its initial configuration."))
+    resetp.add_argument("--graph", dest="graph",
+                        default=default_docker_lib(),
+                        help=_("Root of the Docker runtime (Default: %s)" % default_docker_lib()))
     resetp.set_defaults(_class=Storage, func='reset')
 
 def query_pvs(pv, fields):
@@ -111,8 +114,24 @@ class Storage(Atomic):
     dss_conf = "/etc/sysconfig/docker-storage-setup"
     dss_conf_bak = dss_conf + ".bkp"
 
+    def __init__(self):
+        super(Storage, self).__init__()
+
+        if self.args.graph:
+            self.graphdir = self.args.graph
+        else:
+            if os.path.exists("/var/lib/docker") and os.path.exists("/var/lib/docker-latest"):
+                raise ValueError("You must select the graph storage path to reset: /var/lib/docker or /var/lib/docker-latest")
+            if os.path.exists("/var/lib/docker"):
+                self.graphdir = "/var/lib/docker"
+            else:
+                if os.path.exists("/var/lib/docker-latest"):
+                    self.graphdir = "/var/lib/docker-latest"
+                else:
+                    raise ValueError("You must select the graph storage path to reset")
+
     def reset(self):
-        root = "/var/lib/docker"
+        root=self.graphdir
         try:
             self.d.info()
             raise ValueError("Docker daemon must be stopped before resetting storage")
@@ -203,13 +222,13 @@ class Storage(Atomic):
 
     def Export(self):
         try:
-            export_docker(self.args.graph, self.args.export_location, self.args.assumeyes)
+            export_docker(self.graphdir, self.args.export_location, self.args.assumeyes)
         except requests.exceptions.ConnectionError:
             raise NoDockerDaemon()
 
     def Import(self):
         self.ping()
         try:
-            import_docker(self.args.graph, self.args.import_location, self.args.assumeyes)
+            import_docker(self.graphdir, self.args.import_location, self.args.assumeyes)
         except requests.exceptions.ConnectionError:
             raise NoDockerDaemon()

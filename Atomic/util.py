@@ -437,13 +437,20 @@ def get_scanners():
 def default_docker():
     if not default_docker.cache:
         atomic_config = get_atomic_config()
-        default_docker.cache = atomic_config.get('default_docker','docker')
+        if os.path.exists("/var/lib/docker"):
+            docker = "docker"
+        else:
+            docker = "docker-latest"
+
+        default_docker.cache = atomic_config.get('default_docker', docker)
     return default_docker.cache
 default_docker.cache = None
 
 def default_docker_lib():
     if not default_docker_lib.cache:
-        default_docker_lib.cache = "/var/lib/%s" % default_docker()
+        dockerlib_path = "/var/lib/%s" % default_docker()
+        if os.path.exists(dockerlib_path):
+            default_docker_lib.cache = dockerlib_path
     return default_docker_lib.cache
 default_docker_lib.cache = None
 

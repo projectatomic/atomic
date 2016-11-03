@@ -1199,6 +1199,16 @@ _atomic_storage_storage() {
 }
 
 
+_atomic_storage_reset() {
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "--graph -h --help" -- "$cur" ) )
+			;;
+		*)
+			;;
+	esac
+}
+
 _atomic_storage_export() {
 	case "$cur" in
 		-*)

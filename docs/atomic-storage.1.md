@@ -90,5 +90,15 @@ Drivers supported: devicemapper, overlay, overlay2
 **--vgroup**
 The name of the volume group for the storage pool.
 
+# reset OPTIONS
+**-h** **--help**
+  Print usage statement
+
+**--graph**
+Root of the docker runtime. If you are running docker at the default
+location (/var/lib/docker), you don't need to pass this flag. However
+if you are running docker at a custom location. This flag must be set.
+
+
 # HISTORY
 October 2015, Originally compiled by Shishir Mahajan (shishir dot mahajan at redhat dot com)
