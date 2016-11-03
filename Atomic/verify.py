@@ -127,7 +127,7 @@ class Verify(Atomic):
         base_images = []
         for name in names:
             _match = next((x for x in layers if x['Name'] == name and x['RepoTags'] is not ''), None)
-            registry, repo, image, tag, _ = util.Decompose(_match['RepoTags'][0]).all
+            registry, repo, image, tag, _ = util.Decompose(self.get_fq_image_name(_match['RepoTags'][0])).all
             tag = "latest"
             ri = RegistryInspect(registry=registry, repo=repo, image=image, tag=tag, debug=self.debug)
             ri.ping()
