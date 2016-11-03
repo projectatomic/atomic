@@ -5,6 +5,7 @@ class Layer(object):
         self.id = None
         self.name = None
         self.version = None
+        self.release = None
         self.repotags = None
         self.parent = None
         self.remote = False
@@ -16,18 +17,26 @@ class Layer(object):
 
     def _instantiate_from_image_object(self, img_obj):
         self.id = img_obj.id
-        self.name = img_obj.name
+        self.name = img_obj.name or img_obj.get_label('Name') or img_obj.image
         self.version = img_obj.version
+        self.release = img_obj.release
         self.repotags = img_obj.repotags
         # This needs to be resolved for future docker versions
-        self.parent = None
+        self.parent = img_obj.parent
         return self
 
     def _instantiate_from_dict(self):
         return self
 
-    def __gt__(self, other):
-        pass
+    def __eq__(self, other):
+        if self.long_version == other.long_version:
+            return True
+        return False
+
+    def __ne__(self, other):
+        if self.long_version != other.long_version:
+            return True
+        return False
 
 
     def dump(self):
@@ -36,3 +45,14 @@ class Layer(object):
         foo = {x: class_vars[x] for x in class_vars if not callable(getattr(self, x)) and not x.startswith('__')
                and not x.endswith('_backend')}
         output_json(foo)
+
+    @property
+    def long_version(self):
+        _version = ""
+        if self.name:
+            _version += "{}".format(self.name)
+        if self.version:
+            _version += "-{}".format(self.version)
+        if self.release:
+            _version += "-{}".format(self.release)
+        return _version

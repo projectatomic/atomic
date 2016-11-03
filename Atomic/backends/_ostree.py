@@ -3,6 +3,7 @@ from Atomic.backends.backend import Backend
 from Atomic.objects.image import Image
 from Atomic.objects.container import Container
 from Atomic.syscontainers import SystemContainers
+from Atomic.objects.layer import Layer
 
 class OSTreeBackend(Backend):
 
@@ -39,12 +40,11 @@ class OSTreeBackend(Backend):
 
         return container
 
-    def _make_image(self, info):
+    def _make_image(self, image, info):
         name = info['Id']
-
-        image = Image(name, self)
-
+        image = Image(image, self)
         image.name = name
+        image.backend = self
         image.id = name
         image.registry = None
         image.repo = None
@@ -56,8 +56,6 @@ class OSTreeBackend(Backend):
         image.original_structure = info
         image.input_name = info['Id']
         image.deep = True
-
-        image.fq_name = name
         image.version = info['Version']
         image.release = info['Labels']['Release'] if 'Release' in info['Labels'] else None
         image.digest = None
@@ -65,7 +63,6 @@ class OSTreeBackend(Backend):
         image.os = info['Labels']['OS'] if 'OS' in info['Labels'] else None
         image.arch = info['Labels']['Arch'] if 'Arch' in info['Labels'] else None
         image.graph_driver = None
-
         return image
 
     def has_image(self, img):
@@ -75,7 +72,7 @@ class OSTreeBackend(Backend):
         return self.syscontainers.get_checkout(container) is not None
 
     def inspect_image(self, image):
-        return self._make_image(self.syscontainers.inspect_system_image(image))
+        return self._make_image(image, self.syscontainers.inspect_system_image(image))
 
     def inspect_container(self, container):
         containers = self.syscontainers.get_containers(containers=[container])
@@ -90,19 +87,19 @@ class OSTreeBackend(Backend):
         return self.syscontainers.stop_service(name)
 
     def get_images(self, get_all=False):
-        return self.syscontainers.get_system_images(get_all=get_all)
+        return [self._make_image(x['Id'], x) for x in self.syscontainers.get_system_images(get_all=get_all)]
 
     def get_containers(self):
         return [self._make_container(x) for x in self.syscontainers.get_containers()]
 
-    def pull_image(self, image):
+    def pull_image(self, image, pull_args):
         return self.syscontainers.pull_image(image)
 
     def delete_image(self, image, force=False):
         return self.syscontainers.delete_image(image)
 
     def version(self, image):
-        return self.syscontainers.version(image)
+        return self.get_layers(image)
 
     def update(self, name, force=False):
         if force or not self.syscontainers.has_image(name):
@@ -121,3 +118,14 @@ class OSTreeBackend(Backend):
     def validate_layer(self, layer):
         return self.syscontainers.validate_layer(layer)
 
+    def _get_layer(self, image):
+        return Layer(self.inspect_image(image))
+
+    def get_layers(self, image):
+        layers = []
+        layer = self._get_layer(image)
+        layers.append(layer)
+        while layer.parent:
+            layer = self._get_layer(layer.parent)
+            layers.append(layer)
+        return layers
