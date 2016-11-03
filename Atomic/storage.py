@@ -108,11 +108,20 @@ def get_dss_devs(conf):
     return util.sh_get_var_in_file(conf, "DEVS", "").split()
 
 class Storage(Atomic):
-    dss_conf = "/etc/sysconfig/docker-storage-setup"
-    dss_conf_bak = dss_conf + ".bkp"
+
+    def __init__(self):
+        super(Storage, self).__init__()
+
+        if os.path.exist("/var/lib/docker"):
+            self.dockerdir = "/var/lib/docker"
+            self.dss_conf = "/etc/sysconfig/docker-storage-setup"
+        else:
+            self.dockerdir = "/var/lib/docker-latest"
+            self.dss_conf = "/etc/sysconfig/docker-latest-storage-setup"
+        self.dss_conf_bak = dss_conf + ".bkp"
 
     def reset(self):
-        root = "/var/lib/docker"
+        root=self.dockerdir
         try:
             self.d.info()
             raise ValueError("Docker daemon must be stopped before resetting storage")
