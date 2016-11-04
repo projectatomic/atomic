@@ -12,7 +12,7 @@ can perform upgrades, rollbacks, and system state inspection.  It is used
 for implementations of the Project Atomic Host pattern.
 
 #NOTE
-The `host` subcommand is only available when `rpm-ostree` is installed.
+The `host` subcommand is only available on `Atomic Host Systems`.
 
 # OPTIONS
 **-h** **-help**
