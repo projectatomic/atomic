@@ -31,7 +31,8 @@ class Container(object):
     def dump(self):
         # Helper function to dump out known variables in pretty-print style
         class_vars = dict(vars(self))
-        foo = {x: class_vars[x] for x in class_vars if not callable(getattr(self, x)) and not x.startswith('__')}
+        foo = {x: class_vars[x] for x in class_vars if not callable(getattr(self, x)) and not x.startswith('__')
+               and not x.endswith('_backend')}
         output_json(foo)
 
     @property

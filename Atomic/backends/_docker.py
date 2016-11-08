@@ -13,10 +13,15 @@ from Atomic.objects.layer import Layer
 class DockerBackend(Backend):
     def __init__(self):
         self.input = None
-        self.img_obj = None
-        self.inspect = None
-        self.d = get_docker_client()
-        self._ping()
+        self._d = None
+
+    @property
+    def d(self):
+        if not self._d:
+            self._d = get_docker_client()
+            self._ping()
+            return self._d
+        return self._d
 
     @property
     def backend(self):
@@ -25,35 +30,35 @@ class DockerBackend(Backend):
     def has_image(self, img):
         err_append = "Refine your search to narrow results."
         self.input = img
-        image_info = self.get_docker_images(get_all=True)
+        image_info = self._get_images(get_all=True)
 
-        inspect = self._inspect_image(image=img)
-        if inspect is not None:
-            self.inspect = inspect
-            return True
-
+        img_obj = self.inspect_image(image=img)
+        if img_obj:
+            return img_obj
         name_search = util.image_by_name(img, images=image_info)
-        if len(name_search) > 0:
-            if len(name_search) > 1:
-                tmp_image = dict((x['Id'], x['RepoTags']) for x in image_info)
-                repo_tags = []
-                for name in name_search:
-                    for repo_tag in tmp_image.get(name['Id']):
-                        if repo_tag.find(img) > -1:
-                            repo_tags.append(repo_tag)
-                raise ValueError("Found more than one image possibly "
-                                 "matching '{0}'. They are:\n    {1} \n{2}"
-                                 .format(img, "\n    ".join(repo_tags),
-                                         err_append))
-            return True
-        # No dice
-        return False
+        length = len(name_search)
+        if length == 0:
+            # No dice
+            return None
+        if length > 1:
+            tmp_image = dict((x['Id'], x['RepoTags']) for x in image_info)
+            repo_tags = []
+            for name in name_search:
+                for repo_tag in tmp_image.get(name['Id']):
+                    if repo_tag.find(img) > -1:
+                        repo_tags.append(repo_tag)
+            raise ValueError("Found more than one image possibly "
+                             "matching '{0}'. They are:\n    {1} \n{2}"
+                             .format(img, "\n    ".join(repo_tags),
+                                     err_append))
+        return self._make_image(img, self._inspect_image(img), deep=True)
 
     def has_container(self, container):
-        if self._inspect_container(container) is not None:
+        con_obj = self.inspect_container(container)
+        if con_obj:
             self.input = container
-            return True
-        return False
+            return con_obj
+        return None
 
     def _inspect_image(self, image):
         try:
@@ -63,10 +68,11 @@ class DockerBackend(Backend):
         return inspect_data
 
     def inspect_image(self, image):
-        if not self.img_obj or getattr(self.img_obj, "input_name", None) != image:
-            inspect_data = self._inspect_image(image)
-            self.img_obj = self._make_image(image, inspect_data, deep=True)
-        return self.img_obj
+        inspect_data = self._inspect_image(image)
+        if inspect_data:
+            img_obj = self._make_image(image, inspect_data, deep=True)
+            return img_obj
+        return None
 
     def _make_image(self, image, img_struct, deep=False, remote=False):
         img_obj = Image(image, remote=remote)
@@ -98,14 +104,15 @@ class DockerBackend(Backend):
         con_obj.input_name = container
         con_obj.backend = self
 
-        if not deep:
-            con_obj.status = con_struct['Status']
-            con_obj.image = con_struct['ImageID']
-
         if deep:
             # Add in the deep inspection stuff
             con_obj.status = con_struct['State']['Status']
             con_obj.running = con_struct['State']['Running']
+            con_obj.image = con_struct['Image']
+
+        else:
+            con_obj.status = con_struct['Status']
+            con_obj.image = con_struct['ImageID']
 
         return con_obj
 
@@ -118,10 +125,12 @@ class DockerBackend(Backend):
 
     def inspect_container(self, container):
         inspect_data = self._inspect_container(container)
-        return self._make_container(container, inspect_data, deep=True)
+        if inspect_data:
+            return self._make_container(container, inspect_data, deep=True)
+        return None
 
     def get_images(self, get_all=False):
-        images = self.get_docker_images(get_all=get_all)
+        images = self._get_images(get_all=get_all)
         image_objects = []
         for image in images:
             image_objects.append(self._make_image(image['Id'], image))
@@ -129,27 +138,27 @@ class DockerBackend(Backend):
 
     def make_remote_image(self, image):
         img_obj = self._make_remote_image(image)
-        img_obj.remote_inspect()
+        img_obj.populate_remote_inspect_info()
         return img_obj
 
     def _make_remote_image(self, image):
         return self._make_image(image, None, remote=True)
 
     def get_containers(self):
-        containers = self.get_docker_containers()
+        containers = self._get_containers()
         con_objects = []
         for con in containers:
             con_objects.append(self._make_container(con['Id'], con))
         return con_objects
 
-    def get_docker_images(self, get_all=False, quiet=False, filters=None):
+    def _get_images(self, get_all=False, quiet=False, filters=None):
         if filters:
             assert isinstance(filters, dict)
         else:
             filters = {}
         return self.d.images(all=get_all, quiet=quiet, filters=filters)
 
-    def get_docker_containers(self):
+    def _get_containers(self):
         return self.d.containers(all=True)
 
     def start_container(self, name):
@@ -231,7 +240,7 @@ class DockerBackend(Backend):
                                 util.is_insecure_registry(self.d.info()['RegistryConfig'], util.strip_port(registry)))
 
     def prune(self):
-        for iid in self.get_docker_images(get_all=True, quiet=True, filters={"dangling": True}):
+        for iid in self._get_images(get_all=True, quiet=True, filters={"dangling": True}):
             self.delete_image(iid, force=True)
             util.write_out("Removed dangling Image {}".format(iid))
         return 0

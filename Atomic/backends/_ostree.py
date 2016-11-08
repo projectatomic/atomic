@@ -42,8 +42,9 @@ class OSTreeBackend(Backend):
 
     def _make_image(self, image, info):
         name = info['Id']
-        image = Image(image, self)
+        image = Image(image, backend=self, remote=False)
         image.name = name
+        image.config = info
         image.backend = self
         image.id = name
         image.registry = None
@@ -56,23 +57,30 @@ class OSTreeBackend(Backend):
         image.original_structure = info
         image.input_name = info['Id']
         image.deep = True
-        image.version = info['Version']
-        image.release = info['Labels']['Release'] if 'Release' in info['Labels'] else None
-        image.digest = None
         image.labels = info['Labels']
-        image.os = info['Labels']['OS'] if 'OS' in info['Labels'] else None
-        image.arch = info['Labels']['Arch'] if 'Arch' in info['Labels'] else None
+        image.version = image.get_label("Version")
+        image.release = image.get_label("Release")
+        image.digest = None
+        image.os = image.get_label("Os")
+        image.arch = image.get_label("Arch")
         image.graph_driver = None
         return image
 
     def has_image(self, img):
-        return self.syscontainers.has_image(img)
+        if self.syscontainers.has_image(img):
+            return self.inspect_image(img)
+        return None
 
     def has_container(self, container):
-        return self.syscontainers.get_checkout(container) is not None
+        if self.syscontainers.get_checkout(container):
+            return self.inspect_container(container)
+        return None
 
     def inspect_image(self, image):
-        return self._make_image(image, self.syscontainers.inspect_system_image(image))
+        try:
+            return self._make_image(image, self.syscontainers.inspect_system_image(image))
+        except ValueError:
+            return None
 
     def inspect_container(self, container):
         containers = self.syscontainers.get_containers(containers=[container])

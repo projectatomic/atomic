@@ -32,7 +32,6 @@ class Image(object):
         self.graph_driver = None
         self.config = {}
         self._fq_name = None
-
         self._instantiate()
 
     def __gt__(self, other):
@@ -122,11 +121,8 @@ class Image(object):
             return self.config['Labels'].get(label, None)
         return None
 
-    def remote_inspect(self):
-        ri = RegistryInspect(registry=self.registry, repo=self.repo, image=self.image,
-                             tag=self.tag, orig_input=self.input_name)
-        ri.ping()
-        remote_inspect_info = ri.inspect()
+    def populate_remote_inspect_info(self):
+        remote_inspect_info = self.remote_inspect()
         self.created = remote_inspect_info['Created']
         self.name = remote_inspect_info['Name']
         self.os = remote_inspect_info['Os']
@@ -136,6 +132,12 @@ class Image(object):
         self.labels = remote_inspect_info.get("Labels", None)
         self.release = self.get_label('Release')
         self.version = self.get_label('Version')
+
+    def remote_inspect(self):
+        ri = RegistryInspect(registry=self.registry, repo=self.repo, image=self.image,
+                             tag=self.tag, orig_input=self.input_name)
+        ri.ping()
+        return ri.inspect()
 
     @property
     def long_version(self):

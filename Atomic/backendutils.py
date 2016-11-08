@@ -10,9 +10,10 @@ class BackendUtils(object):
     BACKENDS = [DockerBackend, OSTreeBackend]
 
     def _get_backend_from_string(self, str_backend):
-        for backend_obj in self.BACKENDS:
-            if backend_obj().backend == str_backend:
-                return backend_obj()
+        for _backend in self.BACKENDS:
+            backend_obj = _backend()
+            if backend_obj.backend == str_backend:
+                return backend_obj
         raise ValueError("Unable to associate string '{}' with backend".format(str_backend))
 
     def _get_backend_index_from_string(self, str_backend):
