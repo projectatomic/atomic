@@ -134,11 +134,12 @@ class SystemContainers(object):
         if image.startswith("ostree:"):
             self._check_system_ostree_image(repo, image, upgrade)
         elif image.startswith("docker:"):
-            self._pull_docker_image(repo, image.replace("docker:", ""))
+            image = self._pull_docker_image(repo, image.replace("docker:", ""))
         elif image.startswith("dockertar:"):
-            self._pull_docker_tar(repo, image.replace("dockertar:", ""))
+            image = self._pull_docker_tar(repo, image.replace("dockertar:", ""))
         else: # Assume "oci:"
             self._check_system_oci_image(repo, image, upgrade)
+        return image
 
     def pull_image(self, image=None):
         self._pull_image_to_ostree(self._get_ostree_repo(), image or self.args.image, True)
