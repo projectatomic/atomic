@@ -13,8 +13,6 @@ from Atomic.objects.layer import Layer
 class DockerBackend(Backend):
     def __init__(self):
         self.input = None
-        self.img_obj = None
-        self.inspect = None
         self.d = get_docker_client()
         self._ping()
 
@@ -27,10 +25,9 @@ class DockerBackend(Backend):
         self.input = img
         image_info = self.get_docker_images(get_all=True)
 
-        inspect = self._inspect_image(image=img)
-        if inspect is not None:
-            self.inspect = inspect
-            return True
+        img_obj = self.inspect_image(image=img)
+        if img_obj:
+            return img_obj
 
         name_search = util.image_by_name(img, images=image_info)
         if len(name_search) > 0:
@@ -45,15 +42,16 @@ class DockerBackend(Backend):
                                  "matching '{0}'. They are:\n    {1} \n{2}"
                                  .format(img, "\n    ".join(repo_tags),
                                          err_append))
-            return True
+            return self._make_image(name_search, self._inspect_image(name_search), deep=True)
         # No dice
-        return False
+        return None
 
     def has_container(self, container):
-        if self._inspect_container(container) is not None:
+        con_obj = self.inspect_container(container)
+        if con_obj:
             self.input = container
-            return True
-        return False
+            return con_obj
+        return None
 
     def _inspect_image(self, image):
         try:
@@ -63,10 +61,11 @@ class DockerBackend(Backend):
         return inspect_data
 
     def inspect_image(self, image):
-        if not self.img_obj or getattr(self.img_obj, "input_name", None) != image:
-            inspect_data = self._inspect_image(image)
-            self.img_obj = self._make_image(image, inspect_data, deep=True)
-        return self.img_obj
+        inspect_data = self._inspect_image(image)
+        if inspect_data:
+            img_obj = self._make_image(image, inspect_data, deep=True)
+            return img_obj
+        return None
 
     def _make_image(self, image, img_struct, deep=False, remote=False):
         img_obj = Image(image, remote=remote)
@@ -118,7 +117,9 @@ class DockerBackend(Backend):
 
     def inspect_container(self, container):
         inspect_data = self._inspect_container(container)
-        return self._make_container(container, inspect_data, deep=True)
+        if inspect_data:
+            return self._make_container(container, inspect_data, deep=True)
+        return None
 
     def get_images(self, get_all=False):
         images = self.get_docker_images(get_all=get_all)

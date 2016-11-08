@@ -110,10 +110,20 @@ class Backend(object): #pylint: disable=metaclass-assignment
 
     @abstractmethod
     def has_image(self, img):
+        """
+        Returns an img object if backend has the image or None
+        :param img:
+        :return:  img_obj or None
+        """
         pass
 
     @abstractmethod
     def has_container(self, container):
+        """
+        Returns a container obj if valid or None
+        :param container:
+        :return:
+        """
         pass
 
     @abstractmethod
