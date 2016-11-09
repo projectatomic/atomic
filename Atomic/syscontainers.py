@@ -52,6 +52,9 @@ WorkingDirectory=$DESTDIR
 [Install]
 WantedBy=multi-user.target
 """
+TEMPLATE_FORCED_VARIABLES = ["DESTDIR", "NAME", "EXEC_START", "EXEC_STOP",
+                             "HOST_UID", "HOST_GID"]
+TEMPLATE_OVERRIDABLE_VARIABLES = ["RUN_DIRECTORY", "STATE_DIRECTORY"]
 
 class SystemContainers(object):
 
@@ -623,6 +626,66 @@ class SystemContainers(object):
                          'Command' : command, 'Type' : 'system'}
             ret.append(container)
         return ret
+
+    def get_template_variables(self, image):
+        repo = self._get_ostree_repo()
+        _, commit_rev = self._resolve_image(repo, image)
+        if not commit_rev:
+            return
+
+        manifest = self._image_manifest(repo, commit_rev)
+        layers = SystemContainers.get_layers_from_manifest(json.loads(manifest))
+        templates = {}
+        manifest_template = None
+        for i in layers:
+            layer = i.replace("sha256:", "")
+            commit = repo.read_commit(repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1])[1]
+            exports = commit.get_root().get_child("exports")
+            if not exports.query_exists():
+                continue
+
+            children = exports.enumerate_children("", Gio.FileQueryInfoFlags.NONE, None)
+            for child in reversed(list(children)):
+                name = child.get_name()
+                if name == "manifest.json":
+                    manifest_template = exports.get_child(name).read()
+
+                if name.endswith(".template"):
+                    if name.startswith(".wh"):
+                        name = name[4:]
+                        templates.pop(name, None)
+                    else:
+                        templates[name] = exports.get_child(name).read()
+
+        variables = {}
+        for v in templates.values():
+            fd = v.get_fd()
+            with os.fdopen(fd) as f:
+                data = f.read()
+                template = Template(data)
+                for variable in ["".join(x) for x in template.pattern.findall(data)]: # pylint: disable=no-member
+                    if variable not in TEMPLATE_FORCED_VARIABLES:
+                        variables[variable] = variable
+
+        variables_with_default = {}
+        if manifest_template:
+            fd = manifest_template.get_fd()
+            with os.fdopen(fd) as f:
+                data = json.loads(f.read())
+                for variable in data['defaultValues']:
+                    variables_with_default[variable] = data['defaultValues'][variable]
+
+        # Also include variables that are set by the OS
+        # but can be overriden by --set
+        for variable in TEMPLATE_OVERRIDABLE_VARIABLES:
+            variables_with_default[variable] = "{SET_BY_OS}"
+
+        variables_to_set = {}
+        for variable in variables:
+            if variable not in variables_with_default:
+                variables_to_set[variable] = "{DEF_VALUE}"
+
+        return variables_with_default, variables_to_set
 
     def delete_image(self, image):
         repo = self._get_ostree_repo()

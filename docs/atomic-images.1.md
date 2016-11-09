@@ -26,6 +26,8 @@ atomic images allows the user to view and operate on container images in a docke
 
   Displays the LABEL fields within an image. By default, it will check first for a local image and then all configured registries.
 
+  For a system container image, this will also display the environment variables a user can set.
+
 **help**
 
   Displays a help file associated with a container or image.

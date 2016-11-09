@@ -120,6 +120,16 @@ class Info(Atomic):
                     labels = manifest["Labels"]
                     for label in labels:
                         buf += ('\n{0}: {1}'.format(label, labels[label]))
+
+                    template_variables, template_variables_to_set = self.syscontainers.get_template_variables(self.image)
+                    buf += ("\n\nEnvironment variables with default value, but overridable with --set:")
+                    for variable in template_variables.keys():
+                        buf += ('\n{}: {}'.format(variable, template_variables.get(variable)))
+
+                    if template_variables_to_set:
+                        buf += ("\n\nEnvironment variables that has no default value, and must be set with --set:")
+                        for variable in template_variables_to_set.keys():
+                            buf += ('\n{}: {}'.format(variable, template_variables_to_set.get(variable)))
                     return buf
             # Check if the input is an image id associated with more than one
             # repotag.  If so, error out.
@@ -141,6 +151,16 @@ class Info(Atomic):
                     labels = manifest["Labels"]
                     for label in labels:
                         buf += ('\n{0}: {1}'.format(label, labels[label]))
+
+                    template_variables, template_variables_to_set = self.syscontainers.get_template_variables(self.image)
+                    buf += ("\n\nEnvironment variables with default value, but overridable with --set:")
+                    for variable in template_variables.keys():
+                        buf += ('\n{}: {}'.format(variable, template_variables.get(variable)))
+
+                    if template_variables_to_set:
+                        buf += ("\n\nEnvironment variables that has no default value, and must be set with --set:")
+                        for variable in template_variables_to_set.keys():
+                            buf += ('\n{}: {}'.format(variable, template_variables_to_set.get(variable)))
                     return buf
             else:
                 self._no_such_image()
