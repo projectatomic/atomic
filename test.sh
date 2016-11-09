@@ -90,7 +90,7 @@ make_docker_images () {
         fi
 
         # Copy help.sh into atomic-test-3
-        if [[ ${iname} = "atomic-test-3" ]]; then
+	if [ ${iname} = "atomic-test-3" -o ${iname} = "atomic-test-4" ]; then
             cp ./tests/test-images/help.sh ${WORK_DIR}
         fi
 

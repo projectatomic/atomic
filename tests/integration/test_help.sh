@@ -21,8 +21,11 @@ if [ -x /usr/bin/groff ]; then
     ${ATOMIC} help atomic-test-1 1>/dev/null
 fi
 
-# Test override label
+# Test override label - uppercase help
 ${ATOMIC} help atomic-test-3 1>/dev/null
+
+# Test override label - lowercase help
+${ATOMIC} help atomic-test-4 1>/dev/null
 
 rc=0
 ${ATOMIC} help centos:latest 1>/dev/null || rc=$?
@@ -31,4 +34,3 @@ if [[ ${rc} != 1 ]]; then
     echo "This test should result in a return code of 1"
     exit 1
 fi
-

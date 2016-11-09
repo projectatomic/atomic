@@ -32,7 +32,6 @@ class AtomicHelp(Atomic):
         self.docker_object = None
         self.is_container = True
         self.use_pager = True
-        self.alt_help_cmd = None
         self.image = None
         self.inspect = None
 
@@ -61,12 +60,11 @@ class AtomicHelp(Atomic):
             # its image
             self.image = self.inspect['Image']
 
-        # Check if an alternate help command is provided
-        labels = self._get_labels()
-        self.alt_help_cmd = None if len(labels) == 0 else labels.get('HELP')
+        # Check if an help command label is provided
+        help_cmd = self._get_args('HELP')
 
-        if self.alt_help_cmd is not None:
-            return self.alt_help()
+        if help_cmd:
+            return self.alt_help(help_cmd)
         else:
             return self.man_help(docker_id)
 
@@ -103,12 +101,12 @@ class AtomicHelp(Atomic):
         dm.unmount(path=mnt_path)
         return result
 
-    def alt_help(self):
+    def alt_help(self, help_cmd):
         """
         Returns help when the HELP LABEL override is being used.
         :return: None
         """
-        cmd = self.gen_cmd(self.alt_help_cmd.split(" "))
+        cmd = self.gen_cmd(help_cmd)
         cmd = self.sub_env_strings(cmd)
         self.display(cmd)
         return util.check_output(cmd, env=self.cmd_env())
