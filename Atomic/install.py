@@ -24,6 +24,7 @@ INSTALL_ARGS = ["run",
                 "-e", "CONFDIR=/host/etc/${NAME}",
                 "-e", "LOGDIR=/host/var/log/${NAME}",
                 "-e", "DATADIR=/host/var/lib/${NAME}",
+                "-e", "SYSTEMD_IGNORE_CHROOT=1", 
                 "--name", "${NAME}",
                 "${IMAGE}"]
 
