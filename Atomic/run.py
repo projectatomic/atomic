@@ -21,6 +21,7 @@ SPC_ARGS = ["run",
             "-e", "HOST=/host",
             "-e", "NAME=${NAME}",
             "-e", "IMAGE=${IMAGE}",
+            "-e", "SYSTEMD_IGNORE_CHROOT=1", 
             "--name", "${NAME}",
             "${IMAGE}"]
 
