@@ -5,7 +5,7 @@ from Atomic.syscontainers import SystemContainers
 class TestAtomicPull(unittest.TestCase):
     class Args():
         def __init__(self):
-            self.image = "docker:fedora"
+            self.image = "docker:centos"
             self.user = False
 
     def test_pull_as_privileged_user(self):
