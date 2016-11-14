@@ -184,7 +184,10 @@ class SystemContainers(object):
 
     def _check_oci_configuration_file(self, conf_path, remote=None):
         with open(conf_path, 'r') as conf:
-            configuration = json.loads(conf.read())
+            try:
+                configuration = json.loads(conf.read())
+            except ValueError:
+                raise ValueError("Invalid json in configuration file: {}.".format(conf_path))
         if not 'root' in configuration or \
            not 'readonly' in configuration['root'] or \
            not configuration['root']['readonly']:
@@ -400,7 +403,10 @@ class SystemContainers(object):
         manifest_file = os.path.join(exports, "manifest.json")
         if os.path.exists(manifest_file):
             with open(manifest_file, "r") as f:
-                manifest = json.loads(f.read())
+                try:
+                    manifest = json.loads(f.read())
+                except ValueError:
+                    raise ValueError("Invalid manifest.json file in image: {}.".format(img))
                 if "defaultValues" in manifest:
                     for key, val in manifest["defaultValues"].items():
                         if key not in values:
@@ -446,7 +452,10 @@ class SystemContainers(object):
 
         if remote_path:
             with open(destination_path, 'r') as config_file:
-                config = json.loads(config_file.read())
+                try:
+                    config = json.loads(config_file.read())
+                except ValueError:
+                    raise ValueError("Invalid config.json file in given remote location: {}.".format(destination_path))
                 config['root']['path'] = remote_rootfs
             with open(destination_path, 'w') as config_file:
                 config_file.write(json.dumps(config, indent=4))
@@ -671,7 +680,10 @@ class SystemContainers(object):
         if manifest_template:
             fd = manifest_template.get_fd()
             with os.fdopen(fd) as f:
-                data = json.loads(f.read())
+                try:
+                    data = json.loads(f.read())
+                except ValueError:
+                    raise ValueError("Invalid manifest.json file in image: {}.".format(image))
                 for variable in data['defaultValues']:
                     variables_with_default[variable] = data['defaultValues'][variable]
 
