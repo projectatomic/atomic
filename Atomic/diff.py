@@ -6,6 +6,9 @@ from filecmp import dircmp
 from . import util
 from . import mount
 from . import Atomic
+from Atomic.client import get_docker_client
+from docker.errors import NotFound
+
 
 def cli(subparser):
     # atomic diff
@@ -15,6 +18,8 @@ def cli(subparser):
     diffp.set_defaults(_class=Diff, func='diff_tty')
     diffp.add_argument("compares", nargs=2,
                        help=_("Container images to compare"))
+    diffp.add_argument("-m", "--metadata", default=False, action='store_true', dest='metadata',
+                       help=_("Compare images' metadata"))
     diffp.add_argument("--json", default=False, action='store_true',
                        help=_("output json"))
     diffp.add_argument("-n", "--no-files", default=False, action='store_true',
@@ -26,9 +31,13 @@ def cli(subparser):
     diffp.add_argument("-v", "--verbose", default=False, action='store_true',
                        help=_("Show verbose output, listing all RPMs"))
 
+
 class Diff(Atomic):
 
     def diff_tty(self):
+        if self.args.no_files and not self.args.metadata and not self.args.rpms:
+            raise ValueError("When repressing a file diff, you must choose to diff RPMs (-r) or metadata (-m)")
+
         diff_dict = self.diff()
         if self.args.json:
             util.output_json(diff_dict)
@@ -38,6 +47,8 @@ class Diff(Atomic):
         Allows you to 'diff' the RPMs between two different docker images|containers.
         :return: None
         '''
+        if self.args.debug:
+            util.write_out(str(self.args))
         helpers = DiffHelpers(self.args)
         images = self.args.compares
         # Check to make sure each input is valid
@@ -45,7 +56,6 @@ class Diff(Atomic):
             self.get_input_id(image)
 
         image_list = helpers.create_image_list(images)
-
         try:
             # Set up RPM classes and make sure each docker object
             # is RPM-based
@@ -64,6 +74,11 @@ class Diff(Atomic):
 
             if self.args.rpms:
                 helpers.output_rpms(rpm_image_list)
+
+            if self.args.metadata:
+                compare_meta = CompareMetaData(image_list)
+                compare_meta.compare()
+                helpers.output_metadata(image_list)
 
             # Clean up
             helpers.cleanup(image_list)
@@ -121,7 +136,7 @@ class DiffHelpers(object):
         """
         file_diff = DiffFS(image_list[0].chroot, image_list[1].chroot)
         for image in image_list:
-            self.json_out[image.name] = {'{}_only'.format(image.name): file_diff.get_only(image.chroot)}
+            self.json_out[image.name] = {'unique_files': file_diff.get_only(image.chroot)}
         self.json_out['files_differ'] = file_diff.common_diff
 
         if not self.args.json:
@@ -156,6 +171,21 @@ class DiffHelpers(object):
                     _tmp.update(rpm_json[image])
                     self.json_out[image] = _tmp
 
+    def output_metadata(self, image_list):
+        if not self.args.json:
+            for image in image_list:
+                if image.name not in self.json_out:
+                    self.json_out[image.name] = {}
+                self.json_out[image.name]['unique_metadata'] = image.metadata_results
+        else:
+            img_obj1, img_obj2 = (x for x in image_list)
+            if all([not img_obj1.metadata_results, not img_obj2.metadata_results]):
+                util.write_out("\n{} and {} have no differences in their metadata".format(img_obj1.name, img_obj2.name))
+            for image in image_list:
+                util.write_out("\nMetadata only in {}:".format(image.name))
+                util.output_json(image.metadata_results)
+
+
 class DiffObj(object):
     def __init__(self, docker_name):
         self.dm = mount.DockerMount(tempfile.mkdtemp(), mnt_mkdir=True)
@@ -166,6 +196,7 @@ class DiffObj(object):
             self.chroot = chroot
         else:
             self.chroot = self.root_path
+        self.metadata_results = None
 
     def remove(self):
         """
@@ -174,6 +205,17 @@ class DiffObj(object):
         :return: None
         """
         self.dm.unmount()
+
+    @property
+    def inspect_data(self):
+        d = get_docker_client()
+        try:
+            return d.inspect_image(self.name)
+        except NotFound:
+            try:
+                return d.inspect_container(self.name)
+            except NotFound:
+                raise ValueError("Unable to find container or image named '{}'".format(self.name))
 
 
 class RpmDiff(object):
@@ -305,7 +347,7 @@ class RpmPrint(object):
             return {
                 "release": image.release,
                 "all_rpms": image.rpms,
-                "exclusive_rpms": exclusive,
+                "unique_rpms": exclusive,
                 "common_rpms": common
             }
         l1_diff = sorted(list(set(self.i1.rpms) - set(self.i2.rpms)))
@@ -415,3 +457,111 @@ class DiffFS(object):
         if len(self.common_diff):
             util.write_out("\nCommon files that are different:")
             _print_diff(self.common_diff)
+
+
+class CompareMetaData(object):
+
+    def __init__(self, images):
+        self.img_obj1, self.img_obj2 = (x for x in images)
+        # Only two images can be in the list, so this OK
+        self.image1_metadata, self.image2_metadata = (x.inspect_data for x in images)
+        self.good_values = []
+
+    def walk_dict(self, image1, image2, parents=None):
+        if not parents:
+            parents = []
+        try:
+            if image1 == self.get_node_value(image2, parents):
+                self.good_values.append(parents)
+                return
+        except NoKey:
+            pass
+        for k, v in image1.items():
+            if isinstance(v, dict):
+                _parents = parents + [k]
+                self.walk_dict(v, image2, parents=_parents)
+            elif isinstance(v, list):
+                _parents = parents + [k]
+                self.walk_list(v, image2, _parents)
+            else:
+                try:
+                    image2_value = self.get_node_value(image2, parents + [k])
+                    if v == image2_value:
+                        # delete
+                        self.good_values.append(parents + [k])
+                except NoKey:
+                    pass
+
+    @staticmethod
+    def get_node_value(image, parents):
+        def _get_node(image, get_val):
+            try:
+                _ = iter(image)
+                if get_val in image:
+                    return image.get(get_val)
+            except TypeError:
+                pass
+
+            raise NoKey
+        node = image
+        for parent in parents:
+            node = _get_node(node, parent)
+        return node
+
+    @staticmethod
+    def set_node_value(image, parents, new_value):
+        last_key = parents[-1]
+        for key in parents:
+            if key == last_key:
+                if key in image:
+                    image[key] = new_value
+            else:
+                image = image.get(key)
+
+    @staticmethod
+    def del_node_value(parents, image):
+        last_key = parents[-1]
+        for key in parents:
+            if key == last_key:
+                if key in image:
+                    del image[key]
+            else:
+                image = image.get(key)
+
+    def walk_list(self, image1, image2, parents):
+        try:
+            image2 = self.get_node_value(image2, parents)
+            # Need to account for docker versions that insert a None|null
+            # instead of an empty list
+            if image1 is None:
+                image1 = []
+            if image2 is None:
+                image2 = []
+            # In docker inspects, not allowed to have dicts|lists inside lists
+            # In image1, not 2
+            image1_uniq = list(set(image1).difference(set(image2)))
+            # In image2, not 1
+            image2_uniq = list(set(image2).difference(set(image1)))
+            if not image1_uniq and not image2_uniq:
+                self.good_values.append(parents)
+        except NoKey:
+            pass
+
+    def compare(self):
+        image1 = self.image1_metadata
+        image2 = self.image2_metadata
+        self.walk_dict(self.image1_metadata, self.image2_metadata, parents=[])
+        self.walk_dict(self.image2_metadata, self.image1_metadata, parents=[])
+        for i in self.good_values:
+            if not i:
+                image1.clear()
+                image2.clear()
+                break
+            self.del_node_value(i, image1)
+            self.del_node_value(i, image2)
+        self.img_obj1.metadata_results = image1
+        self.img_obj2.metadata_results = image2
+
+
+class NoKey(Exception):
+    pass
