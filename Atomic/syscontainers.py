@@ -504,7 +504,7 @@ class SystemContainers(object):
         shutil.copyfile(unitfileout, os.path.join(destination, "%s.service" % name))
         if (tmpfiles_template):
             _write_template(unitfile, tmpfiles_template, values, tmpfilesout)
-            shutil.copyfile(unitfileout, os.path.join(destination, "tmpfiles-%s.conf" % name))
+            shutil.copyfile(tmpfilesout, os.path.join(destination, "tmpfiles-%s.conf" % name))
 
         sym = "%s/%s" % (self._get_system_checkout_path(), name)
         if os.path.exists(sym):
@@ -572,13 +572,17 @@ class SystemContainers(object):
             info = json.loads(info_file.read())
             self.args.remote = info['remote']
             if self.args.remote:
-                util.write_out("Updating a container with a remote rootfs. Only changes to config will be applied.")
+                util.write_out("%s a container with a remote rootfs. Only changes to config will be applied." % ("Rolling back" if self.args.rollback else "Updating"))
+
+        if self.args.rollback:
+            if self.args.setvalues is not None:
+                raise ValueError("Error: --set cannot be used when rolling back a container")
+            self.rollback(name)
+            return
 
         next_deployment = 0
         if os.path.realpath(path).endswith(".0"):
             next_deployment = 1
-        else:
-            next_deployment = 0
 
         with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
             info = json.loads(info_file.read())
@@ -599,6 +603,48 @@ class SystemContainers(object):
             shutil.rmtree("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment))
 
         self._checkout(repo, name, image, next_deployment, True, values, remote=self.args.remote)
+
+    def rollback(self, name):
+        path = os.path.join(self._get_system_checkout_path(), name)
+        destination = "%s.%d" % (path, (1 if os.path.realpath(path).endswith(".0") else 0))
+        if not os.path.exists(destination):
+            raise ValueError("Error: Cannot find a previous deployment to rollback located at %s" % destination)
+
+        was_service_active = self._is_service_active(name)
+        unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
+        unitfile = os.path.join(destination, "%s.service" % name)
+        tmpfiles = os.path.join(destination, "tmpfiles-%s.conf" % name)
+
+        if not os.path.exists(unitfile):
+            raise ValueError("Error: Cannot find systemd service file for previous version. "
+                             "The previous checkout at %s may be corrupted." % destination)
+
+        util.write_out("Rolling back container {} to the checkout at {}".format(name, destination))
+        if was_service_active:
+            self._systemctl_command("stop", name)
+
+        if os.path.exists(tmpfilesout):
+            try:
+                self._systemd_tmpfiles("--remove", tmpfilesout)
+            except subprocess.CalledProcessError:
+                pass
+            os.unlink(tmpfilesout)
+
+        if os.path.exists(unitfileout):
+            os.unlink(unitfileout)
+
+        shutil.copyfile(unitfile, unitfileout)
+        if (os.path.exists(tmpfiles)):
+            shutil.copyfile(tmpfiles, tmpfilesout)
+
+        os.unlink(path)
+        os.symlink(destination, path)
+        self._systemctl_command("daemon-reload")
+        if (os.path.exists(tmpfiles)):
+            self._systemd_tmpfiles("--create", tmpfilesout)
+
+        if was_service_active:
+            self._systemctl_command("start", name)
 
     def get_container_runtime_info(self, container):
 

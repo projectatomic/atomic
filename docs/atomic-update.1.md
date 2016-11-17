@@ -8,6 +8,7 @@ atomic-update - Pull latest Image from repository
 **atomic update**
 [**-f**|**--force**]
 [**-h**|**--help**]
+[**--rollback**]
 [**--set**=*NAME*=*VALUE*]
 [**--update**]
 IMAGE
@@ -23,6 +24,9 @@ continue to use the old image. Use --force to remove the container.
 
 **-h** **--help**
   Print usage statement
+
+**--rollback**
+  Rollback a system container to the previous deployment. Note that since only 2 deployments are saved, a double-rollback will cause the container to become the newest deployment again.
 
 **--set=NAME=VALUE**
   Set a value that is going to be used by a system container for its configuration and can be specified multiple times.  It is used only by --system.  OSTree is required for this feature to be available.

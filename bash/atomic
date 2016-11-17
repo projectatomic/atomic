@@ -524,7 +524,7 @@ _atomic_containers_trim() {
 _atomic_update() {
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "--force -f --set --container" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "--force -f --rollback --set --container" -- "$cur" ) )
 			;;
 		*)
 		    if test $_container == "0"; then

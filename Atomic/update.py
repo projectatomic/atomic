@@ -18,6 +18,12 @@ def cli(subparser):
                          action="store_true",
                          help=_("remove all containers based on this image"))
     if OSTREE_PRESENT:
+        updatep.add_argument("--rollback", dest="rollback",
+                             action="store_true", default=False,
+                             help=_("Rollback a system container to a previous "
+                                    "deployment. If a rollback has already happened, "
+                                    "this will cause the container to return to the "
+                                    "newer deployment."))
         updatep.add_argument("--set", dest="setvalues",
                              action='append',
                              help=_("Specify a variable in the VARIABLE=VALUE "

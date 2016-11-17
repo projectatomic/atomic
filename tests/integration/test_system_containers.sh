@@ -174,6 +174,13 @@ test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/tmpfiles-${NAME}.conf
 assert_matches ${SECRET} ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/config.json
 assert_matches 8082 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/config.json
 
+# Test that rollback works
+assert_matches 8082 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}/config.json
+${ATOMIC} update --rollback --container ${NAME}
+assert_matches 8081 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}/config.json
+${ATOMIC} update --rollback --container ${NAME}
+assert_matches 8082 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}/config.json
+
 # Test if a container with a remote rootfs can be installed/updated
 ${ATOMIC} --debug install --name=${NAME}-remote --rootfs=${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1 --set=RECEIVER=${SECRET}-remote --system oci:atomic-test-system
 systemctl start ${NAME}-remote
