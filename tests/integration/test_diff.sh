@@ -1,6 +1,7 @@
 #!/bin/bash -x
 set -euo pipefail
 IFS=$'\n\t'
+GOMTREE='/usr/bin/gomtree'
 
 # Test scripts run with PWD=tests/..
 
@@ -34,6 +35,9 @@ teardown () {
 # logic can be added to a "cleanup stack", by cascading function calls
 # within traps. See tests/integration/test_mount.sh for an example.
 trap teardown EXIT
+if [ ! -e ${GOMTREE} ]; then
+	exit 77
+fi
 
 setup
 

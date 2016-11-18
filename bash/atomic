@@ -554,6 +554,7 @@ _atomic_diff() {
 		--help
 		--json
 	--display
+	--keywords, -k
 	--metadata, -m
 	--names-only
 	--no-files -n

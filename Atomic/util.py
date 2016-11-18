@@ -509,7 +509,7 @@ def find_remote_image(client, image):
 def is_user_mode():
     return os.geteuid() != 0
 
-def generate_validation_manifest(img_rootfs=None, img_tar=None, keywords=""):
+def generate_validation_manifest(img_rootfs=None, img_tar=None, keywords="", debug=False):
     """
     Executes the gomtree validation manifest creation command
     :param img_rootfs: path to directory
@@ -525,14 +525,18 @@ def generate_validation_manifest(img_rootfs=None, img_tar=None, keywords=""):
         cmd = [GOMTREE_PATH,'-c','-T',img_tar]
     if keywords:
         cmd += ['-k',keywords]
+    if debug:
+        write_out(" ".join(cmd))
     return subp(cmd)
 
-def validate_manifest(spec, img_rootfs=None, img_tar=None, keywords=""):
+def validate_manifest(spec, img_rootfs=None, img_tar=None, keywords="", json_out=False, debug=False):
     """
     Executes the gomtree validation manife  st validation command
+    :param spec: path to spec file
     :param img_rootfs: path to directory
     :param img_tar: path to tar file (or tgz file)
     :param keywords: use only the keywords specified to validate the manifest
+    :param json_out: Return the validation in JSON form
     :return: output of gomtree validation manifest validation
     """
     if img_rootfs == None and img_tar == None:
@@ -543,6 +547,10 @@ def validate_manifest(spec, img_rootfs=None, img_tar=None, keywords=""):
         cmd = [GOMTREE_PATH,'-T',img_tar, '-f', spec]
     if keywords:
         cmd += ['-k',keywords]
+    if json_out:
+        cmd += ['-result-format', 'json']
+    if debug:
+        write_out(" ".join(cmd))
     return subp(cmd)
 
 # This is copied from the upstream python os.path.expandvars

@@ -2,13 +2,15 @@ import os
 import sys
 import rpm
 import tempfile
-from filecmp import dircmp
 from . import util
 from . import mount
 from . import Atomic
 from Atomic.client import get_docker_client
 from docker.errors import NotFound
+import json
 
+
+CHOICES=['all', 'link', 'nlink', 'mode', 'type', 'time', 'uid', 'gid', 'size', 'sha256digest']
 
 def cli(subparser):
     # atomic diff
@@ -22,6 +24,10 @@ def cli(subparser):
                        help=_("Compare images' metadata"))
     diffp.add_argument("--json", default=False, action='store_true',
                        help=_("output json"))
+    diffp.add_argument("-k", "--keywords", nargs='?',
+                       action='append',
+                       choices=CHOICES,
+                       help=_("Exclusive keywords to be used for file level comparision"))
     diffp.add_argument("-n", "--no-files", default=False, action='store_true',
                        help=_("Do not perform a file diff between the docker objects"))
     diffp.add_argument("--names-only", default=False,
@@ -49,13 +55,14 @@ class Diff(Atomic):
         '''
         if self.args.debug:
             util.write_out(str(self.args))
+
         helpers = DiffHelpers(self.args)
         images = self.args.compares
         # Check to make sure each input is valid
         for image in images:
             self.get_input_id(image)
 
-        image_list = helpers.create_image_list(images)
+        image_list = helpers.create_image_list(images, self.args)
         try:
             # Set up RPM classes and make sure each docker object
             # is RPM-based
@@ -109,7 +116,7 @@ class DiffHelpers(object):
             image.remove()
 
     @staticmethod
-    def create_image_list(images):
+    def create_image_list(images, args):
         """
         Instantiate each image into a class and then into
         image_list
@@ -119,7 +126,7 @@ class DiffHelpers(object):
         image_list = []
         for image in images:
             try:
-                image_list.append(DiffObj(image))
+                image_list.append(DiffObj(image, args))
             except mount.SelectionMatchError as e:
                 if len(image_list) > 0:
                     DiffHelpers.cleanup(image_list)
@@ -128,20 +135,23 @@ class DiffHelpers(object):
         return image_list
 
     def output_files(self, images, image_list):
-        """
-        Prints out the file differences when applicable
-        :param images:
-        :param image_list:
-        :return: None
-        """
-        file_diff = DiffFS(image_list[0].chroot, image_list[1].chroot)
+        img_left, img_right = (x for x in image_list)
+        foo = img_left.manifest_file_name
+        img_right.manifest_file_name = foo
+        results = img_right.validation_result
+
+        file_diff = DiffFS(image_list)
         for image in image_list:
             self.json_out[image.name] = {'unique_files': file_diff.get_only(image.chroot)}
+
         self.json_out['files_differ'] = file_diff.common_diff
 
         if not self.args.json:
             file_diff.print_results(images[0], images[1])
             util.write_out("\n")
+        # It might make sense to save the mtree results
+        # for the user with a switch
+        return results
 
     def output_rpms(self, rpm_image_list):
         """
@@ -187,7 +197,8 @@ class DiffHelpers(object):
 
 
 class DiffObj(object):
-    def __init__(self, docker_name):
+    def __init__(self, docker_name, args):
+        self.args = args
         self.dm = mount.DockerMount(tempfile.mkdtemp(), mnt_mkdir=True)
         self.name = docker_name
         self.root_path = self.dm.mount(self.name)
@@ -197,6 +208,8 @@ class DiffObj(object):
         else:
             self.chroot = self.root_path
         self.metadata_results = None
+        self._manifest_file_name = None
+        self._validation_results= None
 
     def remove(self):
         """
@@ -216,6 +229,54 @@ class DiffObj(object):
                 return d.inspect_container(self.name)
             except NotFound:
                 raise ValueError("Unable to find container or image named '{}'".format(self.name))
+
+    def generate_mtree(self):
+        keywords = self.args.keywords if 'all' not in self.args.keywords else CHOICES
+        rc, mtree_output, stderr = util.generate_validation_manifest(img_rootfs=self.chroot,
+                                                                     keywords=" ".join(keywords))
+        if rc != 0:
+            raise ValueError("Unable to generate manifest for {}. \nReason: {}\n".format(self.name, stderr))
+        mtree_file= tempfile.NamedTemporaryFile(mode="wb", delete=False)
+        if self.args.debug:
+            util.write_out("Saving mtree manifest as {}".format(mtree_file.name))
+        mtree_file.write(mtree_output)
+        mtree_file.close()
+        self._manifest_file_name = mtree_file.name
+
+    @property
+    def manifest_file_name(self):
+        if not self._manifest_file_name:
+            self.generate_mtree()
+        return self._manifest_file_name
+
+    @manifest_file_name.setter
+    def manifest_file_name(self, value):
+        self._manifest_file_name = value
+
+    @property
+    def validation_result(self):
+        if not self._validation_results:
+            self.validate()
+        return self._validation_results
+
+    def validate(self):
+        keywords = self.args.keywords if 'all' not in self.args.keywords else CHOICES
+        rc, results, stderr = util.validate_manifest(self._manifest_file_name, img_rootfs=self.chroot,
+                                                     keywords=" ".join(keywords), json_out=True)
+        if rc not in [0, 1]:
+            raise ValueError("Unable to validate manifest against {}. \nReason: {}\n".format(self.name, stderr))
+        self._validation_results = json.loads(results.decode('utf-8'))
+
+        if self.args.debug:
+            # if in debug, save the manifest validation results too
+            mtree_validate = tempfile.NamedTemporaryFile(mode="w", delete=False)
+            mtree_validate.write(json.dumps(self._validation_results))
+            mtree_validate.close()
+            util.write_out("Saving validation manifest as {}".format(mtree_validate.name))
+        else:
+            # Remove the manifest file
+            os.remove(self._manifest_file_name)
+
 
 
 class RpmDiff(object):
@@ -363,14 +424,29 @@ class DiffFS(object):
     """
     Primary class for doing a diff on two docker objects
     """
-    def __init__(self, chroot_left, chroot_right):
-        self.compare = dircmp(chroot_left, chroot_right)
+    def __init__(self, image_list):
+        #self.compare = dircmp(chroot_left, chroot_right)
+        self.img_left, self.img_right = (x for x in image_list)
         self.left = []
         self.right = []
         self.common_diff = []
-        self.chroot_left = chroot_left
-        self.chroot_right = chroot_right
-        self.delta(self.compare)
+        self.chroot_left = []
+        self.chroot_right =[]
+        self.parse_mtree_json()
+
+    def parse_mtree_json(self):
+        def extra(_result): #pylint: disable=unused-variable
+            self.right.append(_result['path'])
+
+        def missing(_result): #pylint: disable=unused-variable
+            self.left.append(_result['path'])
+
+        def modified(_result): #pylint: disable=unused-variable
+            self.common_diff.append({'path': _result['path'], 'reasons': sorted(key['name'] for key in _result['keys'])})
+
+        for result in self.img_right.validation_result:
+            func = eval(result['type']) #pylint: disable=eval-used
+            func(result)
 
     def get_only(self, _chroot):
         """
@@ -442,7 +518,10 @@ class DiffFS(object):
         """
         def _print_diff(file_list):
             for _file in file_list:
-                util.write_out("{0}{1}".format(5*" ", _file))
+                if isinstance(_file, dict):
+                    util.write_out("{0}{1} ({2})".format(5*" ", _file['path'], " ".join(_file['reasons'])))
+                else:
+                    util.write_out("{0}{1}".format(5*" ", _file))
 
         if all([len(self.left) == 0, len(self.right) == 0,
                 len(self.common_diff) == 0]):
@@ -455,7 +534,7 @@ class DiffFS(object):
             util.write_out("\nFiles only in {}:".format(right_docker_obj))
             _print_diff(self.right)
         if len(self.common_diff):
-            util.write_out("\nCommon files that are different:")
+            util.write_out("\nCommon files that are different: (reason)")
             _print_diff(self.common_diff)
 
 

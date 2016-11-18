@@ -25,6 +25,13 @@ but there are switches for comparing RPMs and metadata as well.
 **--json**
   Output in the form of JSON.
 
+**-k** **--keywords**
+  Use the following keywords for comparison of files.  You must select at least one but multiple can
+  be used as well. Keywords that are used for this option are exclusive, which means that any only those
+  keywords will be used.
+  
+  Keywords currently defined are: **all**, **link**, **nlink**, **mode**, **type**, **time**, **uid**, **gid**, **size**, **sha256digest**
+
 **-m** **--metadata**
   Show the differences in the metadata for the two images or containers.
   
@@ -41,6 +48,7 @@ but there are switches for comparing RPMs and metadata as well.
 **-v** **--verbose**
   Be verbose in showing the differences in RPMs.  The default will only show the differences in RPMs, whereas
   with **verbose** it will show all the RPMS in each object.
+  
 
 
 # EXAMPLES
@@ -63,6 +71,10 @@ Compare the files and RPMs (without versions) in images 'foo1' and 'foo2' and ou
 Compare only the metadata between images 'foo1' and 'foo2'
 
     atomic diff -m foo1 foo2
+    
+Compare files by 'sha256digests' and 'time' between images 'foo1' and 'foo2'
+
+    atomic diff foo1 foo2 --keywords sha256digest time
 
 # HISTORY
 Updated by Brent Baude (bbaude at redhat dot com) Nov 2016
