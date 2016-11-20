@@ -836,8 +836,10 @@ class OSTreeMount(Mount):
                     dirpath = os.path.join(root,d)
                     if os.path.islink(dirpath):
                         os.unlink(dirpath)
-                    else:
+                    elif os.path.isdir(dirpath):
                         shutil.rmtree(dirpath)
+                    else:
+                        os.remove(dirpath)
         else:
             Mount.unmount_path(self.mountpoint)
 
@@ -846,8 +848,10 @@ class OSTreeMount(Mount):
                 path = os.path.join(self.mountpoint, i)
                 if os.path.islink(path):
                     os.unlink(path)
-                else:
+                elif os.path.isdir(path):
                     shutil.rmtree(path)
+                else:
+                    os.remove(path)
         try:
             removexattr(self.mountpoint, "user.atomic.type") # pylint: disable=not-callable
         except IOError:

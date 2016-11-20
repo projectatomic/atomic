@@ -236,7 +236,6 @@ mv ${ATOMIC_OSTREE_REPO}/refs/heads/ociimage/atomic-test-secret_3Alatest ${ATOMI
 ${ATOMIC} info atomic-test-secret-ostree > version.out
 assert_matches ${SECRET} version.out
 ${ATOMIC} --assumeyes images delete -f atomic-test-secret-ostree
-${ATOMIC} --assumeyes images delete -f busybox
 ${ATOMIC} pull --storage ostree docker.io/busybox
 ${ATOMIC} pull --storage ostree busybox
 ${ATOMIC} pull --storage ostree busybox > second.pull.out
