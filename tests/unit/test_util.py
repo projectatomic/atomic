@@ -27,9 +27,14 @@ class TestAtomicUtil(unittest.TestCase):
         self.assertTrue(len(matches) == 0)
 
     def test_default_container_context(self):
-        exp = ('system_u:object_r:svirt_sandbox_file_t:s0' if
-               selinux.is_selinux_enabled() else '')
-        self.assertEqual(exp, util.default_container_context())
+        default = util.default_container_context()
+        if selinux.is_selinux_enabled():
+            # newer policies use container_file_t
+            self.assertTrue(default in
+                            ['system_u:object_r:container_file_t:s0',
+                             'system_u:object_r:svirt_sandbox_file_t:s0'])
+        else:
+            self.assertEqual(default, '')
 
     def test_check_call(self):
         exception_raised = False
