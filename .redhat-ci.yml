@@ -21,6 +21,15 @@ timeout: 30m
 inherit: true
 
 host:
+  distro: fedora/25/atomic
+
+context: fedora/25/atomic
+
+---
+
+inherit: true
+
+host:
   distro: centos/7/atomic/continuous
 
 context: centos/7/atomic
@@ -30,9 +39,9 @@ context: centos/7/atomic
 inherit: true
 
 host:
-  distro: fedora/24/cloud
+  distro: fedora/25/cloud
 
-context: fedora/24/cloud
+context: fedora/25/cloud
 
 # we install atomic to get the runtime reqs but of course,
 # its files will get overwritten by the containerized build
