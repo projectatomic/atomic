@@ -42,29 +42,29 @@ class OSTreeBackend(Backend):
 
     def _make_image(self, image, info):
         name = info['Id']
-        image = Image(image, backend=self, remote=False)
-        image.name = name
-        image.config = info
-        image.backend = self
-        image.id = name
-        image.registry = None
-        image.repo = None
-        image.image = name
-        image.tag = name
-        image.repotags = info['RepoTags']
-        image.created = info['Created']
-        image.size = None
-        image.original_structure = info
-        image.input_name = info['Id']
-        image.deep = True
-        image.labels = info['Labels']
-        image.version = image.get_label("Version")
-        image.release = image.get_label("Release")
-        image.digest = None
-        image.os = image.get_label("Os")
-        image.arch = image.get_label("Arch")
-        image.graph_driver = None
-        return image
+        img_obj = Image(image, backend=self, remote=False)
+        img_obj.input_name = image
+        img_obj.name = image
+        img_obj.config = info
+        img_obj.backend = self
+        img_obj.id = name
+        img_obj.registry = None
+        img_obj.repo = None
+        img_obj.image = name
+        img_obj.tag = name
+        img_obj.repotags = info['RepoTags']
+        img_obj.created = info['Created']
+        img_obj.size = None
+        img_obj.original_structure = info
+        img_obj.deep = True
+        img_obj.labels = info['Labels']
+        img_obj.version = img_obj.get_label("Version")
+        img_obj.release = img_obj.get_label("Release")
+        img_obj.digest = None
+        img_obj.os = img_obj.get_label("Os")
+        img_obj.arch = img_obj.get_label("Arch")
+        img_obj.graph_driver = None
+        return img_obj
 
     def has_image(self, img):
         if self.syscontainers.has_image(img):
@@ -137,3 +137,6 @@ class OSTreeBackend(Backend):
             layer = self._get_layer(layer.parent)
             layers.append(layer)
         return layers
+
+    def get_dangling_images(self):
+        return []

@@ -2,7 +2,7 @@ from docker import errors
 
 import Atomic.util as util
 from Atomic.backends.backend import Backend
-from Atomic.client import get_docker_client
+from Atomic.client import AtomicDocker
 from Atomic.objects.image import Image
 from Atomic.objects.container import Container
 from requests import exceptions
@@ -18,7 +18,7 @@ class DockerBackend(Backend):
     @property
     def d(self):
         if not self._d:
-            self._d = get_docker_client()
+            self._d = AtomicDocker()
             self._ping()
             return self._d
         return self._d
@@ -82,6 +82,7 @@ class DockerBackend(Backend):
             img_obj.repotags = img_struct['RepoTags']
             img_obj.created = img_struct['Created']
             img_obj.size = img_struct['Size']
+            img_obj.virtual_size = img_struct['VirtualSize']
 
         if deep:
             img_obj.deep = True
@@ -240,10 +241,13 @@ class DockerBackend(Backend):
                                 util.is_insecure_registry(self.d.info()['RegistryConfig'], util.strip_port(registry)))
 
     def prune(self):
-        for iid in self._get_images(get_all=True, quiet=True, filters={"dangling": True}):
+        for iid in self.get_dangling_images():
             self.delete_image(iid, force=True)
             util.write_out("Removed dangling Image {}".format(iid))
         return 0
+
+    def get_dangling_images(self):
+        return self._get_images(get_all=True, quiet=True, filters={"dangling": True})
 
     def install(self, image, name):
         pass
@@ -257,15 +261,15 @@ class DockerBackend(Backend):
     def version(self, image):
         return self.get_layers(image)
 
-    def _get_layer(self, image):
+    def get_layer(self, image):
         return Layer(self.inspect_image(image))
 
     def get_layers(self, image):
         layers = []
-        layer = self._get_layer(image)
+        layer = self.get_layer(image)
         layers.append(layer)
         while layer.parent:
-            layer = self._get_layer(layer.parent)
+            layer = self.get_layer(layer.parent)
             layers.append(layer)
         return layers
 

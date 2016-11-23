@@ -252,7 +252,7 @@ ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
 assert_matches busybox refs
 ${ATOMIC} --assumeyes images delete -f --storage ostree docker.io/busybox
 
-BUSYBOX_IMAGE_ID=$(${ATOMIC} images list -f type=system | grep busybox | awk '{print $3}')
+BUSYBOX_IMAGE_ID=$(${ATOMIC} images list -f type=ostree | grep busybox | awk '{print $3}')
 ${ATOMIC} --assumeyes images delete -f ${BUSYBOX_IMAGE_ID}
 
 ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
@@ -270,8 +270,8 @@ image_digest=$(ostree --repo=${ATOMIC_OSTREE_REPO} show --print-metadata-key=doc
 ${ATOMIC} images list > images.out
 grep "busybox.*$image_digest" images.out
 
-${ATOMIC} images list -f type=system > images.out
-${ATOMIC} images list -f type=system --all > images.all.out
+${ATOMIC} images list -f type=ostree > images.out
+${ATOMIC} images list -f type=ostree --all > images.all.out
 test $(wc -l < images.out) -lt $(wc -l < images.all.out)
 assert_matches '<none>' images.all.out
 assert_not_matches '<none>' images.out
@@ -280,19 +280,15 @@ ${ATOMIC} --assumeyes images delete -f --storage ostree busybox
 ${ATOMIC} images prune
 
 # Test there are still intermediate layers left after prune
-${ATOMIC} images list -f type=system --all > images.all.out
+${ATOMIC} images list -f type=ostree --all > images.all.out
 assert_matches "<none>" images.all.out
-
-# Check to see if deleting a duplicate image will error
-OUTPUT=$(! ${ATOMIC} --assumeyes images delete -f atomic-test-system 2>&1)
-grep "Failed to delete Image atomic-test-system: has duplicate naming" <<< $OUTPUT
 
 # Now delete from ostree
 ${ATOMIC} --assumeyes images delete --storage ostree atomic-test-system
 ${ATOMIC} images prune
 
 # Test there are not intermediate layers left layers now
-${ATOMIC} images list -f type=system --all > images.all.out
+${ATOMIC} images list -f type=ostree --all > images.all.out
 assert_not_matches "<none>" images.all.out
 
 # Verify there are no branches left in the repository as well

@@ -1,5 +1,8 @@
 from Atomic.util import Decompose, output_json
 from Atomic.discovery import RegistryInspect
+from Atomic.objects.layer import Layer
+import math
+import time
 
 
 class Image(object):
@@ -20,6 +23,7 @@ class Image(object):
         self._backend = backend
         self.input_name = input_name
         self.deep = False
+        self._virtual_size = None
 
         # Deeper
         self.version = None
@@ -32,7 +36,15 @@ class Image(object):
         self.graph_driver = None
         self.config = {}
         self._fq_name = None
+
+        self._used = False
+        self._vulnerable =  False
+
+        self._template_variables_set = None
+        self._template_variables_unset = None
+
         self._instantiate()
+
 
     def __gt__(self, other):
         """
@@ -85,6 +97,10 @@ class Image(object):
         if self._fq_name:
             return self._fq_name
 
+        if self.backend.backend == 'ostree':
+            self._fq_name = self.input_name
+            return self._fq_name
+
         if self.fully_qualified:
             img = self.registry
             if self.repo:
@@ -95,7 +111,6 @@ class Image(object):
             return img
 
         if not self.registry:
-            print(self.image)
             ri = RegistryInspect(registry=self.registry, repo=self.repo, image=self.image,
                                  tag=self.tag, orig_input=self.input_name)
             self._fq_name = ri.find_image_on_registry()
@@ -150,3 +165,107 @@ class Image(object):
         if self.release:
             _version += "-{}".format(self.release)
         return _version
+
+    @property
+    def is_dangling(self):
+        if self.id in self.backend.get_dangling_images():
+            return True
+        return False
+
+    @property
+    def virtual_size(self):
+        size = self._virtual_size or self.size
+        if size:
+            return convert_size(self._virtual_size)
+        return ""
+
+    @virtual_size.setter
+    def virtual_size(self, value):
+        self._virtual_size = value
+
+    @property
+    def split_repotags(self):
+        _repotags = []
+        if not self.repotags:
+            return [('<none>', '<none')]
+        for _repotag in self.repotags:
+            if ':' in _repotag:
+                repo, tag = _repotag.rsplit(':', 1)
+            else:
+                repo = tag = ""
+            _repotags.append((repo, tag))
+        return _repotags
+
+    @property
+    def used(self):
+        return self._used
+
+    @used.setter
+    def used(self, value):
+        assert isinstance(value, bool)
+        self._used = value
+
+    @property
+    def vulnerable(self):
+        return self._vulnerable
+
+    @vulnerable.setter
+    def vulnerable(self, value):
+        assert isinstance(value, bool)
+        self._vulnerable = value
+
+    @property
+    def short_id(self):
+        return self.id[:12]
+
+    @property
+    def timestamp(self):
+        return time.strftime("%F %H:%M", time.localtime(self.created))
+
+    @property
+    def type(self):
+        return self.backend.backend
+
+    def _get_template_info(self):
+        self._template_variables_set, self._template_variables_unset = self.backend.syscontainers.\
+            get_template_variables(self.image)
+
+    @property
+    def template_variables_set(self):
+        if self.backend.backend != 'ostree':
+            return self._template_variables_set
+
+        if not self._template_variables_set and not self.template_variables_unset:
+            self._get_template_info()
+
+        return self._template_variables_set
+
+    @property
+    def template_variables_unset(self):
+        if self.backend.backend != ' ostree':
+            return self._template_variables_unset
+
+        if not self._template_variables_set and not self.template_variables_unset:
+            self._get_template_info()
+        return self._template_variables_unset
+
+    @property
+    def layers(self):
+        layer_objects = []
+        # Create the first layer
+        layer = Layer(self)
+        layer_objects.append(layer)
+        while layer.parent:
+            layer = self.backend.get_layer(layer.parent)
+            layer_objects.append(layer)
+        return layer_objects
+
+def convert_size(size):
+    if size > 0:
+        size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+        i = int(math.floor(math.log(size, 1000)))
+        p = math.pow(1000, i)
+        s = round(size/p, 2) # pylint: disable=round-builtin,old-division
+        if s > 0:
+            return '%s %s' % (s, size_name[i])
+    return '0B'

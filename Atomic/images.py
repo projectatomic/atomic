@@ -6,13 +6,14 @@ from Atomic import help as Help
 from Atomic.mount import Mount
 from Atomic.delete import Delete
 import os
-import sys
-import json
 import math
 import shutil
 import tempfile
-import time
 import argparse
+from Atomic import backendutils
+
+ATOMIC_CONFIG = util.get_atomic_config()
+storage = ATOMIC_CONFIG.get('default_storage', "docker")
 
 def convert_size(size):
     if size > 0:
@@ -48,7 +49,7 @@ def cli(subparser):
                              action="store_true",
                              help=_("Delete image from remote repository"))
 
-    delete_parser.add_argument("--storage", default="", dest="storage",
+    delete_parser.add_argument("--storage", default=storage, dest="storage",
                                help=_("Specify the storage from which to delete the image from. "
                                       "If not specified and there are images with the same name in "
                                       "different storages, you will be prompted to specify."))
@@ -109,6 +110,7 @@ def cli(subparser):
 class Images(Atomic):
     def __init__(self):
         super(Images, self).__init__()
+        self.be_utils = backendutils.BackendUtils()
 
     def display_all_image_info(self):
         def get_col_lengths(_images):
@@ -118,106 +120,80 @@ class Images(Atomic):
             :return: a set with len of repository and tag
             If there are no images, return 1, 1
             '''
-            repo_tags = [[i["repo"], i["tag"]] for i in _images]
+            repo_tags = [y for x in _images if x.repotags for y in x.split_repotags]
+
             if repo_tags:
                 return max([len(x[0]) for x in repo_tags]) + 2,\
                        max([len(x[1]) for x in repo_tags]) + 2
             else:
                 return 1, 1
 
-        _images = self.images()
+        if self.args.debug:
+            util.write_out(str(self.args))
+
+        _images = self._get_images()
+
         if self.args.json:
-            json.dump(_images, sys.stdout)
+            util.output_json(self.return_json(_images))
+            return 0
+
+        if len(_images) == 0:
             return
 
-        if len(_images) >= 0:
-            _max_repo, _max_tag = get_col_lengths(_images)
-            if self.args.truncate:
-                _max_id = 14
+        _max_repo, _max_tag = get_col_lengths(_images)
+
+        if self.args.truncate:
+            _max_id = 14
+        else:
+            _max_id = 65
+        col_out = "{0:2} {1:" + str(_max_repo) + "} {2:" + str(_max_tag) + \
+                  "} {3:" + str(_max_id) + "} {4:18} {5:14} {6:10}"
+
+        if self.args.heading and not self.args.quiet:
+            util.write_out(col_out.format(" ",
+                                          "REPOSITORY",
+                                          "TAG",
+                                          "IMAGE ID",
+                                          "CREATED",
+                                          "VIRTUAL SIZE",
+                                          "TYPE"))
+        for image in _images:
+            if self.args.filter:
+                if not self._filter_include_image(image):
+                    continue
+            if self.args.quiet:
+                util.write_out(image.id)
+
             else:
-                _max_id = 65
+                indicator = ""
+                if image.is_dangling:
+                    indicator += "*"
+                elif image.used:
+                    indicator += ">"
+                if image.vulnerable:
+                    space = " " if len(indicator) < 1 else ""
+                    if util.is_python2:
+                        indicator = indicator + self.skull + space
+                    else:
+                        indicator = indicator + str(self.skull, "utf-8") + space
+                repo, tag = image.split_repotags[0]
+                _id = image.short_id if self.args.truncate else image.id
+                util.write_out(col_out.format(indicator, repo or "<none>", tag or "<none>", _id, image.timestamp,
+                                              image.virtual_size, image.backend.backend))
+        util.write_out("")
+        return
 
-            col_out = "{0:2} {1:" + str(_max_repo) + "} {2:" + str(_max_tag) + \
-                      "} {3:" + str(_max_id) + "} {4:18} {5:14} {6:10}"
+    def _get_images(self):
+        _images = self.be_utils.get_images(get_all=self.args.all)
 
-            if self.args.heading and not self.args.quiet:
-                util.write_out(col_out.format(" ",
-                                              "REPOSITORY",
-                                              "TAG",
-                                              "IMAGE ID",
-                                              "CREATED",
-                                              "VIRTUAL SIZE",
-                                              "TYPE"))
+        self._mark_used(_images)
+        self._mark_vulnerable(_images)
 
-            for image in _images:
-                if self.args.filter:
-                    image_info = {"repo" : image['repo'], "tag" : image['tag'], "id" : image['id'],
-                                  "created" : image['created'], "size" : image['virtual_size'], "type" : image['type'],
-                                  "dangling": "{}".format(image['is_dangling'])}
-                    if not self._filter_include_image(image_info):
-                        continue
-                if self.args.quiet:
-                    util.write_out(image['id'])
-
-                else:
-                    indicator = ""
-                    if image["is_dangling"]:
-                        indicator += "*"
-                    elif image["used_image"]:
-                        indicator += ">"
-                    if image["vulnerable"]:
-                        space = " " if len(indicator) < 1 else ""
-                        if util.is_python2:
-                            indicator = indicator + self.skull + space
-                        else:
-                            indicator = indicator + str(self.skull, "utf-8") + space
-                    util.write_out(col_out.format(indicator, image['repo'], image['tag'], image['id'], image['created'], image['virtual_size'], image['type']))
-            util.write_out("")
-            return
+        return _images
 
     def images(self):
-        _images = self.get_images(get_all=self.args.all)
-        all_image_info = []
-        if len(_images) >= 0:
-            vuln_ids = self.get_vulnerable_ids()
-            all_vuln_info = json.loads(self.get_all_vulnerable_info())
-            used_image_ids = [x['ImageID'] for x in self.get_containers()]
-            for image in _images:
-                image_dict = dict()
-                if not image["RepoTags"]:
-                    continue
-                if ':' in image["RepoTags"][0]:
-                    repo, tag = image["RepoTags"][0].rsplit(":", 1)
-                else:
-                    repo, tag = image["RepoTags"][0], ""
-                if "Created" in image:
-                    created = time.strftime("%F %H:%M", time.localtime(image["Created"]))
-                else:
-                    created = ""
-                if "VirtualSize" in image:
-                    virtual_size = convert_size(image["VirtualSize"])
-                else:
-                    virtual_size = ""
+        return self.return_json(self._get_images())
 
-                image_dict["is_dangling"] = self.is_dangling(repo)
-                image_dict["used_image"] = image["Id"] in used_image_ids
-                image_dict["vulnerable"] = image["Id"] in vuln_ids
-                image_id = image["Id"][:12] if self.args.truncate else image["Id"]
-                image_type = image['ImageType']
-                image_dict["repo"] = repo
-                image_dict["tag"] = tag
-                image_dict["id"] = image_id
-                image_dict["created"] = created
-                image_dict["virtual_size"] = virtual_size
-                image_dict["type"] = image_type
-                image_dict["image_id"] = image["ImageId"]
-                if image_dict["vulnerable"]:
-                    image_dict["vuln_info"] = all_vuln_info[image["Id"]]
-                else:
-                    image_dict["vuln_info"] = dict()
-
-                all_image_info.append(image_dict)
-            return all_image_info
 
     def generate_validation_manifest(self):
         """
@@ -254,10 +230,13 @@ class Images(Atomic):
                 f.write(r.stdout)
             shutil.rmtree(tmpdir)
 
-    def _filter_include_image(self, image_info):
+    def _filter_include_image(self, image_obj):
         filterables = ["repo", "tag", "id", "created", "size", "type", "dangling"]
         for i in self.args.filter:
-            var, value = str(i).split("=")
+            try:
+                var, value = str(i).split("=")
+            except ValueError:
+                raise ValueError("The filter {} is not formatted correctly.  It should be VAR=VALUE".format(i))
             var = var.lower()
             if var == "repository":
                 var = "repo"
@@ -267,8 +246,39 @@ class Images(Atomic):
 
             if var not in filterables: # Default to allowing all images through for non-existing filterable
                 continue
-
-            if value not in image_info[var].lower():
+            if getattr(image_obj, var, None) != value:
                 return False
 
         return True
+
+    def _mark_used(self, images):
+        assert isinstance(images, list)
+        all_containers = [x.id for x in self.be_utils.get_containers()]
+        for image in images:
+            if image.id in all_containers:
+                image.used = True
+
+    def _mark_vulnerable(self, images):
+        assert isinstance(images, list)
+        vulnerable_uuids = self.get_vulnerable_ids()
+        for image in images:
+            if image.id in vulnerable_uuids:
+                image.vulnerable = True
+
+    def return_json(self, images):
+        all_image_info = []
+        all_vuln_info = self.get_all_vulnerable_info()
+        keys = ['is_dangling', 'used', 'vulnerable', 'id', 'type', 'created', 'virtual_size']
+        for img_obj in images:
+            if not img_obj.repotags:
+                continue
+            img_dict = dict()
+            img_dict['repo'], img_dict['tag'] = img_obj.split_repotags[0]
+            for key in keys:
+                img_dict[key] = getattr(img_obj, key, None)
+            img_dict['vuln_info'] = \
+                dict() if not img_obj.vulnerable else all_vuln_info.get(img_obj.id, None) # pylint: disable=no-member
+            all_image_info.append(img_dict)
+        return all_image_info
+
+

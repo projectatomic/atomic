@@ -216,7 +216,7 @@ class atomic_dbus(slip.dbus.service.Object):
         args = self.Args()
         args.all=True
         images.set_args(args)
-        i = images.images()
+        i = images.display_all_image_info()
         return json.dumps(i)
 
     # atomic containers section
@@ -566,7 +566,7 @@ class atomic_dbus(slip.dbus.service.Object):
         args.image = image
         args.recurse = recurse
         info.set_args(args)
-        return json.dumps(info.get_version())
+        return json.dumps(info.dbus_version())
 
 if __name__ == "__main__":
     mainloop = GObject.MainLoop()

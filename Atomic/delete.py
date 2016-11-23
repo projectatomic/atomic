@@ -1,8 +1,7 @@
 from . import Atomic
 from . import util
-from docker.errors import NotFound
-from docker.errors import APIError
 import sys
+from Atomic.backendutils import BackendUtils
 
 class Delete(Atomic):
     def __init__(self):
@@ -13,34 +12,62 @@ class Delete(Atomic):
         Mark given image(s) for deletion from registry
         :return: 0 if all images marked for deletion, otherwise 2 on any failure
         """
+        if self.args.debug:
+            util.write_out(str(self.args))
+
+        beu = BackendUtils()
+        # Ensure the input values match up first
+        delete_objects = []
+
+        # We need to decide on new returns for dbus because we now check image
+        # validity prior to executing the delete.  If there is going to be a
+        # failure, it will be here.
+        #
+        # The failure here is basically that it couldnt verify/find the image.
+
+        for image in self.args.delete_targets:
+            be, img_obj = beu.get_backend_and_image(image, str_preferred_backend=self.args.storage)
+            delete_objects.append((be, img_obj))
+
+        if self.args.remote:
+            return self._delete_remote(self.args.delete_targets)
+
+        max_img_name = max([len(x.input_name) for _, x in delete_objects]) + 2
 
         if not self.args.assumeyes:
-            confirm = util.input("Do you wish to delete {}? (y/N) ".format(self.args.delete_targets))
+            util.write_out("Do you wish to delete the following images?\n")
+            two_col = "   {0:" + str(max_img_name) + "} {1}"
+            util.write_out(two_col.format("IMAGE", "STORAGE"))
+            for del_obj in delete_objects:
+                be, img_obj = del_obj
+                util.write_out(two_col.format(img_obj.input_name, be.backend))
+            confirm = util.input("\nConfirm (y/N) ")
             confirm = confirm.strip().lower()
             if not confirm in ['y', 'yes']:
                 util.write_err("User aborted delete operation for {}".format(self.args.delete_targets))
                 sys.exit(2)
 
-        if self.args.remote:
-            results = self._delete_remote(self.args.delete_targets)
-        else:
-            results = self._delete_local(self.args.delete_targets, self.args.force)
-        return results
+        # Perform the delete
+        for del_obj in delete_objects:
+            be, img_obj = del_obj
+            be.delete_image(img_obj.input_name, force=self.args.force)
+
+        # We need to return something here for dbus
+        return
 
     def prune_images(self):
         """
         Remove dangling images from registry
         :return: 0 if all images deleted or no dangling images found
         """
-        self.syscontainers.prune_ostree_images()
 
-        results = self.d.images(filters={"dangling":True}, quiet=True)
-        if len(results) == 0:
-            return 0
+        if self.args.debug:
+            util.write_out(str(self.args))
 
-        for img in results:
-            self.d.remove_image(img, force=True)
-            util.write_out("Removed dangling Image {}".format(img))
+        for backend in BackendUtils.BACKENDS:
+            be = backend()
+            be.prune()
+
         return 0
 
     def _delete_remote(self, targets):
@@ -67,44 +94,4 @@ class Delete(Atomic):
                 results = 2
         return results
 
-    def _delete_local(self, targets, force=False):
-        results = 0
-        for target in targets:
-            if not self.args.storage:
-                if self.is_duplicate_image(target):
-                    util.write_err("Failed to delete Image {}: has duplicate naming; please specify "
-                                   "--storage to delete from a specific storage.".format(target))
-                    results = 2
-                else:
-                    if self.syscontainers.has_image(target):
-                        self.syscontainers.delete_image(target)
-                    else:
-                        try:
-                            self.d.remove_image(target, force=force)
-                        except NotFound as e:
-                            util.write_err("Failed to delete Image {}: {}".format(target, e))
-                            results = 2
-                        except APIError as e:
-                            util.write_err("Failed operation for delete Image {}: {}".format(target, e))
-                            results = 2
 
-            elif self.args.storage.lower() == "ostree":
-                if not self.syscontainers.has_image(target):
-                    util.write_err("Failed to delete Image {}: does not exist in ostree.".format(target))
-                self.syscontainers.delete_image(target)
-
-            elif self.args.storage.lower() == "docker":
-                try:
-                    self.d.remove_image(target, force=force)
-                except NotFound as e:
-                    util.write_err("Failed to delete Image {}: {}".format(target, e))
-                    results = 2
-                except APIError as e:
-                    util.write_err("Failed operation for delete Image {}: {}".format(target, e))
-                    results = 2
-
-            else:
-                util.write_err("{} is not a valid storage".format(self.args.storage))
-                results = 2
-
-        return results

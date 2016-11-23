@@ -261,7 +261,7 @@ class RegistryInspect():
                 self.rc = RegistryConnection(debug=self.debug)
             self._setup_rc()
             try:
-                util.write_out("Trying {}".format(self.assemble_fqdn(include_tag=True)))
+                self.assemble_fqdn(include_tag=True)
                 self.ping()
             except RegistryInspectError as e:
                 util.write_out(str(e))

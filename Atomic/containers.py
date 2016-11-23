@@ -175,7 +175,7 @@ class Containers(Atomic):
     def ps(self):
         all_containers = []
         vuln_ids = self.get_vulnerable_ids()
-        all_vuln_info = json.loads(self.get_all_vulnerable_info())
+        all_vuln_info = self.get_all_vulnerable_info()
 
         # Collect the system containers
         for i in self.syscontainers.get_containers():

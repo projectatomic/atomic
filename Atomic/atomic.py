@@ -625,7 +625,7 @@ class Atomic(object):
         as a JSON string so it can then be parsed appropriately.
         """
         try:
-            return open(os.path.join(self.results, "scan_summary.json"), "r").read()
+            return json.loads(open(os.path.join(self.results, "scan_summary.json"), "r").read())
         except IOError:
             return "{}"
 

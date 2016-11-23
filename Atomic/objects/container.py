@@ -26,7 +26,7 @@ class Container(object):
 
     def _setup_common(self):
         # Items common to backends can go here.
-        print("")
+        pass
 
     def dump(self):
         # Helper function to dump out known variables in pretty-print style

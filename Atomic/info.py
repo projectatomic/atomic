@@ -6,9 +6,18 @@ try:
 except ImportError:
     from atomic import Atomic  # pylint: disable=relative-import
 
-from .atomic import AtomicError
-from docker.errors import NotFound
-import requests.exceptions
+from Atomic.util import get_atomic_config
+from Atomic.backendutils import BackendUtils
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+
+from contextlib import closing
+from Atomic.discovery import RegistryInspectError
+
+ATOMIC_CONFIG = get_atomic_config()
+storage = ATOMIC_CONFIG.get('default_storage', "docker")
 
 def cli(subparser, hidden=False):
     # atomic info
@@ -25,7 +34,7 @@ def cli(subparser, hidden=False):
     infop.add_argument("--remote", dest="force",
                        action='store_true', default=False,
                        help=_('ignore local images and only scan registries'))
-    infop.add_argument("--storage", default="", dest="storage",
+    infop.add_argument("--storage", default=storage, dest="storage",
                        help=_("Specify the storage of the image. "
                               "If not specified and there are images with the same name in "
                               "different storages, you will be prompted to specify."))
@@ -44,183 +53,81 @@ def cli_version(subparser, hidden=False):
     versionp.add_argument("-r", "--recurse", default=False, dest="recurse",
                           action="store_true",
                           help=_("recurse through all layers"))
-    versionp.add_argument("--storage", default="", dest="storage",
+    versionp.add_argument("--storage", default=storage, dest="storage",
                           help=_("Specify the storage of the image. "
                                  "If not specified and there are images with the same name in "
                                  "different storages, you will be prompted to specify."))
-    versionp.set_defaults(_class=Info, func='print_version')
+    versionp.set_defaults(_class=Info, func='version')
     versionp.add_argument("image", help=_("container image"))
 
 
 class Info(Atomic):
     def __init__(self):
         super(Info, self).__init__()
+        self.beu = BackendUtils()
 
     def version(self):
-        if not self.args.storage:
-            if self.is_duplicate_image(self.image):
-                raise ValueError("Found more than one Image with name {}; "
-                                 "please specify with --storage.".format(self.image))
-            else:
-                if self.syscontainers.has_image(self.image):
-                    return self.syscontainers.version(self.image)
-                try:
-                    self.d.inspect_image(self.image)
-                except (NotFound, requests.exceptions.ConnectionError):
-                    self._no_such_image()
+        layer_objects = self.get_layer_objects()
+        max_version_len = max([len(x.long_version) for x in layer_objects])
+        max_version_len = max_version_len if max_version_len > 9 else 9
+        max_img_len = len(max([y for x in layer_objects for y in x.repotags], key=len)) + 9
+        max_img_len = max_img_len if max_img_len > 12 else 12
+        col_out = "{0:" + str(max_img_len) + "} {1:" + str(max_version_len) + "} {2:10}"
+        util.write_out(col_out.format("IMAGE NAME", "VERSION", "IMAGE ID"))
+        for layer in layer_objects:
+            for int_img_name in range(len(layer.repotags)):
+                version = layer.long_version if int_img_name < 1 else ""
+                iid = layer.id[:12] if int_img_name < 1 else ""
+                space = "" if int_img_name < 1 else "  Tag: "
+                util.write_out(col_out.format(space + layer.repotags[int_img_name], version, iid))
 
-        elif self.args.storage.lower() == "ostree":
-            if self.syscontainers.has_image(self.image):
-                return self.syscontainers.version(self.image)
-            self._no_such_image()
+    def get_layer_objects(self):
+        _, img_obj = self.beu.get_backend_and_image(self.image, str_preferred_backend=self.args.storage)
+        return img_obj.layers
 
-        elif self.args.storage.lower() == "docker":
-            try:
-                self.d.inspect_image(self.image)
-            except (NotFound, requests.exceptions.ConnectionError):
-                self._no_such_image()
-
-        else:
-            raise ValueError("{} is not a valid storage".format(self.args.storage))
-
-        if self.args.recurse:
-            return self.get_layers()
-        else:
-            return [self._get_layer(self.image)]
-
-    def get_version(self):
+    def dbus_version(self):
+        layer_objects = self.get_layer_objects()
         versions = []
-        for layer in self.version():
-            version = "None"
-            if "Version" in layer and layer["Version"] != '':
-                version = layer["Version"]
-            versions.append({"Image": layer['RepoTags'], "Version": version, "iid": layer['Id']})
-        return versions
+        for layer in layer_objects:
+            versions.append({"Image": layer.repotags, "Version": layer.long_version, "iid": layer.id})
 
     def info_tty(self):
+        if self.args.debug:
+            util.write_out(str(self.args))
         util.write_out(self.info())
 
     def info(self):
         """
         Retrieve and print all LABEL information for a given image.
         """
-        buf = ""
 
-        def _no_label():
-            return ""
-        if not self.args.storage:
-            if self.is_duplicate_image(self.image):
-                raise ValueError("Found more than one Image with name {}; "
-                                 "please specify with --storage.".format(self.image))
+        if self.args.storage == 'ostree' and self.args.force:
+            # Ostree and remote combos are illegal
+            raise ValueError("The --remote option cannot be used with the 'ostree' storage option.")
 
-            if self.syscontainers.has_image(self.image):
-                if not self.args.force:
-                    buf += ("Image Name: {}".format(self.image))
-                    manifest = self.syscontainers.inspect_system_image(self.image)
-                    labels = manifest["Labels"]
-                    for label in labels:
-                        buf += ('\n{0}: {1}'.format(label, labels[label]))
-
-                    template_variables, template_variables_to_set = self.syscontainers.get_template_variables(self.image)
-                    buf += ("\n\nEnvironment variables with default value, but overridable with --set:")
-                    for variable in template_variables.keys():
-                        buf += ('\n{}: {}'.format(variable, template_variables.get(variable)))
-
-                    if template_variables_to_set:
-                        buf += ("\n\nEnvironment variables that has no default value, and must be set with --set:")
-                        for variable in template_variables_to_set.keys():
-                            buf += ('\n{}: {}'.format(variable, template_variables_to_set.get(variable)))
-                    return buf
-            # Check if the input is an image id associated with more than one
-            # repotag.  If so, error out.
-            else:
-                try:
-                    iid = self._is_image(self.image)
-                    self.image = self.get_fq_name(self._inspect_image(iid))
-                except AtomicError:
-                    if self.args.force:
-                        self.image = util.find_remote_image(self.d, self.image)
-                    if self.image is None:
-                        self._no_such_image()
-
-        elif self.args.storage.lower() == "ostree":
-            if self.syscontainers.has_image(self.image):
-                if not self.args.force:
-                    buf += ("Image Name: {}".format(self.image))
-                    manifest = self.syscontainers.inspect_system_image(self.image)
-                    labels = manifest["Labels"]
-                    for label in labels:
-                        buf += ('\n{0}: {1}'.format(label, labels[label]))
-
-                    template_variables, template_variables_to_set = self.syscontainers.get_template_variables(self.image)
-                    buf += ("\n\nEnvironment variables with default value, but overridable with --set:")
-                    for variable in template_variables.keys():
-                        buf += ('\n{}: {}'.format(variable, template_variables.get(variable)))
-
-                    if template_variables_to_set:
-                        buf += ("\n\nEnvironment variables that has no default value, and must be set with --set:")
-                        for variable in template_variables_to_set.keys():
-                            buf += ('\n{}: {}'.format(variable, template_variables_to_set.get(variable)))
-                    return buf
-            else:
-                self._no_such_image()
-
-        elif self.args.storage.lower() == "docker":
-            if self.is_iid():
-                self.get_fq_name(self._inspect_image())
-            # The input is not an image id
-            else:
-                try:
-                    iid = self._is_image(self.image)
-                    self.image = self.get_fq_name(self._inspect_image(iid))
-                except AtomicError:
-                    if self.args.force:
-                        self.image = util.find_remote_image(self.d, self.image)
-                    if self.image is None:
-                        self._no_such_image()
-
+        if self.args.force:
+            # The user wants information on a remote image
+            be = self.beu.get_backend_from_string(self.args.storage)
+            img_obj = be.make_remote_image(self.image)
         else:
-            raise ValueError("{} is not a valid storage".format(self.args.storage))
+            # The image is local
+            be, img_obj = self.beu.get_backend_and_image(self.image, str_preferred_backend=self.args.storage)
 
-        buf += ("Image Name: {}".format(self.image))
-        inspection = None
-        if not self.args.force:
-            inspection = self._inspect_image(self.image)
-            # No such image locally, but fall back to remote
-        if inspection is None:
-            # Shut up pylint in case we're on a machine with upstream
-            # docker-py, which lacks the remote keyword arg.
-            # pylint: disable=unexpected-keyword-arg
-            inspection = util.skopeo_inspect("docker://" + self.image)
-            # image does not exist on any configured registry
-        if 'Config' in inspection and 'Labels' in inspection['Config']:
-            labels = inspection['Config']['Labels']
-        elif 'Labels' in inspection:
-            labels = inspection['Labels']
-        else:
-            _no_label()
+        with closing(StringIO()) as buf:
+            try:
+                info_name = img_obj.fq_name
+            except RegistryInspectError:
+                info_name = img_obj.input_name
+            buf.write("Image Name: {}\n".format(info_name))
+            buf.writelines(sorted(["{}: {}\n".format(k, v) for k,v in list(img_obj.labels.items())]))
+            if img_obj.template_variables_set:
+                buf.write("\n\nTemplate variables with default value, but overridable with --set:\n")
+                buf.writelines(["{}: {}\n".format(k, v) for k,v in
+                                list(sorted(img_obj.template_variables_set.items()))])
+            if img_obj.template_variables_unset:
+                buf.write("\n\nTemplate variables that has no default value, and must be set with --set:\n")
+                buf.writelines(["{}: {}\n".format(k, v) for k,v in
+                                list(sorted(img_obj.template_variables_unset.items()))])
+            return buf.getvalue()
 
-        if labels is not None and len(labels) is not 0:
-            for label in labels:
-                buf += ('\n{0}: {1}'.format(label, labels[label]))
-        else:
-            _no_label()
-        return buf
-
-    def print_version(self):
-        versions = self.get_version()
-        max_version_len = len(max([x['Version'] for x in versions], key=len)) + 2
-        max_version_len = max_version_len if max_version_len > 9 else 9
-        max_img_len = len(max([y for x in versions for y in x['Image']], key=len)) + 9
-        max_img_len = max_img_len if max_img_len > 12 else 12
-        col_out = "{0:" + str(max_img_len) + "} {1:" + str(max_version_len) + "} {2:10}"
-        util.write_out("")
-        util.write_out(col_out.format("IMAGE NAME", "VERSION", "IMAGE ID"))
-        for layer in versions:
-            for int_img_name in range(len(layer['Image'])):
-                version = layer['Version'] if int_img_name < 1 else ""
-                iid = layer['iid'][:12] if int_img_name < 1 else ""
-                space = "" if int_img_name < 1 else "  Tag: "
-                util.write_out(col_out.format(space + layer['Image'][int_img_name], version, iid))
-        util.write_out("")
 

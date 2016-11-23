@@ -822,3 +822,4 @@ class Decompose(object):
     @property
     def all(self):
         return self._registry, self._repo, self._image, self._tag, self._digest
+

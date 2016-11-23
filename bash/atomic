@@ -97,7 +97,7 @@ __atomic_image_repos_and_tags() {
 }
 
 __atomic_system_containers_images() {
-	local images="$(atomic images list --no-trunc -f type=system |
+	local images="$(atomic images list --no-trunc -f type=ostree|
 			awk 'NR>1 { if ($1 == ">" || $1 == "*") print $2; else print $1; }')"
 	COMPREPLY+=( $(compgen -W "$images" -- "$cur") )
 }
