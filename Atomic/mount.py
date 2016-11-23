@@ -705,6 +705,15 @@ class DockerMount(Mount):
         Mount.unmount_path(mountpoint)
         self._cleanup_container(self.d.inspect_container(cid))
 
+    def _clean_temp_container_by_path(self, path):
+        """
+        Do not remove this method.  It is used by openscap.
+        """
+        short_cid = os.path.basename(path)
+        if not self.live:
+            self.d.remove_container(short_cid)
+        self._clean_tmp_image()
+        
 def getxattrfuncs():
     # Python 3 has support for extended attributes in the os module, while
     # Python 2 needs the xattr library.  Detect if any is available.
