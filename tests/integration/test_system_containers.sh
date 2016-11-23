@@ -250,7 +250,7 @@ assert_not_matches "Pulling layer" second.pull.out
 
 ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
 assert_matches busybox refs
-${ATOMIC} --assumeyes images delete -f docker.io/busybox
+${ATOMIC} --assumeyes images delete -f --storage ostree docker.io/busybox
 
 BUSYBOX_IMAGE_ID=$(${ATOMIC} images list -f type=system | grep busybox | awk '{print $3}')
 ${ATOMIC} --assumeyes images delete -f ${BUSYBOX_IMAGE_ID}
@@ -263,7 +263,7 @@ fi
 ${ATOMIC} pull --storage ostree busybox
 ostree --repo=${ATOMIC_OSTREE_REPO} refs | grep busybox
 
-${ATOMIC} verify busybox > verify.out
+${ATOMIC} verify --storage ostree busybox > verify.out
 assert_not_matches "contains images or layers that have updates" verify.out
 
 image_digest=$(ostree --repo=${ATOMIC_OSTREE_REPO} show --print-metadata-key=docker.manifest ociimage/busybox_3Alatest | sed -e"s|.*Digest\": \"sha256:\([a-z0-9]\+\).*|\1|" | head -c 12)
@@ -276,7 +276,7 @@ test $(wc -l < images.out) -lt $(wc -l < images.all.out)
 assert_matches '<none>' images.all.out
 assert_not_matches '<none>' images.out
 
-${ATOMIC} --assumeyes images delete -f busybox
+${ATOMIC} --assumeyes images delete -f --storage ostree busybox
 ${ATOMIC} images prune
 
 # Test there are still intermediate layers left after prune
