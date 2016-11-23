@@ -35,12 +35,15 @@ HOME = os.path.expanduser("~")
 
 ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
 ATOMIC_VAR = '/var/lib/containers/atomic'
+ATOMIC_USR = '/usr/lib/containers/atomic'
 ATOMIC_VAR_USER = "%s/.containers/atomic" % HOME
 OSTREE_OCIIMAGE_PREFIX = "ociimage/"
 SYSTEMD_UNIT_FILES_DEST = "/etc/systemd/system"
 SYSTEMD_UNIT_FILES_DEST_USER = "%s/.config/systemd/user" % HOME
 SYSTEMD_TMPFILES_DEST = "/etc/tmpfiles.d"
 SYSTEMD_TMPFILES_DEST_USER = "%s/.containers/tmpfiles" % HOME
+SYSTEMD_UNIT_FILES_DEST_PREFIX = "%s/usr/lib/systemd/system"
+SYSTEMD_TMPFILES_DEST_PREFIX = "%s/usr/lib/tmpfiles.d"
 SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE = """
 [Unit]
 Description=$NAME
@@ -199,7 +202,7 @@ class SystemContainers(object):
 
         return self._checkout(repo, name, image, 0, False, values=values, remote=self.args.remote)
 
-    def _check_oci_configuration_file(self, conf_path, remote=None):
+    def _check_oci_configuration_file(self, conf_path, remote=None, include_all=False):
         with open(conf_path, 'r') as conf:
             try:
                 configuration = json.loads(conf.read())
@@ -223,7 +226,7 @@ class SystemContainers(object):
                     continue
                 if "source" in mount and "bind" in mount["type"]:
                     source = mount["source"]
-                    if not os.path.exists(source):
+                    if include_all or not os.path.exists(source):
                         missing_source_paths.append(source)
         return missing_source_paths
 
@@ -262,13 +265,17 @@ class SystemContainers(object):
             runc_commands = ["run", "kill"]
         return ["%s %s '%s'" % (util.RUNC_PATH, command, name) for command in runc_commands]
 
-    def _get_systemd_destination_files(self, name):
+    def _get_systemd_destination_files(self, name, prefix=None):
         if self.user:
             unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST_USER, "%s.service" % name)
             tmpfilesout = os.path.join(SYSTEMD_TMPFILES_DEST_USER, "%s.conf" % name)
         else:
-            unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
-            tmpfilesout = os.path.join(SYSTEMD_TMPFILES_DEST, "%s.conf" % name)
+            if prefix:
+                unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST_PREFIX % prefix, "%s.service" % name)
+                tmpfilesout = os.path.join(SYSTEMD_TMPFILES_DEST_PREFIX % prefix, "%s.conf" % name)
+            else:
+                unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
+                tmpfilesout = os.path.join(SYSTEMD_TMPFILES_DEST, "%s.conf" % name)
         return unitfileout, tmpfilesout
 
     def _resolve_remote_path(self, remote_path):
@@ -280,9 +287,9 @@ class SystemContainers(object):
             raise ValueError("The container's rootfs is set to remote, but the remote rootfs does not exist")
         return real_path
 
-    def _checkout(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False, remote=None):
+    def _checkout(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False, remote=None, prefix=None):
         destination = destination or "%s/%s.%d" % (self._get_system_checkout_path(), name, deployment)
-        unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
+        unitfileout, tmpfilesout = self._get_systemd_destination_files(name, prefix)
 
         if not upgrade:
             for f in [unitfileout, tmpfilesout]:
@@ -290,7 +297,7 @@ class SystemContainers(object):
                     raise ValueError("The file %s already exists." % f)
 
         try:
-            return self._do_checkout(repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote)
+            return self._do_checkout(repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix)
         except (ValueError, OSError) as e:
             try:
                 if not extract_only and not upgrade:
@@ -352,7 +359,7 @@ class SystemContainers(object):
 
         return [get_image(i) for i in matches]
 
-    def _do_checkout(self, repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote):
+    def _do_checkout(self, repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix=None):
         if not values:
             values = {}
 
@@ -469,7 +476,11 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         if "UUID" not in values:
             values["UUID"] = str(uuid.uuid4())
-        values["DESTDIR"] = destination
+        if prefix:
+            values["DESTDIR"] = os.path.join("/", os.path.relpath(destination, prefix))
+        else:
+            values["DESTDIR"] = destination
+
         values["NAME"] = name
         values["EXEC_START"], values["EXEC_STOP"] = self._generate_systemd_startstop_directives(name)
         values["HOST_UID"] = os.getuid()
@@ -524,7 +535,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 except subprocess.CalledProcessError:
                     pass
 
-        missing_bind_paths = self._check_oci_configuration_file(destination_path, remote_path)
+        missing_bind_paths = self._check_oci_configuration_file(destination_path, remote_path, True)
 
         image_manifest = self._image_manifest(repo, rev)
         image_id = rev
@@ -554,24 +565,28 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             tmpfiles_template = SystemContainers._generate_tmpfiles_data(missing_bind_paths, values["STATE_DIRECTORY"])
 
         _write_template(unitfile, systemd_template, values, unitfileout)
-        shutil.copyfile(unitfileout, os.path.join(destination, "%s.service" % name))
+        shutil.copyfile(unitfileout, os.path.join(prefix, destination, "%s.service" % name))
         if (tmpfiles_template):
             _write_template(unitfile, tmpfiles_template, values, tmpfilesout)
-            shutil.copyfile(tmpfilesout, os.path.join(destination, "tmpfiles-%s.conf" % name))
+            shutil.copyfile(tmpfilesout, os.path.join(prefix, destination, "tmpfiles-%s.conf" % name))
 
-        sym = "%s/%s" % (self._get_system_checkout_path(), name)
-        if os.path.exists(sym):
-            os.unlink(sym)
-        os.symlink(destination, sym)
+        if not prefix:
+            sym = "%s/%s" % (self._get_system_checkout_path(), name)
+            if os.path.exists(sym):
+                os.unlink(sym)
+            os.symlink(destination, sym)
 
-        self._systemctl_command("daemon-reload")
-        if (tmpfiles_template):
-            self._systemd_tmpfiles("--create", tmpfilesout)
+            self._systemctl_command("daemon-reload")
+            if (tmpfiles_template):
+                self._systemd_tmpfiles("--create", tmpfilesout)
 
-        if not upgrade:
-            self._systemctl_command("enable", name)
-        elif was_service_active:
-            self._systemctl_command("start", name)
+            if not upgrade:
+                self._systemctl_command("enable", name)
+            elif was_service_active:
+                self._systemctl_command("start", name)
+
+    def _get_preinstalled_containers_path(self):
+        return ATOMIC_USR
 
     def _get_system_checkout_path(self):
         if os.environ.get("ATOMIC_OSTREE_CHECKOUT_PATH"):
@@ -616,6 +631,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         return None
 
     def update_container(self, name, setvalues=None, rebase=None):
+        if self._is_preinstalled_container(name):
+            raise ValueError("Cannot update a preinstalled container")
+
         repo = self._get_ostree_repo()
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
@@ -716,9 +734,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             # The container is newly created or stopped, and can be started with 'systemctl start'
             return {'status' : "inactive"}
 
-    def get_containers(self, containers=None):
-        checkouts = self._get_system_checkout_path()
-        if not os.path.exists(checkouts):
+    def _get_containers_at(self, checkouts, are_preinstalled, containers=None):
+        if not checkouts or not os.path.exists(checkouts):
             return []
         ret = []
         if containers is None:
@@ -727,7 +744,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             if x[0] == ".":
                 continue
             fullpath = os.path.join(checkouts, x)
-            if not os.path.islink(fullpath):
+            if not os.path.exists(fullpath):
+                continue
+            if fullpath.endswith(".0") or fullpath.endswith(".1"):
                 continue
 
             with open(os.path.join(fullpath, "info"), "r") as info_file:
@@ -742,9 +761,14 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
             runtime = "bwrap-oci" if self.user else "runc"
             container = {'Image' : image, 'ImageID' : revision, 'Id' : x, 'Created' : created, 'Names' : [x],
-                         'Command' : command, 'Type' : 'system', 'Runtime' : runtime}
+                         'Command' : command, 'Type' : 'system', 'Runtime' : runtime, "Preinstalled" : are_preinstalled}
             ret.append(container)
         return ret
+
+    def get_containers(self, containers=None):
+        checkouts = self._get_system_checkout_path()
+        preinstalled = self._get_preinstalled_containers_path()
+        return self._get_containers_at(checkouts, False, containers) + self._get_containers_at(preinstalled, True, containers)
 
     def get_template_variables(self, image):
         repo = self._get_ostree_repo()
@@ -944,12 +968,26 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         path = "%s/%s" % (self._get_system_checkout_path(), name)
         if os.path.exists(path):
             return path
-        else:
-            return None
+
+        path = "%s/%s" % (self._get_preinstalled_containers_path(), name)
+        if os.path.exists(path):
+            return path
+
+        return None
+
+    def _is_preinstalled_container(self, name):
+        path = "%s/%s" % (self._get_system_checkout_path(), name)
+        if os.path.exists(path):
+            return False
+
+        path = "%s/%s" % (self._get_preinstalled_containers_path(), name)
+        return os.path.exists(path)
 
     def uninstall(self, name):
-        unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
+        if self._is_preinstalled_container(name):
+            raise ValueError("Cannot uninstall a preinstalled container")
 
+        unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
         try:
             self._systemctl_command("stop", name)
         except subprocess.CalledProcessError:
