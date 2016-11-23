@@ -62,6 +62,9 @@ def cli(subparser):
         system_xor_user.add_argument("--system", dest="system",
                                      action='store_true', default=False,
                                      help=_('install a system container'))
+        installp.add_argument("---generate-rpm", dest="generate_rpm",
+                              action='store_true', default=False,
+                              help=_('generate an rpm instead of installing the container'))
         installp.add_argument("--rootfs", dest="remote",
                               help=_("choose an existing exploded container/image to use "
                                      "its rootfs as a remote, read-only rootfs for the "

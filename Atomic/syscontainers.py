@@ -44,6 +44,7 @@ SYSTEMD_TMPFILES_DEST = "/etc/tmpfiles.d"
 SYSTEMD_TMPFILES_DEST_USER = "%s/.containers/tmpfiles" % HOME
 SYSTEMD_UNIT_FILES_DEST_PREFIX = "%s/usr/lib/systemd/system"
 SYSTEMD_TMPFILES_DEST_PREFIX = "%s/usr/lib/tmpfiles.d"
+RPM_NAME_PREFIX = "atomic-container"
 SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE = """
 [Unit]
 Description=$NAME
@@ -187,6 +188,11 @@ class SystemContainers(object):
 
         if self.args.system and self.user:
             raise ValueError("Only root can use --system")
+
+        if self.args.generate_rpm:
+            if not self.args.system:
+                raise ValueError("Only --system can generate rpms")
+            return self.generate_rpm(repo, name, image)
 
         image = self._pull_image_to_ostree(repo, image, False)
 
@@ -476,11 +482,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         if "UUID" not in values:
             values["UUID"] = str(uuid.uuid4())
-        if prefix:
-            values["DESTDIR"] = os.path.join("/", os.path.relpath(destination, prefix))
-        else:
-            values["DESTDIR"] = destination
-
+        values["DESTDIR"] = os.path.join("/", os.path.relpath(destination, prefix)) if prefix else destination
         values["NAME"] = name
         values["EXEC_START"], values["EXEC_STOP"] = self._generate_systemd_startstop_directives(name)
         values["HOST_UID"] = os.getuid()
@@ -570,20 +572,22 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             _write_template(unitfile, tmpfiles_template, values, tmpfilesout)
             shutil.copyfile(tmpfilesout, os.path.join(prefix, destination, "tmpfiles-%s.conf" % name))
 
-        if not prefix:
-            sym = "%s/%s" % (self._get_system_checkout_path(), name)
-            if os.path.exists(sym):
-                os.unlink(sym)
-            os.symlink(destination, sym)
+        if prefix:
+            return
 
-            self._systemctl_command("daemon-reload")
-            if (tmpfiles_template):
-                self._systemd_tmpfiles("--create", tmpfilesout)
+        sym = "%s/%s" % (self._get_system_checkout_path(), name)
+        if os.path.exists(sym):
+            os.unlink(sym)
+        os.symlink(destination, sym)
 
-            if not upgrade:
-                self._systemctl_command("enable", name)
-            elif was_service_active:
-                self._systemctl_command("start", name)
+        self._systemctl_command("daemon-reload")
+        if (tmpfiles_template):
+            self._systemd_tmpfiles("--create", tmpfilesout)
+
+        if not upgrade:
+            self._systemctl_command("enable", name)
+        elif was_service_active:
+            self._systemctl_command("start", name)
 
     def _get_preinstalled_containers_path(self):
         return ATOMIC_USR
@@ -904,7 +908,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
     def _is_service_active(self, name):
         try:
-            return self._systemctl_command("is-active", name, quiet=True).replace("\n", "") == "active"
+            ret = self._systemctl_command("is-active", name, quiet=True)
+            return ret and ret.replace("\n", "") == "active"
         except subprocess.CalledProcessError:
             return False
 
@@ -1442,3 +1447,81 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         it.init_commit(repo, repo.load_commit(current_rev)[1], OSTree.RepoCommitTraverseFlags.REPO_COMMIT_TRAVERSE_FLAG_NONE)
         traverse(it)
         return ret
+
+    def generate_rpm(self, repo, name, image):
+        image_inspect = self.inspect_system_image(image)
+        temp_dir = tempfile.mkdtemp()
+        rpm_content = os.path.join(temp_dir, "rpmroot")
+        rootfs = os.path.join(rpm_content, "usr/lib/containers/atomic", name)
+        os.makedirs(rootfs)
+        try:
+            spec_file = os.path.join(temp_dir, "container.spec")
+            self._checkout(repo, name, image, 0, False, destination=rootfs, prefix=rpm_content)
+
+            if self.display:
+                return
+
+            labels = {k.lower() : v for k, v in image_inspect.get('Labels', {})}
+            summary = labels.get('summary', name)
+            version = labels.get("version", "1.0")
+            release = labels.get("release", "1.0")
+            license_ = labels.get("license", "GPLv2")
+            url = labels.get("url")
+            source0 = labels.get("source0")
+            requires = labels.get("requires")
+            provides = labels.get("provides")
+            conflicts = labels.get("conflicts")
+            description = labels.get("description")
+
+            self._generate_spec_file(spec_file, rpm_content, name, summary, license_, version=version, release=release,
+                                     url=url, source0=source0, requires=requires, provides=provides, conflicts=conflicts,
+                                     description=description)
+
+            cwd = os.getcwd()
+            cmd = ["rpmbuild", "--noclean", "-bb", spec_file,
+                   "--define", "_sourcedir %s" % temp_dir,
+                   "--define", "_specdir %s" % temp_dir,
+                   "--define", "_builddir %s" % temp_dir,
+                   "--define", "_srcrpmdir %s" % cwd,
+                   "--define", "_rpmdir %s" % cwd,
+                   "--build-in-place",
+                   "--buildroot=%s" % rpm_content]
+            util.write_out(" ".join(cmd))
+            if not self.display:
+                util.check_call(cmd)
+            return False
+        finally:
+            shutil.rmtree(temp_dir)
+
+    def _generate_spec_file(self, out, destdir, name, summary, license_, version="1.0", release="1", url=None,
+                            source0=None, requires=None, conflicts=None, provides=None, description=None):
+        spec = "%global __requires_exclude_from ^.*$\n"
+        spec = spec + "%global __provides_exclude_from ^.*$\n"
+
+        fields = {"Name" : "%s-%s" % (RPM_NAME_PREFIX, name), "Version" : version, "Release" : release, "Summary" : summary,
+                  "License" : license_, "URL" : url, "Source0" : source0, "Requires" : requires,
+                  "Provides" : provides, "Conflicts" : conflicts}
+        for k, v in fields.items():
+            if v is not None:
+                spec = spec + "%s:\t%s\n" % (k, v)
+
+        spec = spec + "\n%description\n"
+        if description:
+            spec = spec + "%s\n" % description
+
+        spec = spec + "\n%files\n"
+        for root, _, files in os.walk(os.path.join(destdir, "etc")):
+            rel_path = os.path.relpath(root, destdir)
+            for f in files:
+                spec += "%config \"%s\"\n" % os.path.join("/", rel_path, f)
+
+        spec += "/usr/lib/containers/atomic/%s\n" % name
+        for root, _, files in os.walk(os.path.join(destdir, "usr/lib/systemd/system")):
+            for f in files:
+                spec = spec + "/usr/lib/systemd/system/%s\n" % f
+        for root, _, files in os.walk(os.path.join(destdir, "usr/lib/tmpfiles.d")):
+            for f in files:
+                spec = spec + "/usr/lib/tmpfiles.d/%s\n" % f
+
+        with open(out, "w") as f:
+            f.write(spec)
