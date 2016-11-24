@@ -29,6 +29,8 @@ from Atomic.trust import Trust
 from Atomic.uninstall import Uninstall
 from Atomic.verify import Verify
 
+DBUS_NAME_FLAG_DO_NOT_QUEUE = 4
+DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER = 1
 
 class atomic_dbus(slip.dbus.service.Object):
     default_polkit_auth_required = "org.atomic.readwrite"
@@ -570,7 +572,10 @@ if __name__ == "__main__":
     mainloop = GObject.MainLoop()
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
     system_bus = dbus.SystemBus()
-    busname = dbus.service.BusName("org.atomic", system_bus)
-    atomic_object = atomic_dbus(system_bus, "/org/atomic/object")
-    slip.dbus.service.set_mainloop(mainloop)
-    mainloop.run()
+
+    if (system_bus.request_name("org.atomic", DBUS_NAME_FLAG_DO_NOT_QUEUE) == DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER):
+        atomic_object = atomic_dbus(system_bus, "/org/atomic/object")
+        slip.dbus.service.set_mainloop(mainloop)
+        mainloop.run()
+    else:
+        print("Another process owns the 'org.atomic' D-Bus name. Exiting.")
