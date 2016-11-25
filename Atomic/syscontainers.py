@@ -485,6 +485,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         # 2) What the user sets explictly as --set
         # 3) Values for DESTDIR and NAME
         manifest_file = os.path.join(exports, "manifest.json")
+        installed_files_template = []
         if os.path.exists(manifest_file):
             with open(manifest_file, "r") as f:
                 try:
@@ -495,6 +496,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                     for key, val in manifest["defaultValues"].items():
                         if key not in values:
                             values[key] = val
+                if "installedFilesTemplate" in manifest:
+                    installed_files_template = manifest["installedFilesTemplate"]
 
         if "UUID" not in values:
             values["UUID"] = str(uuid.uuid4())
@@ -548,16 +551,22 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             image_manifest = json.loads(image_manifest)
             image_id = SystemContainers._get_image_id_from_manifest(image_manifest) or image_id
 
-        with open(os.path.join(destination, "info"), 'w') as info_file:
-            info = {"image" : img,
-                    "revision" : image_id,
-                    "ostree-commit": rev,
-                    'created' : calendar.timegm(time.gmtime()),
-                    "values" : values,
-                    "installed-files": new_installed_files,
-                    "remote" : remote}
-            info_file.write(json.dumps(info, indent=4))
-            info_file.write("\n")
+        try:
+            with open(os.path.join(destination, "info"), 'w') as info_file:
+                info = {"image" : img,
+                        "revision" : image_id,
+                        "ostree-commit": rev,
+                        'created' : calendar.timegm(time.gmtime()),
+                        "values" : values,
+                        "installed-files": new_installed_files,
+                        "installed-files-template": installedFilesTemplate,
+                        "remote" : remote}
+                info_file.write(json.dumps(info, indent=4))
+                info_file.write("\n")
+        except (NameError, AttributeError, OSError) as e:
+            for i in new_installed_files:
+                os.remove(os.path.join(prefix or "/", os.path.relpath(i, "/")))
+            raise e
 
         if os.path.exists(unitfile):
             with open(unitfile, 'r') as infile:
@@ -640,7 +649,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         return None
 
     @staticmethod
-    def _rm_add_files_to_host(old_installed_files, exports, prefix="/"):
+    def _rm_add_files_to_host(old_installed_files, exports, prefix="/", files_template=None, values=None):
         # if any file was installed on the host delete it
         if old_installed_files:
             for i in old_installed_files:
@@ -652,6 +661,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if not exports:
             return []
 
+        templates_set = set(files_template or [])
+
         # if there is a directory hostfs/ under exports, copy these files to the host file system.
         hostfs = os.path.join(exports, "hostfs")
         new_installed_files = []
@@ -661,9 +672,22 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 if not os.path.exists(os.path.join(prefix, rel_root_path)):
                     os.makedirs(os.path.join(prefix, rel_root_path))
                 for f in files:
-                    path = os.path.join(prefix, rel_root_path, f)
-                    shutil.copy2(os.path.join(root, f), path)
-                    new_installed_files.append(os.path.join("/", rel_root_path, f))
+                    src_file = os.path.join(root, f)
+                    dest_path = os.path.join(prefix, rel_root_path, f)
+                    rel_dest_path = os.path.join("/", rel_root_path, f)
+                    if os.path.exists(dest_path):
+                        for i in new_installed_files:
+                            os.remove(new_installed_files)
+                        raise ValueError("File %s already exists." % dest_path)
+
+                    if rel_dest_path in templates_set:
+                        with open(src_file, 'r') as src_file_obj:
+                            data = src_file_obj.read()
+                        SystemContainers._write_template(src_file, data, values or {}, dest_path)
+                        shutil.copystat(src_file, dest_path)
+                    else:
+                        shutil.copy2(src_file, dest_path)
+                    new_installed_files.append(rel_dest_path)
             new_installed_files.sort()  # just for an aesthetic reason in the info file output
 
         return new_installed_files
@@ -731,6 +755,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
             info = json.loads(info_file.read())
             installed_files = info["installed-files"] if "installed-files" in info else None
+            installed_files_template = info["installed-files-template"] if "installed-files-template" in info else None
 
         was_service_active = self._is_service_active(name)
         unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
@@ -759,7 +784,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if (os.path.exists(tmpfiles)):
             shutil.copyfile(tmpfiles, tmpfilesout)
 
-        self._rm_add_files_to_host(installed_files, os.path.join(destination, "rootfs/exports"))
+        self._rm_add_files_to_host(installed_files, os.path.join(destination, "rootfs/exports"), files_template=installed_files_template)
 
         os.unlink(path)
         os.symlink(destination, path)
