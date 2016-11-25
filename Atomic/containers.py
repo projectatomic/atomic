@@ -151,7 +151,7 @@ class Containers(Atomic):
         max_container_id = 12 if self.args.truncate else max([len(x.id) for x in container_objects])
         max_image_name = 20 if self.args.truncate else max([len(x.image_name) for x in container_objects])
         max_command = 20 if self.args.truncate else max([len(x.command) for x in container_objects])
-        col_out = "{0:2} {1:%s} {2:%s} {3:%s} {4:16} {5:9} {6:10} {7:10}" % (max_container_id, max_image_name, max_command)
+        col_out = "{0:2} {1:%s} {2:%s} {3:%s} {4:16} {5:10} {6:10} {7:10}" % (max_container_id, max_image_name, max_command)
         if self.args.heading:
             util.write_out(col_out.format(" ",
                                           "CONTAINER ID",
@@ -173,7 +173,7 @@ class Containers(Atomic):
                                           con_obj.image_name[0:max_image_name],
                                           con_obj.command[0:max_command],
                                           con_obj.created[0:16],
-                                          con_obj.state[0:9],
+                                          con_obj.state[0:10],
                                           con_obj.backend.backend[0:10],
                                           con_obj.runtime[0:10]))
 

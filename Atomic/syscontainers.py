@@ -486,6 +486,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         # 3) Values for DESTDIR and NAME
         manifest_file = os.path.join(exports, "manifest.json")
         installed_files_template = []
+        has_container_service = True
         if os.path.exists(manifest_file):
             with open(manifest_file, "r") as f:
                 try:
@@ -498,6 +499,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                             values[key] = val
                 if "installedFilesTemplate" in manifest:
                     installed_files_template = manifest["installedFilesTemplate"]
+                if "noContainerService" in manifest and manifest["noContainerService"]:
+                    has_container_service = False
 
         if "UUID" not in values:
             values["UUID"] = str(uuid.uuid4())
@@ -532,7 +535,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         # When upgrading, stop the service and remove previously installed
         # tmpfiles, before restarting the service.
-        if upgrade:
+        if has_container_service and upgrade:
             if was_service_active:
                 self._systemctl_command("stop", name)
             if os.path.exists(tmpfilesout):
@@ -558,6 +561,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                         "ostree-commit": rev,
                         'created' : calendar.timegm(time.gmtime()),
                         "values" : values,
+                        "has-container-service" : has_container_service,
                         "installed-files": new_installed_files,
                         "installed-files-template": installedFilesTemplate,
                         "remote" : remote}
@@ -580,11 +584,25 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         else:
             tmpfiles_template = SystemContainers._generate_tmpfiles_data(missing_bind_paths, values["STATE_DIRECTORY"])
 
-        self._write_template(unitfile, systemd_template, values, unitfileout)
-        shutil.copyfile(unitfileout, os.path.join(prefix, destination, "%s.service" % name))
+        if has_container_service:
+            self._write_template(unitfile, systemd_template, values, unitfileout)
+            shutil.copyfile(unitfileout, os.path.join(prefix, destination, "%s.service" % name))
         if (tmpfiles_template):
             self._write_template(unitfile, tmpfiles_template, values, tmpfilesout)
             shutil.copyfile(tmpfilesout, os.path.join(prefix, destination, "tmpfiles-%s.conf" % name))
+
+        if not prefix:
+            sym = "%s/%s" % (self._get_system_checkout_path(), name)
+            if os.path.exists(sym):
+                os.unlink(sym)
+            os.symlink(destination, sym)
+
+        # if there is no container service, delete the checked out files.  At this point files copied to the host
+        # are already handled.
+        if not has_container_service:
+            if not remote_path:
+                shutil.rmtree(os.path.join(destination, "rootfs"))
+            return
 
         if prefix:
             return
@@ -756,8 +774,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             info = json.loads(info_file.read())
             installed_files = info["installed-files"] if "installed-files" in info else None
             installed_files_template = info["installed-files-template"] if "installed-files-template" in info else None
+            has_container_service = info["has-container-service"] if "has-container-service" in info else True
 
-        was_service_active = self._is_service_active(name)
+        was_service_active = has_container_service and self._is_service_active(name)
         unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
         unitfile = os.path.join(destination, "%s.service" % name)
         tmpfiles = os.path.join(destination, "tmpfiles-%s.conf" % name)
@@ -767,6 +786,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                              "The previous checkout at %s may be corrupted." % destination)
 
         util.write_out("Rolling back container {} to the checkout at {}".format(name, destination))
+
         if was_service_active:
             self._systemctl_command("stop", name)
 
@@ -788,7 +808,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         os.unlink(path)
         os.symlink(destination, path)
-        self._systemctl_command("daemon-reload")
+        if has_container_service:
+            self._systemctl_command("daemon-reload")
         if (os.path.exists(tmpfiles)):
             self._systemd_tmpfiles("--create", tmpfilesout)
 
@@ -797,6 +818,16 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
     def get_container_runtime_info(self, container):
 
+        info_path = os.path.join(self._get_system_checkout_path(), container, "info")
+        if not os.path.exists(info_path):
+            info_path = os.path.join(self._get_preinstalled_containers_path(), container, "info")
+
+        with open(info_path, "r") as info_file:
+            info = json.loads(info_file.read())
+            has_container_service = info["has-container-service"] if "has-container-service" in info else True
+
+        if not has_container_service:
+            return {'status' : "no service"}
         if self._is_service_active(container):
             return {'status' : "running"}
         elif self._is_service_failed(container):
@@ -1059,15 +1090,20 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if self._is_preinstalled_container(name):
             raise ValueError("Cannot uninstall a preinstalled container")
 
+        with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
+            info = json.loads(info_file.read())
+            has_container_service = info["has-container-service"] if "has-container-service" in info else True
+
         unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
-        try:
-            self._systemctl_command("stop", name)
-        except subprocess.CalledProcessError:
-            pass
-        try:
-            self._systemctl_command("disable", name)
-        except subprocess.CalledProcessError:
-            pass
+        if has_container_service:
+            try:
+                self._systemctl_command("stop", name)
+            except subprocess.CalledProcessError:
+                pass
+            try:
+                self._systemctl_command("disable", name)
+            except subprocess.CalledProcessError:
+                pass
 
         if os.path.exists(tmpfilesout):
             try:
