@@ -293,7 +293,7 @@ class SystemContainers(object):
             raise ValueError("The container's rootfs is set to remote, but the remote rootfs does not exist")
         return real_path
 
-    def _checkout(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False, remote=None, prefix=None):
+    def _checkout(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False, remote=None, prefix=None, installed_files=None):
         destination = destination or "%s/%s.%d" % (self._get_system_checkout_path(), name, deployment)
         unitfileout, tmpfilesout = self._get_systemd_destination_files(name, prefix)
 
@@ -303,7 +303,7 @@ class SystemContainers(object):
                     raise ValueError("The file %s already exists." % f)
 
         try:
-            return self._do_checkout(repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix)
+            return self._do_checkout(repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix, installed_files=installed_files)
         except (ValueError, OSError) as e:
             try:
                 if not extract_only and not upgrade:
@@ -365,7 +365,23 @@ class SystemContainers(object):
 
         return [get_image(i) for i in matches]
 
-    def _do_checkout(self, repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix=None):
+    @staticmethod
+    def _write_template(inputfilename, data, values, destination):
+        try:
+            os.makedirs(os.path.dirname(destination))
+        except OSError:
+            pass
+        with open(destination, "w") as outfile:
+            template = Template(data)
+            try:
+                result = template.substitute(values)
+            except KeyError as e:
+                os.unlink(destination)
+                raise ValueError("The template file '%s' still contains an unreplaced value for: '%s'" % \
+                                 (inputfilename, str(e)))
+            outfile.write(result)
+
+    def _do_checkout(self, repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix=None, installed_files=None):
         if not values:
             values = {}
 
@@ -488,28 +504,13 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         values["HOST_UID"] = os.getuid()
         values["HOST_GID"] = os.getgid()
 
-        def _write_template(inputfilename, data, values, destination):
-            try:
-                os.makedirs(os.path.dirname(destination))
-            except OSError:
-                pass
-            with open(destination, "w") as outfile:
-                template = Template(data)
-                try:
-                    result = template.substitute(values)
-                except KeyError as e:
-                    os.unlink(destination)
-                    raise ValueError("The template file '%s' still contains an unreplaced value for: '%s'" % \
-                                     (inputfilename, str(e)))
-                outfile.write(result)
-
         src = os.path.join(exports, "config.json")
         destination_path = os.path.join(destination, "config.json")
         if os.path.exists(src):
             shutil.copyfile(src, destination_path)
         elif os.path.exists(src + ".template"):
             with open(src + ".template", 'r') as infile:
-                _write_template(src + ".template", infile.read(), values, destination_path)
+                SystemContainers._write_template(src + ".template", infile.read(), values, destination_path)
         else:
             self._generate_default_oci_configuration(destination)
 
@@ -537,6 +538,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 except subprocess.CalledProcessError:
                     pass
 
+        new_installed_files = self._rm_add_files_to_host(installed_files, exports, prefix)
+
         missing_bind_paths = self._check_oci_configuration_file(destination_path, remote_path, True)
 
         image_manifest = self._image_manifest(repo, rev)
@@ -551,8 +554,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                     "ostree-commit": rev,
                     'created' : calendar.timegm(time.gmtime()),
                     "values" : values,
+                    "installed-files": new_installed_files,
                     "remote" : remote}
             info_file.write(json.dumps(info, indent=4))
+            info_file.write("\n")
 
         if os.path.exists(unitfile):
             with open(unitfile, 'r') as infile:
@@ -566,10 +571,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         else:
             tmpfiles_template = SystemContainers._generate_tmpfiles_data(missing_bind_paths, values["STATE_DIRECTORY"])
 
-        _write_template(unitfile, systemd_template, values, unitfileout)
+        self._write_template(unitfile, systemd_template, values, unitfileout)
         shutil.copyfile(unitfileout, os.path.join(prefix, destination, "%s.service" % name))
         if (tmpfiles_template):
-            _write_template(unitfile, tmpfiles_template, values, tmpfilesout)
+            self._write_template(unitfile, tmpfiles_template, values, tmpfilesout)
             shutil.copyfile(tmpfilesout, os.path.join(prefix, destination, "tmpfiles-%s.conf" % name))
 
         if prefix:
@@ -634,6 +639,35 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             return [image_inspect]
         return None
 
+    @staticmethod
+    def _rm_add_files_to_host(old_installed_files, exports, prefix="/"):
+        # if any file was installed on the host delete it
+        if old_installed_files:
+            for i in old_installed_files:
+                try:
+                    os.remove(i)
+                except OSError:
+                    pass
+
+        if not exports:
+            return []
+
+        # if there is a directory hostfs/ under exports, copy these files to the host file system.
+        hostfs = os.path.join(exports, "hostfs")
+        new_installed_files = []
+        if os.path.exists(hostfs):
+            for root, _, files in os.walk(hostfs):
+                rel_root_path = os.path.relpath(root, hostfs)
+                if not os.path.exists(os.path.join(prefix, rel_root_path)):
+                    os.makedirs(os.path.join(prefix, rel_root_path))
+                for f in files:
+                    path = os.path.join(prefix, rel_root_path, f)
+                    shutil.copy2(os.path.join(root, f), path)
+                    new_installed_files.append(os.path.join("/", rel_root_path, f))
+            new_installed_files.sort()  # just for an aesthetic reason in the info file output
+
+        return new_installed_files
+
     def update_container(self, name, setvalues=None, rebase=None):
         if self._is_preinstalled_container(name):
             raise ValueError("Cannot update a preinstalled container")
@@ -659,6 +693,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         image = rebase or info["image"]
         values = info["values"]
         revision = info["revision"] if "revision" in info else None
+        installed_files = info["installed-files"] if "installed-files" in info else None
 
         # Check if the image id or the configuration for the container has
         # changed before upgrading it.
@@ -684,13 +719,18 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             util.write_out("Latest version already installed.")
             return
 
-        self._checkout(repo, name, image, next_deployment, True, values, remote=self.args.remote)
+        self._checkout(repo, name, image, next_deployment, True, values, remote=self.args.remote, installed_files=installed_files)
 
     def rollback(self, name):
         path = os.path.join(self._get_system_checkout_path(), name)
         destination = "%s.%d" % (path, (1 if os.path.realpath(path).endswith(".0") else 0))
         if not os.path.exists(destination):
             raise ValueError("Error: Cannot find a previous deployment to rollback located at %s" % destination)
+
+        installed_files = None
+        with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
+            info = json.loads(info_file.read())
+            installed_files = info["installed-files"] if "installed-files" in info else None
 
         was_service_active = self._is_service_active(name)
         unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
@@ -718,6 +758,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         shutil.copyfile(unitfile, unitfileout)
         if (os.path.exists(tmpfiles)):
             shutil.copyfile(tmpfiles, tmpfilesout)
+
+        self._rm_add_files_to_host(installed_files, os.path.join(destination, "rootfs/exports"))
 
         os.unlink(path)
         os.symlink(destination, path)
@@ -1009,11 +1051,19 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 pass
             os.unlink(tmpfilesout)
 
-        if os.path.lexists("%s/%s" % (self._get_system_checkout_path(), name)):
-            os.unlink("%s/%s" % (self._get_system_checkout_path(), name))
+        checkout = self._get_system_checkout_path()
+        installed_files = None
+        with open(os.path.join(checkout, name,  "info"), 'r') as info_file:
+            info = json.loads(info_file.read())
+            installed_files = info["installed-files"] if "installed-files" in info else None
+        if installed_files:
+            self._rm_add_files_to_host(installed_files, None)
+
+        if os.path.lexists("%s/%s" % (checkout, name)):
+            os.unlink("%s/%s" % (checkout, name))
         for deploy in ["0", "1"]:
-            if os.path.exists("%s/%s.%s" % (self._get_system_checkout_path(), name, deploy)):
-                shutil.rmtree("%s/%s.%s" % (self._get_system_checkout_path(), name, deploy))
+            if os.path.exists("%s/%s.%s" % (checkout, name, deploy)):
+                shutil.rmtree("%s/%s.%s" % (checkout, name, deploy))
 
         if os.path.exists(unitfileout):
             os.unlink(unitfileout)
