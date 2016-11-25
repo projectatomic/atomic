@@ -538,7 +538,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 except subprocess.CalledProcessError:
                     pass
 
-        new_installed_files = self._rm_add_files_to_host(installed_files, exports, prefix)
+        new_installed_files = self._rm_add_files_to_host(installed_files, exports, prefix or "/", files_template=installed_files_template, values=values)
 
         missing_bind_paths = self._check_oci_configuration_file(destination_path, remote_path, True)
 
@@ -1511,6 +1511,11 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             if self.display:
                 return
 
+            installed_files = None
+            with open(os.path.join(rootfs, "info"), "r") as info_file:
+                info = json.loads(info_file.read())
+                installed_files = info["installed-files"] if "installed-files" in info else None
+
             labels = {k.lower() : v for k, v in image_inspect.get('Labels', {})}
             summary = labels.get('summary', name)
             version = labels.get("version", "1.0")
@@ -1525,7 +1530,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
             self._generate_spec_file(spec_file, rpm_content, name, summary, license_, version=version, release=release,
                                      url=url, source0=source0, requires=requires, provides=provides, conflicts=conflicts,
-                                     description=description)
+                                     description=description, installed_files=installed_files)
 
             cwd = os.getcwd()
             cmd = ["rpmbuild", "--noclean", "-bb", spec_file,
@@ -1544,7 +1549,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             shutil.rmtree(temp_dir)
 
     def _generate_spec_file(self, out, destdir, name, summary, license_, version="1.0", release="1", url=None,
-                            source0=None, requires=None, conflicts=None, provides=None, description=None):
+                            source0=None, requires=None, conflicts=None, provides=None, description=None, installed_files=None):
         spec = "%global __requires_exclude_from ^.*$\n"
         spec = spec + "%global __provides_exclude_from ^.*$\n"
 
@@ -1572,6 +1577,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         for root, _, files in os.walk(os.path.join(destdir, "usr/lib/tmpfiles.d")):
             for f in files:
                 spec = spec + "/usr/lib/tmpfiles.d/%s\n" % f
+        if installed_files:
+            for i in installed_files:
+                spec = spec + "%s\n" % i
 
         with open(out, "w") as f:
             f.write(spec)
