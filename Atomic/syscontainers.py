@@ -137,9 +137,9 @@ class SystemContainers(object):
         if image.startswith("ostree:"):
             self._check_system_ostree_image(repo, image, upgrade)
         elif image.startswith("docker:"):
-            image = self._pull_docker_image(repo, image.replace("docker:", ""))
+            image = self._pull_docker_image(repo, image.replace("docker:", "", 1))
         elif image.startswith("dockertar:"):
-            image = self._pull_docker_tar(repo, image.replace("dockertar:", ""))
+            image = self._pull_docker_tar(repo, image.replace("dockertar:", "", 1))
         else: # Assume "oci:"
             self._check_system_oci_image(repo, image, upgrade)
         return image
@@ -1126,7 +1126,7 @@ class SystemContainers(object):
             shutil.rmtree(temp_dir)
 
     def _check_system_ostree_image(self, repo, img, upgrade):
-        imagebranch = img.replace("ostree:", "")
+        imagebranch = img.replace("ostree:", "", 1)
         current_rev = repo.resolve_rev(imagebranch, True)
         if not upgrade and current_rev[1]:
             return False
