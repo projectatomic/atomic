@@ -274,7 +274,7 @@ class atomic_dbus(slip.dbus.service.Object):
     # atomic install section
     # The Install method will install the specified image
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='sssbsasas', out_signature='')
+    @dbus.service.method("org.atomic", in_signature='ssbbsasas', out_signature='')
     def Install(self, image, name, user, system, remote, setvalues, extra_args):
         i = Install()
         args = self.Args()
@@ -313,7 +313,7 @@ class atomic_dbus(slip.dbus.service.Object):
     # atomic run section
     # The Run method will run the specified image
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='ssbs', out_signature='')
+    @dbus.service.method("org.atomic", in_signature='ssbas', out_signature='')
     def Run(self, image, name, spc, command):
         r = Run()
         args = self.Args()

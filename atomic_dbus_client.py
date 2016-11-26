@@ -104,7 +104,7 @@ class AtomicDBus (object):
         return self.dbus_object.ImageVersion(image, recurse, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
-    def Install(self, image, name=None, user="", system=False, remote="", setvalues=None, extra_args=None):
+    def Install(self, image, name=None, user=False, system=False, remote="", setvalues=None, extra_args=None):
         if not name:
             name = image
         if not setvalues:
