@@ -487,6 +487,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         manifest_file = os.path.join(exports, "manifest.json")
         installed_files_template = []
         has_container_service = True
+        rename_files = {}
         if os.path.exists(manifest_file):
             with open(manifest_file, "r") as f:
                 try:
@@ -499,6 +500,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                             values[key] = val
                 if "installedFilesTemplate" in manifest:
                     installed_files_template = manifest["installedFilesTemplate"]
+                if "renameFiles" in manifest:
+                    rename_files = manifest["renameFiles"]
                 if "noContainerService" in manifest and manifest["noContainerService"]:
                     has_container_service = False
 
@@ -544,7 +547,18 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 except subprocess.CalledProcessError:
                     pass
 
-        new_installed_files = self._rm_add_files_to_host(installed_files, exports, prefix or "/", files_template=installed_files_template, values=values)
+        # rename_files may contain variables that need to be replaced.
+        if rename_files:
+            for k, v in rename_files.items():
+                template = Template(v)
+                try:
+                    new_v = template.substitute(values)
+                except KeyError as e:
+                    raise ValueError("The template file 'manifest.json' still contains an unreplaced value for: '%s'" % \
+                                     (str(e)))
+                rename_files[k] = new_v
+
+        new_installed_files = self._rm_add_files_to_host(installed_files, exports, prefix or "/", files_template=installed_files_template, values=values, rename_files=rename_files)
 
         missing_bind_paths = self._check_oci_configuration_file(destination_path, remote_path, True)
 
@@ -563,7 +577,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                         "values" : values,
                         "has-container-service" : has_container_service,
                         "installed-files": new_installed_files,
-                        "installed-files-template": installedFilesTemplate,
+                        "installed-files-template": installed_files_template,
+                        "rename-installed-files" : rename_files,
                         "remote" : remote}
                 info_file.write(json.dumps(info, indent=4))
                 info_file.write("\n")
@@ -667,7 +682,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         return None
 
     @staticmethod
-    def _rm_add_files_to_host(old_installed_files, exports, prefix="/", files_template=None, values=None):
+    def _rm_add_files_to_host(old_installed_files, exports, prefix="/", files_template=None, values=None, rename_files=None):
         # if any file was installed on the host delete it
         if old_installed_files:
             for i in old_installed_files:
@@ -693,6 +708,12 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                     src_file = os.path.join(root, f)
                     dest_path = os.path.join(prefix, rel_root_path, f)
                     rel_dest_path = os.path.join("/", rel_root_path, f)
+
+                    # If rename_files is set, rename the destination file
+                    if rename_files and rel_dest_path in rename_files:
+                        rel_dest_path = rename_files.get(rel_dest_path)
+                        dest_path = os.path.join(prefix or "/", os.path.relpath(rel_dest_path, "/"))
+
                     if os.path.exists(dest_path):
                         for i in new_installed_files:
                             os.remove(new_installed_files)
@@ -705,6 +726,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                         shutil.copystat(src_file, dest_path)
                     else:
                         shutil.copy2(src_file, dest_path)
+
                     new_installed_files.append(rel_dest_path)
             new_installed_files.sort()  # just for an aesthetic reason in the info file output
 
@@ -770,11 +792,13 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             raise ValueError("Error: Cannot find a previous deployment to rollback located at %s" % destination)
 
         installed_files = None
+        rename_files = None
         with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
             info = json.loads(info_file.read())
             installed_files = info["installed-files"] if "installed-files" in info else None
             installed_files_template = info["installed-files-template"] if "installed-files-template" in info else None
             has_container_service = info["has-container-service"] if "has-container-service" in info else True
+            rename_files = info["rename-installed-files"] if "rename-installed-files" in info else None
 
         was_service_active = has_container_service and self._is_service_active(name)
         unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
@@ -804,7 +828,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if (os.path.exists(tmpfiles)):
             shutil.copyfile(tmpfiles, tmpfilesout)
 
-        self._rm_add_files_to_host(installed_files, os.path.join(destination, "rootfs/exports"), files_template=installed_files_template)
+        self._rm_add_files_to_host(installed_files, os.path.join(destination, "rootfs/exports"), files_template=installed_files_template, rename_files=rename_files)
 
         os.unlink(path)
         os.symlink(destination, path)
