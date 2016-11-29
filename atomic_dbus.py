@@ -100,6 +100,7 @@ class atomic_dbus(slip.dbus.service.Object):
             self.sigstore = None
             self.sigstoretype = None
             self.spc = False
+            self.detach = False
             self.storage = None
             self.system = False
             self.truncate = False
@@ -313,13 +314,14 @@ class atomic_dbus(slip.dbus.service.Object):
     # atomic run section
     # The Run method will run the specified image
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='ssbas', out_signature='')
-    def Run(self, image, name, spc, command):
+    @dbus.service.method("org.atomic", in_signature='ssbbas', out_signature='')
+    def Run(self, image, name, spc, detach, command):
         r = Run()
         args = self.Args()
         args.image = image
         args.name = name
         args.spc = spc
+        args.detach = detach
         args.command = command
         r.set_args(args)
         return r.run()
