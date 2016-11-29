@@ -4,13 +4,16 @@ set -xeuo pipefail
 # https://bugzilla.redhat.com/show_bug.cgi?id=1318547#c7
 mount --make-rshared /
 
-systemctl start docker
 
 if [ -f /run/ostree-booted ]; then
     if [ ! -e /var/tmp/ostree-unlock-ovl.* ]; then
         ostree admin unlock
     fi
+else
+    dnf install -y atomic python3-coverage
 fi
+
+systemctl start docker
 
 # somewhat mimic the spec conditional
 source /etc/os-release
