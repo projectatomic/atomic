@@ -58,7 +58,7 @@ class BackendUtils(object):
         if len(img_in_backends) == 1:
             return img_in_backends[0]
         if len(img_in_backends) == 0:
-            raise ValueError("Unable to find backend associated with image'{}'".format(img))
+            raise ValueError("Unable to find backend associated with image '{}'".format(img))
         raise ValueError("Found {} in multiple storage backends: {}".
                          format(img, ', '.join([x.backend for x in img_in_backends])))
 

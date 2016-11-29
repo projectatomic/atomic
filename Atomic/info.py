@@ -67,19 +67,24 @@ class Info(Atomic):
         self.beu = BackendUtils()
 
     def version(self):
+        self._version(util.write_out)
+
+    def _version(self, write_func):
         layer_objects = self.get_layer_objects()
         max_version_len = max([len(x.long_version) for x in layer_objects])
         max_version_len = max_version_len if max_version_len > 9 else 9
         max_img_len = len(max([y for x in layer_objects for y in x.repotags], key=len)) + 9
         max_img_len = max_img_len if max_img_len > 12 else 12
         col_out = "{0:" + str(max_img_len) + "} {1:" + str(max_version_len) + "} {2:10}"
-        util.write_out(col_out.format("IMAGE NAME", "VERSION", "IMAGE ID"))
+
+        write_func(col_out.format("IMAGE NAME", "VERSION", "IMAGE ID"))
         for layer in layer_objects:
             for int_img_name in range(len(layer.repotags)):
                 version = layer.long_version if int_img_name < 1 else ""
                 iid = layer.id[:12] if int_img_name < 1 else ""
                 space = "" if int_img_name < 1 else "  Tag: "
-                util.write_out(col_out.format(space + layer.repotags[int_img_name], version, iid))
+                write_func(col_out.format(space + layer.repotags[int_img_name], version, iid))
+                write_func("")
 
     def get_layer_objects(self):
         _, img_obj = self.beu.get_backend_and_image(self.image, str_preferred_backend=self.args.storage)
@@ -90,6 +95,7 @@ class Info(Atomic):
         versions = []
         for layer in layer_objects:
             versions.append({"Image": layer.repotags, "Version": layer.long_version, "iid": layer.id})
+        return versions
 
     def info_tty(self):
         if self.args.debug:
