@@ -97,10 +97,6 @@ class Image(object):
         if self._fq_name:
             return self._fq_name
 
-        if self.backend.backend == 'ostree':
-            self._fq_name = self.input_name
-            return self._fq_name
-
         if self.fully_qualified:
             img = self.registry
             if self.repo:
@@ -147,23 +143,25 @@ class Image(object):
         self.labels = remote_inspect_info.get("Labels", None)
         self.release = self.get_label('Release')
         self.version = self.get_label('Version')
+        self.id = remote_inspect_info['id']
 
     def remote_inspect(self):
         ri = RegistryInspect(registry=self.registry, repo=self.repo, image=self.image,
                              tag=self.tag, orig_input=self.input_name)
         ri.ping()
-        return ri.inspect()
+        inspect_info = ri.inspect()
+        inspect_info['id'] = ri.rc.manifest_json.get("config", None).get("digest", None)
+        return inspect_info
 
     @property
     def long_version(self):
         _version = ""
-        label_name = self.get_label("Name")
-        if label_name:
-            _version += "{}".format(label_name)
         if self.version:
-            _version += "-{}".format(self.version)
+            _version += "{}".format(self.version)
         if self.release:
-            _version += "-{}".format(self.release)
+            if self.version:
+                _version += "-"
+            _version += "{}".format(self.release)
         return _version
 
     @property

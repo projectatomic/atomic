@@ -831,6 +831,14 @@ class Decompose(object):
         return self._digest
 
     @property
+    def no_tag(self):
+        result = self._registry
+        if self._repo:
+            result += "/{}".format(self._repo)
+        result += "/{}".format(self._image)
+        return result
+
+    @property
     def all(self):
         return self._registry, self._repo, self._image, self._tag, self._digest
 

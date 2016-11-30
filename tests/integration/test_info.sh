@@ -2,6 +2,12 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+# The debug information will cause test failures because
+# the force arg will be different.  This messes up the
+# equality testing between a remote and local image.
+# Removing the --debug 
+ATOMIC=$(grep -v -- --debug <<< "$ATOMIC")
+
 EXPECTED_T1="Checksum: $(sha256sum ./tests/test-images/Dockerfile.1)"
 
 validTest1 () {
@@ -26,7 +32,7 @@ set -e
 echo $TEST_1
 
 if [[ "${HAS_REMOTE}" -eq 0 ]]; then
-    if [[ "${TEST_CENTOS_REMOTE}" != "${TEST_CENTOS}" ]]; then
+    if [[ ${TEST_CENTOS_REMOTE} != ${TEST_CENTOS} ]]; then
         exit 1
     fi
 fi

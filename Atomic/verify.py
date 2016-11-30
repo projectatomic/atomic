@@ -2,7 +2,6 @@ from . import util
 from . import Atomic
 import os
 from operator import itemgetter
-from .atomic import AtomicError
 from .syscontainers import SystemContainers
 from .mount import Mount
 import argparse
@@ -13,7 +12,11 @@ import subprocess
 from .discovery import  RegistryInspect
 from .client import no_shaw
 import json
+from Atomic.backendutils import BackendUtils
 
+
+ATOMIC_CONFIG = util.get_atomic_config()
+storage = ATOMIC_CONFIG.get('default_storage', "docker")
 
 def cli(subparser, hidden=False):
     # atomic verify
@@ -30,7 +33,7 @@ def cli(subparser, hidden=False):
     verifyp.add_argument("--no-validate", default=False, dest="no_validate",
                                 action="store_true",
                                 help=_("disable validating system images"))
-    verifyp.add_argument("--storage", default="", dest="storage",
+    verifyp.add_argument("--storage", default=storage, dest="storage",
                          help=_("Specify the storage of the image. "
                                 "If not specified and there are images with the same name in "
                                 "different storages, you will be prompted to specify."))
@@ -43,79 +46,50 @@ class Verify(Atomic):
     def __init__(self):
         super(Verify, self).__init__()
         self.debug = False
+        self.backend_utils = BackendUtils()
+
+    def _layers_match(self, local, remote):
+        _match = []
+        for _layer_int in range(len(local)):
+            if local[_layer_int] == remote[_layer_int]:
+                _match.append(True)
+            else:
+                _match.append(False)
+        return all(_match)
 
     def verify(self):
-        def fix_layers(layers):
-            """
-            Takes the input of layers (get_layers()) and adds a key
-            and value for index.  Also checks if the Tag value is not
-            blank but name is, puts tag into name.
-            :param layers:
-            :return: updated list of layers
-            """
-            for layer in layers:
-                layer['index'] = layers.index(layer)
-                if layer['RepoTags'] and layer['Name'] is "":
-                    layer['Name'] = layer['RepoTags'][0]
-            return layers
-        self.set_debug()
+        if self.args.debug:
+            util.write_out(str(self.args))
+        local_layers, remote_layers = self._verify()
+        if not self._layers_match(local_layers, remote_layers) or self.args.verbose:
+            col = "{0:30} {1:20} {2:20} {3:1}"
+            util.write_out("\n{} contains the following images:\n".format(self.image))
+            util.write_out(col.format("NAME", "LOCAL VERSION", "REMOTE VERSION", "DIFFERS"))
+            for layer_int in range(len(local_layers)):
+                differs = 'NO' if remote_layers[layer_int] == local_layers[layer_int] else 'YES'
+                util.write_out(col.format(local_layers[layer_int].name[:30],
+                                          local_layers[layer_int].long_version[:20],
+                                          remote_layers[layer_int].long_version[:20],
+                                          differs))
+            util.write_out("\n")
 
-        if not self.args.storage:
-            if self.is_duplicate_image(self.image):
-                raise ValueError("Found more than one Image with name {}; "
-                                 "please specify with --storage.".format(self.image))
-            else:
-                if self.syscontainers.has_image(self.image):
-                    return self.verify_system_image()
+    def verify_dbus(self):
+        local_layers, remote_layers = self._verify()
+        layers = []
+        for layer_int in range(len(local_layers)):
+            layer = {}
+            layer['name'] = local_layers[layer_int].name
+            layer['local_version'] = local_layers[layer_int].long_version
+            layer['remote_version'] = remote_layers[layer_int].long_version
+            layer['differs'] = False if remote_layers[layer_int] == local_layers[layer_int] else True
+            layers.append(layer)
+        return layers
 
-                # Check if the input is an image id associated with more than one
-                # repotag.  If so, error out.
-                if self.is_iid():
-                    self.get_fq_name(self._inspect_image())
-                # The input is not an image id
-                else:
-                    try:
-                        iid = self._is_image(self.image)
-                        self.image = self.get_fq_name(self._inspect_image(iid))
-                    except AtomicError:
-                        self._no_such_image()
-
-        elif self.args.storage.lower() == "ostree":
-            if self.syscontainers.has_image(self.image):
-                return self.verify_system_image()
-            else:
-                self._no_such_image()
-
-        elif self.args.storage.lower() == "docker":
-            if self.is_iid():
-                self.get_fq_name(self._inspect_image())
-            # The input is not an image id
-            else:
-                try:
-                    iid = self._is_image(self.image)
-                    self.image = self.get_fq_name(self._inspect_image(iid))
-                except AtomicError:
-                    self._no_such_image()
-
-        else:
-            raise ValueError("{} is not a valid storage".format(self.args.storage))
-
-        layers = fix_layers(self.get_layers())
-        if self.debug:
-            for l in layers:
-                util.output_json(l)
-
-        uniq_names = list(set(x['Name'] for x in layers if x['Name'] != ''))
-        base_images = self.get_tagged_images(uniq_names, layers)
-
-        if not self.useTTY:
-            return base_images
-
-        if self.debug:
-            for b in base_images:
-                util.output_json(b)
-
-        self.print_verify(base_images, self.image, verbose=self.args.verbose)
+    def _verify(self):
+        be, img_obj = self.backend_utils.get_backend_and_image(self.image, self.args.storage)
+        remote_img_name  = "{}:latest".format(util.Decompose(img_obj.fq_name).no_tag)
+        remote_img_obj = be.make_remote_image(remote_img_name)
+        return img_obj.layers, remote_img_obj.layers
 
     def get_tagged_images(self, names, layers):
         """

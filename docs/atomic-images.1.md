@@ -45,11 +45,11 @@ You can also use any of the many options to create the help file including using
   Prune/delete all **dangling** images, freeing wasted disk space.
 
 **verify**
-  Checks whether there is a newer image available and scans through all layers to see if any of the layers, which are  base  images themselves,  have a new version available.  If the tool finds an out of date image, it will report as such. If the image is a system image,  it will  also look through the layers and validate each layer to determine if it has been tampered with and output details of these changes (if at all).
+  Checks whether there is a newer image available.   If the image differs, it will capture any of its relevant information like version (where applicable).
 
-  If the image or any of its layers are pulled from a repository, it will attempt to check the repository to see if there is a new image and capture any of its relevant information like version (where applicable).
-
-  Any  images  that do not possess a Version LABEL cannot be compared for available updates.  If an image lacks the version information, it  will still be part of the layer descriptions but will be cited as not having the version information.
+  Verify will always attempt to use the **Version** and **Release** labels to determine if there is a newer version.  If that information is not
+  available, then for 'ostree' images, verify will compare using the manifest digests.  In the case of docker images, it will use the image's ID
+  for comparison.
 
 **version**
   Display image 'Id Name:Version:Release RepoTag' label
