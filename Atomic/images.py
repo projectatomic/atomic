@@ -62,6 +62,9 @@ def cli(subparser):
                                                   help=_("generate image 'manifests' if missing"))
         generate_parser.set_defaults(_class=Images, func='generate_validation_manifest')
 
+        # Suppress storage flag: only docker images are supported for generate
+        generate_parser.add_argument("--storage", default=storage, dest="storage",
+                                     help=argparse.SUPPRESS)
 
     Help.cli(images_subparser)
 
@@ -223,6 +226,7 @@ class Images(Atomic):
             m.args = []
             m.image = iid
             m.mountpoint = tmpdir
+            m.storage = self.args.storage
             m.mount()
             r = util.generate_validation_manifest(img_rootfs=tmpdir, keywords="type,uid,gid,mode,size,sha256digest")
             m.unmount()
