@@ -34,6 +34,8 @@ Like top, you can exit the interactive view and return to the command line, use 
 **-o** **--optional**
   Add more fields of data to collect for each process.  The fields resemble fields commonly used by
   ps -o.  They currently are: [time, stime, ppid, uid, gid, user, group]
+  
+  Specify one option per -o flag to include the fields.
 
 # EXAMPLES
 Monitor processes with default fields.
@@ -46,7 +48,7 @@ Monitor processes with default fields on a 5 second interval for 3 iterations
 
 Monitor processes and add in the data for the parent PIDs and UID.
 
-    atomic top -o ppid uid
+    atomic top -o ppid -o uid
 
 # HISTORY
 December 2015, Originally written by Brent Baude (bbaude at redhat dot com)
