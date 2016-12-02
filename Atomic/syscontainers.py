@@ -140,7 +140,8 @@ class SystemContainers(object):
         elif image.startswith("docker:"):
             image = self._pull_docker_image(repo, image.replace("docker:", "", 1))
         elif image.startswith("dockertar:"):
-            image = self._pull_docker_tar(repo, image.replace("dockertar:", "", 1))
+            tarpath = image.replace("dockertar:", "", 1)
+            image = self._pull_docker_tar(repo, tarpath, os.path.basename(tarpath).replace(".tar", ""))
         else: # Assume "oci:"
             self._check_system_oci_image(repo, image, upgrade)
         return image
@@ -1092,12 +1093,12 @@ class SystemContainers(object):
     def _pull_docker_image(self, repo, image):
         with tempfile.NamedTemporaryFile(mode="w") as temptar:
             util.check_call(["docker", "save", "-o", temptar.name, image])
-            return self._pull_docker_tar(repo, temptar.name)
+            return self._pull_docker_tar(repo, temptar.name, image)
 
-    def _pull_docker_tar(self, repo, image):
+    def _pull_docker_tar(self, repo, tarpath, image):
         temp_dir = tempfile.mkdtemp()
         try:
-            with tarfile.open(image, 'r') as t:
+            with tarfile.open(tarpath, 'r') as t:
                 t.extractall(temp_dir)
                 manifest_file = os.path.join(temp_dir, "manifest.json")
                 if os.path.exists(manifest_file):
@@ -1110,7 +1111,7 @@ class SystemContainers(object):
                             with open(config_file, 'r') as config:
                                 config = json.loads(config.read())
                                 labels = config['config']['Labels']
-                        imagename = m["RepoTags"][0]
+                        imagename = m["RepoTags"][0] if m.get("RepoTags") else image
                         imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(imagename))
                         input_layers = m["Layers"]
                         self._pull_dockertar_layers(repo, imagebranch, temp_dir, input_layers, labels=labels)
