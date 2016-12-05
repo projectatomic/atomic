@@ -1,3 +1,16 @@
+## 1.14 (2016-12-12)
+Atomic/diff.py: Use go-mtree for file comparisons
+pull: support dockertar for docker backend
+Refactor images
+atomic_dbus: keep the name until the process exits
+Add substitutions for Opt variables
+syscontainers: add rollback
+Add refactoring structure
+    Atomic/backendutils.py: Class for working with unknown backend
+    Atomic/objects/image|layer|container.py: classes for objects
+    Atomic/backends/backend|_docker|_ostree.py: Abstract backends for ostree and docker
+Add  SYSTEMD_IGNORE_CHROOT=1 to environment of SPCs
+
 ## 1.13 (2016-10-24)
 Add --storage option to image-related commands
 syscontainers: Fix docker: and dockertar: installs
