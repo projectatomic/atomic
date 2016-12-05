@@ -671,6 +671,8 @@ class SystemContainers(object):
         if containers is None:
             containers = os.listdir(checkouts)
         for x in containers:
+            if x[0] == ".":
+                continue
             fullpath = os.path.join(checkouts, x)
             if not os.path.islink(fullpath):
                 continue
@@ -1027,8 +1029,7 @@ class SystemContainers(object):
             layers = manifest.get("Layers")
         return layers
 
-    @staticmethod
-    def _import_layers_into_ostree(repo, imagebranch, manifest, layers):
+    def _import_layers_into_ostree(self, repo, imagebranch, manifest, layers):
         repo.prepare_transaction()
         for layer, tar in layers.items():
             mtree = OSTree.MutableTree()
@@ -1055,8 +1056,10 @@ class SystemContainers(object):
                     raise e  #pylint: disable=raising-non-exception
 
             if not imported:
+                checkout = self._get_system_checkout_path()
+                destdir = checkout if os.path.exists(checkout) else None
                 try:
-                    temp_dir = tempfile.mkdtemp()
+                    temp_dir = tempfile.mkdtemp(prefix=".", dir=destdir)
                     with tarfile.open(tar, 'r') as t:
                         t.extractall(temp_dir)
                     repo.write_directory_to_mtree(Gio.File.new_for_path(temp_dir), mtree, modifier)
@@ -1167,7 +1170,7 @@ class SystemContainers(object):
                             layer = f.replace(".tar", "")
                             if not repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1]:
                                 layers_to_import[layer] = layer_file
-            SystemContainers._import_layers_into_ostree(repo, imagebranch, manifest, layers_to_import)
+            self._import_layers_into_ostree(repo, imagebranch, manifest, layers_to_import)
         finally:
             if layers_dir:
                 shutil.rmtree(layers_dir)
@@ -1279,7 +1282,7 @@ class SystemContainers(object):
         layers_to_import = {}
         for k, v in layers.items():
             layers_to_import[layers_map[k]] = v
-        SystemContainers._import_layers_into_ostree(repo, imagebranch, manifest, layers_to_import)
+        self._import_layers_into_ostree(repo, imagebranch, manifest, layers_to_import)
 
     def validate_layer(self, layer):
         ret = []
