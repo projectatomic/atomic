@@ -92,10 +92,10 @@ class Push(Atomic):
     def push(self):
         def prompt():
             if not self.args.username:
-                self.args.username = util.input("Registry Username: ")
+                self.args.username = util.input("Registry username: ")
 
             if not self.args.password:
-                self.args.password = getpass.getpass("Registry Password: ")
+                self.args.password = getpass.getpass("Registry password: ")
 
         self.ping()
         if self.args.debug:
