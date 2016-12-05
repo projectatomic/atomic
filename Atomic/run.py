@@ -7,9 +7,7 @@ try:
 except ImportError:
     from atomic import Atomic # pylint: disable=relative-import
 
-SPC_ARGS = ["run",
-            "-t",
-            "-i",
+SPC_ARGS = ["-i",
             "--privileged",
             "-v", "/:/host",
             "-v", "/run:/run",
@@ -25,9 +23,7 @@ SPC_ARGS = ["run",
             "--name", "${NAME}",
             "${IMAGE}"]
 
-RUN_ARGS = ["run",
-            "-t",
-            "-i",
+RUN_ARGS = ["-i",
             "--name", "${NAME}",
             "${IMAGE}"]
 
@@ -47,6 +43,8 @@ def cli(subparser):
     runp.add_argument("--spc", default=False, action="store_true",
                       help=_("use super privileged container mode: '%s'" %
                              Run.print_spc()))
+    runp.add_argument("-d", "--detach", default=False, action="store_true",
+                      help=_("run the container in the background"))
     runp.add_argument("image", help=_("container image"))
     runp.add_argument("command", nargs="*",
                       help=_("optional command to execute within the container. "
@@ -90,31 +88,28 @@ class Run(Atomic):
             self.update()
             self.inspect = self._inspect_image()
 
-        if self.spc:
-            if self.command:
-                args = [self.docker_binary()] + SPC_ARGS + self.command
-            else:
-                args = [self.docker_binary()] + SPC_ARGS + self._get_cmd()
-        else:
-            args = self._get_args("RUN")
-            if args:
-                args += self.command
-                opts_file = self._get_args("RUN_OPTS_FILE")
-                if opts_file:
-                    opts_file = self.sub_env_strings("".join(opts_file))
-                    if opts_file.startswith("/"):
-                        if os.path.isfile(opts_file):
-                            try:
-                                self.run_opts = open(opts_file, "r").read()
-                            except IOError:
-                                raise ValueError("Failed to read RUN_OPTS_FILE %s" % opts_file)
-                    else:
-                        raise ValueError("Will not read RUN_OPTS_FILE %s: not absolute path" % opts_file)
-            else:
-                if self.command:
-                    args = [self.docker_binary()] + RUN_ARGS + self.command
+        args = self._get_args("RUN")
+        if args:
+            args += self.command
+            opts_file = self._get_args("RUN_OPTS_FILE")
+            if opts_file:
+                opts_file = self.sub_env_strings("".join(opts_file))
+                if opts_file.startswith("/"):
+                    if os.path.isfile(opts_file):
+                        try:
+                            self.run_opts = open(opts_file, "r").read()
+                        except IOError:
+                            raise ValueError("Failed to read RUN_OPTS_FILE %s" % opts_file)
                 else:
-                    args = [self.docker_binary()] + RUN_ARGS + self._get_cmd()
+                    raise ValueError("Will not read RUN_OPTS_FILE %s: not absolute path" % opts_file)
+        else:
+            args = [self.docker_binary(), "run"]
+            if os.isatty(0):
+                args += ["-t"]
+            if self.args.detach:
+                args += ["-d"]
+            args += SPC_ARGS if self.spc else RUN_ARGS
+            args += self.command if self.command else self._get_cmd()
 
         if len(args) > 0 and args[0] == "docker":
             args[0] = self.docker_binary()
@@ -172,8 +167,8 @@ class Run(Atomic):
 
     @staticmethod
     def print_run():
-        return "%s %s" % (util.default_docker(), " ".join(RUN_ARGS))
+        return "%s run %s" % (util.default_docker(), " ".join(RUN_ARGS))
 
     @staticmethod
     def print_spc():
-        return "%s %s" % (util.default_docker(), " ".join(SPC_ARGS))
+        return "%s run %s" % (util.default_docker(), " ".join(SPC_ARGS))

@@ -1,5 +1,5 @@
-FROM fedora
-RUN dnf install -y nmap-ncat && dnf clean all
+FROM centos
+RUN yum -y install nmap-ncat && yum clean all
 
 LABEL "Name"="atomic-test-system"
 

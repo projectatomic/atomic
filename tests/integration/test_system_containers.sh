@@ -174,6 +174,13 @@ test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/tmpfiles-${NAME}.conf
 assert_matches ${SECRET} ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/config.json
 assert_matches 8082 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/config.json
 
+# Test that rollback works
+assert_matches 8082 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}/config.json
+${ATOMIC} update --rollback --container ${NAME}
+assert_matches 8081 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}/config.json
+${ATOMIC} update --rollback --container ${NAME}
+assert_matches 8082 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}/config.json
+
 # Test if a container with a remote rootfs can be installed/updated
 ${ATOMIC} --debug install --name=${NAME}-remote --rootfs=${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1 --set=RECEIVER=${SECRET}-remote --system oci:atomic-test-system
 systemctl start ${NAME}-remote
@@ -236,7 +243,6 @@ mv ${ATOMIC_OSTREE_REPO}/refs/heads/ociimage/atomic-test-secret_3Alatest ${ATOMI
 ${ATOMIC} info atomic-test-secret-ostree > version.out
 assert_matches ${SECRET} version.out
 ${ATOMIC} --assumeyes images delete -f atomic-test-secret-ostree
-${ATOMIC} --assumeyes images delete -f busybox
 ${ATOMIC} pull --storage ostree docker.io/busybox
 ${ATOMIC} pull --storage ostree busybox
 ${ATOMIC} pull --storage ostree busybox > second.pull.out
@@ -244,9 +250,9 @@ assert_not_matches "Pulling layer" second.pull.out
 
 ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
 assert_matches busybox refs
-${ATOMIC} --assumeyes images delete -f docker.io/busybox
+${ATOMIC} --assumeyes images delete -f --storage ostree docker.io/busybox
 
-BUSYBOX_IMAGE_ID=$(${ATOMIC} images list -f type=system | grep busybox | awk '{print $3}')
+BUSYBOX_IMAGE_ID=$(${ATOMIC} images list -f type=ostree | grep busybox | awk '{print $3}')
 ${ATOMIC} --assumeyes images delete -f ${BUSYBOX_IMAGE_ID}
 
 ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
@@ -257,36 +263,32 @@ fi
 ${ATOMIC} pull --storage ostree busybox
 ostree --repo=${ATOMIC_OSTREE_REPO} refs | grep busybox
 
-${ATOMIC} verify busybox > verify.out
+${ATOMIC} verify --storage ostree busybox > verify.out
 assert_not_matches "contains images or layers that have updates" verify.out
 
 image_digest=$(ostree --repo=${ATOMIC_OSTREE_REPO} show --print-metadata-key=docker.manifest ociimage/busybox_3Alatest | sed -e"s|.*Digest\": \"sha256:\([a-z0-9]\+\).*|\1|" | head -c 12)
 ${ATOMIC} images list > images.out
 grep "busybox.*$image_digest" images.out
 
-${ATOMIC} images list -f type=system > images.out
-${ATOMIC} images list -f type=system --all > images.all.out
+${ATOMIC} images list -f type=ostree > images.out
+${ATOMIC} images list -f type=ostree --all > images.all.out
 test $(wc -l < images.out) -lt $(wc -l < images.all.out)
 assert_matches '<none>' images.all.out
 assert_not_matches '<none>' images.out
 
-${ATOMIC} --assumeyes images delete -f busybox
+${ATOMIC} --assumeyes images delete -f --storage ostree busybox
 ${ATOMIC} images prune
 
 # Test there are still intermediate layers left after prune
-${ATOMIC} images list -f type=system --all > images.all.out
+${ATOMIC} images list -f type=ostree --all > images.all.out
 assert_matches "<none>" images.all.out
-
-# Check to see if deleting a duplicate image will error
-OUTPUT=$(! ${ATOMIC} --assumeyes images delete -f atomic-test-system 2>&1)
-grep "Failed to delete Image atomic-test-system: has duplicate naming" <<< $OUTPUT
 
 # Now delete from ostree
 ${ATOMIC} --assumeyes images delete --storage ostree atomic-test-system
 ${ATOMIC} images prune
 
 # Test there are not intermediate layers left layers now
-${ATOMIC} images list -f type=system --all > images.all.out
+${ATOMIC} images list -f type=ostree --all > images.all.out
 assert_not_matches "<none>" images.all.out
 
 # Verify there are no branches left in the repository as well

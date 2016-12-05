@@ -1,32 +1,36 @@
 #!/usr/bin/python -Es
 
-import dbus
-import time
 import threading
-import dbus.service
+import time
+
+import dbus
 import dbus.mainloop.glib
 import json
 from gi.repository import GObject
 import slip.dbus.service
 import Atomic
+import dbus.service
 from Atomic.containers import Containers
 from Atomic.delete import Delete
 from Atomic.diff import Diff
 from Atomic.help import AtomicHelp
 from Atomic.info import Info
 from Atomic.install import Install
-from Atomic.images import Images
 from Atomic.mount import Mount
+from Atomic.images import Images
 from Atomic.pull import Pull
 from Atomic.run import Run
 from Atomic.scan import Scan
-from Atomic.stop import Stop
 from Atomic.sign import Sign
+from Atomic.stop import Stop
 from Atomic.storage import Storage
 from Atomic.top import Top
 from Atomic.trust import Trust
 from Atomic.uninstall import Uninstall
 from Atomic.verify import Verify
+
+DBUS_NAME_FLAG_DO_NOT_QUEUE = 4
+DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER = 1
 
 class atomic_dbus(slip.dbus.service.Object):
     default_polkit_auth_required = "org.atomic.readwrite"
@@ -96,6 +100,7 @@ class atomic_dbus(slip.dbus.service.Object):
             self.sigstore = None
             self.sigstoretype = None
             self.spc = False
+            self.detach = False
             self.storage = None
             self.system = False
             self.truncate = False
@@ -212,7 +217,7 @@ class atomic_dbus(slip.dbus.service.Object):
         args = self.Args()
         args.all=True
         images.set_args(args)
-        i = images.images()
+        i = images.display_all_image_info()
         return json.dumps(i)
 
     # atomic containers section
@@ -270,7 +275,7 @@ class atomic_dbus(slip.dbus.service.Object):
     # atomic install section
     # The Install method will install the specified image
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='sssbsasas', out_signature='')
+    @dbus.service.method("org.atomic", in_signature='ssbbsasas', out_signature='')
     def Install(self, image, name, user, system, remote, setvalues, extra_args):
         i = Install()
         args = self.Args()
@@ -309,13 +314,14 @@ class atomic_dbus(slip.dbus.service.Object):
     # atomic run section
     # The Run method will run the specified image
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='ssbs', out_signature='')
-    def Run(self, image, name, spc, command):
+    @dbus.service.method("org.atomic", in_signature='ssbbas', out_signature='')
+    def Run(self, image, name, spc, detach, command):
         r = Run()
         args = self.Args()
         args.image = image
         args.name = name
         args.spc = spc
+        args.detach = detach
         args.command = command
         r.set_args(args)
         return r.run()
@@ -562,13 +568,16 @@ class atomic_dbus(slip.dbus.service.Object):
         args.image = image
         args.recurse = recurse
         info.set_args(args)
-        return json.dumps(info.get_version())
+        return json.dumps(info.dbus_version())
 
 if __name__ == "__main__":
     mainloop = GObject.MainLoop()
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
     system_bus = dbus.SystemBus()
-    busname = dbus.service.BusName("org.atomic", system_bus)
-    atomic_object = atomic_dbus(system_bus, "/org/atomic/object")
-    slip.dbus.service.set_mainloop(mainloop)
-    mainloop.run()
+
+    if (system_bus.request_name("org.atomic", DBUS_NAME_FLAG_DO_NOT_QUEUE) == DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER):
+        atomic_object = atomic_dbus(system_bus, "/org/atomic/object")
+        slip.dbus.service.set_mainloop(mainloop)
+        mainloop.run()
+    else:
+        print("Another process owns the 'org.atomic' D-Bus name. Exiting.")

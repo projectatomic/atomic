@@ -705,6 +705,15 @@ class DockerMount(Mount):
         Mount.unmount_path(mountpoint)
         self._cleanup_container(self.d.inspect_container(cid))
 
+    def _clean_temp_container_by_path(self, path):
+        """
+        Do not remove this method.  It is used by openscap.
+        """
+        short_cid = os.path.basename(path)
+        if not self.live:
+            self.d.remove_container(short_cid)
+        self._clean_tmp_image()
+        
 def getxattrfuncs():
     # Python 3 has support for extended attributes in the os module, while
     # Python 2 needs the xattr library.  Detect if any is available.
@@ -836,8 +845,10 @@ class OSTreeMount(Mount):
                     dirpath = os.path.join(root,d)
                     if os.path.islink(dirpath):
                         os.unlink(dirpath)
-                    else:
+                    elif os.path.isdir(dirpath):
                         shutil.rmtree(dirpath)
+                    else:
+                        os.remove(dirpath)
         else:
             Mount.unmount_path(self.mountpoint)
 
@@ -846,8 +857,10 @@ class OSTreeMount(Mount):
                 path = os.path.join(self.mountpoint, i)
                 if os.path.islink(path):
                     os.unlink(path)
-                else:
+                elif os.path.isdir(path):
                     shutil.rmtree(path)
+                else:
+                    os.remove(path)
         try:
             removexattr(self.mountpoint, "user.atomic.type") # pylint: disable=not-callable
         except IOError:

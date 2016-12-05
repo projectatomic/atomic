@@ -52,6 +52,9 @@ WorkingDirectory=$DESTDIR
 [Install]
 WantedBy=multi-user.target
 """
+TEMPLATE_FORCED_VARIABLES = ["DESTDIR", "NAME", "EXEC_START", "EXEC_STOP",
+                             "HOST_UID", "HOST_GID"]
+TEMPLATE_OVERRIDABLE_VARIABLES = ["RUN_DIRECTORY", "STATE_DIRECTORY"]
 
 class SystemContainers(object):
 
@@ -133,17 +136,16 @@ class SystemContainers(object):
             raise ValueError("Cannot find a configured OSTree repo")
         if image.startswith("ostree:"):
             self._check_system_ostree_image(repo, image, upgrade)
-        elif self.args.image.startswith("docker:"):
-            image = self._pull_docker_image(repo, image.replace("docker:", ""))
-        elif self.args.image.startswith("dockertar:"):
-            image = self._pull_docker_tar(repo, image.replace("dockertar:", ""))
+        elif image.startswith("docker:"):
+            image = self._pull_docker_image(repo, image.replace("docker:", "", 1))
+        elif image.startswith("dockertar:"):
+            image = self._pull_docker_tar(repo, image.replace("dockertar:", "", 1))
         else: # Assume "oci:"
             self._check_system_oci_image(repo, image, upgrade)
-
         return image
 
-    def pull_image(self):
-        self._pull_image_to_ostree(self._get_ostree_repo(), self.args.image, True)
+    def pull_image(self, image=None):
+        self._pull_image_to_ostree(self._get_ostree_repo(), image or self.args.image, True)
 
     def install_user_container(self, image, name):
         try:
@@ -181,7 +183,10 @@ class SystemContainers(object):
 
     def _check_oci_configuration_file(self, conf_path, remote=None):
         with open(conf_path, 'r') as conf:
-            configuration = json.loads(conf.read())
+            try:
+                configuration = json.loads(conf.read())
+            except ValueError:
+                raise ValueError("Invalid json in configuration file: {}.".format(conf_path))
         if not 'root' in configuration or \
            not 'readonly' in configuration['root'] or \
            not configuration['root']['readonly']:
@@ -397,7 +402,10 @@ class SystemContainers(object):
         manifest_file = os.path.join(exports, "manifest.json")
         if os.path.exists(manifest_file):
             with open(manifest_file, "r") as f:
-                manifest = json.loads(f.read())
+                try:
+                    manifest = json.loads(f.read())
+                except ValueError:
+                    raise ValueError("Invalid manifest.json file in image: {}.".format(img))
                 if "defaultValues" in manifest:
                     for key, val in manifest["defaultValues"].items():
                         if key not in values:
@@ -443,7 +451,10 @@ class SystemContainers(object):
 
         if remote_path:
             with open(destination_path, 'r') as config_file:
-                config = json.loads(config_file.read())
+                try:
+                    config = json.loads(config_file.read())
+                except ValueError:
+                    raise ValueError("Invalid config.json file in given remote location: {}.".format(destination_path))
                 config['root']['path'] = remote_rootfs
             with open(destination_path, 'w') as config_file:
                 config_file.write(json.dumps(config, indent=4))
@@ -493,7 +504,7 @@ class SystemContainers(object):
         shutil.copyfile(unitfileout, os.path.join(destination, "%s.service" % name))
         if (tmpfiles_template):
             _write_template(unitfile, tmpfiles_template, values, tmpfilesout)
-            shutil.copyfile(unitfileout, os.path.join(destination, "tmpfiles-%s.conf" % name))
+            shutil.copyfile(tmpfilesout, os.path.join(destination, "tmpfiles-%s.conf" % name))
 
         sym = "%s/%s" % (self._get_system_checkout_path(), name)
         if os.path.exists(sym):
@@ -561,13 +572,17 @@ class SystemContainers(object):
             info = json.loads(info_file.read())
             self.args.remote = info['remote']
             if self.args.remote:
-                util.write_out("Updating a container with a remote rootfs. Only changes to config will be applied.")
+                util.write_out("%s a container with a remote rootfs. Only changes to config will be applied." % ("Rolling back" if self.args.rollback else "Updating"))
+
+        if self.args.rollback:
+            if self.args.setvalues is not None:
+                raise ValueError("Error: --set cannot be used when rolling back a container")
+            self.rollback(name)
+            return
 
         next_deployment = 0
         if os.path.realpath(path).endswith(".0"):
             next_deployment = 1
-        else:
-            next_deployment = 0
 
         with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
             info = json.loads(info_file.read())
@@ -589,6 +604,48 @@ class SystemContainers(object):
 
         self._checkout(repo, name, image, next_deployment, True, values, remote=self.args.remote)
 
+    def rollback(self, name):
+        path = os.path.join(self._get_system_checkout_path(), name)
+        destination = "%s.%d" % (path, (1 if os.path.realpath(path).endswith(".0") else 0))
+        if not os.path.exists(destination):
+            raise ValueError("Error: Cannot find a previous deployment to rollback located at %s" % destination)
+
+        was_service_active = self._is_service_active(name)
+        unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
+        unitfile = os.path.join(destination, "%s.service" % name)
+        tmpfiles = os.path.join(destination, "tmpfiles-%s.conf" % name)
+
+        if not os.path.exists(unitfile):
+            raise ValueError("Error: Cannot find systemd service file for previous version. "
+                             "The previous checkout at %s may be corrupted." % destination)
+
+        util.write_out("Rolling back container {} to the checkout at {}".format(name, destination))
+        if was_service_active:
+            self._systemctl_command("stop", name)
+
+        if os.path.exists(tmpfilesout):
+            try:
+                self._systemd_tmpfiles("--remove", tmpfilesout)
+            except subprocess.CalledProcessError:
+                pass
+            os.unlink(tmpfilesout)
+
+        if os.path.exists(unitfileout):
+            os.unlink(unitfileout)
+
+        shutil.copyfile(unitfile, unitfileout)
+        if (os.path.exists(tmpfiles)):
+            shutil.copyfile(tmpfiles, tmpfilesout)
+
+        os.unlink(path)
+        os.symlink(destination, path)
+        self._systemctl_command("daemon-reload")
+        if (os.path.exists(tmpfiles)):
+            self._systemd_tmpfiles("--create", tmpfilesout)
+
+        if was_service_active:
+            self._systemctl_command("start", name)
+
     def get_container_runtime_info(self, container):
 
         if self._is_service_active(container):
@@ -599,12 +656,14 @@ class SystemContainers(object):
             # The container is newly created or stopped, and can be started with 'systemctl start'
             return {'status' : "inactive"}
 
-    def get_containers(self):
+    def get_containers(self, containers=None):
         checkouts = self._get_system_checkout_path()
         if not os.path.exists(checkouts):
             return []
         ret = []
-        for x in os.listdir(checkouts):
+        if containers is None:
+            containers = os.listdir(checkouts)
+        for x in containers:
             fullpath = os.path.join(checkouts, x)
             if not os.path.islink(fullpath):
                 continue
@@ -623,6 +682,69 @@ class SystemContainers(object):
                          'Command' : command, 'Type' : 'system'}
             ret.append(container)
         return ret
+
+    def get_template_variables(self, image):
+        repo = self._get_ostree_repo()
+        _, commit_rev = self._resolve_image(repo, image)
+        if not commit_rev:
+            return
+
+        manifest = self._image_manifest(repo, commit_rev)
+        layers = SystemContainers.get_layers_from_manifest(json.loads(manifest))
+        templates = {}
+        manifest_template = None
+        for i in layers:
+            layer = i.replace("sha256:", "")
+            commit = repo.read_commit(repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1])[1]
+            exports = commit.get_root().get_child("exports")
+            if not exports.query_exists():
+                continue
+
+            children = exports.enumerate_children("", Gio.FileQueryInfoFlags.NONE, None)
+            for child in reversed(list(children)):
+                name = child.get_name()
+                if name == "manifest.json":
+                    manifest_template = exports.get_child(name).read()
+
+                if name.endswith(".template"):
+                    if name.startswith(".wh"):
+                        name = name[4:]
+                        templates.pop(name, None)
+                    else:
+                        templates[name] = exports.get_child(name).read()
+
+        variables = {}
+        for v in templates.values():
+            fd = v.get_fd()
+            with os.fdopen(fd) as f:
+                data = f.read()
+                template = Template(data)
+                for variable in ["".join(x) for x in template.pattern.findall(data)]: # pylint: disable=no-member
+                    if variable not in TEMPLATE_FORCED_VARIABLES:
+                        variables[variable] = variable
+
+        variables_with_default = {}
+        if manifest_template:
+            fd = manifest_template.get_fd()
+            with os.fdopen(fd) as f:
+                try:
+                    data = json.loads(f.read())
+                except ValueError:
+                    raise ValueError("Invalid manifest.json file in image: {}.".format(image))
+                for variable in data['defaultValues']:
+                    variables_with_default[variable] = data['defaultValues'][variable]
+
+        # Also include variables that are set by the OS
+        # but can be overriden by --set
+        for variable in TEMPLATE_OVERRIDABLE_VARIABLES:
+            variables_with_default[variable] = "{SET_BY_OS}"
+
+        variables_to_set = {}
+        for variable in variables:
+            if variable not in variables_with_default:
+                variables_to_set[variable] = "{DEF_VALUE}"
+
+        return variables_with_default, variables_to_set
 
     def delete_image(self, image):
         repo = self._get_ostree_repo()
@@ -1004,7 +1126,7 @@ class SystemContainers(object):
             shutil.rmtree(temp_dir)
 
     def _check_system_ostree_image(self, repo, img, upgrade):
-        imagebranch = img.replace("ostree:", "")
+        imagebranch = img.replace("ostree:", "", 1)
         current_rev = repo.resolve_rev(imagebranch, True)
         if not upgrade and current_rev[1]:
             return False

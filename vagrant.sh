@@ -23,7 +23,7 @@ _FINISH(){
 # out in _FINISH
 trap _FINISH EXIT
 
-BOXES="fedora_atomic centos_atomic"
+BOXES="fedora_atomic centos_atomic fedora_cloud"
 
 is_running() {
     status=$(vagrant status | grep ${BOX} | awk '{print $2}')

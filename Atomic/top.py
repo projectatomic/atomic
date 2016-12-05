@@ -23,7 +23,8 @@ def cli(subparser):
                                 help=_("Show top-like stats about processes running in containers"))
     topp.set_defaults(_class=Top, func='atomic_top')
     topp.add_argument("-d", type=int, default=1, help=_("Interval (secs) to refresh process information"))
-    topp.add_argument("-o", "--optional", help=_("Additional fields to display"), nargs='?', choices=['time', 'stime', 'ppid', 'uid', 'gid', 'user', 'group'])
+    topp.add_argument("-o", "--optional", help=_("Additional fields to display"), nargs='?', action='append',
+                      choices=['time', 'stime', 'ppid', 'uid', 'gid', 'user', 'group'])
     topp.add_argument("-n", help=_("Number of iterations"), type=check_negative)
     topp.add_argument("containers", nargs="*", help=_("list of containers to monitor, leave blank for all"))
 
