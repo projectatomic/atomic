@@ -66,7 +66,9 @@ class OSTreeBackend(Backend):
         img_obj.version = img_obj.get_label("Version")
         img_obj.release = img_obj.get_label("Release")
         ostree_manifest = self.syscontainers.get_manifest(image)
-        img_obj.digest = None if ostree_manifest is None else json_loads(ostree_manifest).get('Digest', None)
+        if ostree_manifest:
+            ostree_manifest = json_loads(ostree_manifest)
+        img_obj.digest = None if ostree_manifest is None else ostree_manifest.get('Digest') or ostree_manifest.get('digest')
         img_obj.os = img_obj.get_label("Os")
         img_obj.arch = img_obj.get_label("Arch")
         img_obj.graph_driver = None

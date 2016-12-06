@@ -797,6 +797,8 @@ class SystemContainers(object):
             if 'Labels' in manifest:
                 labels = manifest['Labels']
 
+            if 'config' in manifest:
+                image_id = manifest['config']['digest'].replace("sha256:", "")
             if 'Digest' in manifest:
                 image_id = manifest['Digest'].replace("sha256:", "")
 
@@ -987,17 +989,17 @@ class SystemContainers(object):
         with AtomicDocker() as client:
             fqn_image = util.find_remote_image(client, image) or image
             if insecure:
-                return ["--insecure"], "docker://" + fqn_image
+                return ["--insecure", "--raw"], "docker://" + fqn_image
             else:
-                return [], "docker://" + fqn_image
+                return ["--raw"], "docker://" + fqn_image
 
     def _skopeo_get_manifest(self, image):
         args, img = self._convert_to_skopeo(image)
         return util.skopeo_inspect(img, args)
 
     def _skopeo_get_layers(self, image, layers):
-        args, img = self._convert_to_skopeo(image)
-        return util.skopeo_layers(img, args, layers)
+        _, img = self._convert_to_skopeo(image)
+        return util.skopeo_layers(img, [], layers)
 
     def _image_manifest(self, repo, rev):
         return SystemContainers._get_commit_metadata(repo, rev, "docker.manifest")
@@ -1025,6 +1027,8 @@ class SystemContainers(object):
         if fs_layers:
             layers = list(i["blobSum"] for i in fs_layers)
             layers.reverse()
+        elif "layers" in manifest:
+            layers = [x['digest'] for x in manifest.get("layers")]
         else:
             layers = manifest.get("Layers")
         return layers
