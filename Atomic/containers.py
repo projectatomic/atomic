@@ -1,18 +1,20 @@
 import argparse
-import json
 import os
+import copy
 
 from . import util
 from . import Atomic
 from .client import AtomicDocker
-import datetime
-from dateutil.parser import parse as dateparse
-from docker.errors import NotFound, APIError
+from docker.errors import APIError
+from Atomic.backendutils import BackendUtils
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
 except ImportError:
     DEVNULL = open(os.devnull, 'wb')
+
+ATOMIC_CONFIG = util.get_atomic_config()
+storage = ATOMIC_CONFIG.get('default_storage', "docker")
 
 def cli(subparser):
     # atomic containers
@@ -47,7 +49,7 @@ def cli(subparser):
     pss.set_defaults(_class=Containers, func='ps_tty')
     pss.add_argument("-a", "--all", action='store_true',dest="all", default=False,
                      help=_("show all containers"))
-    pss.add_argument("-f", "--filter", metavar='FILTER', action='append', dest="filter",
+    pss.add_argument("-f", "--filter", metavar='FILTER', action='append', dest="filters",
                      help=_("Filter output based on conditions given in the VARIABLE=VALUE form"))
     pss.add_argument("--json", action='store_true',dest="json", default=False,
                      help=_("print in a machine parseable form"))
@@ -66,6 +68,9 @@ def cli(subparser):
 
 class Containers(Atomic):
 
+    FILTER_KEYWORDS= {"container": "id", "image": "image_name", "command": "command",
+                      "created": "created", "state": "state", "runtime": "runtime"}
+
     def fstrim(self):
         with AtomicDocker() as client:
             for container in client.containers():
@@ -77,177 +82,137 @@ class Containers(Atomic):
                 util.check_call(["/usr/sbin/fstrim", "-v", mp], stdout=DEVNULL)
         return
 
+    def filter_container_objects(self, con_objs):
+        def _walk(_filter_objs, _filter, _value):
+            _filtered = []
+            for con_obj in _filter_objs:
+                if _value in getattr(con_obj, _filter, None):
+                    _filtered.append(con_obj)
+            return _filtered
+
+        if not self.args.filters:
+            return con_objs
+        filtered_objs = copy.deepcopy(con_objs)
+        for f in self.args.filters:
+            cfilter, value = f.split('=', 1)
+            cfilter = self.FILTER_KEYWORDS[cfilter]
+            filtered_objs = _walk(filtered_objs, cfilter, value)
+        return filtered_objs
+
     def ps_tty(self):
-        all_container_info = self.ps()
-        all_containers = []
-        for each in all_container_info:
-            if each["Type"] == "system":
-                container = each["Id"]
-                status = "exited"
-                created = datetime.datetime.fromtimestamp(each["Created"])
-                info = self.syscontainers.get_container_runtime_info(container)
-                if 'status' in info:
-                    status = info["status"]
+        if self.args.debug:
+            util.write_out(str(self.args))
 
-                if not self.args.all and status != "running":
-                    continue
-
-                image = each['Image']
-                imageId = each['ImageID']
-                command = each["Command"]
-                created = created.strftime("%F %H:%M") # pylint: disable=no-member
-                container_info = {"type" : "system", "container" : container,
-                              "image" : image, "command" : command, "image_id" : imageId,
-                              "created" : created, "status" : status,
-                              "runtime" : "runc", "vulnerable" : each["vulnerable"]}
-
-                if self.args.filter:
-                    if not self._filter_include_container(container_info):
-                        continue
-                all_containers.append(container_info)
-
-            elif each["Type"] == "docker":
-            # Collect the docker containers
-                container = each["Id"]
-                ret = self._inspect_container(name=container)
-                status = ret["State"]["Status"]
-                image = ret['Config']['Image']
-                imageId = ret['Image']
-                command = u' '.join(ret['Config']['Cmd']) if ret['Config']['Cmd'] else ""
-                created = dateparse(ret['Created']).strftime("%F %H:%M") # pylint: disable=no-member
-                container_info = {"type" : "docker", "container" : container,
-                                  "image" : image, "image_id" : imageId, "command" : command,
-                                  "created" : created, "status" : status,
-                                  "runtime" : "Docker", "vulnerable" : each["vulnerable"]}
-
-                if self.args.filter:
-                    if not self._filter_include_container(container_info):
-                        continue
-                all_containers.append(container_info)
-
-        if not all_containers:
-            return
-
-        if self.args.json:
-            util.write_out(json.dumps(all_containers))
-            return
-
-        if self.args.truncate:
-            max_len_container = 12
-            max_len_image = 20
-            max_len_command = 20
-        else:
-            max_len_container = max(max([len(s["container"]) for s in all_containers]), 12)
-            max_len_image = max(max([len(s["image"]) for s in all_containers]), 20)
-            max_len_command = max(max([len(s["command"]) for s in all_containers]), 20)
+        container_objects = self._ps()
+        if not any([x.running for x in container_objects]) and not self.args.all:
+            return 0
 
         if self.args.quiet:
-            for container in all_containers:
-                util.write_out(container["container"][0:max_len_container])
-            return
+            for con_obj in container_objects:
+                util.write_out(con_obj.id[:12])
+            return 0
+        if self.args.json:
+            util.output_json(self._to_json(container_objects))
+            return 0
 
-        col_out = "{0:2} {1:%s} {2:%s} {3:%s} {4:16} {5:9} {6:10}" % (max_len_container, max_len_image, max_len_command)
+        if len(container_objects) == 0:
+            return 0
 
+        max_container_id = 12 if self.args.truncate else max([len(x.id) for x in container_objects])
+        max_image_name = 20 if self.args.truncate else max([len(x.image_name) for x in container_objects])
+        max_command = 20 if self.args.truncate else max([len(x.command) for x in container_objects])
+        col_out = "{0:2} {1:%s} {2:%s} {3:%s} {4:16} {5:9} {6:10}" % (max_container_id, max_image_name, max_command)
         if self.args.heading:
             util.write_out(col_out.format(" ",
                                           "CONTAINER ID",
                                           "IMAGE",
                                           "COMMAND",
                                           "CREATED",
-                                          "STATUS",
+                                          "STATE",
                                           "RUNTIME"))
-
-        #if self.args.truncate:
-        for container in all_containers:
+        for con_obj in container_objects:
             indicator = ""
-            if container["vulnerable"]:
+            if con_obj.vulnerable:
                 if util.is_python2:
                     indicator = indicator + self.skull + " "
                 else:
                     indicator = indicator + str(self.skull, "utf-8") + " "
             util.write_out(col_out.format(indicator,
-                                          container["container"][0:max_len_container],
-                                          container["image"][0:max_len_image],
-                                          container["command"][0:max_len_command],
-                                          container["created"][0:16],
-                                          container["status"][0:9],
-                                          container["runtime"][0:10]))
+                                          con_obj.id[0:max_container_id],
+                                          con_obj.image_name[0:max_image_name],
+                                          con_obj.command[0:max_command],
+                                          con_obj.created[0:16],
+                                          con_obj.state[0:9],
+                                          con_obj.backend.backend[0:10]))
+
     def ps(self):
-        all_containers = []
-        vuln_ids = self.get_vulnerable_ids()
-        all_vuln_info = self.get_all_vulnerable_info()
+        container_objects = self._ps()
+        return self._to_json(container_objects)
 
-        # Collect the system containers
-        for i in self.syscontainers.get_containers():
-            i["vulnerable"] = i['Id'] in vuln_ids
-            if i["vulnerable"]:
-                i["vuln_info"] = all_vuln_info[i['Id']]
-            else:
-                i["vuln_info"] = dict()
-            all_containers.append(i)
+    def _ps(self):
+        def _check_filters():
+            if not self.args.filters:
+                return True
+            for f in self.args.filters:
+                _filter, _ = f.split('=', 1)
+                if _filter not in [x for x in self.FILTER_KEYWORDS]:
+                    raise ValueError("The filter {} is not valid.  "
+                                     "Please choose from {}".format(_filter, [x for x in self.FILTER_KEYWORDS]))
+        _check_filters()
+        beu = BackendUtils()
+        containers = self.filter_container_objects(beu.get_containers())
+        self._mark_vulnerable(containers)
+        if self.args.all:
+            return containers
+        return [x for x in containers if x.running]
 
-        # Collect the docker containers
-        for container in [x["Id"] for x in self.d.containers(all=self.args.all)]:
-            ret = self._inspect_container(name=container)
-            ret["Type"] = "docker"
-            ret["vulnerable"] = ret["Image"] in vuln_ids
-            if ret["vulnerable"]:
-                ret["vuln_info"] = all_vuln_info[ret["Image"]]
-            else:
-                ret["vuln_info"] = dict()
-            all_containers.append(ret)
-
-        return all_containers
-
-    def _filter_include_container(self, container_info):
-        filterables = ["container", "image", "command", "created", "status", "runtime"]
-        for j in self.args.filter:
-            var, value = str(j).split("=")
-            var = var.lower()
-
-            if var == "id" or var == "containerid":
-                var = "container"
-
-            if var not in filterables: # If the filter does not exist, default to allowing all containers through
-                continue
-
-            if value not in container_info[var]:
-                return False
-
-        return True
+    @staticmethod
+    def _to_json(con_objects):
+        containers = []
+        for con_obj in con_objects:
+            _con = {'id': con_obj.id,
+                    'image_name': con_obj.image_name,
+                    'command': con_obj.command,
+                    'created': con_obj.created,
+                    'state': con_obj.state,
+                    'runtime': con_obj.runtime,
+                    'vulnerable': con_obj.vulnerable,
+                    'running': con_obj.running
+                    }
+            containers.append(_con)
+        return containers
 
     def delete(self):
-        results = 0
-        sys_targets=[]
-        docker_targets=[]
+
+        if self.args.debug:
+            util.write_out(str(self.args))
+
+        beu = BackendUtils()
         if self.args.all:
-            for c in self.get_containers():
-                docker_targets.append(c["Id"])
-            for c in self.syscontainers.get_containers():
-                sys_targets.append(c["Id"])
+            container_objects = beu.get_containers()
         else:
-            if not self.args.container and len(self.args.containers) == 0:
-                raise ValueError("No containers selected")
-            for c in [ self.args.container ] + self.args.containers:
-                if self.syscontainers.get_checkout(c):
-                    sys_targets.append(c)
-                else:
-                    docker_targets.append(c)
+            container_objects = []
+            for con in self.args.container:
+                _, con_obj = beu.get_backend_and_container_obj(con, str_preferred_backend=storage)
+                container_objects.append(con_obj)
 
-        for target in docker_targets:
+        four_col = "   {0:12} {1:20} {2:25} {3:10}"
+        util.write_out(four_col.format("ID", "NAME", 'IMAGE_NAME', "STORAGE"))
+        for con in container_objects:
+            util.write_out(four_col.format(con.id[0:12], con.name[0:20], con.image_name[0:25], con.backend.backend))
+        if not util.confirm_input("\nDo you wish to delete the following containers?\n"):
+            util.write_out("Aborting...")
+            return
+
+        for del_con in container_objects:
             try:
-                self.d.remove_container(target, force=self.args.force)
-            except NotFound as e:
-                util.write_err("Failed to delete container {}: {}".format(target, e))
-                results += 1
+                del_con.backend.delete_container(del_con.id, force=self.args.force)
             except APIError as e:
-                util.write_err("Failed operation for delete container {}: {}".format(target, e))
-                results += 1
+                util.write_err("Failed to delete container {}: {}".format(con.id, e))
 
-        for target in sys_targets:
-            try:
-                self.syscontainers.uninstall(target)
-            except IOError as e:
-                util.write_err("Failed to delete container {}: {}".format(target, e))
-                results += 1
-        return results
+    def _mark_vulnerable(self, containers):
+        assert isinstance(containers, list)
+        vulnerable_uuids = self.get_vulnerable_ids()
+        for con in containers:
+            if con.id in vulnerable_uuids:
+                con.vulnerable = True

@@ -111,18 +111,18 @@ ${ATOMIC} containers list --all > ps.out
 assert_matches "test-system" ps.out
 ${ATOMIC} containers list --all --no-trunc > ps.out
 assert_matches "test-system" ps.out
-${ATOMIC} containers list --no-trunc --filter id=test-system > ps.out
+${ATOMIC} containers list --no-trunc --filter container=test-system > ps.out
 assert_matches "test-system" ps.out
 ${ATOMIC} containers list --no-trunc > ps.out
 assert_matches "test-system" ps.out
 ${ATOMIC} containers list --no-trunc --quiet > ps.out
 assert_matches "test-system" ps.out
-${ATOMIC} containers list -aq --no-trunc --filter id=test-system > ps.out
+${ATOMIC} containers list -aq --no-trunc --filter container=test-system > ps.out
 assert_matches "test-system" ps.out
-${ATOMIC} containers list -aq --no-trunc --filter id=non-existing-system > ps.out
+${ATOMIC} containers list -aq --no-trunc --filter container=non-existing-system > ps.out
 assert_not_matches "test-system" ps.out
 
-${ATOMIC} containers list --all --no-trunc --filter id=test-system | grep "test-system" > ps.out
+${ATOMIC} containers list --all --no-trunc --filter container=test-system | grep "test-system" > ps.out
 # Check the command is included in the output
 assert_matches "run.sh" ps.out
 

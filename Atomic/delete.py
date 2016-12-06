@@ -26,7 +26,7 @@ class Delete(Atomic):
         # The failure here is basically that it couldnt verify/find the image.
 
         for image in self.args.delete_targets:
-            be, img_obj = beu.get_backend_and_image(image, str_preferred_backend=self.args.storage)
+            be, img_obj = beu.get_backend_and_image_obj(image, str_preferred_backend=self.args.storage)
             delete_objects.append((be, img_obj))
 
         if self.args.remote:

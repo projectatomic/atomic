@@ -97,6 +97,10 @@ class Backend(object): #pylint: disable=metaclass-assignment
         pass
 
     @abstractmethod
+    def delete_container(self, container, force=False):
+        pass
+
+    @abstractmethod
     def start_container(self, name):
         pass
 

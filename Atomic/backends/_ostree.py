@@ -26,18 +26,20 @@ class OSTreeBackend(Backend):
 
     def _make_container(self, info):
         container_id = info['Id']
-
         runtime = self.syscontainers.get_container_runtime_info(container_id)
-
         container = Container(container_id, backend=self)
         container.name = container_id
+        container.command = info['Command']
         container.id = container_id
+        container.image_name = info['Image']
+        container.image_id = info['ImageID']
         container.created = info['Created']
-        container.status = runtime['status']
+        container.status = container.state = runtime['status']
         container.input_name = container_id
         container.original_structure = info
         container.deep = True
         container.image = info['Image']
+        container.running = False if container.status == 'inactive' else True
 
         return container
 
@@ -142,7 +144,8 @@ class OSTreeBackend(Backend):
             layers.append(layer)
         return layers
 
-    def get_dangling_images(self):
+    @staticmethod
+    def get_dangling_images():
         return []
 
     def make_remote_image(self, image):
@@ -152,3 +155,7 @@ class OSTreeBackend(Backend):
 
     def _make_remote_image(self, image):
         return self._make_image(image, None, remote=True)
+
+    def delete_container(self, container, force=False):
+        return self.syscontainers.uninstall(container)
+

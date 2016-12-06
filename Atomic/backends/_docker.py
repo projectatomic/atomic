@@ -8,7 +8,7 @@ from Atomic.objects.container import Container
 from requests import exceptions
 from Atomic.trust import Trust
 from Atomic.objects.layer import Layer
-
+from dateutil.parser import parse as dateparse
 
 class DockerBackend(Backend):
     def __init__(self):
@@ -99,22 +99,39 @@ class DockerBackend(Backend):
         return img_obj
 
     def _make_container(self, container, con_struct, deep=False):
-        con_obj = Container(container)
+        con_obj = Container(container, backend=self)
         con_obj.id = con_struct['Id']
-        con_obj.created = con_struct['Created']
+        try:
+            con_obj.created = float(con_struct['Created'])
+        except ValueError:
+            con_obj.created = dateparse(con_struct['Created']).strftime("%F %H:%M") # pylint: disable=no-member
         con_obj.original_structure = con_struct
+        try:
+            con_obj.name = con_struct['Names'][0]
+        except KeyError:
+            con_obj.name = con_struct['Name']
         con_obj.input_name = container
         con_obj.backend = self
+        try:
+            con_obj.command = con_struct['Command']
+        except KeyError:
+            con_obj.command = con_struct['Config']['Cmd']
+
+        con_obj.state = con_struct.get('State', None) or con_struct.get['State'].get('Status', None)
+        if isinstance(con_obj.state, dict):
+            con_obj.state = con_obj.state['Status']
+        con_obj.running = True if con_obj.state.lower() in ['true', 'running'] else False
 
         if deep:
             # Add in the deep inspection stuff
             con_obj.status = con_struct['State']['Status']
-            con_obj.running = con_struct['State']['Running']
             con_obj.image = con_struct['Image']
+            con_obj.image_name = con_struct['Config']['Image']
 
         else:
             con_obj.status = con_struct['Status']
-            con_obj.image = con_struct['ImageID']
+            con_obj.image_id = con_struct['ImageID']
+            con_obj.image_name = con_struct['Image']
 
         return con_obj
 
@@ -275,4 +292,5 @@ class DockerBackend(Backend):
             layer = self.get_layer(layer.parent)
             layers.append(layer)
         return layers
+
 

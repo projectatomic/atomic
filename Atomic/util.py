@@ -749,6 +749,12 @@ def getgnuhome():
         return None
 
 
+def confirm_input(msg):
+    write_out("{}\n".format(msg))
+    confirm = input("\nConfirm (y/N)")
+    return confirm.strip().lower() in ['y', 'yes']
+
+
 class Decompose(object):
     """
     Class for decomposing an input string in its respective parts like registry,

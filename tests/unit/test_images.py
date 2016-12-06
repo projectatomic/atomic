@@ -51,7 +51,7 @@ class TestInfo(unittest.TestCase):
         args = self.Args()
         args.storage = 'docker'
         info.set_args(args)
-        info.beu.get_backend_and_image = MagicMock(return_value=(db, img_obj))
+        info.beu.get_backend_and_image_obj = MagicMock(return_value=(db, img_obj))
         result = info.info()
         self.assertEqual(result, _docker_centos_result)
 
@@ -65,7 +65,7 @@ class TestInfo(unittest.TestCase):
         args = self.Args()
         args.storage = 'ostree'
         info.set_args(args)
-        info.beu.get_backend_and_image = MagicMock(return_value=(ob, img_obj))
+        info.beu.get_backend_and_image_obj = MagicMock(return_value=(ob, img_obj))
         result = info.info()
         self.assertEqual(result, _ostree_centos_result)
 
@@ -140,7 +140,7 @@ class TestVerify(unittest.TestCase):
             self.image = None
 
     def test_verify_docker_same(self):
-        with patch('Atomic.backendutils.BackendUtils.get_backend_and_image') as mockobj:
+        with patch('Atomic.backendutils.BackendUtils.get_backend_and_image_obj') as mockobj:
             args = self.Args()
             args.storage = 'docker'
             args.image = 'docker.io/library/centos:latest'
@@ -154,7 +154,7 @@ class TestVerify(unittest.TestCase):
             self.assertEqual(v.verify_dbus(), docker_dbus_result)
 
     def test_verify_docker_diff(self):
-        with patch('Atomic.backendutils.BackendUtils.get_backend_and_image') as mockobj:
+        with patch('Atomic.backendutils.BackendUtils.get_backend_and_image_obj') as mockobj:
             args = self.Args()
             args.storage = 'docker'
             args.image = 'docker.io/library/centos:centos7.0.1406'
