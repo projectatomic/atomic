@@ -649,7 +649,7 @@ class Atomic(object):
             return []
 
     def get_local_tokens(self):
-        if len(self.local_tokens) < 1:
+        if len(self.local_tokens) == 0:
             self.local_tokens = self.load_local_tokens()
         return self.local_tokens
 
@@ -663,7 +663,10 @@ class Atomic(object):
             token_data = json.load(token_file)
         try:
             for registry in token_data['auths']:
-                tokens[registry] = token_data['auths'][registry]['auth']
+                reg_key = registry
+                if registry == 'https://index.docker.io/v1/':
+                    reg_key = 'docker.io'
+                tokens[reg_key] = token_data['auths'][registry]['auth']
         except KeyError:
             # Just return a blank dict
             pass
