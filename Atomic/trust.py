@@ -246,7 +246,8 @@ class Trust(Atomic):
         with open(reg_file, mode) as f:
             d = yaml.load(f)
             if not sigstore:
-                del d[sstype][registry]
+                if d:
+                    del d[sstype][registry]
             else:
                 d = { sstype: {}}
                 d[sstype][str(registry)] = { "sigstore": str(sigstore) }
