@@ -962,6 +962,7 @@ class SystemContainers(object):
                 ref = OSTree.parse_refspec(k)
                 util.write_out("Deleting %s" % k)
                 repo.set_ref_immediate(ref[1], ref[2], None)
+        repo.prune(OSTree.RepoPruneFlags.NONE, -1)
 
     @staticmethod
     def get_default_system_name(image):
