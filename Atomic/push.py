@@ -170,9 +170,6 @@ class Push(Atomic):
             if not tag:
                 raise ValueError("The image being pushed must have a tag")
 
-            if self.args.password and self.args.username:
-                self.d.login(username=self.args.username, password=self.args.password, registry=reg)
-
             local_image = "docker-daemon:{}".format(self.image)
             if self.args.reg_type == "atomic":
                 remote_image = "atomic:{}".format(self.image)
@@ -188,7 +185,9 @@ class Push(Atomic):
             # local signature because the manifest file must be on the registry
             return_code = util.skopeo_copy(local_image, remote_image, debug=self.args.debug,
                                            policy_filename=self.policy_filename,
-                                           sign_by=self.args.sign_by if sign else None, insecure=insecure)
+                                           sign_by=self.args.sign_by if sign else None, insecure=insecure,
+                                           username=self.args.username,
+                                           password=self.args.password)
 
             if return_code != 0:
                 raise ValueError("Pushing {} failed.".format(self.image))

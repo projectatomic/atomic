@@ -553,7 +553,7 @@ class atomic_dbus(slip.dbus.service.Object):
             args.image = image
             verify.set_args(args)
             verifications.append({"Image": image,
-                                  "Verification": verify.verify()}) #pylint: disable=no-member
+                                  "Verification": verify.verify_dbus()}) #pylint: disable=no-member
         return json.dumps(verifications)
 
     # atomic version section

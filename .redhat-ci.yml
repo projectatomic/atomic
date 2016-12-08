@@ -8,6 +8,8 @@ host:
 
 context: fedora/24/atomic
 
+required: true
+
 tests:
   - ./.redhat-ci.sh
 

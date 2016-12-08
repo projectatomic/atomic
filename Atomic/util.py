@@ -336,7 +336,7 @@ def skopeo_manifest_digest(manifest_file, debug=False):
     cmd = cmd  + ['manifest-digest', manifest_file]
     return check_output(cmd).rstrip().decode()
 
-def skopeo_copy(source, destination, debug=False, sign_by=None, insecure=False, policy_filename=None):
+def skopeo_copy(source, destination, debug=False, sign_by=None, insecure=False, policy_filename=None, username=None, password=None):
 
     cmd = [SKOPEO_PATH]
     if policy_filename:
@@ -347,6 +347,9 @@ def skopeo_copy(source, destination, debug=False, sign_by=None, insecure=False, 
     if insecure:
         cmd = cmd + ['--tls-verify=false']
     cmd = cmd + ['copy']
+    if username:
+        # it's ok to send an empty password (think of krb for instance)
+        cmd = cmd + [ "--dest-creds=%s%s" % (username, ":%s" % password if password else "") ]
     if destination.startswith("docker"):
         cmd = cmd + ['--remove-signatures']
     elif destination.startswith("atomic") and not sign_by:
@@ -826,6 +829,14 @@ class Decompose(object):
     @property
     def digest(self):
         return self._digest
+
+    @property
+    def no_tag(self):
+        result = self._registry
+        if self._repo:
+            result += "/{}".format(self._repo)
+        result += "/{}".format(self._image)
+        return result
 
     @property
     def all(self):

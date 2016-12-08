@@ -76,9 +76,10 @@ class DockerBackend(Backend):
 
     def _make_image(self, image, img_struct, deep=False, remote=False):
         img_obj = Image(image, remote=remote)
+        img_obj.backend = self
+
         if not remote:
             img_obj.id = img_struct['Id']
-            img_obj.backend = self
             img_obj.repotags = img_struct['RepoTags']
             img_obj.created = img_struct['Created']
             img_obj.size = img_struct['Size']
@@ -262,7 +263,9 @@ class DockerBackend(Backend):
         return self.get_layers(image)
 
     def get_layer(self, image):
-        return Layer(self.inspect_image(image))
+        _layer = Layer(self.inspect_image(image))
+        _layer.remote = image.remote
+        return _layer
 
     def get_layers(self, image):
         layers = []

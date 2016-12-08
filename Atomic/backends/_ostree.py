@@ -4,6 +4,7 @@ from Atomic.objects.image import Image
 from Atomic.objects.container import Container
 from Atomic.syscontainers import SystemContainers
 from Atomic.objects.layer import Layer
+from json import loads as json_loads
 
 class OSTreeBackend(Backend):
 
@@ -40,9 +41,11 @@ class OSTreeBackend(Backend):
 
         return container
 
-    def _make_image(self, image, info):
+    def _make_image(self, image, info, remote=False):
+        img_obj = Image(image, backend=self, remote=remote)
+        if remote:
+            return img_obj
         name = info['Id']
-        img_obj = Image(image, backend=self, remote=False)
         img_obj.input_name = image
         img_obj.name = image
         img_obj.config = info
@@ -50,8 +53,8 @@ class OSTreeBackend(Backend):
         img_obj.id = name
         img_obj.registry = None
         img_obj.repo = None
-        img_obj.image = name
-        img_obj.tag = name
+        img_obj.image = image
+        img_obj.tag = 'latest'
         img_obj.repotags = info['RepoTags']
         img_obj.created = info['Created']
         img_obj.size = None
@@ -60,7 +63,8 @@ class OSTreeBackend(Backend):
         img_obj.labels = info['Labels']
         img_obj.version = img_obj.get_label("Version")
         img_obj.release = img_obj.get_label("Release")
-        img_obj.digest = None
+        ostree_manifest = self.syscontainers.get_manifest(image)
+        img_obj.digest = None if ostree_manifest is None else json_loads(ostree_manifest).get('Digest', None)
         img_obj.os = img_obj.get_label("Os")
         img_obj.arch = img_obj.get_label("Arch")
         img_obj.graph_driver = None
@@ -140,3 +144,11 @@ class OSTreeBackend(Backend):
 
     def get_dangling_images(self):
         return []
+
+    def make_remote_image(self, image):
+        img_obj = self._make_remote_image(image)
+        img_obj.populate_remote_inspect_info()
+        return img_obj
+
+    def _make_remote_image(self, image):
+        return self._make_image(image, None, remote=True)

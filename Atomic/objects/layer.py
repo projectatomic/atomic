@@ -1,4 +1,5 @@
 from Atomic.util import output_json
+from Atomic.client import no_shaw
 
 class Layer(object):
     def __init__(self, img_input):
@@ -9,6 +10,8 @@ class Layer(object):
         self.repotags = None
         self.parent = None
         self.remote = False
+        self.digest = None
+        self.backend = None
 
         if type(img_input) is dict:
             pass
@@ -18,11 +21,14 @@ class Layer(object):
     def _instantiate_from_image_object(self, img_obj):
         self.id = img_obj.id
         self.name = img_obj.name or img_obj.get_label('Name') or img_obj.image
+        self.remote = img_obj.remote
         self.version = img_obj.version
         self.release = img_obj.release
         self.repotags = img_obj.repotags
         # This needs to be resolved for future docker versions
         self.parent = img_obj.parent
+        self.digest = img_obj.digest
+        self.backend = img_obj.backend
         return self
 
     def _instantiate_from_dict(self):
@@ -38,7 +44,6 @@ class Layer(object):
             return True
         return False
 
-
     def dump(self):
         # helper function to dump out known variables/values in pretty-print style
         class_vars = dict(vars(self))
@@ -49,10 +54,14 @@ class Layer(object):
     @property
     def long_version(self):
         _version = ""
-        if self.name:
-            _version += "{}".format(self.name)
         if self.version:
-            _version += "-{}".format(self.version)
+            _version += "{}".format(self.version)
         if self.release:
-            _version += "-{}".format(self.release)
+            if self.version:
+                _version += "-"
+            _version += "{}".format(self.release)
+        if not _version and self.backend.backend == 'ostree':
+            return no_shaw(self.digest)
+        if not _version and self.backend.backend == 'docker':
+            return no_shaw(self.id)
         return _version

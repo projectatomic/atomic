@@ -49,7 +49,7 @@ class TestDockerBackend(unittest.TestCase):
         db = DockerBackend()
         db._inspect_image = MagicMock(return_value=_rsyslog_image_inspect)
         img_obj = db.inspect_image('registry.access.redhat.com/rhel7/rsyslog:latest')
-        self.assertEqual(img_obj.long_version, "rhel7/rsyslog-7.3-8")
+        self.assertEqual(img_obj.long_version, "7.3-8")
 
     def test_inspect_container(self):
         db = DockerBackend()
