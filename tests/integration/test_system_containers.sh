@@ -21,6 +21,12 @@ assert_matches() {
     fi
 }
 
+assert_equal() {
+    if ! test $1 = $2; then
+	assert_not_reached "Failed: not equal " $1 $2
+    fi
+}
+
 # Test scripts run with PWD=tests/..
 
 # The test harness exports some variables into the environment during
@@ -34,6 +40,7 @@ assert_matches() {
 #   See tests/test-images/
 
 OUTPUT=$(/bin/true)
+PYTHON=${PYTHON:-/usr/bin/python}
 
 # Skip the test if OSTree or runc are not installed, or atomic has not --install --system
 ostree --version &>/dev/null || exit 77
@@ -98,9 +105,13 @@ test -e /etc/tmpfiles.d/${NAME}.conf
 test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/${NAME}.service
 test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/tmpfiles-${NAME}.conf
 
+UUID=$(cat ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/info | $PYTHON -c 'import json, sys; print(json.loads(sys.stdin.read())["values"]["UUID"])')
+echo $UUID | egrep "[[:alnum:]]{8}-[[:alnum:]]{4}-[[:alnum:]]{4}-[[:alnum:]]{4}-[[:alnum:]]{12}"
+
 systemctl start ${NAME}
 
 ${ATOMIC} update --container ${NAME} > update.out
+
 assert_matches "Latest version already installed" update.out
 
 ${ATOMIC} containers list --no-trunc > ps.out
@@ -169,6 +180,11 @@ assert_matches "Latest version already installed" update.out
 ${ATOMIC} update --set=PORT=8082 --container ${NAME}
 test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/${NAME}.service
 test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/tmpfiles-${NAME}.conf
+
+UUID_AFTER_UPDATE=$(cat ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/info | $PYTHON -c 'import json, sys; print(json.loads(sys.stdin.read())["values"]["UUID"])')
+echo $UUID_AFTER_UPDATE | egrep "[[:alnum:]]{8}-[[:alnum:]]{4}-[[:alnum:]]{4}-[[:alnum:]]{4}-[[:alnum:]]{12}"
+
+assert_equal $UUID $UUID_AFTER_UPDATE
 
 # Check that the same SECRET value is kept, and that $PORT gets the new value
 assert_matches ${SECRET} ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/config.json

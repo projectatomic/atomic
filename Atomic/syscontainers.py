@@ -12,6 +12,7 @@ import subprocess
 import time
 from .client import AtomicDocker
 from ctypes import cdll, CDLL
+import uuid
 
 try:
     import gi
@@ -54,7 +55,7 @@ WantedBy=multi-user.target
 """
 TEMPLATE_FORCED_VARIABLES = ["DESTDIR", "NAME", "EXEC_START", "EXEC_STOP",
                              "HOST_UID", "HOST_GID"]
-TEMPLATE_OVERRIDABLE_VARIABLES = ["RUN_DIRECTORY", "STATE_DIRECTORY"]
+TEMPLATE_OVERRIDABLE_VARIABLES = ["RUN_DIRECTORY", "STATE_DIRECTORY", "UUID"]
 
 class SystemContainers(object):
 
@@ -419,6 +420,8 @@ class SystemContainers(object):
                 key, val = i[:split], i[split+1:]
                 values[key] = val
 
+        if "UUID" not in values:
+            values["UUID"] = str(uuid.uuid4())
         values["DESTDIR"] = destination
         values["NAME"] = name
         values["EXEC_START"], values["EXEC_STOP"] = self._generate_systemd_startstop_directives(name)

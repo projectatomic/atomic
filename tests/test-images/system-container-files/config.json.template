@@ -16,6 +16,8 @@
 		"env": [
 			"PORT=$PORT",
 			"RECEIVER=$RECEIVER",
+			"UUID=$UUID",
+			"NAME=$NAME",
 			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 			"TERM=xterm"
 		],
