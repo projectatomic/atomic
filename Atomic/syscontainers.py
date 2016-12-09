@@ -591,13 +591,16 @@ class SystemContainers(object):
         values = info["values"]
         revision = info["revision"] if "revision" in info else None
 
-        if revision and self.args.setvalues is None:
-            image_inspect = self.inspect_system_image(image)
-            if image_inspect:
-                if image_inspect['ImageId'] == revision:
-                    # Nothing to do
-                    util.write_out("Latest version already installed.")
-                    return
+        if not self.args.force:
+            # If --force is not used, check if the image id or the configuration for the container has
+            # changed before upgrading it.
+            if revision and self.args.setvalues is None:
+                image_inspect = self.inspect_system_image(image)
+                if image_inspect:
+                    if image_inspect['ImageId'] == revision:
+                        # Nothing to do
+                        util.write_out("Latest version already installed.")
+                        return
 
         if os.path.exists("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment)):
             shutil.rmtree("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment))
