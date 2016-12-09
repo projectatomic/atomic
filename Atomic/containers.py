@@ -1,4 +1,3 @@
-import argparse
 import os
 import copy
 
@@ -26,19 +25,15 @@ def cli(subparser):
     # atomic containers delete
     delete_parser = containers_subparser.add_parser("delete",
                                                 help=_("delete specified containers"))
-    delete_parser.set_defaults(_class=Containers, func='delete_image')
     delete_parser.add_argument("-f", "--force", action='store_true',
                                dest="force",
                                default=False,
                                help=_("Force removal of specified running containers"))
-    delete_group = delete_parser.add_mutually_exclusive_group()
-    delete_group.add_argument("-a", "--all", action='store_true',dest="all",
+    delete_parser.add_argument("-a", "--all", action='store_true',dest="all",
                                default=False,
                                help=_("Delete all containers"))
-    delete_group.add_argument("container", nargs='?', action="append", 
+    delete_parser.add_argument("containers", nargs='*',
                               help=_("Specify one or more containers. Must be final arguments."))
-    delete_parser.add_argument("containers", nargs=argparse.REMAINDER, 
-                               help=argparse.SUPPRESS)
     delete_parser.set_defaults(_class=Containers, func='delete')
 
 
@@ -183,16 +178,18 @@ class Containers(Atomic):
         return containers
 
     def delete(self):
-
         if self.args.debug:
             util.write_out(str(self.args))
+
+        if len(self.args.containers) > 0 and self.args.all:
+            raise ValueError("You must select --all or provide a list of containers to delete.")
 
         beu = BackendUtils()
         if self.args.all:
             container_objects = beu.get_containers()
         else:
             container_objects = []
-            for con in self.args.container:
+            for con in self.args.containers:
                 _, con_obj = beu.get_backend_and_container_obj(con, str_preferred_backend=storage)
                 container_objects.append(con_obj)
 

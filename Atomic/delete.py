@@ -15,8 +15,10 @@ class Delete(Atomic):
         if self.args.debug:
             util.write_out(str(self.args))
 
+        if len(self.args.delete_targets) > 0 and self.args.all:
+            raise ValueError("You must select --all or provide a list of images to delete.")
+
         beu = BackendUtils()
-        # Ensure the input values match up first
         delete_objects = []
 
         # We need to decide on new returns for dbus because we now check image
@@ -25,22 +27,27 @@ class Delete(Atomic):
         #
         # The failure here is basically that it couldnt verify/find the image.
 
-        for image in self.args.delete_targets:
-            be, img_obj = beu.get_backend_and_image_obj(image, str_preferred_backend=self.args.storage)
-            delete_objects.append((be, img_obj))
+        if self.args.all:
+            delete_objects = beu.get_images(get_all=True)
+        else:
+            for image in self.args.delete_targets:
+                _, img_obj = beu.get_backend_and_image_obj(image, str_preferred_backend=self.args.storage)
+                delete_objects.append(img_obj)
 
         if self.args.remote:
             return self._delete_remote(self.args.delete_targets)
 
-        max_img_name = max([len(x.input_name) for _, x in delete_objects]) + 2
+        max_img_name = max([len(x.repotags[0] or x.id) for x in delete_objects]) + 2
 
         if not self.args.assumeyes:
             util.write_out("Do you wish to delete the following images?\n")
             two_col = "   {0:" + str(max_img_name) + "} {1}"
             util.write_out(two_col.format("IMAGE", "STORAGE"))
             for del_obj in delete_objects:
-                be, img_obj = del_obj
-                util.write_out(two_col.format(img_obj.input_name, be.backend))
+                image = del_obj.repotags[0]
+                if image is None or "<none>" in image:
+                    image = del_obj.id[0:12]
+                util.write_out(two_col.format(image, del_obj.backend.backend))
             confirm = util.input("\nConfirm (y/N) ")
             confirm = confirm.strip().lower()
             if not confirm in ['y', 'yes']:
@@ -49,8 +56,7 @@ class Delete(Atomic):
 
         # Perform the delete
         for del_obj in delete_objects:
-            be, img_obj = del_obj
-            be.delete_image(img_obj.input_name, force=self.args.force)
+            img_obj.backend.delete_image(img_obj.input_name, force=self.args.force)
 
         # We need to return something here for dbus
         return

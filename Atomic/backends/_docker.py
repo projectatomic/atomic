@@ -84,6 +84,7 @@ class DockerBackend(Backend):
             img_obj.created = img_struct['Created']
             img_obj.size = img_struct['Size']
             img_obj.virtual_size = img_struct['VirtualSize']
+            img_obj.original_structure = img_struct
 
         if deep:
             img_obj.deep = True
@@ -96,6 +97,7 @@ class DockerBackend(Backend):
             img_obj.version = img_obj.get_label('Version')
             img_obj.release = img_obj.get_label('Release')
             img_obj.parent = img_struct['Parent']
+            img_obj.original_structure = img_struct
         return img_obj
 
     def _make_container(self, container, con_struct, deep=False):

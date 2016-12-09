@@ -38,7 +38,6 @@ def cli(subparser):
                                                 help=_("mark image for deletion"),
                                                 epilog="Marks image. registry garbage-collection "
                                                 "when invoked will recover used disk space")
-    delete_parser.set_defaults(_class=Delete, func='delete_image')
 
     deletegroup = delete_parser.add_mutually_exclusive_group()
     deletegroup.add_argument("-f", "--force", default=False, dest="force",
@@ -53,9 +52,11 @@ def cli(subparser):
                                help=_("Specify the storage from which to delete the image from. "
                                       "If not specified and there are images with the same name in "
                                       "different storages, you will be prompted to specify."))
-
-    delete_parser.add_argument("delete_targets", nargs=argparse.ONE_OR_MORE,
-                               help=_("container image(s)"))
+    delete_parser.add_argument("-a", "--all", action='store_true',dest="all",
+                               default=False, help=_("Delete all images"))
+    delete_parser.add_argument("delete_targets", nargs='*',
+                                    help=_("container image(s)"))
+    delete_parser.set_defaults(_class=Delete, func='delete_image')
 
     if util.gomtree_available():
         generate_parser = images_subparser.add_parser("generate",
