@@ -445,6 +445,7 @@ class SystemContainers(object):
                 try:
                     result = template.substitute(values)
                 except KeyError as e:
+                    os.unlink(destination)
                     raise ValueError("The template file '%s' still contains an unreplaced value for: '%s'" % \
                                      (inputfilename, str(e)))
                 outfile.write(result)
