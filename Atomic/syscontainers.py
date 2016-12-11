@@ -442,11 +442,11 @@ class SystemContainers(object):
                 pass
             with open(destination, "w") as outfile:
                 template = Template(data)
-                result = template.safe_substitute(values)
-                missing = {"".join(x) for x in template.pattern.findall(data) if "".join(x) not in values} # pylint: disable=no-member
-                if len(missing):
-                    raise ValueError("The template file '%s' still contains unreplaced values for: %s" % \
-                                     (inputfilename, ", ".join(missing)))
+                try:
+                    result = template.substitute(values)
+                except KeyError as e:
+                    raise ValueError("The template file '%s' still contains an unreplaced value for: '%s'" % \
+                                     (inputfilename, str(e)))
                 outfile.write(result)
 
         src = os.path.join(exports, "config.json")
