@@ -1,5 +1,5 @@
 from Atomic.util import output_json
-
+import datetime
 
 class Container(object):
     def __init__(self, input_name, backend=None):
@@ -7,13 +7,18 @@ class Container(object):
         # Required
         self.name = None
         self.id = None
-        self.created = None
+        self._created = None
         self.status = None
         self.input_name = input_name
         self.original_structure = None
         self.deep = False
         self._backend = backend
-        self.image = None
+        self.runtime = backend.backend
+        self.image_id = None
+        self.image_name = None
+        self.command = None
+        self.state = None
+        self.vulnerable = False
 
         # Optional
         self.running = False
@@ -42,3 +47,15 @@ class Container(object):
     @backend.setter
     def backend(self, value):
         self._backend = value
+
+    @property
+    def created(self):
+        return str(datetime.datetime.fromtimestamp(self._created))
+
+    @property
+    def created_raw(self):
+        return self._created
+
+    @created.setter
+    def created(self, value):
+        self._created = value

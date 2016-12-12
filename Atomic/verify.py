@@ -86,7 +86,7 @@ class Verify(Atomic):
         return layers
 
     def _verify(self):
-        be, img_obj = self.backend_utils.get_backend_and_image(self.image, self.args.storage)
+        be, img_obj = self.backend_utils.get_backend_and_image_obj(self.image, self.args.storage)
         remote_img_name  = "{}:latest".format(util.Decompose(img_obj.fq_name).no_tag)
         remote_img_obj = be.make_remote_image(remote_img_name)
         return img_obj.layers, remote_img_obj.layers

@@ -60,8 +60,6 @@ class Layer(object):
             if self.version:
                 _version += "-"
             _version += "{}".format(self.release)
-        if not _version and self.backend.backend == 'ostree':
-            return no_shaw(self.digest)
-        if not _version and self.backend.backend == 'docker':
-            return no_shaw(self.id)
+        if not _version:
+            return no_shaw(self.id or self.digest)
         return _version

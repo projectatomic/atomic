@@ -21,6 +21,12 @@ assert_matches() {
     fi
 }
 
+assert_equal() {
+    if ! test $1 = $2; then
+	assert_not_reached "Failed: not equal " $1 $2
+    fi
+}
+
 # Test scripts run with PWD=tests/..
 
 # The test harness exports some variables into the environment during
@@ -34,6 +40,7 @@ assert_matches() {
 #   See tests/test-images/
 
 OUTPUT=$(/bin/true)
+PYTHON=${PYTHON:-/usr/bin/python}
 
 # Skip the test if OSTree or runc are not installed, or atomic has not --install --system
 ostree --version &>/dev/null || exit 77
@@ -98,9 +105,13 @@ test -e /etc/tmpfiles.d/${NAME}.conf
 test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/${NAME}.service
 test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/tmpfiles-${NAME}.conf
 
+UUID=$(cat ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/info | $PYTHON -c 'import json, sys; print(json.loads(sys.stdin.read())["values"]["UUID"])')
+echo $UUID | egrep "[[:alnum:]]{8}-[[:alnum:]]{4}-[[:alnum:]]{4}-[[:alnum:]]{4}-[[:alnum:]]{12}"
+
 systemctl start ${NAME}
 
 ${ATOMIC} update --container ${NAME} > update.out
+
 assert_matches "Latest version already installed" update.out
 
 ${ATOMIC} containers list --no-trunc > ps.out
@@ -111,18 +122,18 @@ ${ATOMIC} containers list --all > ps.out
 assert_matches "test-system" ps.out
 ${ATOMIC} containers list --all --no-trunc > ps.out
 assert_matches "test-system" ps.out
-${ATOMIC} containers list --no-trunc --filter id=test-system > ps.out
+${ATOMIC} containers list --no-trunc --filter container=test-system > ps.out
 assert_matches "test-system" ps.out
 ${ATOMIC} containers list --no-trunc > ps.out
 assert_matches "test-system" ps.out
 ${ATOMIC} containers list --no-trunc --quiet > ps.out
 assert_matches "test-system" ps.out
-${ATOMIC} containers list -aq --no-trunc --filter id=test-system > ps.out
+${ATOMIC} containers list -aq --no-trunc --filter container=test-system > ps.out
 assert_matches "test-system" ps.out
-${ATOMIC} containers list -aq --no-trunc --filter id=non-existing-system > ps.out
+${ATOMIC} containers list -aq --no-trunc --filter container=non-existing-system > ps.out
 assert_not_matches "test-system" ps.out
 
-${ATOMIC} containers list --all --no-trunc --filter id=test-system | grep "test-system" > ps.out
+${ATOMIC} containers list --all --no-trunc --filter container=test-system | grep "test-system" > ps.out
 # Check the command is included in the output
 assert_matches "run.sh" ps.out
 
@@ -169,6 +180,11 @@ assert_matches "Latest version already installed" update.out
 ${ATOMIC} update --set=PORT=8082 --container ${NAME}
 test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/${NAME}.service
 test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/tmpfiles-${NAME}.conf
+
+UUID_AFTER_UPDATE=$(cat ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/info | $PYTHON -c 'import json, sys; print(json.loads(sys.stdin.read())["values"]["UUID"])')
+echo $UUID_AFTER_UPDATE | egrep "[[:alnum:]]{8}-[[:alnum:]]{4}-[[:alnum:]]{4}-[[:alnum:]]{4}-[[:alnum:]]{12}"
+
+assert_equal $UUID $UUID_AFTER_UPDATE
 
 # Check that the same SECRET value is kept, and that $PORT gets the new value
 assert_matches ${SECRET} ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/config.json
@@ -253,7 +269,7 @@ assert_matches busybox refs
 ${ATOMIC} --assumeyes images delete -f --storage ostree docker.io/busybox
 
 BUSYBOX_IMAGE_ID=$(${ATOMIC} images list -f type=ostree | grep busybox | awk '{print $3}')
-${ATOMIC} --assumeyes images delete -f ${BUSYBOX_IMAGE_ID}
+${ATOMIC} --assumeyes images delete -f --storage=ostree ${BUSYBOX_IMAGE_ID}
 
 ostree --repo=${ATOMIC_OSTREE_REPO} refs > refs
 OUTPUT=$(! grep -c busybox refs)
@@ -266,7 +282,8 @@ ostree --repo=${ATOMIC_OSTREE_REPO} refs | grep busybox
 ${ATOMIC} verify --storage ostree busybox > verify.out
 assert_not_matches "contains images or layers that have updates" verify.out
 
-image_digest=$(ostree --repo=${ATOMIC_OSTREE_REPO} show --print-metadata-key=docker.manifest ociimage/busybox_3Alatest | sed -e"s|.*Digest\": \"sha256:\([a-z0-9]\+\).*|\1|" | head -c 12)
+image_digest=$(ostree --repo=${ATOMIC_OSTREE_REPO} show --print-metadata-key=docker.manifest ociimage/busybox_3Alatest | \
+                   $PYTHON -c 'import json, sys; print(json.loads(sys.stdin.read().strip()[1:-1])["config"]["digest"].replace("sha256:", "")[:12])')
 ${ATOMIC} images list > images.out
 grep "busybox.*$image_digest" images.out
 

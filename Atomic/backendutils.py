@@ -27,14 +27,15 @@ class BackendUtils(object):
     def backend_has_container(backend, container):
         return True if backend.has_container(container) else False
 
-    def get_backend_and_image(self, img, str_preferred_backend=None):
+    def get_backend_and_image_obj(self, img, str_preferred_backend=None):
         """
         Given an image name (str) and optionally a str reference to a backend,
         this method looks for the image firstly on the preferred backend and
-        then on the alternate backends.  It returns a backend object.
+        then on the alternate backends.  It returns a backend object and an
+        image object.
         :param img: name of image to look for
         :param str_preferred_backend: i.e. 'docker'
-        :return: backend object
+        :return: backend object and image object
         """
         backends = list(self.BACKENDS)
         # Check preferred backend first
@@ -62,35 +63,38 @@ class BackendUtils(object):
         raise ValueError("Found {} in multiple storage backends: {}".
                          format(img, ', '.join([x.backend for x in img_in_backends])))
 
-    def get_backend_for_container(self, container, str_preferred_backend=None):
+    def get_backend_and_container_obj(self, container_name, str_preferred_backend=None):
         """
         Given a container name (str) and optionally a str reference to a backend,
         this method looks for the container firstly on the preferred backend and
-        then on the alternate backends.  It returns a backend object.
-        :param container: name of image to look for
+        then on the alternate backends.  It returns a backend object and a container
+        object.
+        :param container_name: name of image to look for
         :param str_preferred_backend: i.e. 'docker'
-        :return: backend object
+        :return: backend object and container object
         """
         backends = list(self.BACKENDS)
         # Check preferred backend first
         if str_preferred_backend:
             be = self.get_backend_from_string(str_preferred_backend)
-            if be.has_container(container):
-                return be
+            con_obj = be.has_container(container_name)
+            if con_obj:
+                return be, con_obj
             # Didnt find in preferred, need to remove it from the list now
             del backends[self._get_backend_index_from_string(str_preferred_backend)]
 
         container_in_backends = []
         for backend in backends:
             be = backend()
-            if be.has_container(container):
-                container_in_backends.append(be)
+            con_obj = be.has_container(container_name)
+            if con_obj:
+                container_in_backends.append((be, con_obj))
         if len(container_in_backends) == 1:
             return container_in_backends[0]
         if len(container_in_backends) == 0:
-            raise ValueError("Unable to find backend associated with container '{}'".format(container))
+            raise ValueError("Unable to find backend associated with container '{}'".format(container_name))
         raise ValueError("Found {} in multiple storage backends: {}".
-                         format(container, ', '.join([x.backend for x in container_in_backends])))
+                         format(container_name, ', '.join([x.backend for x in container_in_backends])))
 
     def get_images(self, get_all=False):
         backends = self.BACKENDS

@@ -10,7 +10,7 @@ from docker.errors import NotFound
 import json
 
 
-CHOICES=['all', 'link', 'nlink', 'mode', 'type', 'time', 'uid', 'gid', 'size', 'sha256digest']
+CHOICES=['link', 'nlink', 'mode', 'type', 'time', 'uid', 'gid', 'size', 'sha256digest']
 
 def cli(subparser):
     # atomic diff
@@ -26,7 +26,7 @@ def cli(subparser):
                        help=_("output json"))
     diffp.add_argument("-k", "--keywords", nargs='?',
                        action='append',
-                       choices=CHOICES,
+                       choices=['all'] + CHOICES,
                        help=_("Exclusive keywords to be used for file level comparision"))
     diffp.add_argument("-n", "--no-files", default=False, action='store_true',
                        help=_("Do not perform a file diff between the docker objects"))
@@ -210,6 +210,12 @@ class DiffObj(object):
         self.metadata_results = None
         self._manifest_file_name = None
         self._validation_results= None
+        if self.args.keywords is None:
+            self.keywords = CHOICES
+        elif 'all' in self.args.keywords:
+            self.keywords = CHOICES
+        else:
+            self.keywords = self.args.keywords
 
     def remove(self):
         """
@@ -231,9 +237,8 @@ class DiffObj(object):
                 raise ValueError("Unable to find container or image named '{}'".format(self.name))
 
     def generate_mtree(self):
-        keywords = self.args.keywords if 'all' not in self.args.keywords else CHOICES
         rc, mtree_output, stderr = util.generate_validation_manifest(img_rootfs=self.chroot,
-                                                                     keywords=" ".join(keywords))
+                                                                     keywords=" ".join(self.keywords))
         if rc != 0:
             raise ValueError("Unable to generate manifest for {}. \nReason: {}\n".format(self.name, stderr))
         mtree_file= tempfile.NamedTemporaryFile(mode="wb", delete=False)
@@ -260,9 +265,8 @@ class DiffObj(object):
         return self._validation_results
 
     def validate(self):
-        keywords = self.args.keywords if 'all' not in self.args.keywords else CHOICES
         rc, results, stderr = util.validate_manifest(self._manifest_file_name, img_rootfs=self.chroot,
-                                                     keywords=" ".join(keywords), json_out=True)
+                                                     keywords=" ".join(self.keywords), json_out=True)
         if rc not in [0, 1]:
             raise ValueError("Unable to validate manifest against {}. \nReason: {}\n".format(self.name, stderr))
         self._validation_results = json.loads(results.decode('utf-8'))

@@ -13,10 +13,11 @@ IFS=$'\n\t'
 
 # In addition, the test harness creates some images for use in testing.
 #   See tests/test-images/
+ATOMIC=$(grep -v -- --debug <<< "$ATOMIC")
 
 OUTPUT=$(/bin/true)
 
-${ATOMIC} containers list --all -q -f runtime=Docker | sort > atomic.ps.out
+${ATOMIC} containers list --all -q -f runtime=docker | sort > atomic.ps.out
 docker ps --all -q | sort > docker.ps.out
 diff docker.ps.out atomic.ps.out
 

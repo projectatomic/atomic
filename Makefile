@@ -2,8 +2,8 @@
 PREFIX ?= $(DESTDIR)/usr
 SYSCONFDIR ?= $(DESTDIR)/etc/sysconfig
 PROFILEDIR ?= $(DESTDIR)/etc/profile.d
-PYTHON ?= /usr/bin/python
-PYTHON3 ?= /usr/bin/python3
+export PYTHON ?= /usr/bin/python
+export PYTHON3 ?= /usr/bin/python3
 PYLINT ?= $(PYTHON) -m pylint
 PYTHON3_PYLINT ?= $(PYTHON3) -m pylint
 GO_MD2MAN ?= /usr/bin/go-md2man

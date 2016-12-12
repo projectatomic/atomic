@@ -87,7 +87,7 @@ class Info(Atomic):
                 write_func("")
 
     def get_layer_objects(self):
-        _, img_obj = self.beu.get_backend_and_image(self.image, str_preferred_backend=self.args.storage)
+        _, img_obj = self.beu.get_backend_and_image_obj(self.image, str_preferred_backend=self.args.storage)
         return img_obj.layers
 
     def dbus_version(self):
@@ -117,7 +117,7 @@ class Info(Atomic):
             img_obj = be.make_remote_image(self.image)
         else:
             # The image is local
-            be, img_obj = self.beu.get_backend_and_image(self.image, str_preferred_backend=self.args.storage)
+            be, img_obj = self.beu.get_backend_and_image_obj(self.image, str_preferred_backend=self.args.storage)
 
         with closing(StringIO()) as buf:
             try:
