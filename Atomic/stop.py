@@ -1,7 +1,7 @@
 import argparse
 
 from . import util
-from .util import DockerObjectNotFound
+from Atomic.backendutils import BackendUtils
 
 try:
     from . import Atomic
@@ -16,38 +16,33 @@ def cli(subparser):
         "image does not specify LABEL STOP")
     stopp.set_defaults(_class=Stop, func='stop')
     util.add_opt(stopp)
-    stopp.add_argument("-n", "--name", dest="name", default=None,
-                       help=_("name of container"))
-    stopp.add_argument("image", help=_("container image"))
+    stopp.add_argument("container", help=_("container name or ID"))
     stopp.add_argument("args", nargs=argparse.REMAINDER,
                           help=_("Additional arguments appended to the image "
                                  "stop method"))
+
+ATOMIC_CONFIG = util.get_atomic_config()
+storage = ATOMIC_CONFIG.get('default_storage', "docker")
 
 class Stop(Atomic):
     def __init__(self):
         super(Stop, self).__init__()
 
     def stop(self):
-        if self.syscontainers.get_checkout(self.name) is not None:
-            self.syscontainers.stop_service(self.name)
-            return
 
-        self.inspect = self._inspect_container()
-        if self.inspect is None:
-            self.inspect = self._inspect_image()
-            if self.inspect is None:
-                raise DockerObjectNotFound(self.name)
+        if self.args.debug:
+            util.write_out(str(self.args))
 
-        args = self._get_args("STOP")
-        if args:
-            cmd = self.gen_cmd(args + self.quote(self.args.args))
+        beu = BackendUtils()
+        be, con_obj = beu.get_backend_and_container_obj(self.args.container, storage)
+        con_obj.stop_args = con_obj.get_label('stop')
+        if con_obj.stop_args and be.backend == 'docker':
+            cmd = self.gen_cmd(con_obj.stop_args + self.quote(self.args.args))
             cmd = self.sub_env_strings(cmd)
             self.display(cmd)
+            # There should be some error handling around this
+            # in case it fails.  And what should then be done?
             util.check_call(cmd, env=self.cmd_env())
 
-        # Container exists
-        try:
-            if self.inspect["State"]["Running"]:
-                self.d.stop(self.name)
-        except KeyError:
-            pass
+        be.stop_container(con_obj)
+

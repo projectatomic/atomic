@@ -112,3 +112,7 @@ class BackendUtils(object):
             con_objs += be.get_containers()
         return con_objs
 
+    def get_container_obj_by_image_name(self, image_name, str_preferred_backend):
+        pass
+
+

@@ -99,8 +99,8 @@ class OSTreeBackend(Backend):
     def start_container(self, name):
         return self.syscontainers.start_service(name)
 
-    def stop_container(self, name):
-        return self.syscontainers.stop_service(name)
+    def stop_container(self, con_obj):
+        return self.syscontainers.stop_service(con_obj.id)
 
     def get_images(self, get_all=False):
         return [self._make_image(x['Id'], x) for x in self.syscontainers.get_system_images(get_all=get_all)]

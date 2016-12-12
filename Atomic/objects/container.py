@@ -19,11 +19,13 @@ class Container(object):
         self.command = None
         self.state = None
         self.vulnerable = False
+        self.labels = None
 
         # Optional
         self.running = False
         # Instantiate
         self._instantiate()
+        self.stop_args = None
 
     def _instantiate(self):
         self._setup_common()
@@ -32,6 +34,11 @@ class Container(object):
     def _setup_common(self):
         # Items common to backends can go here.
         pass
+
+    def get_label(self, label):
+        if self.labels:
+            return self.labels.get(label.lower(), None) or self.labels.get(label.upper(), None)
+        return None
 
     def dump(self):
         # Helper function to dump out known variables in pretty-print style

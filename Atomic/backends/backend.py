@@ -110,7 +110,7 @@ class Backend(object): #pylint: disable=metaclass-assignment
         pass
 
     @abstractmethod
-    def stop_container(self, name):
+    def stop_container(self, con_obj):
         pass
 
     @abstractmethod

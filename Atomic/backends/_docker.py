@@ -129,6 +129,7 @@ class DockerBackend(Backend):
             con_obj.status = con_struct['State']['Status']
             con_obj.image = con_struct['Image']
             con_obj.image_name = con_struct['Config']['Image']
+            con_obj.labels = con_struct['Config']['Labels']
 
         else:
             con_obj.status = con_struct['Status']
@@ -187,13 +188,8 @@ class DockerBackend(Backend):
             raise ValueError("Unable to locate container '{}' in {} backend".format(name, self.backend))
         return self.d.start(name)
 
-    def stop_container(self, name):
-        stop_obj = self.inspect_container(name)
-        if not stop_obj:
-            raise ValueError("Unable to find container '{}'".format(name))
-        if not stop_obj.running:
-            raise ValueError("Container '{}' is not running".format(name))
-        return self.d.stop(name)
+    def stop_container(self, con_obj):
+        return self.d.stop(con_obj.id)
 
     def pull_image(self, image, pull_args):
         # Add this when atomic registry is incorporated.
@@ -294,5 +290,4 @@ class DockerBackend(Backend):
             layer = self.get_layer(layer.parent)
             layers.append(layer)
         return layers
-
 
