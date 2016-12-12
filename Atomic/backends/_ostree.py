@@ -118,9 +118,9 @@ class OSTreeBackend(Backend):
         return self.get_layers(image)
 
     def update(self, name, force=False):
-        if force or not self.syscontainers.has_image(name):
-            return self.syscontainers.update(name)
-        return True
+        if force:
+            raise ValueError("--force is not supported by ostree images")
+        return self.syscontainers.pull_image(name)
 
     def install(self, image, name):
         return self.syscontainers.install(image, name)

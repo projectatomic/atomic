@@ -67,6 +67,11 @@ class Backend(object): #pylint: disable=metaclass-assignment
 
     @abstractmethod
     def update(self, name, force=False):
+        """
+        Downloads latest image from registry
+        :param image:
+        :return:
+        """
         pass
 
     @abstractmethod

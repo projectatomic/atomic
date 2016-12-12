@@ -573,7 +573,7 @@ class SystemContainers(object):
             return [image_inspect]
         return None
 
-    def update(self, name):
+    def update_container(self, name):
         repo = self._get_ostree_repo()
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
@@ -583,13 +583,7 @@ class SystemContainers(object):
             info = json.loads(info_file.read())
             self.args.remote = info['remote']
             if self.args.remote:
-                util.write_out("%s a container with a remote rootfs. Only changes to config will be applied." % ("Rolling back" if self.args.rollback else "Updating"))
-
-        if self.args.rollback:
-            if self.args.setvalues is not None:
-                raise ValueError("Error: --set cannot be used when rolling back a container")
-            self.rollback(name)
-            return
+                util.write_out("Updating a container with a remote rootfs. Only changes to config will be applied.")
 
         next_deployment = 0
         if os.path.realpath(path).endswith(".0"):
@@ -602,16 +596,15 @@ class SystemContainers(object):
         values = info["values"]
         revision = info["revision"] if "revision" in info else None
 
-        if not self.args.force:
-            # If --force is not used, check if the image id or the configuration for the container has
-            # changed before upgrading it.
-            if revision and self.args.setvalues is None:
-                image_inspect = self.inspect_system_image(image)
-                if image_inspect:
-                    if image_inspect['ImageId'] == revision:
-                        # Nothing to do
-                        util.write_out("Latest version already installed.")
-                        return
+        # Check if the image id or the configuration for the container has
+        # changed before upgrading it.
+        if revision and self.args.setvalues is None:
+            image_inspect = self.inspect_system_image(image)
+            if image_inspect:
+                if image_inspect['ImageId'] == revision:
+                    # Nothing to do
+                    util.write_out("Latest version already installed.")
+                    return
 
         if os.path.exists("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment)):
             shutil.rmtree("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment))

@@ -44,14 +44,19 @@ You can also use any of the many options to create the help file including using
 
   Prune/delete all **dangling** images, freeing wasted disk space.
 
-**verify**
-  Checks whether there is a newer image available.   If the image differs, it will capture any of its relevant information like version (where applicable).
+**update**
 
+  Pulls the latest update of the image from the repository. If a container based on this image exists, the container will continue to use the old image. Use --force to remove the container.
+
+**verify**
+
+  Checks whether there is a newer image available.   If the image differs, it will capture any of its relevant information like version (where applicable).
   Verify will always attempt to use the **Version** and **Release** labels to determine if there is a newer version.  If that information is not
   available, then for 'ostree' images, verify will compare using the manifest digests.  In the case of docker images, it will use the image's ID
   for comparison.
 
 **version**
+
   Display image 'Id Name:Version:Release RepoTag' label
 
 # delete OPTIONS
@@ -106,8 +111,17 @@ will list all images that has "foo" as part of their repository name.
 [**--json**]
   Output in the form of JSON.
 
-# verify OPTIONS
+# update OPTIONS
+[**-f**|**--force**]
+  Remove all containers based on this image
 
+[**-h**|**--help**]
+  Print usage statement
+
+[**--storage=[ostree|docker]**]
+  Optionally specify the storage of the image. Defaults to docker.
+
+# verify OPTIONS
 [**-h|--help**]
   Print usage statement
 

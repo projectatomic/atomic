@@ -431,7 +431,9 @@ _atomic_containers() {
   local subcommands="
     delete
     list
+    rollback
     trim
+    update
   "
 
   __atomic_subcommands "$subcommands" && return
@@ -509,6 +511,21 @@ _atomic_containers_list() {
 	esac
 }
 
+_atomic_containers_rollback() {
+        local all_options="
+                --help
+        "
+
+	case "$cur" in
+                -*)
+                        COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+                        ;;
+                *)
+                    __atomic_system_containers_containers
+                    ;;
+        esac
+}
+
 _atomic_containers_trim() {
 	local all_options="
 		--help
@@ -521,17 +538,13 @@ _atomic_containers_trim() {
 	esac
 }
 
-_atomic_update() {
+_atomic_containers_update() {
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "--force -f --rollback --set --container" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "--help --set" -- "$cur" ) )
 			;;
 		*)
-		    if test $_container == "0"; then
-			__atomic_image_repos_and_tags
-		    else
-			__atomic_system_containers_containers
-		    fi
+		    __atomic_system_containers_containers
 		    ;;
 	esac
 }
@@ -658,6 +671,7 @@ _atomic_images() {
     info
     list
     prune
+    update
     version
     verify
   "
@@ -741,6 +755,33 @@ _atomic_images_delete() {
 	__atomic_image_repos_and_tags
 	__atomic_system_containers_images
 	;;
+  esac
+}
+
+_atomic_images_update() {
+  local options_with_args="
+    --storage
+  "
+  local all_options="$options_with_args
+    --force -f
+    --help -h
+  "
+
+  case "$prev" in
+    --storage)
+      COMPREPLY=( $( compgen -W "docker ostree" -- "$cur" ) )
+      return 0
+      ;;
+  esac
+
+  case "$cur" in
+    -*)
+      COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+      ;;
+    *)
+      __atomic_image_repos_and_tags
+      __atomic_system_containers_images
+      ;;
   esac
 }
 
@@ -1380,7 +1421,6 @@ _atomic() {
 		trust
 		uninstall
 		unmount
-		update
 		upload
 	)
 

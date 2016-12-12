@@ -1,6 +1,7 @@
 from Atomic import Atomic
 from Atomic import util
 from Atomic import info
+from Atomic import update
 from Atomic import verify
 from Atomic import help as Help
 from Atomic.mount import Mount
@@ -106,6 +107,8 @@ def cli(subparser):
                                                       "will free up disk space deleting unused "
                                                       "'dangling' images")
     prune_parser.set_defaults(_class=Delete, func='prune_images')
+
+    update.cli(images_subparser)
 
     verify.cli(images_subparser)
 

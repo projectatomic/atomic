@@ -110,8 +110,7 @@ echo $UUID | egrep "[[:alnum:]]{8}-[[:alnum:]]{4}-[[:alnum:]]{4}-[[:alnum:]]{4}-
 
 systemctl start ${NAME}
 
-${ATOMIC} update --container ${NAME} > update.out
-
+${ATOMIC} containers update ${NAME} > update.out
 assert_matches "Latest version already installed" update.out
 
 ${ATOMIC} containers list --no-trunc > ps.out
@@ -174,10 +173,10 @@ assert_matches ${SECRET} ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/config.json
 # The default value $PORT specified in the manifest.json is exported
 assert_matches 8081 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/config.json
 
-${ATOMIC} update --container ${NAME} > update.out
+${ATOMIC} containers update ${NAME} > update.out
 assert_matches "Latest version already installed" update.out
 
-${ATOMIC} update --set=PORT=8082 --container ${NAME}
+${ATOMIC} containers update --set=PORT=8082 ${NAME}
 test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/${NAME}.service
 test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/tmpfiles-${NAME}.conf
 
@@ -192,9 +191,9 @@ assert_matches 8082 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/config.json
 
 # Test that rollback works
 assert_matches 8082 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}/config.json
-${ATOMIC} update --rollback --container ${NAME}
+${ATOMIC} containers rollback ${NAME}
 assert_matches 8081 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}/config.json
-${ATOMIC} update --rollback --container ${NAME}
+${ATOMIC} containers rollback ${NAME}
 assert_matches 8082 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}/config.json
 
 # Test if a container with a remote rootfs can be installed/updated
@@ -209,7 +208,7 @@ test -e /etc/systemd/system/${NAME}-remote.service
 test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}-remote.0/rootfs
 
 # Values should still be able to be updated for remote containers
-${ATOMIC} update --set=PORT=8083 --container ${NAME}-remote
+${ATOMIC} containers update --set=PORT=8083 ${NAME}-remote
 assert_matches 8083 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}-remote.1/config.json
 
 mkdir ${WORK_DIR}/mount

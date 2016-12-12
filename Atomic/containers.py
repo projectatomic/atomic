@@ -6,6 +6,7 @@ from . import Atomic
 from .client import AtomicDocker
 from docker.errors import APIError
 from Atomic.backendutils import BackendUtils
+from .syscontainers import OSTREE_PRESENT
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -60,6 +61,25 @@ def cli(subparser):
                                             help=_("discard unused blocks (fstrim) on running containers"),
                                             epilog="Discard unused blocks (fstrim) on rootfs of running containers.")
     trimp.set_defaults(_class=Containers, func='fstrim')
+
+    # atomic containers update/rollback
+    updatep = containers_subparser.add_parser("update",
+                                              help=_("update a container"),
+                                              epilog="Update the container to use a newer image.")
+    updatep.set_defaults(_class=Containers, func='update')
+    updatep.add_argument("container",
+                         help=_("Specify one or more containers. Must be final arguments."))
+    if OSTREE_PRESENT:
+        updatep.add_argument("--set", dest="setvalues",
+                             action='append',
+                             help=_("Specify a variable in the VARIABLE=VALUE "
+                                    "form for a system container"))
+
+        rollbackp = containers_subparser.add_parser("rollback",
+                                                    help=_("rollback a system container"),
+                                                    epilog="Perform a rollback on a system container to a previous deployment.")
+        rollbackp.add_argument("container", help=_("Specify the system container to rollback"))
+        rollbackp.set_defaults(_class=Containers, func='rollback')
 
 class Containers(Atomic):
 
@@ -213,3 +233,12 @@ class Containers(Atomic):
         for con in containers:
             if con.id in vulnerable_uuids:
                 con.vulnerable = True
+
+    def update(self):
+        if self.syscontainers.get_checkout(self.args.container):
+            return self.syscontainers.update_container(self.args.container)
+        raise ValueError("System container '%s' is not installed" % self.args.container)
+
+    def rollback(self):
+        util.write_out("Attempting to roll back system container: %s" % self.args.container)
+        self.syscontainers.rollback(self.args.container)
