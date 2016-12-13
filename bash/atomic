@@ -37,6 +37,10 @@ __docker_q() {
 	docker 2>/dev/null "$@"
 }
 
+__atomic_scanners() {
+    atomic scan --list | grep Scanner | awk '{ print $2 }'
+}
+
 _atomic_atomic() {
 	local boolean_options="
 		--help -h --version -v --debug --assumeyes -y
@@ -111,8 +115,8 @@ __atomic_system_containers_containers() {
 }
 
 __atomic_system_containers_containers_running() {
-        local containers=( $(atomic containers list --no-trunc -q -f runtime=runc) )
-        COMPREPLY+=( $(compgen -W "${containers[*]}" -- "$cur") )
+	local containers=( $(atomic containers list --no-trunc -q -f runtime=runc) )
+	COMPREPLY+=( $(compgen -W "${containers[*]}" -- "$cur") )
 }
 
 __atomic_image_repos_and_tags_and_ids() {
@@ -254,9 +258,16 @@ _atomic_scan() {
 	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
 
 	case "$prev" in
-		$options_with_args_glob )
-			return 0
-			;;
+	    --scanner )
+		scanners=$(__atomic_scanners)
+		COMPREPLY=( $( compgen -W $scanners -- "$cur" ) )
+
+		return 0
+		;;
+
+	    $options_with_args_glob )
+		return 0
+		;;
 	esac
 
     case "$cur" in
@@ -287,6 +298,24 @@ _atomic_top() {
 		-d
 	-n
 	"
+
+	local options="
+	      gid
+	      group
+	      ppid
+	      stime
+	      time
+	      uid
+	      user
+	"
+
+	case "$prev" in
+		"-o"|"--options")
+			COMPREPLY=( $( compgen -W "$options" -- "$cur" ) )
+			return 0
+			;;
+	esac
+
     local all_options="$options_with_args"
     [ "$command" = "top" ] && all_options="$all_options"
     local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
@@ -304,19 +333,19 @@ _atomic_top() {
 
 _atomic_images_verify() {
 	local options_with_args="
-                --storage
-        "
-        local all_options="$options_with_args
-                -h --help
+		--storage
+	"
+	local all_options="$options_with_args
+		-h --help
 		--no-validate
-        "
+	"
 
-        case "$prev" in
-                --storage)
-                        COMPREPLY=( $( compgen -W "docker ostree" -- "$cur" ) )
-                        return 0
-                        ;;
-        esac
+	case "$prev" in
+		--storage)
+			COMPREPLY=( $( compgen -W "docker ostree" -- "$cur" ) )
+			return 0
+			;;
+	esac
 
 	case "$cur" in
 		-*)
@@ -330,19 +359,19 @@ _atomic_images_verify() {
 
 _atomic_images_version() {
 	local options_with_args="
-                --storage
-        "
-        local all_options="$options_with_args
+		--storage
+	"
+	local all_options="$options_with_args
 		-r --recurse
-                -h --help
-        "
+		-h --help
+	"
 
-        case "$prev" in
-                --storage)
-                        COMPREPLY=( $( compgen -W "docker ostree" -- "$cur" ) )
-                        return 0
-                        ;;
-        esac
+	case "$prev" in
+		--storage)
+			COMPREPLY=( $( compgen -W "docker ostree" -- "$cur" ) )
+			return 0
+			;;
+	esac
 
 	case "$cur" in
 		-*)
@@ -512,18 +541,18 @@ _atomic_containers_list() {
 }
 
 _atomic_containers_rollback() {
-        local all_options="
-                --help
-        "
+	local all_options="
+		--help
+	"
 
 	case "$cur" in
-                -*)
-                        COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
-                        ;;
-                *)
-                    __atomic_system_containers_containers
-                    ;;
-        esac
+		-*)
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+			;;
+		*)
+		    __atomic_system_containers_containers
+		    ;;
+	esac
 }
 
 _atomic_containers_trim() {
@@ -563,32 +592,54 @@ _atomic_uninstall() {
 
 
 _atomic_diff() {
+	local options_with_args="
+		--keywords, -k
+	"
+
 	local all_options="$options_with_args
 		--help
 		--json
-	--display
-	--keywords, -k
-	--metadata, -m
-	--names-only
-	--no-files -n
-	--rpms -r
-	--verbose -v
+		--display
+		--metadata, -m
+		--names-only
+		--no-files -n
+		--rpms -r
+		--verbose -v
 	"
 
+	local keywords="
+		all
+		gid
+		link
+		mode
+		nlink
+		sha256digest
+		size
+		time
+		type
+		uid
+	"
 	[ "$command" = "diff" ] && all_options="$all_options"
 
 
-    case "$cur" in
-    -*)
-	COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
-	;;
-    *)
-	local counter=$( __atomic_pos_first_nonflag $( __atomic_to_alternatives "$options_with_args" ) )
+	case "$prev" in
+		"-k"|"--keywords")
+			COMPREPLY=( $( compgen -W "$keywords" -- "$cur" ) )
+			return 0
+			;;
+	esac
 
-	if [ $cword -eq $counter ]; then
-	    __atomic_image_repos_and_tags_and_ids
-	fi
-	;;
+	case "$cur" in
+	    -*)
+		COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+		;;
+	    *)
+		local counter=$( __atomic_pos_first_nonflag $( __atomic_to_alternatives "$options_with_args" ) )
+
+		if [ $cword -eq $counter ]; then
+		    __atomic_image_repos_and_tags_and_ids
+		fi
+		;;
 	esac
 }
 
@@ -911,14 +962,14 @@ _atomic_trust_add() {
 
 _atomic_trust_show() {
     local all_options="$options_with_args
-        -j --json
-        --raw
+	-j --json
+	--raw
     "
 
     case "$cur" in
-        -*)
-            COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
-            ;;
+	-*)
+	    COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+	    ;;
     esac
 }
 
@@ -928,7 +979,7 @@ _atomic_trust_delete() {
 	"
 	local all_options="$options_with_args
 		--help -h
-                --sigstore
+		--sigstore
 	"
 
 	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
@@ -965,9 +1016,9 @@ _atomic_mount() {
 
 	case "$prev" in
 		--storage)
-                        COMPREPLY=( $( compgen -W "docker ostree" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "docker ostree" -- "$cur" ) )
 			return 0
-                        ;;
+			;;
 		$options_with_args_glob )
 			return 0
 			;;
