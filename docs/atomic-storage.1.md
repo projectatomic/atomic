@@ -90,5 +90,12 @@ Drivers supported: devicemapper, overlay, overlay2
 **--vgroup**
 The name of the volume group for the storage pool.
 
+# reset OPTIONS
+**-h** **--help**
+  Print usage statement
+
+**--graph**
+Root of the docker runtime. atomic will search for either /var/lib/docker or /var/lib/docker-latest, if only one exists, atomic will select it as the default.  If both exists or you are running docker with a graph storage at a non default location, you need to pass this flag.
+
 # HISTORY
 October 2015, Originally compiled by Shishir Mahajan (shishir dot mahajan at redhat dot com)

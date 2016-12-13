@@ -1,5 +1,6 @@
 import sys
 import os
+from .pull import Pull
 from . import util
 
 try:
@@ -85,7 +86,9 @@ class Run(Atomic):
             if self.args.display:
                 return self.display("Need to pull %s" % self.image)
 
-            self.update()
+            p = Pull()
+            p.args = self.args
+            p.pull_docker_image()
             self.inspect = self._inspect_image()
 
         args = self._get_args("RUN")

@@ -98,23 +98,6 @@ class Atomic(object):
                 if c["Image"] == image:
                     self.d.remove_container(c["Id"], force=True)
 
-    def update(self):
-        if hasattr(self.args, 'container') and self.args.container:
-            if self.syscontainers.get_checkout(self.args.image):
-                return self.syscontainers.update(self.args.image)
-            raise ValueError("Container '%s' is not installed" % self.args.image)
-        elif self.setvalues:
-            raise ValueError("--set is valid only when used with --system")
-
-        self.ping()
-        if self.force:
-            self.force_delete_containers()
-        fq_name = self.get_fq_image_name(self.image)
-        registry = util.Decompose(fq_name).registry
-        return util.skopeo_copy("docker://{}".format(self.image),
-                                "docker-daemon:{}".format(fq_name),
-                                util.is_insecure_registry(self.d.info()['RegistryConfig'], util.strip_port(registry)))
-
     def pull(self):
         prevstatus = ""
         for line in self.d.pull(self.image, stream=True):

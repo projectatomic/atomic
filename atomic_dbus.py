@@ -26,6 +26,7 @@ from Atomic.stop import Stop
 from Atomic.storage import Storage
 from Atomic.top import Top
 from Atomic.trust import Trust
+from Atomic.update import Update
 from Atomic.uninstall import Uninstall
 from Atomic.verify import Verify
 
@@ -257,11 +258,12 @@ class atomic_dbus(slip.dbus.service.Object):
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     @dbus.service.method("org.atomic", in_signature='sb', out_signature='')
     def ImagesUpdate(self, image, force):
+        u = Update()
         args = self.Args()
         args.image = image
         args.force = force
-        self.atomic.set_args(args)
-        self.atomic.update()
+        u.set_args(args)
+        return u.update()
 
     # The Vulnerable method will send back information that says
     # whether or not an installed container image is vulnerable

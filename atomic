@@ -169,7 +169,7 @@ def create_parser(help_text):
     uninstall.cli(subparser)
 
     mount.cli_unmount(subparser)
-    update.cli(subparser)
+    update.cli(subparser, hidden=True)
     verify.cli(subparser, hidden=True)
     info.cli_version(subparser, hidden=True)
 

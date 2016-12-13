@@ -2,6 +2,7 @@ import argparse
 import sys
 from . import util
 from .util import add_opt
+from .pull import Pull
 from .syscontainers import OSTREE_PRESENT
 
 try:
@@ -111,7 +112,10 @@ class Install(Atomic):
             # if not tag is found, use 'latest'
             if not tag:
                 self.image += ":{}".format("latest")
-            self.update()
+
+            p = Pull()
+            p.args = self.args
+            p.pull_docker_image()
             self.inspect = self._inspect_image()
 
     @staticmethod

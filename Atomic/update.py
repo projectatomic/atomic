@@ -3,34 +3,30 @@ try:
 except ImportError:
     from atomic import Atomic # pylint: disable=relative-import
 
-from .syscontainers import OSTREE_PRESENT
+import argparse
+from Atomic.backendutils import BackendUtils
+from Atomic.util import get_atomic_config
 
-def cli(subparser):
+ATOMIC_CONFIG = get_atomic_config()
+storage = ATOMIC_CONFIG.get('default_storage', "docker")
+
+def cli(subparser, hidden=False):
     # atomic update
-    updatep = subparser.add_parser(
-        "update", help=_("pull latest container image from repository"),
-        epilog="atomic update downloads the latest container image. If a "
-        "previously created  container based on this image exists, "
-        "the container will continue to use the old image.  Use "
-        "--force to remove the outdated container.")
+    if hidden:
+        updatep = subparser.add_parser("update", argument_default=argparse.SUPPRESS)
+    else:
+        updatep = subparser.add_parser(
+            "update", help=_("pull latest container image from repository"),
+            epilog="downloads the latest container image. If a previously created "
+            "container based on this image exists, the container will "
+            "continue to use the old image.  Use --force to remove the "
+            "outdated container.")
     updatep.set_defaults(_class=Update, func='update')
     updatep.add_argument("-f", "--force", default=False, dest="force",
                          action="store_true",
                          help=_("remove all containers based on this image"))
-    if OSTREE_PRESENT:
-        updatep.add_argument("--rollback", dest="rollback",
-                             action="store_true", default=False,
-                             help=_("Rollback a system container to a previous "
-                                    "deployment. If a rollback has already happened, "
-                                    "this will cause the container to return to the "
-                                    "newer deployment."))
-        updatep.add_argument("--set", dest="setvalues",
-                             action='append',
-                             help=_("Specify a variable in the VARIABLE=VALUE "
-                                    "form for a system container"))
-    updatep.add_argument("--container", dest="container",
-                         action='store_true', default=False,
-                         help=_('update an installed container'))
+    updatep.add_argument("--storage", default=storage, dest="storage",
+                         help=_("Specify the storage of the image. Defaults to: %s" % storage))
     updatep.add_argument("image", help=_("container image"))
 
 class Update(Atomic):
@@ -38,4 +34,6 @@ class Update(Atomic):
         super(Update, self).__init__()
 
     def update(self):
-        super(Update, self).update()
+        beu = BackendUtils()
+        be, img_obj = beu.get_backend_and_image_obj(self.image, str_preferred_backend=self.args.storage)
+        be.update(img_obj.input_name, force=self.args.force)

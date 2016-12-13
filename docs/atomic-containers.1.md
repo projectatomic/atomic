@@ -14,11 +14,6 @@ atomic containers allows the user to view and operate on containers
 
 delete specified container(s).
 
-# DESCRIPTION
-**atomic containers delete**, delete specified container image from the system.
-
-Using --all will delete all the installed containers.
-
 **list**
 
 list containers on your system.
@@ -27,7 +22,19 @@ list containers on your system.
 
 discard unused blocks (fstrim) on running containers.
 
+**update**
+
+update a system container.
+
+**rollback**
+
+rollback a system container.
+
 # DESCRIPTION
+**atomic containers delete**, delete specified container image from the system.
+
+Using --all will delete all the installed containers.
+
 **atomic containers list**, by default, will list all running containers on your
 system.
 
@@ -40,6 +47,12 @@ e.g. If you have 2 running containers on your system with container IDs (496b867
 >atomic containers trim
 Trimming container id 496b8679b6cf
 Trimming container id 9bb990da1203
+
+**atomic containers update**, update a system container to use a newer version of an image.
+
+Can use --set to update environment variables.
+
+**atomic containers rollback**, rollback a system container to the other deployment if one exists.
 
 # OPTIONS:
 **-h** **--help**
@@ -72,6 +85,10 @@ Trimming container id 9bb990da1203
 
 **-q** **--quiet**
   Only display container IDs
+
+# update OPTIONS:
+**--set=NAME=VALUE**
+  Set a value that is going to be used by a system container for its configuration and can be specified multiple times.  OSTree is required for this feature to be available.
 
 # HISTORY
 June 2016, Originally compiled by Giuseppe Scrivano (gscrivan at redhat dot com)
