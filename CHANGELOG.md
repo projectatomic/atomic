@@ -1,15 +1,23 @@
-## 1.14 (2016-12-12)
-Atomic/diff.py: Use go-mtree for file comparisons
-pull: support dockertar for docker backend
-Refactor images
-atomic_dbus: keep the name until the process exits
-Add substitutions for Opt variables
-syscontainers: add rollback
-Add refactoring structure
-    Atomic/backendutils.py: Class for working with unknown backend
-    Atomic/objects/image|layer|container.py: classes for objects
-    Atomic/backends/backend|_docker|_ostree.py: Abstract backends for ostree and docker
+## 1.13 (2016-12-13)
+Refactor verbs:
+	containers
+	update
+	verify
+	images
+backends: has image|container return objects
 Add  SYSTEMD_IGNORE_CHROOT=1 to environment of SPCs
+Atomic diff: Use go-mtree for file comparisons
+syscontainers:
+	Lots of Bug Fixes
+	simplify substitution of variables
+	add rollback
+Signing:
+	push - use credentials in skopeo copy
+	pull: support dockertar for docker backend
+	fix get auth from docker.io
+	prompt user/pass lowercase
+
+Dbus Bindings:
 
 ## 1.13 (2016-10-24)
 Add --storage option to image-related commands
