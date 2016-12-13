@@ -367,22 +367,27 @@ class SystemContainers(object):
 
     @staticmethod
     def _write_template(inputfilename, data, values, destination):
-        try:
-            os.makedirs(os.path.dirname(destination))
-        except OSError:
-            pass
-        with open(destination, "w") as outfile:
-            template = Template(data)
+
+        if destination:
             try:
-                result = template.substitute(values)
-            except KeyError as e:
-                os.unlink(destination)
-                raise ValueError("The template file '%s' still contains an unreplaced value for: '%s'" % \
-                                 (inputfilename, str(e)))
-            outfile.write(result)
+                os.makedirs(os.path.dirname(destination))
+            except OSError:
+                pass
+
+        template = Template(data)
+        try:
+            result = template.substitute(values)
+        except KeyError as e:
+            raise ValueError("The template file '%s' still contains an unreplaced value for: '%s'" % \
+                             (inputfilename, str(e)))
+
+        if destination is not None:
+            with open(destination, "w") as outfile:
+                outfile.write(result)
+        return result
 
     def _do_checkout(self, repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix=None, installed_files=None):
-        if not values:
+        if values is None:
             values = {}
 
         remote_path = self._resolve_remote_path(remote)
@@ -568,6 +573,14 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             image_manifest = json.loads(image_manifest)
             image_id = SystemContainers._get_image_id_from_manifest(image_manifest) or image_id
 
+        # If rpm.spec or rpm.spec.template exist, copy them to the checkout directory, processing the .template version.
+        if os.path.exists(os.path.join(exports, "rpm.spec.template")):
+            with open(os.path.join(exports, "rpm.spec.template"), "r") as f:
+                spec_content = f.read()
+            SystemContainers._write_template("rpm.spec.template", spec_content, values, os.path.join(destination, "rpm.spec"))
+        elif os.path.exists(os.path.join(rootfs, "rpm.spec")):
+            shutil.copyfile(os.path.join(rootfs, "rpm.spec"), os.path.join(destination, "rpm.spec"))
+
         try:
             with open(os.path.join(destination, "info"), 'w') as info_file:
                 info = {"image" : img,
@@ -600,10 +613,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             tmpfiles_template = SystemContainers._generate_tmpfiles_data(missing_bind_paths, values["STATE_DIRECTORY"])
 
         if has_container_service:
-            self._write_template(unitfile, systemd_template, values, unitfileout)
+            SystemContainers._write_template(unitfile, systemd_template, values, unitfileout)
             shutil.copyfile(unitfileout, os.path.join(prefix, destination, "%s.service" % name))
         if (tmpfiles_template):
-            self._write_template(unitfile, tmpfiles_template, values, tmpfilesout)
+            SystemContainers._write_template(unitfile, tmpfiles_template, values, tmpfilesout)
             shutil.copyfile(tmpfilesout, os.path.join(prefix, destination, "tmpfiles-%s.conf" % name))
 
         if not prefix:
@@ -1613,9 +1626,17 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             conflicts = labels.get("conflicts")
             description = labels.get("description")
 
-            self._generate_spec_file(spec_file, rpm_content, name, summary, license_, version=version, release=release,
-                                     url=url, source0=source0, requires=requires, provides=provides, conflicts=conflicts,
-                                     description=description, installed_files=installed_files)
+            if os.path.exists(os.path.join(rootfs, "rpm.spec")):
+                with open(os.path.join(rootfs, "rpm.spec"), "r") as f:
+                    spec_content = f.read()
+            else:
+                spec_content = self._generate_spec_file(rpm_content, name, summary, license_, version=version,
+                                                        release=release, url=url, source0=source0, requires=requires,
+                                                        provides=provides, conflicts=conflicts, description=description,
+                                                        installed_files=installed_files)
+
+            with open(spec_file, "w") as f:
+                f.write(spec_content)
 
             cwd = os.getcwd()
             cmd = ["rpmbuild", "--noclean", "-bb", spec_file,
@@ -1633,8 +1654,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         finally:
             shutil.rmtree(temp_dir)
 
-    def _generate_spec_file(self, out, destdir, name, summary, license_, version="1.0", release="1", url=None,
-                            source0=None, requires=None, conflicts=None, provides=None, description=None, installed_files=None):
+    def _generate_spec_file(self, destdir, name, summary, license_, version="1.0", release="1", url=None,
+                            source0=None, requires=None, conflicts=None, provides=None, description=None,
+                            installed_files=None):
         spec = "%global __requires_exclude_from ^.*$\n"
         spec = spec + "%global __provides_exclude_from ^.*$\n"
 
@@ -1666,5 +1688,4 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             for i in installed_files:
                 spec = spec + "%s\n" % i
 
-        with open(out, "w") as f:
-            f.write(spec)
+        return spec
