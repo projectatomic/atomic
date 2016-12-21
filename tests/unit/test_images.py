@@ -120,6 +120,7 @@ class TestImages(unittest.TestCase):
         args = self.Args()
         args.storage = 'docker'
         args.json = True
+        args.filter = None
         images.set_args(args)
         return_value = images.display_all_image_info()
         self.assertEqual(return_value, 0)
