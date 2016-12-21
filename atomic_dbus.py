@@ -545,17 +545,16 @@ class atomic_dbus(slip.dbus.service.Object):
     # The Verify method takes in an image name and returns whether or not the
     # image should be updated
     @slip.dbus.polkit.require_auth("org.atomic.read")
-    @dbus.service.method("org.atomic", in_signature='as', out_signature='s')
-    def Verify(self, images):
+    @dbus.service.method("org.atomic", in_signature='s', out_signature='s')
+    def Verify(self, image):
         verifications = []
         verify = Verify()
         verify.useTTY = False
-        for image in images:
-            args = self.Args()
-            args.image = image
-            verify.set_args(args)
-            verifications.append({"Image": image,
-                                  "Verification": verify.verify_dbus()}) #pylint: disable=no-member
+        args = self.Args()
+        args.image = image
+        verify.set_args(args)
+        verifications.append({"Image": image,
+                              "Verification": verify.verify_dbus()}) #pylint: disable=no-member
         return json.dumps(verifications)
 
     # atomic version section
