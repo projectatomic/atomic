@@ -186,6 +186,7 @@ class Containers(Atomic):
         containers = []
         for con_obj in con_objects:
             _con = {'id': con_obj.id,
+                    'image_id': con_obj.image_id,
                     'image_name': con_obj.image_name,
                     'command': con_obj.command,
                     'created': con_obj.created,
