@@ -101,7 +101,7 @@ class Containers(Atomic):
         def _walk(_filter_objs, _filter, _value):
             _filtered = []
             for con_obj in _filter_objs:
-                if _value in getattr(con_obj, _filter, None):
+                if _value.lower() in getattr(con_obj, _filter, None).lower():
                     _filtered.append(con_obj)
             return _filtered
 

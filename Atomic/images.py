@@ -255,7 +255,7 @@ class Images(Atomic):
 
             if var not in filterables: # Default to allowing all images through for non-existing filterable
                 continue
-            if getattr(image_obj, var, None) != value:
+            if getattr(image_obj, var, None).lower() != value.lower():
                 return False
 
         return True
