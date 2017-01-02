@@ -183,8 +183,12 @@ if __name__ == '__main__':
             args = aparser.parse_args()
             _class = atomic if '_class' not in args else args._class() # pylint: disable=protected-access
             _class.set_args(args)
-            _func = getattr(_class, args.func)
-            sys.exit(_func())
+            if "func" in args:
+                _func = getattr(_class, args.func)
+                sys.exit(_func())
+            else:
+                aparser.print_usage()
+                sys.exit(1)
     except KeyboardInterrupt:
         sys.exit(0)
     except (ValueError, IOError, docker.errors.DockerException, NoDockerDaemon) as e:
@@ -195,13 +199,6 @@ if __name__ == '__main__':
     except subprocess.CalledProcessError as e:
         write_err("")
         sys.exit(e.returncode)
-    except AttributeError:
-        # python3 throws exception on no args to atomic
-        if aparser:
-            aparser.print_usage()
-        else:
-            traceback.print_exc(file=sys.stderr)
-        sys.exit(1)
     except MountError as e:
         if str(e).find("Permission denied") > 0:
             need_root()
