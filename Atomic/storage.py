@@ -116,7 +116,10 @@ class Storage(Atomic):
 
     def __init__(self):
         super(Storage, self).__init__()
+        self.graphdir = None
 
+    def set_args(self, args):
+        Atomic.set_args(self, args)
         if self.args.graph:
             self.graphdir = self.args.graph
         else:
