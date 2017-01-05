@@ -10,23 +10,12 @@ atomic-images - operations on container images
 atomic images allows the user to view and operate on container images in a docker registry.
 
 # COMMANDS
-**list**
-
-  List all installed container images on your system.
-
-  A  **>** preceding the image name indicates that the image is used by a container.
-
-  A **\*** in the first column indicates a dangling image. **Dangling** images are images with no name/tag and which are not used by any other images. Since they are not used, they waste system space.  Dangling images can be caused by using 'docker build' to update an image without removing the older version of the image.
-
 **delete**
 
   Delete the specified container image(s). If you use the **--remote option** remote disk space will not be freed until the **registry garbage-collection** command is invoked for the remote registry.
 
-**info**
-
-  Displays the LABEL fields within an image. By default, it will check first for a local image and then all configured registries.
-
-  For a system container image, this will also display the environment variables a user can set.
+**generate**
+  Generates a gomtree validation manifest for all images. Gomtree is required for this feature to be available.
 
 **help**
 
@@ -39,6 +28,20 @@ atomic images allows the user to view and operate on container images in a docke
 go-md2man -in image_help.1.md -out image_help.1
 ```
 You can also use any of the many options to create the help file including using native man tagging.
+
+**info**
+
+  Displays the LABEL fields within an image. By default, it will check first for a local image and then all configured registries.
+
+  For a system container image, this will also display the environment variables a user can set.
+
+**list**
+
+  List all installed container images on your system.
+
+  A  **>** preceding the image name indicates that the image is used by a container.
+
+  A **\*** in the first column indicates a dangling image. **Dangling** images are images with no name/tag and which are not used by any other images. Since they are not used, they waste system space.  Dangling images can be caused by using 'docker build' to update an image without removing the older version of the image.
 
 **prune**
 
