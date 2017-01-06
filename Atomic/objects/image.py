@@ -150,7 +150,10 @@ class Image(object):
                              tag=self.tag, orig_input=self.input_name)
         ri.ping()
         inspect_info = ri.inspect()
-        inspect_info['id'] = ri.rc.manifest_json.get("config", None).get("digest", None)
+        #foo = ri.rc.manifest_json
+        #inspect_info['id'] = ri.rc.manifest_json.get("config", None).get("digest", None)
+        inspect_info['id'] = None if ri.rc.manifest_json.get("config", None) is None else ri.rc.manifest_json.get(
+            "config", None).get("digest", None)
         return inspect_info
 
     @property
