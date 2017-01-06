@@ -80,6 +80,20 @@ class TestAtomicUtil(unittest.TestCase):
         for image in images:
             self.assertEqual(util.Decompose(image[0]).all, image[1])
 
+    def test_valid_uri(self):
+        valid_uris = ['example.com', 'example.com:5000', 'example.US.com', 'example.com/image/name:version1']
+        invalid_uris = ['example_inc.com:5000', 'example.com/Image/name', 'example.com/image(name):latest']
+
+        for uri in valid_uris:
+            self.assertTrue(util.is_valid_uri(uri))
+
+        for uri in invalid_uris:
+            exception_raised = False
+            try:
+                util.is_valid_uri(uri)
+            except ValueError:
+                exception_raised = True
+            self.assertTrue(exception_raised)
 
 if __name__ == '__main__':
     unittest.main()

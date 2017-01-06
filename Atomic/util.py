@@ -735,6 +735,28 @@ def is_insecure_registry(registry_config, registry):
             if ipaddress.ip_address(registry_ip ) in ipaddress.ip_network(cidr_subnet):
                 return True
 
+def is_valid_uri(uri, qualifying=None):
+    try:
+        import urllib2
+        urlparse = urllib2.urlparse.urlparse
+    except ImportError:
+        import urllib.parse
+        urlparse = urllib.parse.urlparse # pylint: disable=E1101
+    min_attributes = ('scheme', 'netloc')
+    qualifying = min_attributes if qualifying is None else qualifying
+    # does it parse?
+    token = urlparse("http://" + uri)
+    # check registry component
+    registry_pattern = re.compile(r'[^a-zA-Z0-9-:\.]')
+    if re.search(registry_pattern, token.netloc):
+        raise ValueError("Invalid registry format")
+    # check repository component
+    path_pattern = re.compile(r'[^a-z0-9-:\./]')
+    if re.search(path_pattern, token.path):
+        raise ValueError("Invalid repository format")
+    return all([getattr(token, qualifying_attr)
+                for qualifying_attr in qualifying])
+
 def getgnuhome():
     defaulthome = get_atomic_config_item(['gnupg_homedir'])
     if defaulthome:

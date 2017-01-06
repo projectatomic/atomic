@@ -105,6 +105,7 @@ class Trust(Atomic):
             sigstore=self.args.sigstore
         sstype = self.get_sigstore_type_map(sigstoretype)
 
+        util.is_valid_uri(registry)
         mode = "r+" if os.path.exists(self.policy_filename) else "w+"
         with open(self.policy_filename, mode) as policy_file:
             if mode == "r+":
