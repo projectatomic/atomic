@@ -544,13 +544,12 @@ class Atomic(object):
 
     def get_all_vulnerable_info(self):
         """
-        Will simply read and return the entire /var/lib/atomic/scan_summary.json
-        as a JSON string so it can then be parsed appropriately.
+        Read and parse the /var/lib/atomic/scan_summary.json object.
         """
         try:
             return json.loads(open(os.path.join(self.results, "scan_summary.json"), "r").read())
-        except IOError:
-            return "{}"
+        except (IOError, ValueError):
+            return {}
 
 
     def get_vulnerable_ids(self):

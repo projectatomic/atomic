@@ -272,7 +272,7 @@ class atomic_dbus(slip.dbus.service.Object):
     def VulnerableInfo(self):
         args = self.Args()
         self.atomic.set_args(args)
-        return self.atomic.get_all_vulnerable_info()
+        return json.dumps(self.atomic.get_all_vulnerable_info())
 
     # atomic install section
     # The Install method will install the specified image
