@@ -741,11 +741,9 @@ def is_valid_image_uri(uri, qualifying=None):
     :return: parsed URI
     '''
     try:
-        import urllib2
-        urlparse = urllib2.urlparse.urlparse
+        from urlparse import urlparse #pylint: disable=import-error
     except ImportError:
-        import urllib.parse
-        urlparse = urllib.parse.urlparse # pylint: disable=E1101
+        from urllib.parse import urlparse #pylint: disable=no-name-in-module,import-error
     min_attributes = ('scheme', 'netloc')
     qualifying = min_attributes if qualifying is None else qualifying
     # does it parse?

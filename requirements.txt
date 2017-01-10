@@ -7,3 +7,4 @@ gi
 xattr
 python-dateutil
 PyYAML
+urllib3

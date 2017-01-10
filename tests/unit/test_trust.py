@@ -45,8 +45,8 @@ class TestAtomicTrust(unittest.TestCase):
         with open(os.path.join(FIXTURE_DIR, "default_policy.json"), 'r') as default:
             policy_default = json.load(default)
         policy_default = testobj.check_policy(policy_default, "docker")
-        policy_expected = {"default": [{"type": "insecureAcceptAnything" }], "transports": {"docker": {}}}
-        self.assertEqual(policy_default, policy_expected)
+        policy_expected = {"default": [{"type": "insecureAcceptAnything" }], "transports": {"docker": {}, "docker-daemon": {"": [{"type": "insecureAcceptAnything"}]}}}
+        self.assertDictEqual(policy_default, policy_expected)
 
     def test_new_registry_sigstore(self):
         testobj = Trust(policy_filename = TEST_POLICY)

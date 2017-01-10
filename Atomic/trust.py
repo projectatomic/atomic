@@ -117,7 +117,8 @@ class Trust(Atomic):
                         if not "y" in confirm.lower():
                             exit(0)
             else:
-                policy={"transports":{sstype:{}}}
+                policy = self.default_policy_file
+                policy["transports"][sstype] = {}
 
             payload = []
             for k in pubkeys:
@@ -347,18 +348,24 @@ class Trust(Atomic):
         return True
 
     def _get_policy(self):
-        policy = None
+        policy = self.default_policy_file
         mode = "r+" if os.path.exists(self.policy_filename) else "w+"
         with open(self.policy_filename, mode) as policy_file:
             if mode == "r+":
                 policy = json.load(policy_file)
             else:
-                policy={ "default": [{ "type": "insecureAcceptAnything" }] }
                 policy_file.seek(0)
                 json.dump(policy, policy_file, indent=4)
                 policy_file.truncate()
 
         return policy
+
+    @property
+    def default_policy_file(self):
+        '''
+        Return default policy file
+        '''
+        return { "default": [{ "type": "insecureAcceptAnything" }], "transports": { "docker-daemon": { "": [{ "type": "insecureAcceptAnything" }]}}}
 
     def show_json(self, policy=None):
         if not policy:
