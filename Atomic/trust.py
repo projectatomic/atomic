@@ -71,6 +71,8 @@ def cli(subparser):
     showp.add_argument('--raw', action='store_true', help="Output raw policy file")
     showp.add_argument('-j', '--json', action='store_true', help="Output as json")
     showp.set_defaults(_class=Trust, func="show")
+    resetp = subparsers.add_parser("reset", help="Reset trust policy")
+    resetp.set_defaults(_class=Trust, func="reset")
 
 class Trust(Atomic):
     def __init__(self, policy_filename="/etc/containers/policy.json"):
@@ -408,6 +410,29 @@ class Trust(Atomic):
             else:
                 for key, value in sorted_table.items():
                     util.write_out('{0:<35} {1:<6} {2:<29} {3}'.format(key, self.trusttype_map(value["type"]), self.get_gpg_id(value["keys"]), value["sigstore"]))
+
+    def reset(self):
+        """
+        Reset trust policy by
+         overwriting policy.json
+         removing all files in registries.d except default.yaml
+        """
+        if not self.args.assumeyes:
+            confirm = util.input("Are you sure you want to destroy "
+                                 "trust policy for this system? "
+                                 "This cannot be undone! (y/N) ")
+            if not "y" in confirm.lower():
+                return
+
+        with open(self.policy_filename, "w") as policy_file:
+            policy_file.seek(0)
+            json.dump(self.default_policy_file, policy_file, indent=4)
+            policy_file.truncate()
+
+        registry_config_path = util.get_atomic_config_item(["registry_confdir"], self.atomic_config)
+        for registries_file in os.listdir(registry_config_path):
+            if registries_file != "default.yaml":
+                os.remove('/'.join([registry_config_path, registries_file]))
 
     def get_gpg_id(self, keys):
         """

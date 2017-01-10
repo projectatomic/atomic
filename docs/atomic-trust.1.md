@@ -6,7 +6,7 @@ atomic-trust - Manage system container trust policy
 
 
 # SYNOPSIS
-**atomic trust add|delete|default|show**
+**atomic trust add|delete|default|reset|show**
 [**-h**|**--help**]
 [**-j**|**--json**]
 [**--raw**]
@@ -90,6 +90,10 @@ testing.
 **-j** **--json**
   Output trust as JSON for machine parsing
 
+# reset
+
+  Resets **policy.json** to the default. Removes all YAML files in 
+  **/etc/containers/registries.d/** except **default.yaml**.
 
 # EXAMPLES
 Add public key trust to specific registry repository
