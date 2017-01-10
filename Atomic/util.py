@@ -735,7 +735,11 @@ def is_insecure_registry(registry_config, registry):
             if ipaddress.ip_address(registry_ip ) in ipaddress.ip_network(cidr_subnet):
                 return True
 
-def is_valid_uri(uri, qualifying=None):
+def is_valid_image_uri(uri, qualifying=None):
+    '''
+    Parse and validate image URI
+    :return: parsed URI
+    '''
     try:
         import urllib2
         urlparse = urllib2.urlparse.urlparse
@@ -745,14 +749,14 @@ def is_valid_uri(uri, qualifying=None):
     min_attributes = ('scheme', 'netloc')
     qualifying = min_attributes if qualifying is None else qualifying
     # does it parse?
-    token = urlparse("http://" + uri)
+    token = urlparse("http://" + uri, allow_fragments=False)
     # check registry component
-    registry_pattern = re.compile(r'[^a-zA-Z0-9-:\.]')
-    if re.search(registry_pattern, token.netloc):
+    registry_pattern = re.compile(r'^[a-zA-Z0-9-_\.]+:?([0-9]*)?$')
+    if not re.search(registry_pattern, token.netloc):
         raise ValueError("Invalid registry format")
     # check repository component
-    path_pattern = re.compile(r'[^a-z0-9-:\./]')
-    if re.search(path_pattern, token.path):
+    path_pattern = re.compile(r'^[a-z0-9-:\./]*$')
+    if not re.search(path_pattern, token.path):
         raise ValueError("Invalid repository format")
     return all([getattr(token, qualifying_attr)
                 for qualifying_attr in qualifying])
