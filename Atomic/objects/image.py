@@ -1,6 +1,7 @@
 from Atomic.util import Decompose, output_json
 from Atomic.discovery import RegistryInspect
 from Atomic.objects.layer import Layer
+from Atomic.client import no_shaw
 import math
 import time
 
@@ -24,6 +25,9 @@ class Image(object):
         self.input_name = input_name
         self.deep = False
         self._virtual_size = None
+        self.cmd = None
+        self._command = None
+
 
         # Deeper
         self.version = None
@@ -56,7 +60,11 @@ class Image(object):
         pass
 
     def __eq__(self, other):
-        if self.long_version == other.long_version:
+        if self.long_version == other.long_version \
+                and None not in [self.long_version, other.long_version] \
+                and '' not in [self.long_version, other.long_version]:
+            return True
+        if getattr(self, 'id') == getattr(other, 'id'):
             return True
         return False
 
@@ -125,11 +133,17 @@ class Image(object):
     def backend(self, value):
         self._backend = value
 
+    @property
+    def str_backend(self):
+        return self._backend.backend
+
     def get_label(self, label):
         if self.labels:
-            if self.remote:
-                return self.labels.get(label, None)
-            return self.config['Labels'].get(label, None)
+            for l in [label, label.lower(), label.capitalize(), label.upper()]:
+                if l in self.labels:
+                    if self.remote:
+                        return self.labels.get(l, None)
+                    return self.config['Labels'].get(l, None)
         return None
 
     def populate_remote_inspect_info(self):
@@ -143,7 +157,7 @@ class Image(object):
         self.labels = remote_inspect_info.get("Labels", None)
         self.release = self.get_label('Release')
         self.version = self.get_label('Version')
-        self.id = remote_inspect_info['id']
+        self.id = no_shaw(remote_inspect_info['id'])
 
     def remote_inspect(self):
         ri = RegistryInspect(registry=self.registry, repo=self.repo, image=self.image,
@@ -225,7 +239,7 @@ class Image(object):
 
     @property
     def type(self):
-        return self.backend.backend
+        return 'image'
 
     def _get_template_info(self):
         self._template_variables_set, self._template_variables_unset = self.backend.syscontainers.\
@@ -260,6 +274,21 @@ class Image(object):
             layer = self.backend.get_layer(layer.parent)
             layer_objects.append(layer)
         return layer_objects
+
+
+    @property
+    def command(self):
+        # If self._command has been set, return that value
+        if self._command:
+            return self._command
+        run_label = self.get_label('RUN')
+        return run_label if run_label else self.cmd
+
+    @command.setter
+    def command(self, value):
+        self._command = value
+
+
 
 def convert_size(size):
     if size > 0:

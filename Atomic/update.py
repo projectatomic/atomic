@@ -5,7 +5,7 @@ except ImportError:
 
 import argparse
 from Atomic.backendutils import BackendUtils
-from Atomic.util import get_atomic_config
+from Atomic.util import get_atomic_config, write_out
 
 ATOMIC_CONFIG = get_atomic_config()
 storage = ATOMIC_CONFIG.get('default_storage', "docker")
@@ -34,6 +34,13 @@ class Update(Atomic):
         super(Update, self).__init__()
 
     def update(self):
+        if self.args.debug:
+            write_out(str(self.args))
         beu = BackendUtils()
-        be, img_obj = beu.get_backend_and_image_obj(self.image, str_preferred_backend=self.args.storage)
-        be.update(img_obj.input_name, force=self.args.force)
+        try:
+            be, img_obj = beu.get_backend_and_image_obj(self.image, str_preferred_backend=self.args.storage)
+            input_name = img_obj.input_name
+        except ValueError:
+            raise ValueError("{} not found locally.  Unable to update".format(self.image))
+
+        be.update(input_name, self.args, force=self.args.force)

@@ -9,6 +9,14 @@ from requests import exceptions
 from Atomic.trust import Trust
 from Atomic.objects.layer import Layer
 from dateutil.parser import parse as dateparse
+from Atomic import Atomic
+import argparse
+import os
+
+try:
+    from subprocess import DEVNULL  # pylint: disable=no-name-in-module
+except ImportError:
+    DEVNULL = open(os.devnull, 'wb')
 
 class DockerBackend(Backend):
     def __init__(self):
@@ -52,6 +60,16 @@ class DockerBackend(Backend):
                              .format(img, "\n    ".join(repo_tags),
                                      err_append))
         return self._make_image(img, self._inspect_image(img), deep=True)
+
+    def already_has_image(self, local_img, remote_img):
+        """
+        Returns bool response if the image is already present.  Input must be an image object
+        :param img_obj: an image object
+        :return:
+        """
+        if local_img == remote_img:
+            return True
+        return False
 
     def has_container(self, container):
         con_obj = self.inspect_container(container)
@@ -98,6 +116,7 @@ class DockerBackend(Backend):
             img_obj.release = img_obj.get_label('Release')
             img_obj.parent = img_struct['Parent']
             img_obj.original_structure = img_struct
+            img_obj.cmd = img_obj.original_structure['Config']['Cmd']
         return img_obj
 
     def _make_container(self, container, con_struct, deep=False):
@@ -191,26 +210,30 @@ class DockerBackend(Backend):
     def stop_container(self, con_obj):
         return self.d.stop(con_obj.id)
 
-    def pull_image(self, image, pull_args):
-        # Add this when atomic registry is incorporated.
-        # if self.args.reg_type == "atomic":
-        #     pull_uri = 'atomic:'
-        # else:
-        #     pull_uri = 'docker://'
-        img_obj = self._make_remote_image(image)
-        fq_name = img_obj.fq_name
-        insecure = True if util.is_insecure_registry(self.d.info()['RegistryConfig'], util.strip_port(img_obj.registry)) else False
-
-        # This needs to be re-enabled with Aaron's help
+    def pull_image(self, image, **kwargs):
+        debug = kwargs.get('debug', False)
+        if image.startswith("dockertar:"):
+            path = image.replace("dockertar:", "", 1)
+            with open(path, 'rb') as f:
+                self.d.load_image(data=f)
+            return 0
+        remote_image = self.make_remote_image(image)
+        fq_name = remote_image.fq_name
+        local_image = self.has_image(image)
+        if local_image is not None:
+            if self.already_has_image(local_image, remote_image):
+                raise ValueError("Latest version of {} already present.".format(image))
+        registry, _, _, tag, _ = util.Decompose(fq_name).all
+        image = "docker-daemon:{}".format(image)
+        if not image.endswith(tag):
+            image += ":{}".format(tag)
+        insecure = True if util.is_insecure_registry(self.d.info()['RegistryConfig'], util.strip_port(registry)) else False
         trust = Trust()
-        trust.set_args(pull_args)
         trust.discover_sigstore(fq_name)
-
         util.write_out("Pulling {} ...".format(fq_name))
-        util.skopeo_copy("docker://{}".format(fq_name),
-                         "docker-daemon:{}".format(image),
-                         debug=pull_args.debug, insecure=insecure,
-                         policy_filename=pull_args.policy_filename)
+        util.skopeo_copy("docker://{}".format(fq_name), image, debug=debug, insecure=insecure,
+                         policy_filename=trust.policy_filename)
+        return 0
 
     def delete_container(self, cid, force=False):
         self.d.remove_container(cid, force=force)
@@ -227,12 +250,6 @@ class DockerBackend(Backend):
                 containers.append(container)
         return containers
 
-    @staticmethod
-    def _interactive(con_obj):
-        config = con_obj.original_structure['Config']
-        if all([config.get('AttachStdin', False), config.get('AttachStdout', False), config.get('AttachStderr', False)]):
-            return True
-        return False
 
     def _ping(self):
         '''
@@ -247,14 +264,17 @@ class DockerBackend(Backend):
     def delete_image(self, image, force=False):
         return self.d.remove_image(image, force=force)
 
-    def update(self, name, force=False):
+    def update(self, name, force=False, **kwargs):
+        debug = kwargs.get('debug', False)
+        try:
+            # pull_image will raise a ValueError if the "latest" image is already present
+            self.pull_image(name, debug=debug)
+        except ValueError:
+            return
+        # Only delete containers if a new image is actually pulled.
         img_obj = self.inspect_image(name)
         if force:
             self.delete_containers_by_image(img_obj)
-        registry = util.Decompose(img_obj.fq_name).registry
-        return util.skopeo_copy("docker://{}".format(name),
-                                "docker-daemon:{}".format(img_obj.fq_name),
-                                util.is_insecure_registry(self.d.info()['RegistryConfig'], util.strip_port(registry)))
 
     def prune(self):
         for iid in self.get_dangling_images():
@@ -265,7 +285,7 @@ class DockerBackend(Backend):
     def get_dangling_images(self):
         return self._get_images(get_all=True, quiet=True, filters={"dangling": True})
 
-    def install(self, image, name):
+    def install(self, image, name, **kwargs):
         pass
 
     def uninstall(self, name):
@@ -291,3 +311,143 @@ class DockerBackend(Backend):
             layers.append(layer)
         return layers
 
+    def run(self, iobject, **kwargs):
+        atomic = kwargs.get('atomic', None)
+        args = kwargs.get('args')
+        # atomic must be an instance of Atomic
+        # args must be a argparse Namespace
+        assert(isinstance(atomic, Atomic))
+        assert(isinstance(args, argparse.Namespace))
+
+        # The object is a container
+        # If container exists and not started, start it
+        # If container exists and is started, execute command inside it (docker exec)
+        # If container doesn't exist, create one and start it
+        if args.command:
+            iobject.command = args.command
+        if isinstance(object, Container):
+            if iobject.running:
+                return self._running(iobject, args, atomic)
+            else:
+                return self._start(iobject, args, atomic)
+
+        # The object is an image
+
+        if iobject.command:
+            opts_file = iobject.get_label("RUN_OPTS_FILE")
+            if opts_file:
+                opts_file = atomic.sub_env_strings("".join(opts_file))
+                if opts_file.startswith("/"):
+                    if os.path.isfile(opts_file):
+                        try:
+                            atomic.run_opts = open(opts_file, "r").read()
+                        except IOError:
+                            raise ValueError("Failed to read RUN_OPTS_FILE %s" % opts_file)
+                else:
+                    raise ValueError("Will not read RUN_OPTS_FILE %s: not absolute path" % opts_file)
+        else:
+            iobject.command = [atomic.docker_binary(), "run"]
+            if os.isatty(0):
+                iobject.command += ["-t"]
+            if args.detach:
+                iobject.command += ["-d"]
+            iobject.command += atomic.SPC_ARGS if args.spc else atomic.RUN_ARGS
+
+        if len(iobject.command) > 0 and iobject.command[0] == "docker":
+            iobject.command[0] = atomic.docker_binary()
+
+        _cmd = iobject.command if isinstance(iobject.command, list) else iobject.command.split()
+        cmd = atomic.gen_cmd(_cmd)
+        cmd = atomic.sub_env_strings(cmd)
+        atomic.display(cmd)
+        if atomic.args.display:
+            return
+
+        if not atomic.args.quiet:
+            self.check_args(cmd)
+        util.check_call(cmd, env=atomic.cmd_env())
+
+    @staticmethod
+    def check_args(cmd):
+        found_sec_arg = False
+        security_args = {
+            '--privileged':
+                'This container runs without separation and should be '
+                'considered the same as root on your system.',
+            '--cap-add':
+                'Adding capabilities to your container could allow processes '
+                'from the container to break out onto your host system.',
+            '--security-opt label:disable':
+                'Disabling label separation turns off tools like SELinux and '
+                'could allow processes from the container to break out onto '
+                'your host system.',
+            '--net=host':
+                'Processes in this container can listen to ports (and '
+                'possibly rawip traffic) on the host\'s network.',
+            '--pid=host':
+                'Processes in this container can see and interact with all '
+                'processes on the host and disables SELinux within the '
+                'container.',
+            '--ipc=host':
+                'Processes in this container can see and possibly interact '
+                'with all semaphores and shared memory segments on the host '
+                'as well as disables SELinux within the container.'
+        }
+
+        for sec_arg in security_args:
+            if sec_arg in cmd:
+                if not found_sec_arg:
+                    util.write_out("\nThis container uses privileged "
+                                   "security switches:")
+                util.write_out("\n\033[1mINFO: {}\033[0m "
+                               "\n{}{}".format(sec_arg, " " * 6,
+                                               security_args[sec_arg]))
+                found_sec_arg = True
+        if found_sec_arg:
+            util.write_out("\nFor more information on these switches and their "
+                           "security implications, consult the manpage for "
+                           "'docker run'.\n")
+
+    def _running(self, con_obj, args, atomic):
+        if con_obj.interactive:
+            cmd = [atomic.docker_binary(), "exec", "-t", "-i", con_obj.name, con_obj.command]
+            if args.display:
+                return atomic.display(cmd)
+            else:
+                return util.check_call(cmd, stderr=DEVNULL)
+        else:
+            cmd = [atomic.docker_binary(), "exec", "-t", "-i", con_obj.name] + con_obj.command
+            if args.command:
+                if args.display:
+                    return util.write_out(" ".join(cmd))
+                else:
+                    return util.check_call(cmd, stderr=DEVNULL)
+            else:
+                if not args.display:
+                    util.write_out("Container is running")
+
+    def _start(self, con_obj, args, atomic):
+        if con_obj.interactive:
+            if con_obj.command:
+                util.check_call(
+                    [atomic.docker_binary(), "start", con_obj.name],
+                    stderr=DEVNULL)
+                return util.check_call(
+                    [atomic.docker_binary(), "exec", "-t", "-i", con_obj.name] +
+                    con_obj.command)
+            else:
+                return util.check_call(
+                    [atomic.docker_binary(), "start", "-i", "-a", con_obj.name],
+                    stderr=DEVNULL)
+        else:
+            if args.command:
+                util.check_call(
+                    [atomic.docker_binary(), "start", con_obj.name],
+                    stderr=DEVNULL)
+                return util.check_call(
+                    [atomic.docker_binary(), "exec", "-t", "-i", con_obj.name] +
+                    con_obj.command)
+            else:
+                return util.check_call(
+                    [atomic.docker_binary(), "start", con_obj.name],
+                    stderr=DEVNULL)

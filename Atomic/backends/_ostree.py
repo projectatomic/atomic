@@ -108,7 +108,7 @@ class OSTreeBackend(Backend):
     def get_containers(self):
         return [self._make_container(x) for x in self.syscontainers.get_containers()]
 
-    def pull_image(self, image, pull_args):
+    def pull_image(self, image, **kwargs):
         return self.syscontainers.pull_image(image)
 
     def delete_image(self, image, force=False):
@@ -117,12 +117,12 @@ class OSTreeBackend(Backend):
     def version(self, image):
         return self.get_layers(image)
 
-    def update(self, name, force=False):
+    def update(self, name, force=False, **kwargs):
         if force:
             raise ValueError("--force is not supported by ostree images")
         return self.syscontainers.pull_image(name)
 
-    def install(self, image, name):
+    def install(self, image, name, **kwargs):
         return self.syscontainers.install(image, name)
 
     def uninstall(self, name):
@@ -161,3 +161,5 @@ class OSTreeBackend(Backend):
     def delete_container(self, container, force=False):
         return self.syscontainers.uninstall(container)
 
+    def run(self, iobject, **kwargs):
+        return self.syscontainers.start_service(iobject.name)

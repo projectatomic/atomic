@@ -7,6 +7,7 @@ IFS=$'\n\t'
 # AUTHOR: Sally O'Malley <somalley at redhat dot com>
 #
 ATOMIC=${ATOMIC:="/usr/bin/atomic"}
+ATOMIC=$(grep -v -- --debug <<< "$ATOMIC")
 DOCKER=${DOCKER:="/usr/bin/docker"}
 TNAME="test_display"
 

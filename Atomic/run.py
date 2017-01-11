@@ -1,7 +1,8 @@
 import sys
-import os
-from .pull import Pull
+from Atomic.backendutils import BackendUtils
+from Atomic.backends._docker import DockerBackend
 from . import util
+from Atomic.discovery import RegistryInspectError
 
 try:
     from . import Atomic
@@ -20,7 +21,7 @@ SPC_ARGS = ["-i",
             "-e", "HOST=/host",
             "-e", "NAME=${NAME}",
             "-e", "IMAGE=${IMAGE}",
-            "-e", "SYSTEMD_IGNORE_CHROOT=1", 
+            "-e", "SYSTEMD_IGNORE_CHROOT=1",
             "--name", "${NAME}",
             "${IMAGE}"]
 
@@ -65,108 +66,32 @@ def cli(subparser):
 class Run(Atomic):
     def __init__(self):
         super(Run, self).__init__()
+        self.RUN_ARGS = RUN_ARGS
+        self.SPC_ARGS = SPC_ARGS
 
     def run(self):
-        if self.syscontainers.get_checkout(self.name) is not None:
-            self.syscontainers.start_service(self.name)
-            return
+        if self.name:
+            be_utils = BackendUtils()
+            try:
+                be, con_obj = be_utils.get_backend_and_container_obj(self.name)
+                return be.run(con_obj, atomic=self, args=self.args)
+            except ValueError:
+                pass
 
-        self.inspect = self._inspect_container()
-        if self.inspect:
-            self._check_latest()
-            # Container exists
-            if self.inspect["State"]["Running"]:
-                return self._running()
-            elif not self.args.display:
-                return self._start()
 
-        # Container does not exist
-        self.inspect = self._inspect_image()
-        if not self.inspect:
+        db = DockerBackend()
+        img_object = db.has_image(self.image)
+        if img_object is None:
+            self.display("Need to pull %s" % self.image)
             if self.args.display:
-                return self.display("Need to pull %s" % self.image)
+                return 0
+            try:
+                db.pull_image(self.image)
+                img_object = db.has_image(self.image)
+            except RegistryInspectError:
+                util.write_err("Unable to find image {}".format(self.image))
 
-            p = Pull()
-            p.args = self.args
-            p.pull_docker_image()
-            self.inspect = self._inspect_image()
-
-        args = self._get_args("RUN")
-        if args:
-            args += self.command
-            opts_file = self._get_args("RUN_OPTS_FILE")
-            if opts_file:
-                opts_file = self.sub_env_strings("".join(opts_file))
-                if opts_file.startswith("/"):
-                    if os.path.isfile(opts_file):
-                        try:
-                            self.run_opts = open(opts_file, "r").read()
-                        except IOError:
-                            raise ValueError("Failed to read RUN_OPTS_FILE %s" % opts_file)
-                else:
-                    raise ValueError("Will not read RUN_OPTS_FILE %s: not absolute path" % opts_file)
-        else:
-            args = [self.docker_binary(), "run"]
-            if os.isatty(0):
-                args += ["-t"]
-            if self.args.detach:
-                args += ["-d"]
-            args += SPC_ARGS if self.spc else RUN_ARGS
-            args += self.command if self.command else self._get_cmd()
-
-        if len(args) > 0 and args[0] == "docker":
-            args[0] = self.docker_binary()
-
-        cmd = self.gen_cmd(args)
-        cmd = self.sub_env_strings(cmd)
-        self.display(cmd)
-        if self.args.display:
-            return
-
-        if not self.args.quiet:
-            self.check_args(cmd)
-        util.check_call(cmd, env=self.cmd_env())
-
-    @staticmethod
-    def check_args(cmd):
-        found_sec_arg = False
-        security_args = {
-            '--privileged':
-                'This container runs without separation and should be '
-                'considered the same as root on your system.',
-            '--cap-add':
-                'Adding capabilities to your container could allow processes '
-                'from the container to break out onto your host system.',
-            '--security-opt label:disable':
-                'Disabling label separation turns off tools like SELinux and '
-                'could allow processes from the container to break out onto '
-                'your host system.',
-            '--net=host':
-                'Processes in this container can listen to ports (and '
-                'possibly rawip traffic) on the host\'s network.',
-            '--pid=host':
-                'Processes in this container can see and interact with all '
-                'processes on the host and disables SELinux within the '
-                'container.',
-            '--ipc=host':
-                'Processes in this container can see and possibly interact '
-                'with all semaphores and shared memory segments on the host '
-                'as well as disables SELinux within the container.'
-        }
-
-        for sec_arg in security_args:
-            if sec_arg in cmd:
-                if not found_sec_arg:
-                    util.write_out("\nThis container uses privileged "
-                                  "security switches:")
-                util.write_out("\n\033[1mINFO: {}\033[0m "
-                              "\n{}{}".format(sec_arg, " " * 6,
-                                              security_args[sec_arg]))
-                found_sec_arg = True
-        if found_sec_arg:
-            util.write_out("\nFor more information on these switches and their "
-                          "security implications, consult the manpage for "
-                          "'docker run'.\n")
+        db.run(img_object, atomic=self, args=self.args)
 
     @staticmethod
     def print_run():

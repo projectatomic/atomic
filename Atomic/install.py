@@ -2,8 +2,8 @@ import argparse
 import sys
 from . import util
 from .util import add_opt
-from .pull import Pull
 from .syscontainers import OSTREE_PRESENT
+from Atomic.backendutils import BackendUtils
 
 try:
     from . import Atomic
@@ -72,13 +72,22 @@ def cli(subparser):
                           help=_("Additional arguments appended to the image "
                                  "install method"))
 
+
 class Install(Atomic):
     def __init__(self):
         super(Install, self).__init__()
 
     def install(self):
-        if self._container_exists(self.name):
+        debug = self.args.debug
+        if self.args.debug:
+            util.write_out(str(self.args))
+        be_utils = BackendUtils()
+        try:
+            # Check to see if the container already exists
+            _, _ = be_utils.get_backend_and_container_obj(self.name)
             raise ValueError("A container '%s' is already present" % self.name)
+        except ValueError:
+            pass
 
         if self.user:
             if not util.is_user_mode():
@@ -89,34 +98,23 @@ class Install(Atomic):
         elif OSTREE_PRESENT and self.args.setvalues:
             raise ValueError("--set is valid only when used with --system or --user")
 
-        self._check_if_image_present()
-        args = self._get_args("INSTALL")
-        if not args:
-            return
+        # Assumed backend now is docker
+        be = be_utils.get_backend_from_string('docker')
 
-        cmd = self.sub_env_strings(self.gen_cmd(args + self.quote(self.args.args)))
-
+        # If the image is already present,
+        img_obj = be.has_image(self.image)
+        if img_obj is None:
+            be.pull_image(self.image, debug=debug)
+            img_obj = be.has_image(self.image)
+        install_args = img_obj.get_label('INSTALL')
+        if not install_args:
+            return 0
+        install_args = install_args.split()
+        cmd = self.sub_env_strings(self.gen_cmd(install_args + self.quote(self.args.args)))
         self.display(cmd)
 
         if not self.args.display:
             return util.check_call(cmd)
-
-    def _check_if_image_present(self):
-        self.inspect = self._inspect_image()
-        if not self.inspect:
-            if self.args.display:
-                self.display("Need to pull %s" % self.image)
-                return
-            tag = util.Decompose(self.image).tag
-            # skopeo requires the use of tags or it will fail
-            # if not tag is found, use 'latest'
-            if not tag:
-                self.image += ":{}".format("latest")
-
-            p = Pull()
-            p.args = self.args
-            p.pull_docker_image()
-            self.inspect = self._inspect_image()
 
     @staticmethod
     def print_install():

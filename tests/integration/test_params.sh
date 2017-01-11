@@ -1,6 +1,7 @@
 #!/bin/bash -x
 set -euo pipefail
 IFS=$'\n\t'
+ATOMIC=$(grep -v -- --debug <<< "$ATOMIC")
 
 test() {
     expected=$(for i in $@; do echo $i; done)

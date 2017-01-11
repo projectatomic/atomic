@@ -28,7 +28,7 @@ class Backend(object): #pylint: disable=metaclass-assignment
         pass
 
     @abstractmethod
-    def pull_image(self, image, pull_args):
+    def pull_image(self, image, **kwargs):
         """
         Pulls an image to the backend
         :param image:
@@ -38,7 +38,7 @@ class Backend(object): #pylint: disable=metaclass-assignment
         pass
 
     @abstractmethod
-    def install(self, image, name):
+    def install(self, image, name, **kwargs):
         """
         Installs an image on a backend
         :param image:
@@ -66,7 +66,7 @@ class Backend(object): #pylint: disable=metaclass-assignment
         pass
 
     @abstractmethod
-    def update(self, name, force=False):
+    def update(self, name, force=False, **kwargs):
         """
         Downloads latest image from registry
         :param image:
@@ -138,4 +138,9 @@ class Backend(object): #pylint: disable=metaclass-assignment
     @abstractmethod
     def validate_layer(self, layer):
         pass
+
+    @abstractmethod
+    def run(self, iobject, **kwargs):
+        pass
+
 

@@ -5,7 +5,7 @@ class Container(object):
     def __init__(self, input_name, backend=None):
 
         # Required
-        self.name = None
+        self._name = None
         self.id = None
         self._created = None
         self.status = None
@@ -16,7 +16,7 @@ class Container(object):
         self.runtime = backend.backend
         self.image_id = None
         self.image_name = None
-        self.command = None
+        self._command = None
         self.state = None
         self.vulnerable = False
         self.labels = None
@@ -56,6 +56,10 @@ class Container(object):
         self._backend = value
 
     @property
+    def type(self):
+        return 'container'
+
+    @property
     def created(self):
         return str(datetime.datetime.fromtimestamp(self._created))
 
@@ -66,3 +70,28 @@ class Container(object):
     @created.setter
     def created(self, value):
         self._created = value
+
+    @property
+    def command(self):
+        cmd = self._command if self._command is not None else ['/bin/sh']
+        return  cmd
+
+    @command.setter
+    def command(self, value):
+        self._command = value
+
+    @property
+    def interactive(self):
+        config = self.original_structure['Config']
+        if all([config.get('AttachStdin', False), config.get('AttachStdout', False), config.get('AttachStderr', False)]):
+            return True
+        return False
+
+    @property
+    def name(self):
+        return str(self._name)
+
+    @name.setter
+    def name(self, value):
+        self._name = value[1:] if value[0] == '/' else value
+

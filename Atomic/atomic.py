@@ -5,11 +5,6 @@ import pipes
 from .client import AtomicDocker
 from .syscontainers import SystemContainers
 
-try:
-    from subprocess import DEVNULL  # pylint: disable=no-name-in-module
-except ImportError:
-    DEVNULL = open(os.devnull, 'wb')
-
 import requests
 
 from . import util
@@ -179,61 +174,6 @@ class Atomic(object):
 
     def _get_labels(self):
         return self._getconfig("Labels", [])
-
-    def _interactive(self):
-        return (self._getconfig("AttachStdin", False) and
-                self._getconfig("AttachStdout", False) and
-                self._getconfig("AttachStderr", False))
-
-    def _running(self):
-        if self._interactive():
-            cmd = [self.docker_binary(), "exec", "-t", "-i", self.name]
-            if self.command:
-                cmd += self.command
-            else:
-                cmd += self._get_cmd()
-            if self.args.display:
-                return self.display(cmd)
-            else:
-                return util.check_call(cmd, stderr=DEVNULL)
-        else:
-            if self.command:
-                if self.args.display:
-                    return util.write_out("docker exec -t -i %s %s" %
-                                         (self.name, self.command))
-                else:
-                    return util.check_call(
-                        [self.docker_binary(), "exec", "-t", "-i", self.name] +
-                        self.command, stderr=DEVNULL)
-            else:
-                if not self.args.display:
-                    util.write_out("Container is running")
-
-    def _start(self):
-        if self._interactive():
-            if self.command:
-                util.check_call(
-                    [self.docker_binary(), "start", self.name],
-                    stderr=DEVNULL)
-                return util.check_call(
-                    [self.docker_binary(), "exec", "-t", "-i", self.name] +
-                    self.command)
-            else:
-                return util.check_call(
-                    [self.docker_binary(), "start", "-i", "-a", self.name],
-                    stderr=DEVNULL)
-        else:
-            if self.command:
-                util.check_call(
-                    [self.docker_binary(), "start", self.name],
-                    stderr=DEVNULL)
-                return util.check_call(
-                    [self.docker_binary(), "exec", "-t", "-i", self.name] +
-                    self.command)
-            else:
-                return util.check_call(
-                    [self.docker_binary(), "start", self.name],
-                    stderr=DEVNULL)
 
     def _inspect_image(self, image=None):
         image = image or self.image

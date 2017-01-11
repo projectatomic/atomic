@@ -20,7 +20,7 @@ class Layer(object):
 
     def _instantiate_from_image_object(self, img_obj):
         self.id = img_obj.id
-        self.name = img_obj.name or img_obj.get_label('Name') or img_obj.image
+        self.name = img_obj.get_label('Name') or img_obj.name or img_obj.image
         self.remote = img_obj.remote
         self.version = img_obj.version
         self.release = img_obj.release
