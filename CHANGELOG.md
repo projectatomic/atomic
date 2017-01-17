@@ -1,3 +1,68 @@
+## 1.15 (2016-01-17)
+    update default trust policy file
+    Validate reg input to trust add cmd
+    Atomic/objects/image.py: Fix verify for v1
+    Atomic/verify.py: Fix dbus implementation of image verify
+    main: Don't catch all AttributeErrors
+    storage: Process arguments in set_args, not __init__
+    images, containers: do lowercase comparison for filter values
+    images: apply filters before any output
+    containers: --json exports image_id
+    Refactor atomic stop
+    Add keywords to completions
+
+## 1.14 (2016-01-02)
+    update: refactor into non-base verbs
+    Atomic storage reset does not work on docker-latest
+    Fixes for documentation
+    syscontainers: unlink temporary file if substitution fails
+    syscontainers: simplify substitution of variables
+    Add --all to images delete
+    tests: replace sed with a python script
+    syscontainers: prune the ostree repo with images prune
+    syscontainers: allow delete multiple images by ID
+    syscontainers: use the image id from the raw manifest
+    syscontainers: use system checkout as import tmp directory
+    syscontainers: fix tarfile import with no RepoTags
+    syscontainers: generate an UUID at installation time
+    syscontainers: update honor --force
+    Refactor containers verb
+    Atomic/diff.py: Fix options bug
+    Unify and refactor atomic verify
+    fix get auth from docker.io
+    redhat-ci: make testsuites required
+    push: prompt user/pass lowercase
+    Atomic/diff.py: Use go-mtree for file comparisons
+    run: add --detach and only add -t if in a TTY
+    dbus: fix Install() and Run() signatures
+    pull: support dockertar for docker backend
+    Atomic/top.py: Fix options handling in top
+    generate: default storage for mounts
+    Add fedora25_cloud target for vagrant
+    Atomic Info Unittests
+    Refactor images
+    The HELP label by default should be "help"
+    atomic_dbus: keep the name until the process exits
+    Add substitutions for Opt variables
+    Minor fix to delete
+    Atomic/mount.py: Re-Add _clean_temp_container_by_path (BZ 1397839)
+    test_util.py: adapt for newer sepolicies
+    syscontainers: add rollback
+    backends: has image|container return objects
+    syscontainers: fix installation
+    backends: add skeleton for ostree backend
+    syscontainers: allow to specify what image to pull
+    syscontainers: get_containers accept what containers to inspect
+    Add refactoring structure
+    Atomic/mount.py: shutil.rmtree input must be dir
+    Use centos for all test images
+    syscontainers: output better json errors
+    atomic diff: Add ability to compare metadata
+    syscontainers: environment variable detection
+    Add  SYSTEMD_IGNORE_CHROOT=1 to environment of SPCs
+    The HELP label by default should be "help"
+    make vagrant-check: Run tests with vagrant
+
 ## 1.13 (2016-12-13)
 Refactor verbs:
 	containers
