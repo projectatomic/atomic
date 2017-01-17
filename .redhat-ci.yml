@@ -5,10 +5,15 @@ branches:
 
 host:
   distro: fedora/24/atomic
+  specs:
+    secondary-disk: 10
 
 context: fedora/24/atomic
 
 required: true
+
+env:
+  ENABLE_DESTRUCTIVE: "1"
 
 tests:
   - ./.redhat-ci.sh
@@ -24,6 +29,8 @@ inherit: true
 
 host:
   distro: fedora/25/atomic
+  specs:
+    secondary-disk: 10
 
 context: fedora/25/atomic
 
@@ -33,6 +40,8 @@ inherit: true
 
 host:
   distro: centos/7/atomic/continuous
+  specs:
+    secondary-disk: 10
 
 context: centos/7/atomic
 
@@ -42,6 +51,8 @@ inherit: true
 
 host:
   distro: fedora/25/cloud
+  specs:
+    secondary-disk: 10
 
 context: fedora/25/cloud
 
