@@ -56,7 +56,7 @@ class Delete(Atomic):
 
         # Perform the delete
         for del_obj in delete_objects:
-            img_obj.backend.delete_image(img_obj.input_name, force=self.args.force)
+            del_obj.backend.delete_image(del_obj.input_name, force=self.args.force)
 
         # We need to return something here for dbus
         return
