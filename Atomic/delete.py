@@ -37,14 +37,20 @@ class Delete(Atomic):
         if self.args.remote:
             return self._delete_remote(self.args.delete_targets)
 
-        max_img_name = max([len(x.repotags[0] or x.id) for x in delete_objects]) + 2
+        _image_names = []
+        for del_obj in delete_objects:
+            if del_obj.repotags:
+                _image_names.append(len(del_obj.repotags[0]))
+            else:
+                _image_names.append(len(del_obj.id))
+        max_img_name = max(_image_names) + 2
 
         if not self.args.assumeyes:
             util.write_out("Do you wish to delete the following images?\n")
             two_col = "   {0:" + str(max_img_name) + "} {1}"
             util.write_out(two_col.format("IMAGE", "STORAGE"))
             for del_obj in delete_objects:
-                image = del_obj.repotags[0]
+                image = None if not del_obj.repotags else del_obj.repotags[0]
                 if image is None or "<none>" in image:
                     image = del_obj.id[0:12]
                 util.write_out(two_col.format(image, del_obj.backend.backend))
