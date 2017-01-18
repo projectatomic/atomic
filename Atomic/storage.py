@@ -120,7 +120,7 @@ class Storage(Atomic):
 
     def set_args(self, args):
         Atomic.set_args(self, args)
-        if self.args.graph:
+        if 'graph' in self.args and self.args.graph:
             self.graphdir = self.args.graph
         else:
             if os.path.exists("/var/lib/docker") and os.path.exists("/var/lib/docker-latest"):
