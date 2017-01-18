@@ -84,7 +84,7 @@ def cli(subparser):
 class Containers(Atomic):
 
     FILTER_KEYWORDS= {"container": "id", "image": "image_name", "command": "command",
-                      "created": "created", "state": "state", "runtime": "runtime"}
+                      "created": "created", "state": "state", "runtime": "runtime", "backend" : "runtime"}
 
     def fstrim(self):
         with AtomicDocker() as client:
@@ -144,7 +144,7 @@ class Containers(Atomic):
                                           "COMMAND",
                                           "CREATED",
                                           "STATE",
-                                          "RUNTIME"))
+                                          "BACKEND"))
         for con_obj in container_objects:
             indicator = ""
             if con_obj.vulnerable:
