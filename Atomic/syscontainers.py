@@ -687,8 +687,9 @@ class SystemContainers(object):
                 config = json.load(config_file)
                 command = u' '.join(config["process"]["args"])
 
+            runtime = "bwrap-oci" if self.user else "runc"
             container = {'Image' : image, 'ImageID' : revision, 'Id' : x, 'Created' : created, 'Names' : [x],
-                         'Command' : command, 'Type' : 'system'}
+                         'Command' : command, 'Type' : 'system', 'Runtime' : runtime}
             ret.append(container)
         return ret
 

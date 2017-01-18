@@ -84,7 +84,7 @@ def cli(subparser):
 class Containers(Atomic):
 
     FILTER_KEYWORDS= {"container": "id", "image": "image_name", "command": "command",
-                      "created": "created", "state": "state", "runtime": "runtime", "backend" : "runtime"}
+                      "created": "created", "state": "state", "runtime": "runtime", "backend" : "backend.backend"}
 
     def fstrim(self):
         with AtomicDocker() as client:
@@ -101,7 +101,10 @@ class Containers(Atomic):
         def _walk(_filter_objs, _filter, _value):
             _filtered = []
             for con_obj in _filter_objs:
-                if _value.lower() in getattr(con_obj, _filter, None).lower():
+                it = con_obj
+                for i in _filter.split("."):
+                    it = getattr(it, i, None)
+                if _value.lower() in it.lower():
                     _filtered.append(con_obj)
             return _filtered
 
@@ -136,7 +139,7 @@ class Containers(Atomic):
         max_container_id = 12 if self.args.truncate else max([len(x.id) for x in container_objects])
         max_image_name = 20 if self.args.truncate else max([len(x.image_name) for x in container_objects])
         max_command = 20 if self.args.truncate else max([len(x.command) for x in container_objects])
-        col_out = "{0:2} {1:%s} {2:%s} {3:%s} {4:16} {5:9} {6:10}" % (max_container_id, max_image_name, max_command)
+        col_out = "{0:2} {1:%s} {2:%s} {3:%s} {4:16} {5:9} {6:10} {7:10}" % (max_container_id, max_image_name, max_command)
         if self.args.heading:
             util.write_out(col_out.format(" ",
                                           "CONTAINER ID",
@@ -144,7 +147,8 @@ class Containers(Atomic):
                                           "COMMAND",
                                           "CREATED",
                                           "STATE",
-                                          "BACKEND"))
+                                          "BACKEND",
+                                          "RUNTIME"))
         for con_obj in container_objects:
             indicator = ""
             if con_obj.vulnerable:
@@ -158,7 +162,8 @@ class Containers(Atomic):
                                           con_obj.command[0:max_command],
                                           con_obj.created[0:16],
                                           con_obj.state[0:9],
-                                          con_obj.backend.backend[0:10]))
+                                          con_obj.backend.backend[0:10],
+                                          con_obj.runtime[0:10]))
 
     def ps(self):
         container_objects = self._ps()
@@ -191,6 +196,7 @@ class Containers(Atomic):
                     'command': con_obj.command,
                     'created': con_obj.created,
                     'state': con_obj.state,
+                    'backend': con_obj.backend.backend,
                     'runtime': con_obj.runtime,
                     'vulnerable': con_obj.vulnerable,
                     'running': con_obj.running

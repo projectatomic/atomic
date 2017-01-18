@@ -31,6 +31,7 @@ class OSTreeBackend(Backend):
         container.name = container_id
         container.command = info['Command']
         container.id = container_id
+        container.runtime = info['Runtime']
         container.image_name = info['Image']
         container.image_id = info['ImageID']
         container.created = info['Created']
@@ -40,7 +41,6 @@ class OSTreeBackend(Backend):
         container.deep = True
         container.image = info['Image']
         container.running = False if container.status == 'inactive' else True
-
         return container
 
     def _make_image(self, image, info, remote=False):
