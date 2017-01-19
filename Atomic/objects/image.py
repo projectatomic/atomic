@@ -157,7 +157,9 @@ class Image(object):
         self.labels = remote_inspect_info.get("Labels", None)
         self.release = self.get_label('Release')
         self.version = self.get_label('Version')
-        self.id = no_shaw(remote_inspect_info['id'])
+        self.id = remote_inspect_info['id']
+        if self.id is not None:
+            self.id = no_shaw(self.id)
 
     def remote_inspect(self):
         ri = RegistryInspect(registry=self.registry, repo=self.repo, image=self.image,
