@@ -326,7 +326,7 @@ class DockerBackend(Backend):
         # If container doesn't exist, create one and start it
         if args.command:
             iobject.command = args.command
-        if isinstance(object, Container):
+        if isinstance(iobject, Container):
             if iobject.running:
                 return self._running(iobject, args, atomic)
             else:
