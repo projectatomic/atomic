@@ -22,6 +22,7 @@ class DockerBackend(Backend):
     def __init__(self):
         self.input = None
         self._d = None
+        self._ping()
 
     @property
     def d(self):
