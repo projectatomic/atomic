@@ -278,11 +278,16 @@ class Image(object):
 
     @property
     def command(self):
-        # If self._command has been set, return that value
-        if self._command:
-            return self._command
         run_label = self.get_label('RUN')
-        return run_label if run_label else self.cmd
+        run_command = ''
+        if run_label:
+            run_command += run_label
+        if self._command:
+            try:
+                run_command = run_command.split() + self._command
+            except TypeError:
+                run_command += " {}".format(" ".join(self._command))
+        return run_command
 
     @command.setter
     def command(self, value):
