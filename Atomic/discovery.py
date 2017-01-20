@@ -204,13 +204,18 @@ class RegistryInspect():
         self._setup_rc()
 
     def _setup_rc(self):
-        if self.registry:
+        _registries = [x['hostname'] for x in self.registries] + [x['name'] for x in self.registries]
+        if self.registry and self.registry in _registries:
             try:
                 self.rc.hostname = (x['hostname'] for x in self.registries if x['name'] == self.registry).__next__()
                 self.rc.verify = (x['secure'] for x in self.registries if x['name'] == self.registry).__next__()
             except AttributeError:
                 self.rc.hostname = (x['hostname'] for x in self.registries if x['name'] == self.registry).next()  # pylint: disable=next-method-called
                 self.rc.verify = (x['secure'] for x in self.registries if x['name'] == self.registry).next()  # pylint: disable=next-method-called
+            self.rc.registry = self.registry
+            self.rc.needs_auth = False
+        else:
+            self.rc.hostname = self.registry
             self.rc.registry = self.registry
             self.rc.needs_auth = False
 
