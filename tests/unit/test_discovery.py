@@ -7,21 +7,12 @@ class TestAtomicUtil(unittest.TestCase):
     IMAGE = 'docker.io/library/busybox:latest'
     I_REGISTRY, I_REPO, I_IMAGE, I_TAG, _ = util.Decompose(IMAGE).all
 
-    def test_ping(self):
-        ri = discovery.RegistryInspect(registry=self.I_REGISTRY,
-                                       repo=self.I_REPO,
-                                       image=self.I_IMAGE,
-                                       tag=self.I_TAG)
-        # No exceptions should be raised
-        ri.ping()
-
-
     def test_find_image_on_registry(self):
         fq = 'docker.io/library/busybox:latest'
         for img in ['docker.io/library/busybox:latest', 'docker.io/library/busybox', 'docker.io/busybox', 'busybox']:
             registry, repo, image, tag, _ = util.Decompose(img).all
             ri = discovery.RegistryInspect(registry=registry, repo=repo, image=image, tag=tag)
-            self.assertEqual(ri.find_image_on_registry(), fq)
+            self.assertIn(ri.find_image_on_registry(), [fq, 'docker.io/busybox:latest'])
 
     def test_inspect(self):
         ri = discovery.RegistryInspect(registry=self.I_REGISTRY,

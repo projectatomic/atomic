@@ -164,12 +164,8 @@ class Image(object):
     def remote_inspect(self):
         ri = RegistryInspect(registry=self.registry, repo=self.repo, image=self.image,
                              tag=self.tag, orig_input=self.input_name)
-        ri.ping()
         inspect_info = ri.inspect()
-        #foo = ri.rc.manifest_json
-        #inspect_info['id'] = ri.rc.manifest_json.get("config", None).get("digest", None)
-        inspect_info['id'] = None if ri.rc.manifest_json.get("config", None) is None else ri.rc.manifest_json.get(
-            "config", None).get("digest", None)
+        inspect_info['id'] = ri.remote_id
         return inspect_info
 
     @property

@@ -104,7 +104,6 @@ class Verify(Atomic):
             registry, repo, image, tag, _ = util.Decompose(self.get_fq_image_name(_match['RepoTags'][0])).all
             tag = "latest"
             ri = RegistryInspect(registry=registry, repo=repo, image=image, tag=tag, debug=self.debug)
-            ri.ping()
             remote_inspect = ri.inspect()
             release = remote_inspect.get("Labels", None).get("Release", None)
             version = remote_inspect.get("Labels", None).get("Version", None)
@@ -112,7 +111,7 @@ class Verify(Atomic):
                 remote_version =  "{}-{}-{}".format(name, version, release)
             else:
                 # Check if the blob exists on the registry by the ID
-                remote_id = no_shaw(ri.rc.manifest_json.get("config", None).get("digest", None))
+                remote_id = no_shaw(ri.remote_id)
                 _match['Version'] = _match['Id']
                 remote_version = remote_id if remote_id is not None else ""
 
