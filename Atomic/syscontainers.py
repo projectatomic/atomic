@@ -84,6 +84,10 @@ class SystemContainers(object):
                         stdout=DEVNULL,
                         stderr=DEVNULL)
 
+    @property
+    def available(self):
+        return OSTREE_PRESENT
+
     def _checkout_layer(self, repo, rootfs_fd, rootfs, rev):
         # ostree 2016.8 has a glib introspection safe API for checkout, use it
         # when available.

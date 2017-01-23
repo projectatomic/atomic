@@ -33,7 +33,7 @@ def cli(subparser, hidden=False):
     verifyp.add_argument("--no-validate", default=False, dest="no_validate",
                                 action="store_true",
                                 help=_("disable validating system images"))
-    verifyp.add_argument("--storage", default=storage, dest="storage",
+    verifyp.add_argument("--storage", default=None, dest="storage",
                          help=_("Specify the storage of the image. "
                                 "If not specified and there are images with the same name in "
                                 "different storages, you will be prompted to specify."))
@@ -86,7 +86,7 @@ class Verify(Atomic):
         return layers
 
     def _verify(self):
-        be, img_obj = self.backend_utils.get_backend_and_image_obj(self.image, self.args.storage)
+        be, img_obj = self.backend_utils.get_backend_and_image_obj(self.image, str_preferred_backend=self.args.storage or storage, required=True if self.args.storage else False)
         remote_img_name  = "{}:latest".format(util.Decompose(img_obj.fq_name).no_tag)
         remote_img_obj = be.make_remote_image(remote_img_name)
         return img_obj.layers, remote_img_obj.layers

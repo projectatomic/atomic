@@ -483,6 +483,7 @@ _atomic_containers_delete() {
 	local all_options="$options_with_args
 		--all -a
 		--force -f
+		--storage
 		--help
 	"
 

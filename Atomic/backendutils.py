@@ -1,6 +1,9 @@
 from Atomic.backends._docker import DockerBackend
 from Atomic.backends._ostree import OSTreeBackend
+from Atomic.util import write_out, get_atomic_config
 
+ATOMIC_CONFIG = get_atomic_config()
+default_storage = ATOMIC_CONFIG.get('default_storage', "docker")
 
 class BackendUtils(object):
     """
@@ -9,12 +12,39 @@ class BackendUtils(object):
 
     BACKENDS = [DockerBackend, OSTreeBackend]
 
-    def get_backend_from_string(self, str_backend):
+    @property
+    def available_backends(self):
+        return self._set_available_backends()
+
+    def _set_available_backends(self):
+        bes = []
+        for x in self.BACKENDS:
+            be = x()
+            if be.available:
+                bes.append(x)
+        if len(bes) < 1:
+            raise ValueError("No backends are enabled for Atomic.")
+        return bes
+
+    def dump_backends(self):
+        backends = ''
+        for i in self.available_backends:
+            be = i()
+            backends += "{}: Active, ".format(be.backend)
+        write_out("Backends({})\n".format(backends))
+
+    def get_backend_from_string(self, str_backend, init=True):
         for _backend in self.BACKENDS:
+            backend = _backend
             backend_obj = _backend()
             if backend_obj.backend == str_backend:
-                return backend_obj
+                if init:
+                    return backend_obj
+                return backend
         raise ValueError("Unable to associate string '{}' with backend".format(str_backend))
+
+    def _get_backend(self, backend):
+        return self.get_backend_from_string(backend, init=False)
 
     def _get_backend_index_from_string(self, str_backend):
         return [x().backend for x in self.BACKENDS].index(str_backend)
@@ -27,7 +57,7 @@ class BackendUtils(object):
     def backend_has_container(backend, container):
         return True if backend.has_container(container) else False
 
-    def get_backend_and_image_obj(self, img, str_preferred_backend=None):
+    def get_backend_and_image_obj(self, img, str_preferred_backend=None, required=False):
         """
         Given an image name (str) and optionally a str reference to a backend,
         this method looks for the image firstly on the preferred backend and
@@ -37,14 +67,18 @@ class BackendUtils(object):
         :param str_preferred_backend: i.e. 'docker'
         :return: backend object and image object
         """
-        backends = list(self.BACKENDS)
+        backends = list(self.available_backends)
+
+        if str_preferred_backend and self._get_backend(str_preferred_backend) not in self.available_backends and required:
+            raise ValueError("The '{}' backend appears unavailable/inactive".format(str_preferred_backend))
         # Check preferred backend first
-        if str_preferred_backend:
+        if str_preferred_backend and self._get_backend(str_preferred_backend) in self.available_backends:
             be = self.get_backend_from_string(str_preferred_backend)
             img_obj = be.has_image(img)
             if img_obj:
                 return be, img_obj
-
+            if required:
+                raise ValueError("Unable to find {} in the {} backend".format(img, str_preferred_backend))
             # Didnt find in preferred, need to remove it from the list now
             del backends[self._get_backend_index_from_string(str_preferred_backend)]
 
@@ -59,11 +93,11 @@ class BackendUtils(object):
         if len(img_in_backends) == 1:
             return img_in_backends[0]
         if len(img_in_backends) == 0:
-            raise ValueError("Unable to find backend associated with image '{}'".format(img))
+            raise ValueError("Unable to find '{}' in the following backends: {}".format(img, ", ".join([x().backend for x in self.available_backends])))
         raise ValueError("Found {} in multiple storage backends: {}".
-                         format(img, ', '.join([x.backend for x in img_in_backends])))
+                         format(img, ', '.join([x.backend for x, _ in img_in_backends])))
 
-    def get_backend_and_container_obj(self, container_name, str_preferred_backend=None):
+    def get_backend_and_container_obj(self, container_name, str_preferred_backend=None, required=False):
         """
         Given a container name (str) and optionally a str reference to a backend,
         this method looks for the container firstly on the preferred backend and
@@ -73,13 +107,19 @@ class BackendUtils(object):
         :param str_preferred_backend: i.e. 'docker'
         :return: backend object and container object
         """
-        backends = list(self.BACKENDS)
+
+        if str_preferred_backend and self._get_backend(str_preferred_backend) not in self.available_backends and required:
+            raise ValueError("The '{}' backend appears unavailable/inactive".format(str_preferred_backend))
+
+        backends = list(self.available_backends)
         # Check preferred backend first
-        if str_preferred_backend:
+        if str_preferred_backend and self._get_backend(str_preferred_backend) in self.available_backends:
             be = self.get_backend_from_string(str_preferred_backend)
             con_obj = be.has_container(container_name)
             if con_obj:
                 return be, con_obj
+            if required:
+                raise ValueError("Unable to find {} in the {} backend".format(container_name, str_preferred_backend))
             # Didnt find in preferred, need to remove it from the list now
             del backends[self._get_backend_index_from_string(str_preferred_backend)]
 
@@ -97,7 +137,7 @@ class BackendUtils(object):
                          format(container_name, ', '.join([x.backend for x in container_in_backends])))
 
     def get_images(self, get_all=False):
-        backends = self.BACKENDS
+        backends = self.available_backends
         img_objs = []
         for backend in backends:
             be = backend()
@@ -105,7 +145,7 @@ class BackendUtils(object):
         return img_objs
 
     def get_containers(self):
-        backends = self.BACKENDS
+        backends = self.available_backends
         con_objs = []
         for backend in backends:
             be = backend()

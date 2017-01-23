@@ -57,7 +57,10 @@ input, is_python2 = check_if_python2() # pylint: disable=redefined-builtin
 def get_registries():
     registries = []
     with AtomicDocker() as c:
-        dconf = c.info()
+        try:
+            dconf = c.info()
+        except requests.exceptions.ConnectionError:
+            raise ValueError("This Atomic function requires an active docker daemon.")
     search_regs = [x['Name'] for x in dconf['Registries']]
     rconf = dconf['RegistryConfig']['IndexConfigs']
     # docker.io is special

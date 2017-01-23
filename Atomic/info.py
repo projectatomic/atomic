@@ -34,7 +34,7 @@ def cli(subparser, hidden=False):
     infop.add_argument("--remote", dest="force",
                        action='store_true', default=False,
                        help=_('ignore local images and only scan registries'))
-    infop.add_argument("--storage", default=storage, dest="storage",
+    infop.add_argument("--storage", default=None, dest="storage",
                        help=_("Specify the storage of the image. "
                               "If not specified and there are images with the same name in "
                               "different storages, you will be prompted to specify."))
@@ -53,7 +53,7 @@ def cli_version(subparser, hidden=False):
     versionp.add_argument("-r", "--recurse", default=False, dest="recurse",
                           action="store_true",
                           help=_("recurse through all layers"))
-    versionp.add_argument("--storage", default=storage, dest="storage",
+    versionp.add_argument("--storage", default=None, dest="storage",
                           help=_("Specify the storage of the image. "
                                  "If not specified and there are images with the same name in "
                                  "different storages, you will be prompted to specify."))
@@ -87,7 +87,7 @@ class Info(Atomic):
                 write_func("")
 
     def get_layer_objects(self):
-        _, img_obj = self.beu.get_backend_and_image_obj(self.image, str_preferred_backend=self.args.storage)
+        _, img_obj = self.beu.get_backend_and_image_obj(self.image, str_preferred_backend=self.args.storage or storage, required=True if self.args.storage else False)
         return img_obj.layers
 
     def dbus_version(self):
@@ -117,7 +117,7 @@ class Info(Atomic):
             img_obj = be.make_remote_image(self.image)
         else:
             # The image is local
-            be, img_obj = self.beu.get_backend_and_image_obj(self.image, str_preferred_backend=self.args.storage)
+            be, img_obj = self.beu.get_backend_and_image_obj(self.image, str_preferred_backend=self.args.storage or storage, required=True if self.args.storage else False)
 
         with closing(StringIO()) as buf:
             try:
@@ -125,7 +125,8 @@ class Info(Atomic):
             except RegistryInspectError:
                 info_name = img_obj.input_name
             buf.write("Image Name: {}\n".format(info_name))
-            buf.writelines(sorted(["{}: {}\n".format(k, v) for k,v in list(img_obj.labels.items())]))
+            if img_obj.labels:
+                buf.writelines(sorted(["{}: {}\n".format(k, v) for k,v in list(img_obj.labels.items())]))
             if img_obj.template_variables_set:
                 buf.write("\n\nTemplate variables with default value, but overridable with --set:\n")
                 buf.writelines(["{}: {}\n".format(k, v) for k,v in

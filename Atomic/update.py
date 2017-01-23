@@ -25,7 +25,7 @@ def cli(subparser, hidden=False):
     updatep.add_argument("-f", "--force", default=False, dest="force",
                          action="store_true",
                          help=_("remove all containers based on this image"))
-    updatep.add_argument("--storage", default=storage, dest="storage",
+    updatep.add_argument("--storage", default=None, dest="storage",
                          help=_("Specify the storage of the image. Defaults to: %s" % storage))
     updatep.add_argument("image", help=_("container image"))
 
@@ -38,7 +38,7 @@ class Update(Atomic):
             write_out(str(self.args))
         beu = BackendUtils()
         try:
-            be, img_obj = beu.get_backend_and_image_obj(self.image, str_preferred_backend=self.args.storage)
+            be, img_obj = beu.get_backend_and_image_obj(self.image, str_preferred_backend=self.args.storage or storage, required=True if self.args.storage else False)
             input_name = img_obj.input_name
         except ValueError:
             raise ValueError("{} not found locally.  Unable to update".format(self.image))
