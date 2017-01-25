@@ -13,6 +13,14 @@ FIXTURE_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 REGISTRIESD = "etc/containers/registries.d"
 TEST_POLICY = os.path.join(os.path.join(FIXTURE_DIR, "etc/containers"), "policy.json")
 
+def _new_enough():
+    py_version = sys.version_info
+    if (py_version.major, py_version.minor, py_version.micro) >= (2, 7, 6):
+        return True
+    return False
+
+new_enough = _new_enough()
+
 class TestAtomicTrust(unittest.TestCase):
 
     class Args():
@@ -78,6 +86,7 @@ class TestAtomicTrust(unittest.TestCase):
             conf_modified = yaml.load(f)
         self.assertEqual(conf_expected, conf_modified)
 
+    @unittest.skipUnless(new_enough, "Requires 2.7.6 or newer")
     def test_add_trust_keys(self):
         args = self.Args()
         args.sigstore = None
@@ -90,6 +99,7 @@ class TestAtomicTrust(unittest.TestCase):
             self.assertEqual(d["transports"]["atomic"]["docker.io"][0]["keyPath"], 
                              os.path.join(FIXTURE_DIR, "key1.pub"))
 
+    @unittest.skipUnless(new_enough, "Requires 2.7.6 or newer")
     def test_modify_trust_2_keys(self):
         args = self.Args()
         args.sigstore = None
@@ -103,6 +113,7 @@ class TestAtomicTrust(unittest.TestCase):
             self.assertEqual(d["transports"]["atomic"]["docker.io"][1]["keyPath"], 
                              os.path.join(FIXTURE_DIR, "key2.pub"))
 
+    @unittest.skipUnless(new_enough, "Requires 2.7.6 or newer")
     def test_add_reject_type(self):
         args = self.Args()
         args.trust_type = "reject"
@@ -118,6 +129,7 @@ class TestAtomicTrust(unittest.TestCase):
             self.assertEqual(d["transports"]["docker"][args.registry][0]["type"], 
                              args.trust_type)
 
+    @unittest.skipUnless(new_enough, "Requires 2.7.6 or newer")
     def test_delete_trust(self):
         args = self.Args()
         args.pubkeys = []
@@ -197,6 +209,8 @@ class TestAtomicTrust(unittest.TestCase):
         reset test policy.json
         """
         shutil.copyfile(os.path.join(FIXTURE_DIR, "default_policy.json"), TEST_POLICY)
+
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,8 +1,15 @@
 import unittest
 import selinux
-
+import sys
 from Atomic import util
 
+def _new_enough():
+    py_version = sys.version_info
+    if (py_version.major, py_version.minor, py_version.micro) >= (2, 7, 6):
+        return True
+    return False
+
+new_enough = _new_enough()
 
 class TestAtomicUtil(unittest.TestCase):
 
@@ -80,6 +87,7 @@ class TestAtomicUtil(unittest.TestCase):
         for image in images:
             self.assertEqual(util.Decompose(image[0]).all, image[1])
 
+    @unittest.skipUnless(new_enough, "Requires 2.7.6 or newer")
     def test_valid_uri(self):
         valid_uris = ['example.com', 'example.com:5000', 'example.US.com', 'example.com/image/name:version1', 'example.com:5000/foo/bar/image:tag', 'example_inc.com']
         invalid_uris = ['example.com/Image/name', 'example.com/image(name):latest', 'example.com/foo_bar', 'example.com:5000:8888', 'example.com:foo', 'example[us].com', 'example.com#foo/bar']
