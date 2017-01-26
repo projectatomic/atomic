@@ -236,7 +236,7 @@ class Images(Atomic):
             m.mount()
             r = util.generate_validation_manifest(img_rootfs=tmpdir, keywords="type,uid,gid,mode,size,sha256digest")
             m.unmount()
-            with open(manifestname,"w",0) as f:
+            with open(manifestname,"wb",0) as f:
                 f.write(r.stdout)
             shutil.rmtree(tmpdir)
 
