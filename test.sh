@@ -52,7 +52,7 @@ make_docker_images () {
     echo "Pulling standard images from Docker Hub..." | tee -a ${LOG}
     ${DOCKER} pull centos>> ${LOG}
     echo "Building images from tests/test-images..." | tee -a ${LOG}
-    for df in `find ./tests/test-images/ -name Dockerfile.*`; do
+    for df in `find ./tests/test-images/ -name Dockerfile.* | sort`; do
         # Don't include directories for dockerfile data
         if [[ -d "${df}" ]]; then
             continue
