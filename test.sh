@@ -113,15 +113,16 @@ make_docker_images () {
         if [[ -d "${df}.d" ]]; then
             cp -r "${df}.d" "${WORK_DIR}/${BASE_NAME}.d"
         fi
-
+	SECONDS=0
         ${DOCKER} build -t ${iname} -f ${df_cp} ${WORK_DIR} >> ${LOG}
+	DURATION=$SECONDS
 
         # Clean up build files.
         rm "${df_cp}"
         if [[ -d "${WORK_DIR}/${BASE_NAME}.d" ]]; then
             rm -r "${WORK_DIR}/${BASE_NAME}.d"
         fi
-        printf "\tBuilt   : ${iname}\n"
+        printf "\tBuilt   : ${iname} in $DURATION seconds\n"
     done
 }
 

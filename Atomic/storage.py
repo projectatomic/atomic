@@ -7,7 +7,6 @@ from . import util
 from .Export import export_docker
 from .Import import import_docker
 from .util import NoDockerDaemon, default_docker_lib
-import subprocess
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
