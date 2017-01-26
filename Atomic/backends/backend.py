@@ -144,3 +144,8 @@ class Backend(object): #pylint: disable=metaclass-assignment
         pass
 
 
+    @abstractproperty
+    def available(self):
+        pass
+
+

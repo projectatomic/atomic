@@ -55,7 +55,7 @@ class RegistryInspect():
             fqdn += ":{}".format(self.tag)
         return fqdn
 
-    def find_image_on_registry(self):
+    def find_image_on_registry(self, quiet=False):
         """
         Find the fully qualified image name for given input when
         registry is unknown
@@ -68,13 +68,15 @@ class RegistryInspect():
         registries = [i['name'] for i in [x for x in self.registries if x['search']]]
         for registry in registries:
             fqdn = self.assemble_fqdn(registry=registry, include_tag=True)
-            util.write_out("Trying {}...".format(fqdn))
+            if not quiet:
+                util.write_out("Trying {}...".format(fqdn))
             try:
                 result = util.skopeo_inspect("docker://{}".format(fqdn), return_json=True)
                 self._remote_inspect = result
                 return fqdn
             except ValueError as e:
-                util.write_err("Failed: {}".format(e))
+                if not quiet:
+                    util.write_err("Failed: {}".format(e))
                 continue
         raise RegistryInspectError("Unable to resolve {}".format(self.orig_input))
 

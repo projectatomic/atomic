@@ -24,6 +24,9 @@ class OSTreeBackend(Backend):
     def backend(self):
         return "ostree"
 
+    def available(self):
+        return self.syscontainers.available
+
     def _make_container(self, info):
         container_id = info['Id']
         runtime = self.syscontainers.get_container_runtime_info(container_id)

@@ -33,6 +33,10 @@ def cli(subparser):
     delete_parser.add_argument("-a", "--all", action='store_true',dest="all",
                                default=False,
                                help=_("Delete all containers"))
+    delete_parser.add_argument("--storage", default=None, dest="storage",
+                               help=_("Specify the storage from which to delete the container from. "
+                                      "If not specified and there are containers with the same name in "
+                                      "different storages, you will be prompted to specify."))
     delete_parser.add_argument("containers", nargs='*',
                               help=_("Specify one or more containers. Must be final arguments."))
     delete_parser.set_defaults(_class=Containers, func='delete')
@@ -86,6 +90,10 @@ class Containers(Atomic):
     FILTER_KEYWORDS= {"container": "id", "image": "image_name", "command": "command",
                       "created": "created", "state": "state", "runtime": "runtime", "backend" : "backend.backend"}
 
+    def __init__(self):
+        super(Containers, self).__init__()
+        self.beu = BackendUtils()
+
     def fstrim(self):
         with AtomicDocker() as client:
             for container in client.containers():
@@ -120,6 +128,8 @@ class Containers(Atomic):
     def ps_tty(self):
         if self.args.debug:
             util.write_out(str(self.args))
+            self.beu.dump_backends()
+
 
         container_objects = self._ps()
         if not any([x.running for x in container_objects]) and not self.args.all:
@@ -179,8 +189,7 @@ class Containers(Atomic):
                     raise ValueError("The filter {} is not valid.  "
                                      "Please choose from {}".format(_filter, [x for x in self.FILTER_KEYWORDS]))
         _check_filters()
-        beu = BackendUtils()
-        containers = self.filter_container_objects(beu.get_containers())
+        containers = self.filter_container_objects(self.beu.get_containers())
         self._mark_vulnerable(containers)
         if self.args.all:
             return containers
@@ -207,17 +216,17 @@ class Containers(Atomic):
     def delete(self):
         if self.args.debug:
             util.write_out(str(self.args))
+            self.beu.dump_backends()
 
         if len(self.args.containers) > 0 and self.args.all:
             raise ValueError("You must select --all or provide a list of containers to delete.")
 
-        beu = BackendUtils()
         if self.args.all:
-            container_objects = beu.get_containers()
+            container_objects = self.beu.get_containers()
         else:
             container_objects = []
             for con in self.args.containers:
-                _, con_obj = beu.get_backend_and_container_obj(con, str_preferred_backend=storage)
+                _, con_obj = self.beu.get_backend_and_container_obj(con, str_preferred_backend=self.args.storage or storage, required=True if self.args.storage else False)
                 container_objects.append(con_obj)
 
         four_col = "   {0:12} {1:20} {2:25} {3:10}"

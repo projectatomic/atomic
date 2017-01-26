@@ -49,7 +49,7 @@ def cli(subparser):
                              action="store_true",
                              help=_("Delete image from remote repository"))
 
-    delete_parser.add_argument("--storage", default=storage, dest="storage",
+    delete_parser.add_argument("--storage", default=None, dest="storage",
                                help=_("Specify the storage from which to delete the image from. "
                                       "If not specified and there are images with the same name in "
                                       "different storages, you will be prompted to specify."))
@@ -137,6 +137,7 @@ class Images(Atomic):
 
         if self.args.debug:
             util.write_out(str(self.args))
+            self.be_utils.dump_backends()
 
         _images = self._get_images()
         for i in _images:

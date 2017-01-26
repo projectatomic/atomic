@@ -117,7 +117,7 @@ class Image(object):
         if not self.registry:
             ri = RegistryInspect(registry=self.registry, repo=self.repo, image=self.image,
                                  tag=self.tag, orig_input=self.input_name)
-            self._fq_name = ri.find_image_on_registry()
+            self._fq_name = ri.find_image_on_registry(quiet=True)
             propagate(self._fq_name)
             return self._fq_name
 

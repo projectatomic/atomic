@@ -22,7 +22,14 @@ class DockerBackend(Backend):
     def __init__(self):
         self.input = None
         self._d = None
-        self._ping()
+
+    @property
+    def available(self):
+        try:
+            _ = self.d
+            return True
+        except util.NoDockerDaemon:
+            return False
 
     @property
     def d(self):

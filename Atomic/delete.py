@@ -3,6 +3,9 @@ from . import util
 import sys
 from Atomic.backendutils import BackendUtils
 
+ATOMIC_CONFIG = util.get_atomic_config()
+storage = ATOMIC_CONFIG.get('default_storage', "docker")
+
 class Delete(Atomic):
     def __init__(self):
         super(Delete, self).__init__()
@@ -31,7 +34,7 @@ class Delete(Atomic):
             delete_objects = beu.get_images(get_all=True)
         else:
             for image in self.args.delete_targets:
-                _, img_obj = beu.get_backend_and_image_obj(image, str_preferred_backend=self.args.storage)
+                _, img_obj = beu.get_backend_and_image_obj(image, str_preferred_backend=self.args.storage or storage, required=True if self.args.storage else False)
                 delete_objects.append(img_obj)
 
         if self.args.remote:

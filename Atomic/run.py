@@ -89,7 +89,7 @@ class Run(Atomic):
                 db.pull_image(self.image)
                 img_object = db.has_image(self.image)
             except RegistryInspectError:
-                util.write_err("Unable to find image {}".format(self.image))
+                raise ValueError("Unable to find image {}".format(self.image))
 
         db.run(img_object, atomic=self, args=self.args)
 
