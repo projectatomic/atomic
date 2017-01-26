@@ -7,6 +7,7 @@ from . import util
 from .Export import export_docker
 from .Import import import_docker
 from .util import NoDockerDaemon, default_docker_lib
+import subprocess
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -63,6 +64,9 @@ def cli(subparser):
                          help=_("remove all unused block devices from storage pool"))
     modifyp.add_argument('--driver', dest="driver", default=None, help='The storage backend driver', choices=['devicemapper', 'overlay', 'overlay2'])
     modifyp.add_argument('--vgroup', dest="vgroup", default=None, help='The storage volume group')
+    modifyp.add_argument("--graph", dest="graph",
+                        default=default_docker_lib(),
+                        help=_("Root of the Docker runtime (Default: %s)" % default_docker_lib()))
     modifyp.set_defaults(_class=Storage, func='modify')
 
     # atomic storage reset
