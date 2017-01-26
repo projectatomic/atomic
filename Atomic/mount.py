@@ -403,15 +403,15 @@ class DockerMount(Mount):
 
     @staticmethod
     def _no_gd_api_dm(cid):
-        desc_file = os.path.join('/var/lib/docker/devicemapper/metadata', cid)
+        desc_file = os.path.join(util.default_docker_lib(), cid)
         desc = json.loads(open(desc_file).read())
         return desc['device_id'], desc['size']
 
     @staticmethod
     def _no_gd_api_overlay(cid, driver):
-        prefix = os.path.join('/var/lib/docker/%s/' % driver, cid)
+        prefix = os.path.join(util.default_docker_lib() % driver, cid)
         ld_metafile = open(os.path.join(prefix, 'lower-id'))
-        ld_loc = os.path.join('/var/lib/docker/%s/' % driver, ld_metafile.read())
+        ld_loc = os.path.join(util.default_docker_lib() % driver, ld_metafile.read())
         return (os.path.join(ld_loc, 'root'), os.path.join(prefix, 'upper'),
                 os.path.join(prefix, 'work'))
 
@@ -679,7 +679,7 @@ class DockerMount(Mount):
         upperdir = [o.replace('upperdir=', '') for o in optstring.split(',')
                     if o.startswith('upperdir=')][0]
         cdir = upperdir.rsplit('/', 1)[0]
-        if not cdir.startswith('/var/lib/docker/%s/' % driver ):
+        if not cdir.startswith("{}/{}".format(util.default_docker_lib(), driver)):
             raise MountError('The device mounted at %s is not a '
                              'docker container.' % self.mountpoint )
 
