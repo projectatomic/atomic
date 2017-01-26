@@ -42,6 +42,7 @@ host:
   distro: centos/7/atomic/continuous
   specs:
     secondary-disk: 10
+    secondary-disk: 10
 
 context: centos/7/atomic
 

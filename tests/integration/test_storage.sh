@@ -29,9 +29,16 @@ smarter_copy() {
 setup () {
     # Perform setup routines here.
     smarter_copy /etc/sysconfig/docker-storage-setup /etc/sysconfig/docker-storage-setup.atomic-tests-backup
-    dd if=/dev/zero of=${WORK_DIR}/img-1 bs=1M count=10
-    TEST_DEV_1=$(losetup --show -f -P ${WORK_DIR}/img-1)
-    TEST_DEV_1_pvs=${TEST_DEV_1}p1
+    TEST_DEV_1=/dev/vdb
+    mount
+    #MNT=$(mount | grep vdb | awk '{print $3}')
+    MNT=$(mount | awk '$1 ~/vdb/' | awk '{print $3}')
+    if [ ${MNT} ]; then
+	    umount $MNT
+    fi
+    wipefs -a "$TEST_DEV_1"
+    fdisk -l
+    TEST_DEV_1_pvs=${TEST_DEV_1}1
 
     ROOT_DEV=$( awk '$2 ~ /^\/$/ && $1 !~ /rootfs/ { print $1 }' /proc/mounts )
     VGROUP=$(lvs --noheadings -o vg_name ${ROOT_DEV} || true)
@@ -40,13 +47,12 @@ setup () {
 teardown () {
     # Cleanup your test data.
     set -e
-    [ -n "$VGROUP" ] && (vgreduce $VGROUP "$TEST_DEV_1_pvs" || true)
-    losetup -d "$TEST_DEV_1"
+    wipefs -a "$TEST_DEV_1"
     smarter_copy /etc/sysconfig/docker-storage-setup.atomic-tests-backup /etc/sysconfig/docker-storage-setup
 }
 
-trap teardown EXIT
 setup
+trap teardown EXIT
 
 # Running without /e/s/d-s-s should fail.
 

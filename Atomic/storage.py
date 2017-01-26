@@ -7,6 +7,7 @@ from . import util
 from .Export import export_docker
 from .Import import import_docker
 from .util import NoDockerDaemon, default_docker_lib
+import subprocess
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -168,7 +169,11 @@ class Storage(Atomic):
                 self._vgroup(self.args.vgroup)
             if len(self.args.devices) > 0:
                 self._add_device(self.args.devices)
-            if util.call(["docker-storage-setup"]) != 0:
+            try:
+                util.check_output(["docker-storage-setup"], stderr=subprocess.STDOUT)
+            except subprocess.CalledProcessError as e:
+                util.write_out("Return Code: {}".format(e.returncode))
+                util.write_out("Failure: {}".format(e.output))
                 os.rename(self.dss_conf_bak, self.dss_conf)
                 util.call(["docker-storage-setup"])
                 raise ValueError("docker-storage-setup failed")

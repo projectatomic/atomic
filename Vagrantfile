@@ -9,6 +9,8 @@ Vagrant.configure(2) do |config|
     config.vm.provider "libvirt" do |libvirt, override|
         libvirt.memory = 2048
         libvirt.cpus = 3
+	libvirt.storage :file,
+		:type => 'qcow2'
     end
     config.vm.synced_folder ".", "/vagrant", disabled: true
     config.vm.synced_folder ".", "/home/vagrant/atomic", type: "rsync",
