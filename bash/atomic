@@ -951,6 +951,7 @@ _atomic_trust_default() {
 _atomic_trust_add() {
 	local options_with_args="
 		--pubkeys -k
+		--pubkeysfile -f
 		--sigstoretype
 		--type -t
 		--keytype

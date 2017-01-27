@@ -11,6 +11,7 @@ atomic-trust - Manage system container trust policy
 [**-j**|**--json**]
 [**--raw**]
 [**-k**|**--pubkeys** KEY1 [**-k**|**--pubkeys** KEY2,...]]
+[**-f**|**--pubkeysfile** KEY1 [**f**|**--pubkeysfile** KEY2,...]]
 [**--keytype** GPGKeys]
 [**-t**|**--type** signedBy|insecureAcceptAnything|reject]
 [**-s**|**--sigstore** https://URL[:PORT][/PATH]|file:///PATH]
@@ -49,8 +50,18 @@ testing.
   Print usage statement.
 
 **-k** **--pubkeys**
-  An absolute path to installed public key. May be used multiple times. Required
-  for **signedBy** type.
+  A reference to a local file or download URL to an exported public key. Keys
+  will be parsed and encoded inline with policy.json. Option may be used
+  multiple times to require an image be sigend by multiple keys. One of
+  **--pubkeys** or **--pubkeysfile** is required for **signedBy** type. This
+  option is recommended over **--pubkeysfile**.
+
+**-f** **--pubkeysfile**
+  A path to an exported public key on the local system. Key paths
+  will be referenced in policy.json. Any path may be used but path
+  **/etc/pki/containers** is recommended. Option may be used multiple times to
+  require an image be sigend by multiple keys. One of **--pubkeys** or
+  **--pubkeysfile** is required for **signedBy** type.
 
 **--keytype**
   The public key type. Default: GPGKeys (only supported value)
@@ -107,8 +118,8 @@ Modify a trust scope, adding a second public key and changing
 the sigstore web server
 
     atomic trust add \
+           --pubkeys https://example.com/keys/example.pub \
            --pubkeys /etc/pki/containers/foo@example.com \
-           --pubkeys /etc/pki/containers/bar@example.com \
            --sigstore https://server.example.com/foobar/sigstore/ \
            docker.io/foobar
 

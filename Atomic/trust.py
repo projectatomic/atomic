@@ -6,13 +6,12 @@ import json
 import yaml
 import requests
 import collections
+from base64 import b64encode
 
 TRANSPORT_TYPES = ["docker", "atomic", "dir"]
 
 def cli(subparser):
     # atomic trust
-    pubkeys_dir = util.get_atomic_config_item(['pubkeys_dir'])
-
     trustp = subparser.add_parser("trust",
                                   help=_("Manage system container trust policy"),
                                   epilog="Manages the trust policy of the host system. "
@@ -29,10 +28,16 @@ def cli(subparser):
                      atomic: openshift-based atomic registry"""
     commonp.add_argument("-k", "--pubkeys", nargs='?', default=[],
                          action="append", dest="pubkeys",
-                         help=_("Absolute path of installed public key(s) to trust for TARGET. "
+                         help=_("Local path or URL of public key(s) to trust for TARGET. "
+                                "Keys are parsed and encoded into policy.json. "
                                 "May used multiple times to define multiple public keys. "
-                                "File(s) must exist before using this command. "
-                                "Default directory is %s" % pubkeys_dir))
+                                "File(s) must exist before using this command."))
+    commonp.add_argument("-f", "--pubkeysfile", nargs='?', default=[],
+                         action="append", dest="pubkeysfile",
+                         help=_("Path of installed public key(s) to trust for TARGET. "
+                                "Absolute path to keys is added to policy.json. "
+                                "May used multiple times to define multiple public keys. "
+                                "File(s) must exist before using this command."))
     commonp.add_argument("--sigstoretype", dest="sigstoretype", default="web",
                          choices=['atomic', 'local', 'web'],
                          help=sigstore_help)
@@ -82,13 +87,20 @@ class Trust(Atomic):
         super(Trust, self).__init__()
         self.policy_filename = os.environ.get('TRUST_POLICY', policy_filename)
         self.atomic_config = util.get_atomic_config()
+        class Args():
+            def __init__(self):
+                self.debug = None
+                self.assumeyes = None
+                self.pubkeysfile = None
+        self.set_args(Args())
 
-    def add(self, registry=None, pubkeys=None, sigstore=None, sigstoretype=None, keytype=None, trust_type=None):
+    def add(self, registry=None, pubkeys=None, pubkeysfile=None, sigstore=None, sigstoretype=None, keytype=None, trust_type=None):
         """
         Add trust to policy.json file and optionally update registries.d registry configuration
         :param sigstoretype: string, human-readable sigstore type, one of "atomic", "web", "local"
         :param registry: the registry[/repo] to add policy for
-        :param pubkeys: list of pubkeys to add with trust_type "signedBy"
+        :param pubkeys: list of pubkeys to encode in policy.json for trust_type "signedBy"
+        :param pubkeysfile: list of pubkey paths in policy.json for trust_type "signedBy"
         :param keytype: string, "GPGKeys"
         :param trust_type: string, one of "signedBy", "insecureAcceptAnything", "reject"
         :param sigstore: string, URL of signature server
@@ -97,6 +109,8 @@ class Trust(Atomic):
             registry=self.args.registry
         if pubkeys is None:
             pubkeys=self.args.pubkeys
+        if pubkeysfile is None:
+            pubkeysfile=self.args.pubkeysfile
         if sigstoretype is None:
             sigstoretype=self.args.sigstoretype
         if keytype is None:
@@ -123,15 +137,22 @@ class Trust(Atomic):
                 policy["transports"][sstype] = {}
 
             payload = []
-            for k in pubkeys:
-                if not os.path.exists(k):
-                    raise ValueError("The public key file %s was not found. This file must exist to proceed." % k)
-                payload.append({ "type": trust_type, "keyType": keytype, "keyPath": k })
+            if pubkeys:
+                for k in pubkeys:
+                    payload.append({ "type": trust_type, "keyType": keytype, "keyData": self.get_pubkey_data(k) })
+            if pubkeysfile:
+                for f in pubkeysfile:
+                    if not os.path.exists(f):
+                        raise ValueError("The public key file %s was not found. This file must exist to proceed." % f)
+                    else:
+                        payload.append({ "type": trust_type, "keyType": keytype, "keyPath": os.path.abspath(f) })
             if trust_type == "signedBy":
-                if len(pubkeys) == 0:
+                if len(pubkeys) == 0 and len(pubkeysfile) == 0:
                     raise ValueError("At least one public key must be defined for type 'signedBy'")
             else:
                 payload.append({ "type": trust_type })
+            if self.args.debug:
+                util.write_out(str(payload))
             policy["transports"][sstype][registry] = payload
             policy_file.seek(0)
             json.dump(policy, policy_file, indent=4)
@@ -181,29 +202,39 @@ class Trust(Atomic):
             json.dump(policy, policy_file, indent=4)
             policy_file.truncate()
 
-    def install_pubkey(self, key_name, key_url):
+    def get_pubkey_data(self, key_reference):
         """
-        Installs remote public key to system config directory
-        :param key_name: id of key used as filename
-        :param key_url: download URI of public key
-        :return: pubkey path string or False
+        Get public key base64 encoded string to embed as keyData in policy.json
+        :param key_reference: local file or download URI of public key
+        :return: encoded pubkey string or False
         """
-        pubkeys_dir = util.get_atomic_config_item(['pubkeys_dir'], util.get_atomic_config())
-        pubkey_file = "%s/%s" % (pubkeys_dir, key_name)
-        if not os.path.exists(pubkeys_dir):
-            os.mkdir(pubkeys_dir)
-        if os.path.exists(pubkey_file):
-            util.write_out("Public key %s already installed at %s" % (key_name, pubkey_file))
-        else:
-            r = requests.get(key_url)
-            if r.status_code == 200:
-                with open(pubkey_file, 'w') as pubfile:
-                    pubfile.write(r.content)
-                util.write_out("Installed public key %s" % pubkey_file)
+        try:
+            from urlparse import urlparse #pylint: disable=import-error
+        except ImportError:
+            from urllib.parse import urlparse #pylint: disable=no-name-in-module,import-error
+
+        keydata = None
+        token = urlparse(key_reference)
+        if not token.scheme or not token.netloc:
+            if not os.path.exists(key_reference):
+                raise ValueError("The public key file %s was not found. This file must exist to proceed." % key_reference)
             else:
-                util.write_out("WARNING: Could not download public key using URL %s." % key_url)
-                util.write_out("Download the public key manually and install as %s" % pubkey_file)
-        return pubkey_file
+                with open(key_reference, 'r') as f:
+                    keydata = f.read()
+        else:
+            if token.scheme != "https":
+                if not self.args.assumeyes:
+                    confirm = util.input("Are you sure you want to download this public key using insecure '%s' transport? (y/N) " % token.scheme)
+                    if not "y" in confirm.lower():
+                        raise ValueError("Aborting 'trust add' due to insecure download of public key from %s." % key_reference)
+            if self.args.debug:
+                util.write_out("Downloading key from %s" % key_reference)
+            r = requests.get(key_reference)
+            if r.status_code == 200:
+                keydata = r.content
+            else:
+                raise ValueError("Could not download public key from %s. Status code %s." % (key_reference, r.status_code))
+        return b64encode(keydata)
 
     def check_policy(self, policy, sstype):
         """
@@ -292,11 +323,10 @@ class Trust(Atomic):
                     sigstore_labels = self.get_sigstore_image_metadata(registry)
         if self._validate_sigstore_labels(sigstore_labels):
             if self.prompt_trust(sigstore_labels):
-                pubkey_path = self.install_pubkey(sigstore_labels['pubkey-id'], sigstore_labels['pubkey-url'])
                 explicit_sigstoretype = "web"
                 if "sigstore-type" in sigstore_labels:
                     explicit_sigstoretype = sigstore_labels['sigstore-type']
-                self.add(registry=scope, trust_type="signedBy", sigstoretype=explicit_sigstoretype, keytype="GPGKeys", pubkeys=[pubkey_path], sigstore=sigstore_labels['sigstore-url'])
+                self.add(registry=scope, trust_type="signedBy", sigstoretype=explicit_sigstoretype, keytype="GPGKeys", pubkeys=[sigstore_labels['pubkey-url']], sigstore=sigstore_labels['sigstore-url'])
 
     def get_sigstore_image_metadata(self, registry, repo=None):
         """

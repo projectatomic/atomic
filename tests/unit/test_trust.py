@@ -27,7 +27,8 @@ class TestAtomicTrust(unittest.TestCase):
         def __init__(self):
             self.sigstoretype = "atomic"
             self.registry = "docker.io"
-            self.pubkeys = [os.path.join(FIXTURE_DIR, "key1.pub")]
+            self.pubkeys = []
+            self.pubkeysfile = [os.path.join(FIXTURE_DIR, "key1.pub")]
             self.sigstore = "https://sigstore.example.com/sigs"
             self.trust_type = "signedBy"
             self.keytype = "GPGKeys"
@@ -103,7 +104,7 @@ class TestAtomicTrust(unittest.TestCase):
     def test_modify_trust_2_keys(self):
         args = self.Args()
         args.sigstore = None
-        args.pubkeys = [os.path.join(FIXTURE_DIR, "key1.pub"), os.path.join(FIXTURE_DIR, "key2.pub")]
+        args.pubkeysfile = [os.path.join(FIXTURE_DIR, "key1.pub"), os.path.join(FIXTURE_DIR, "key2.pub")]
         testobj = Trust(policy_filename = TEST_POLICY)
         testobj.atomic_config = util.get_atomic_config(atomic_config = os.path.join(FIXTURE_DIR, "atomic.conf"))
         testobj.set_args(args)
@@ -184,7 +185,7 @@ class TestAtomicTrust(unittest.TestCase):
         testobj = Trust(policy_filename = os.path.join(FIXTURE_DIR, "show_policy.json"))
         testobj.atomic_config = util.get_atomic_config(atomic_config = os.path.join(FIXTURE_DIR, "atomic.conf"))
         testobj.set_args(args)
-        actual = testobj.get_gpg_id(args.pubkeys)
+        actual = testobj.get_gpg_id(args.pubkeysfile)
         self.assertEqual("security@redhat.com", actual)
 
     def test_trust_gpg_noemail_id(self):
