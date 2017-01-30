@@ -1,6 +1,6 @@
 #!/bin/bash
 set -xeuo pipefail
-
+NO_TEST=${NO_TEST:-}
 # https://bugzilla.redhat.com/show_bug.cgi?id=1318547#c7
 mount --make-rshared /
 
@@ -31,9 +31,13 @@ DOCKER_RUN="docker run --rm \
                 projectatomic/atomic-tester"
 
 # pylint, build, and install in the container...
+if [ -z ${NO_TEST} ]; then
 $DOCKER_RUN make pylint-check
 $DOCKER_RUN make test-python3-pylint
+fi
 $DOCKER_RUN make PYTHON=$PYTHON PYLINT=true install DESTDIR=/host
 
 # ... but run the testsuite on the host
-PYTHON=$PYTHON ./test.sh
+if [ -z ${NO_TEST} ]; then
+	PYTHON=$PYTHON ./test.sh
+fi

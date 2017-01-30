@@ -95,3 +95,7 @@ install-openscap:
 .PHONY: vagrant-check
 vagrant-check:
 	BOX=$(BOX) sh ./vagrant.sh 
+
+.PHONY: install-on-atomicos
+install-on-atomicos:
+	NO_TEST=1 sh ./.redhat-ci.sh

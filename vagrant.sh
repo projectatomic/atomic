@@ -6,7 +6,7 @@ _FINISH(){
     if [ ${RESULT} -eq 0 ]; then
         echo ""
         echo "Tests completed normally..."
-        vagrant destroy ${BOX}
+	vagrant destroy ${BOX}
         echo ""
     else
         echo ""
