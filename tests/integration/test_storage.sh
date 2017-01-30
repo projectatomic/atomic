@@ -30,14 +30,11 @@ setup () {
     # Perform setup routines here.
     smarter_copy /etc/sysconfig/docker-storage-setup /etc/sysconfig/docker-storage-setup.atomic-tests-backup
     TEST_DEV_1=/dev/vdb
-    mount
-    #MNT=$(mount | grep vdb | awk '{print $3}')
     MNT=$(mount | awk '$1 ~/vdb/' | awk '{print $3}')
     if [ ${MNT} ]; then
 	    umount $MNT
     fi
     wipefs -a "$TEST_DEV_1"
-    fdisk -l
     TEST_DEV_1_pvs=${TEST_DEV_1}1
 
     ROOT_DEV=$( awk '$2 ~ /^\/$/ && $1 !~ /rootfs/ { print $1 }' /proc/mounts )

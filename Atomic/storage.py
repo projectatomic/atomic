@@ -78,13 +78,13 @@ def cli(subparser):
     resetp.set_defaults(_class=Storage, func='reset')
 
 def query_pvs(pv, fields):
-    return util.check_output([ "pvs", "--noheadings", "-o",  fields, "--unit", "b", pv ]).split()
+    return util.check_output([ "pvs", "--noheadings", "-o",  fields, "--unit", "b", pv ]).decode('utf-8').split()
 
 def list_pvs(vgroup):
     res = [ ]
     if vgroup:
         for l in util.check_output([ "pvs", "--noheadings", "-o",  "vg_name,pv_name" ]).splitlines():
-            fields = l.split()
+            fields = l.decode('utf-8').split()
             if len(fields) == 2 and fields[0] == vgroup:
                 res.append(fields[1])
     return res
@@ -92,15 +92,15 @@ def list_pvs(vgroup):
 def list_lvs(vgroup):
     if vgroup:
         return map(lambda s: s.strip(), # pylint: disable=deprecated-lambda, map-builtin-not-iterating
-                   util.check_output([ "lvs", "--noheadings", "-o", "name", vgroup ]).splitlines())
+                   util.check_output([ "lvs", "--noheadings", "-o", "name", vgroup ]).decode('utf-8').splitlines())
     else:
         return [ ]
 
 def list_parents(dev):
-    return util.check_output([ "lsblk", "-snlp", "-o", "NAME", dev ]).splitlines()[1:]
+    return util.check_output([ "lsblk", "-snlp", "-o", "NAME", dev ]).decode('utf-8').splitlines()[1:]
 
 def list_children(dev):
-    return util.check_output([ "lsblk", "-nlp", "-o", "NAME", dev ]).splitlines()[1:]
+    return util.check_output([ "lsblk", "-nlp", "-o", "NAME", dev ]).decode('utf-8').splitlines()[1:]
 
 def get_dss_vgroup(conf):
     vgroup = util.sh_get_var_in_file(conf, "VG", "")
@@ -108,7 +108,7 @@ def get_dss_vgroup(conf):
         for l in open("/proc/mounts", "r").readlines():
             fields = l.split()
             if fields[1] == "/" and fields[0].startswith("/dev"):
-                vgroup = util.check_output([ "lvs", "--noheadings", "-o",  "vg_name", fields[0]]).strip()
+                vgroup = util.check_output([ "lvs", "--noheadings", "-o",  "vg_name", fields[0]]).decode('utf-8').strip()
     return vgroup
 
 def get_dss_devs(conf):
