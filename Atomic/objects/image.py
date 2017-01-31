@@ -27,6 +27,7 @@ class Image(object):
         self._virtual_size = None
         self.cmd = None
         self._command = None
+        self.repotags = None
 
 
         # Deeper
@@ -100,7 +101,7 @@ class Image(object):
     def fq_name(self):
         def propagate(_img):
             if self.remote:
-                self.registry, self.repo, self.image, self.tag, _ = Decompose(_img).all
+                self.registry, self.repo, self.image, self.tag, self.digest = Decompose(_img).all
 
         if self._fq_name:
             return self._fq_name
@@ -109,21 +110,24 @@ class Image(object):
             img = self.registry
             if self.repo:
                 img += "/{}".format(self.repo)
-            img += "/{}:{}".format(self.image, self.tag)
+            if self.tag:
+                img += "/{}:{}".format(self.image, self.tag)
+            elif self.digest:
+                img += "/{}@{}".format(self.image, self.digest)
             self._fq_name = img
             propagate(self._fq_name)
             return img
 
         if not self.registry:
             ri = RegistryInspect(registry=self.registry, repo=self.repo, image=self.image,
-                                 tag=self.tag, orig_input=self.input_name)
+                                 tag=self.tag, digest=self.digest, orig_input=self.input_name)
             self._fq_name = ri.find_image_on_registry(quiet=True)
             propagate(self._fq_name)
             return self._fq_name
 
     @property
     def fully_qualified(self):
-        return True if all([True if x else False for x in [self.registry, self.image, self.tag]]) else False
+        return True if all([True if x else False for x in [self.registry, self.image, self.tag or self.digest]]) else False
 
     @property
     def backend(self):
@@ -163,7 +167,7 @@ class Image(object):
 
     def remote_inspect(self):
         ri = RegistryInspect(registry=self.registry, repo=self.repo, image=self.image,
-                             tag=self.tag, orig_input=self.input_name)
+                             tag=self.tag, digest=self.digest, orig_input=self.input_name)
         inspect_info = ri.inspect()
         inspect_info['id'] = ri.remote_id
         return inspect_info

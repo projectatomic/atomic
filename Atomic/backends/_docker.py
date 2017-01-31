@@ -2,7 +2,7 @@ from docker import errors
 
 import Atomic.util as util
 from Atomic.backends.backend import Backend
-from Atomic.client import AtomicDocker
+from Atomic.client import AtomicDocker, no_shaw
 from Atomic.objects.image import Image
 from Atomic.objects.container import Container
 from requests import exceptions
@@ -51,6 +51,10 @@ class DockerBackend(Backend):
         img_obj = self.inspect_image(image=img)
         if img_obj:
             return img_obj
+        # If we cannot find the image locally AND it has a digest
+        # then bail.
+        if '@sha256:' in img:
+            return None
         name_search = util.image_by_name(img, images=image_info)
         length = len(name_search)
         if length == 0:
@@ -90,8 +94,22 @@ class DockerBackend(Backend):
         try:
             inspect_data = self.d.inspect_image(image)
         except errors.NotFound:
+            # We might be looking for something by digest
+            if "@sha256:" in image:
+                return  self._inspect_image_by_hash(image)
             return None
         return inspect_data
+
+    def _inspect_image_by_hash(self, image):
+        input_digest = util.Decompose(image).digest
+        all_images = self.get_images(get_all=True)
+        for _image in all_images:
+            if not _image.repotags:
+                continue
+            for repo_digest in _image.repotags:
+                if no_shaw(input_digest) in repo_digest:
+                    return self.d.inspect_image(_image.id)
+        return None
 
     def inspect_image(self, image):
         inspect_data = self._inspect_image(image)
@@ -235,6 +253,9 @@ class DockerBackend(Backend):
         image = "docker-daemon:{}".format(image)
         if not image.endswith(tag):
             image += ":{}".format(tag)
+        if '@sha256:' in image:
+            image = image.replace("@sha256:", ":")
+
         insecure = True if util.is_insecure_registry(self.d.info()['RegistryConfig'], util.strip_port(registry)) else False
         trust = Trust()
         trust.discover_sigstore(fq_name)

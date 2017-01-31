@@ -596,7 +596,7 @@ class Atomic(object):
         return tokens
 
     def get_fq_image_name(self, input_image):
-        registry, repo, image, tag, _ = util.Decompose(input_image).all
+        registry, repo, image, tag, digest = util.Decompose(input_image).all
         if not image:
             raise ValueError('Error parsing input: "{}" invalid'.format(input_image))
         if all([True if x else False for x in [registry, image, tag]]):
@@ -606,7 +606,7 @@ class Atomic(object):
             img += "/{}:{}".format(image, tag)
             return img
         if not registry:
-            ri = RegistryInspect(registry, repo, image, tag, debug=self.args.debug, orig_input=self.image)
+            ri = RegistryInspect(registry, repo, image, tag, digest=digest, debug=self.args.debug, orig_input=self.image)
             return ri.find_image_on_registry()
 
 

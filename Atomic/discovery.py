@@ -11,13 +11,14 @@ class RegistryAuthError(Exception):
 
 class RegistryInspect():
 
-    def __init__(self, registry=None, repo=None, image=None, tag=None, orig_input=None, debug=False):
+    def __init__(self, registry=None, repo=None, image=None, tag=None, digest=None, orig_input=None, debug=False):
         self.debug = debug
         self.registries = util.get_registries()
         self.registry = registry
         self.repo = repo
         self.image = image
         self.tag = tag
+        self.digest = digest
         self.orig_input = orig_input
         self._remote_inspect = None
         self.fqdn = None
@@ -52,7 +53,10 @@ class RegistryInspect():
         fqdn = fqdn if not self.repo else "{}/{}".format(fqdn, self.repo)
         fqdn += "/{}".format(self.image)
         if include_tag:
-            fqdn += ":{}".format(self.tag)
+            if self.tag:
+                fqdn += ":{}".format(self.tag)
+            elif self.digest:
+                fqdn += "@{}".format(self.digest)
         return fqdn
 
     def find_image_on_registry(self, quiet=False):
