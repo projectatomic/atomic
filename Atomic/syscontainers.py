@@ -1160,8 +1160,10 @@ class SystemContainers(object):
         current_rev = repo.resolve_rev(imagebranch, True)
         if not upgrade and current_rev[1]:
             return False
-
-        manifest = self._skopeo_get_manifest(img)
+        try:
+            manifest = self._skopeo_get_manifest(img)
+        except ValueError:
+            raise ValueError("Unable to find {}".format(img))
         layers = SystemContainers.get_layers_from_manifest(manifest)
         missing_layers = []
         for i in layers:

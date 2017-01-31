@@ -78,5 +78,5 @@ class RegistryInspect():
                 if not quiet:
                     util.write_err("Failed: {}".format(e))
                 continue
-        raise RegistryInspectError("Unable to resolve {}".format(self.orig_input))
+        raise RegistryInspectError("Unable to find {}".format(self.orig_input))
 
