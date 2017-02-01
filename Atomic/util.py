@@ -850,6 +850,9 @@ class Decompose(object):
         self._tag = str(tag) if tag else ''
         self._digest = str(digest) if digest else ''
 
+        if self._tag and self._digest:
+            raise ValueError("An image name cannot have both a tag and manifest digest in its name")
+
     @property
     def registry(self):
         return self._registry

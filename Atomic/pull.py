@@ -30,13 +30,13 @@ class Pull(Atomic):
         """
         super(Pull, self).__init__()
         self.policy_filename=policy_filename
+        self.be_utils = BackendUtils()
 
     def pull_image(self):
         if self.args.debug:
             write_out(str(self.args))
 
-        be_utils = BackendUtils()
-        be = be_utils.get_backend_from_string(self.args.storage)
+        be = self.be_utils.get_backend_from_string(self.args.storage)
         self.args.policy_filename = self.policy_filename
         try:
             be.pull_image(self.args.image, debug=self.args.debug)
