@@ -41,7 +41,8 @@ class Pull(Atomic):
         try:
             be.pull_image(self.args.image, debug=self.args.debug)
         except ValueError as e:
-            write_out(str(e))
-            return 0
+            write_out("Failed: {}".format(e))
+            return 1
+        return 0
 
 

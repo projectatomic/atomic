@@ -267,7 +267,8 @@ def skopeo_inspect(image, args=None, return_json=True, newline=False):
     except OSError:
         raise ValueError("skopeo must be installed to perform remote inspections")
     if results.return_code is not 0:
-        raise ValueError(results)
+        error = SkopeoError(results.stderr.decode('utf-8').rstrip()).msg #pylint: disable=no-member
+        raise ValueError(error)
     else:
         if return_json:
             return json.loads(results.stdout.decode('utf-8'))
@@ -885,3 +886,9 @@ class Decompose(object):
     def all(self):
         return self._registry, self._repo, self._image, self._tag, self._digest
 
+
+class SkopeoError(object):
+    def __init__(self, string_error):
+        for line in shlex.split(string_error):
+            key, _, msg = line.partition("=")
+            setattr(SkopeoError, key, msg)
