@@ -237,18 +237,20 @@ class DockerBackend(Backend):
     def stop_container(self, con_obj):
         return self.d.stop(con_obj.id)
 
-    def pull_image(self, image, **kwargs):
+
+    def pull_image(self, image, remote_image_obj, **kwargs):
+        assert(isinstance(remote_image_obj, Image))
         debug = kwargs.get('debug', False)
         if image.startswith("dockertar:"):
             path = image.replace("dockertar:", "", 1)
             with open(path, 'rb') as f:
                 self.d.load_image(data=f)
             return 0
-        remote_image = self.make_remote_image(image)
-        fq_name = remote_image.fq_name
+#        remote_image_obj = self.make_remote_image(image)
+        fq_name = remote_image_obj.fq_name
         local_image = self.has_image(image)
         if local_image is not None:
-            if self.already_has_image(local_image, remote_image):
+            if self.already_has_image(local_image, remote_image_obj):
                 raise ValueError("Latest version of {} already present.".format(image))
         registry, _, _, tag, _ = util.Decompose(fq_name).all
         image = "docker-daemon:{}".format(image)
@@ -301,9 +303,10 @@ class DockerBackend(Backend):
 
     def update(self, name, force=False, **kwargs):
         debug = kwargs.get('debug', False)
+        remote_image_obj = self.make_remote_image(name)
         try:
             # pull_image will raise a ValueError if the "latest" image is already present
-            self.pull_image(name, debug=debug)
+            self.pull_image(name, remote_image_obj, debug=debug)
         except ValueError:
             return
         # Only delete containers if a new image is actually pulled.

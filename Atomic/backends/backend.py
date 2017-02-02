@@ -28,7 +28,7 @@ class Backend(object): #pylint: disable=metaclass-assignment
         pass
 
     @abstractmethod
-    def pull_image(self, image, **kwargs):
+    def pull_image(self, image, remote_image_obj, **kwargs):
         """
         Pulls an image to the backend
         :param image:

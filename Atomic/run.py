@@ -78,15 +78,24 @@ class Run(Atomic):
             except ValueError:
                 pass
 
-
         db = DockerBackend()
         img_object = db.has_image(self.image)
         if img_object is None:
             self.display("Need to pull %s" % self.image)
+            remote_image_obj = db.make_remote_image(self.args.image)
+            # If the image has a atomic.type of system, then we need to land
+            # this in the ostree backend.  Install it and then start it
+            # because this is run
+            if remote_image_obj.is_system_type:
+                be = be_utils.get_backend_from_string('ostree')
+                be_utils.message_backend_change('docker', 'ostree')
+                be.install(self.image, self.name)
+                con_obj = be.has_container(self.name)
+                return be.run(con_obj)
             if self.args.display:
                 return 0
             try:
-                db.pull_image(self.image)
+                db.pull_image(self.image, remote_image_obj)
                 img_object = db.has_image(self.image)
             except RegistryInspectError:
                 raise ValueError("Unable to find image {}".format(self.image))

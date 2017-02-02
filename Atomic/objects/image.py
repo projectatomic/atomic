@@ -295,7 +295,11 @@ class Image(object):
     def command(self, value):
         self._command = value
 
-
+    @property
+    def is_system_type(self):
+        if self.get_label('atomic.type') == 'system':
+            return True
+        return False
 
 def convert_size(size):
     if size > 0:

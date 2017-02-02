@@ -78,7 +78,6 @@ class Install(Atomic):
         super(Install, self).__init__()
 
     def install(self):
-        debug = self.args.debug
         if self.args.debug:
             util.write_out(str(self.args))
         be_utils = BackendUtils()
@@ -104,7 +103,13 @@ class Install(Atomic):
         # If the image is already present,
         img_obj = be.has_image(self.image)
         if img_obj is None:
-            be.pull_image(self.image, debug=debug)
+            remote_image_obj = be.make_remote_image(self.args.image)
+            # We found an atomic.type of system, therefore install it onto the ostree
+            # backend
+            if remote_image_obj.is_system_type:
+                be_utils.message_backend_change('docker', 'ostree')
+                return self.syscontainers.install(self.image, self.name)
+            be.pull_image(self.args.image, remote_image_obj, debug=self.args.debug)
             img_obj = be.has_image(self.image)
         install_args = img_obj.get_label('INSTALL')
         if not install_args:

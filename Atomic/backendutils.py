@@ -155,4 +155,7 @@ class BackendUtils(object):
     def get_container_obj_by_image_name(self, image_name, str_preferred_backend):
         pass
 
-
+    @staticmethod
+    def message_backend_change(previous, new):
+        write_out("\nNote: Switching from the '{}' backend to the '{}' backend based on the 'atomic.type' label in the "
+                  "image.  You can use --storage to override this behaviour.\n".format(previous, new))

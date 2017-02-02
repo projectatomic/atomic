@@ -8,16 +8,17 @@ from Atomic.backendutils import BackendUtils
 ATOMIC_CONFIG = get_atomic_config()
 
 
+_storage = ATOMIC_CONFIG.get('default_storage', "docker")
+
 def cli(subparser):
     # atomic pull
-    storage = ATOMIC_CONFIG.get('default_storage', "docker")
     pullp = subparser.add_parser("pull", help=_("pull latest image from a repository"),
                                  epilog="pull the latest specified image from a repository.")
     pullp.set_defaults(_class=Pull, func='pull_image')
-    pullp.add_argument("--storage", dest="storage", default=storage,
+    pullp.add_argument("--storage", dest="storage", default=None,
                        help=_("Specify the storage. Default is currently '%s'.  You can"
                               " change the default by editing /etc/atomic.conf and changing"
-                              " the 'default_storage' field." % storage))
+                              " the 'default_storage' field." % _storage))
     pullp.add_argument("-t", "--type", dest="reg_type", default=None,
                        help=_("Pull from an alternative registry type."))
     pullp.add_argument("image", help=_("image id"))
@@ -33,13 +34,23 @@ class Pull(Atomic):
         self.be_utils = BackendUtils()
 
     def pull_image(self):
+        storage_set = False if self.args.storage is None else True
+        storage = _storage if not storage_set else self.args.storage
         if self.args.debug:
             write_out(str(self.args))
 
-        be = self.be_utils.get_backend_from_string(self.args.storage)
+        be_utils = BackendUtils()
+        be = be_utils.get_backend_from_string(storage)
         self.args.policy_filename = self.policy_filename
         try:
-            be.pull_image(self.args.image, debug=self.args.debug)
+            if be.backend == 'docker':
+                remote_image_obj = be.make_remote_image(self.args.image)
+                if remote_image_obj.is_system_type and not storage_set:
+                    be = be_utils.get_backend_from_string('ostree')
+                    be_utils.message_backend_change('docker', 'ostree')
+            else:
+                remote_image_obj = None
+            be.pull_image(self.args.image, remote_image_obj, debug=self.args.debug)
         except ValueError as e:
             write_out("Failed: {}".format(e))
             return 1
