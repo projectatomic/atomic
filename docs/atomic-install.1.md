@@ -11,6 +11,7 @@ atomic-install - Execute Image Install Method
 [**-n**][**--name**[=*NAME*]]
 [**--rootfs**=*ROOTFS*]
 [**--set**=*NAME*=*VALUE*]
+[**--storage**]
 [**--system**]
 IMAGE [ARG...]
 
@@ -73,6 +74,12 @@ Set a value that is going to be used by a system container for its
 configuration and can be specified multiple times.  It is used only
 by --system.  OSTree is required for this feature to be available.
 
+**--storage**
+Allows you to override the default definition for the storage backend
+where your image will reside if pulled.  If the image is already local,
+the --storage option will dictate where atomic should look for the image
+prior to installing. Valid options are `docker` and `ostree`.
+
 **--system**
 Install a system container.  A system container is a container that
 is executed out of an systemd unit file early in boot, using runc.
@@ -84,6 +91,10 @@ Installing a system container consists of checking it the image by
 default under /var/lib/containers/atomic/ and generating the
 configuration files for runc and systemd.
 OSTree and runc are required for this feature to be available.
+
+Note: If the image being pulled contains a label of `system.type=ostree`,
+atomic will automatically substitute the storage backend to be ostree. This
+can be overridden with the --storage option.
 
 **--user**
 If running as non-root, specify to install the image from the current

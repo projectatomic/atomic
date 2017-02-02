@@ -30,6 +30,10 @@ RUN_ARGS = ["-i",
             "--name", "${NAME}",
             "${IMAGE}"]
 
+ATOMIC_CONFIG = util.get_atomic_config()
+_storage = ATOMIC_CONFIG.get('default_storage', "docker")
+
+
 def cli(subparser):
     # atomic run
     runp = subparser.add_parser(
@@ -41,6 +45,10 @@ def cli(subparser):
     runp.set_defaults(_class=Run, func='run')
     run_group = runp.add_mutually_exclusive_group()
     util.add_opt(runp)
+    runp.add_argument("--storage", dest="storage", default=None,
+                          help=_("Specify the storage. Default is currently '%s'.  You can"
+                                 " change the default by editing /etc/atomic.conf and changing"
+                                 " the 'default_storage' field." % _storage))
     runp.add_argument("-n", "--name", dest="name", default=None,
                       help=_("name of container"))
     runp.add_argument("--spc", default=False, action="store_true",
@@ -70,23 +78,26 @@ class Run(Atomic):
         self.SPC_ARGS = SPC_ARGS
 
     def run(self):
+        storage_set = False if self.args.storage is None else True
+        storage = _storage if not storage_set else self.args.storage
+        be_utils = BackendUtils()
         if self.name:
-            be_utils = BackendUtils()
             try:
                 be, con_obj = be_utils.get_backend_and_container_obj(self.name)
                 return be.run(con_obj, atomic=self, args=self.args)
             except ValueError:
                 pass
 
+        be = be_utils.get_backend_from_string(storage)
         db = DockerBackend()
-        img_object = db.has_image(self.image)
-        if img_object is None:
+        img_object = be.has_image(self.image)
+        if img_object is None and storage == 'docker':
             self.display("Need to pull %s" % self.image)
             remote_image_obj = db.make_remote_image(self.args.image)
             # If the image has a atomic.type of system, then we need to land
             # this in the ostree backend.  Install it and then start it
             # because this is run
-            if remote_image_obj.is_system_type:
+            if remote_image_obj.is_system_type and not storage_set:
                 be = be_utils.get_backend_from_string('ostree')
                 be_utils.message_backend_change('docker', 'ostree')
                 be.install(self.image, self.name)
@@ -99,8 +110,15 @@ class Run(Atomic):
                 img_object = db.has_image(self.image)
             except RegistryInspectError:
                 raise ValueError("Unable to find image {}".format(self.image))
-
-        db.run(img_object, atomic=self, args=self.args)
+        if storage == 'ostree':
+            if img_object is None:
+                be.pull_image(self.args.image, None)
+            # For system containers, the run method really needs a container obj
+            con_obj = be.has_container(self.name)
+            if con_obj is None:
+                be.install(self.image, self.name)
+            img_object = be.has_container(self.name)
+        be.run(img_object, atomic=self, args=self.args)
 
     @staticmethod
     def print_run():

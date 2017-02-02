@@ -10,6 +10,7 @@ atomic-run - Execute container image run method
 [**--display**]
 [**-n**][**--name**[=*NAME*]]
 [**--spc**]
+[**--storage**]
 [**--quiet**]
 IMAGE [COMMAND] [ARG...]
 
@@ -69,6 +70,11 @@ NAME will default to the IMAGENAME if it is not specified.
   Run container in super privileged container mode.  The image will run with the following command:
 
 `/usr/bin/docker run -t -i --rm --privileged -v /:/host -v /run:/run --net=host --ipc=host --pid=host -e HOST=/host -e NAME=${NAME} -e IMAGE=${IMAGE} --name ${NAME} ${IMAGE}`
+
+**-storage**
+   Allows you to override the default definition for the storage backend where your image will reside if pulled.  If the image is already local,
+the --storage option will dictate where atomic should look for the image prior to running. Valid options are `docker` and `ostree`.
+
 
 **--quiet**
   Run without verbose messaging (i.e. security warnings).

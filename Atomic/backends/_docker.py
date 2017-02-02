@@ -246,7 +246,6 @@ class DockerBackend(Backend):
             with open(path, 'rb') as f:
                 self.d.load_image(data=f)
             return 0
-#        remote_image_obj = self.make_remote_image(image)
         fq_name = remote_image_obj.fq_name
         local_image = self.has_image(image)
         if local_image is not None:

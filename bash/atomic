@@ -489,6 +489,13 @@ _atomic_containers_delete() {
 
 	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
 
+	case "$prev" in
+		--storage)
+			COMPREPLY=( $( compgen -W "docker ostree" -- "$cur" ) )
+			return 0
+			;;
+	esac
+
 	case "$cur" in
 		-*)
 			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
@@ -654,11 +661,19 @@ _atomic_run() {
 		--spc
 	       --display
 	--quiet
+	    --storage
 	"
 
 	[ "$command" = "run" ] && all_options="$all_options"
 
 	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
+
+	case "$prev" in
+		--storage)
+			COMPREPLY=( $( compgen -W "docker ostree" -- "$cur" ) )
+			return 0
+			;;
+	esac
 
 	case "$prev" in
 		$options_with_args_glob )
@@ -688,12 +703,20 @@ _atomic_install() {
 		--help
 	       --display
 	       --rootfs
+	       --storage
 	       --system
 	       --set
 	       --user
 	"
 
 	local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")
+
+	case "$prev" in
+		--storage)
+			COMPREPLY=( $( compgen -W "docker ostree" -- "$cur" ) )
+			return 0
+			;;
+	esac
 
 	case "$prev" in
 		$options_with_args_glob )

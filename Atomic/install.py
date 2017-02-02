@@ -29,6 +29,9 @@ INSTALL_ARGS = ["run",
                 "--name", "${NAME}",
                 "${IMAGE}"]
 
+ATOMIC_CONFIG = util.get_atomic_config()
+_storage = ATOMIC_CONFIG.get('default_storage', "docker")
+
 def cli(subparser):
     # atomic install
     installp = subparser.add_parser(
@@ -40,6 +43,10 @@ def cli(subparser):
         "%s'" % Install.print_install())
     installp.set_defaults(_class=Install, func='install')
     add_opt(installp)
+    installp.add_argument("--storage", dest="storage", default=None,
+                   help=_("Specify the storage. Default is currently '%s'.  You can"
+                          " change the default by editing /etc/atomic.conf and changing"
+                          " the 'default_storage' field." % _storage))
     installp.add_argument("-n", "--name", dest="name", default=None,
                           help=_("name of container"))
     installp.add_argument(
@@ -80,6 +87,12 @@ class Install(Atomic):
     def install(self):
         if self.args.debug:
             util.write_out(str(self.args))
+        storage_set = False if self.args.storage is None else True
+        storage = _storage if not storage_set else self.args.storage
+        args_system = getattr(self.args, 'system', None)
+        args_user= getattr(self.args, 'user', None)
+        if (args_system or args_user) and storage != 'ostree' and storage_set:
+            raise ValueError("The --system and --user options are only available for the 'ostree' storage.")
         be_utils = BackendUtils()
         try:
             # Check to see if the container already exists
@@ -92,7 +105,7 @@ class Install(Atomic):
             if not util.is_user_mode():
                 raise ValueError("--user does not work for privileged user")
             return self.syscontainers.install_user_container(self.image, self.name)
-        elif self.system:
+        elif self.system or storage == 'ostree':
             return self.syscontainers.install(self.image, self.name)
         elif OSTREE_PRESENT and self.args.setvalues:
             raise ValueError("--set is valid only when used with --system or --user")
@@ -106,7 +119,7 @@ class Install(Atomic):
             remote_image_obj = be.make_remote_image(self.args.image)
             # We found an atomic.type of system, therefore install it onto the ostree
             # backend
-            if remote_image_obj.is_system_type:
+            if remote_image_obj.is_system_type and not storage_set:
                 be_utils.message_backend_change('docker', 'ostree')
                 return self.syscontainers.install(self.image, self.name)
             be.pull_image(self.args.image, remote_image_obj, debug=self.args.debug)
