@@ -12,6 +12,7 @@ from dateutil.parser import parse as dateparse
 from Atomic import Atomic
 import argparse
 import os
+from requests.exceptions import HTTPError
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -291,7 +292,12 @@ class DockerBackend(Backend):
             raise util.NoDockerDaemon()
 
     def delete_image(self, image, force=False):
-        return self.d.remove_image(image, force=force)
+        try:
+            return self.d.remove_image(image, force=force)
+        except errors.NotFound:
+            pass
+        except HTTPError:
+            pass
 
     def update(self, name, force=False, **kwargs):
         debug = kwargs.get('debug', False)

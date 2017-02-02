@@ -1,6 +1,6 @@
 import os
 import copy
-
+import sys
 from . import util
 from . import Atomic
 from .client import AtomicDocker
@@ -218,24 +218,37 @@ class Containers(Atomic):
             util.write_out(str(self.args))
             self.beu.dump_backends()
 
-        if len(self.args.containers) > 0 and self.args.all:
-            raise ValueError("You must select --all or provide a list of containers to delete.")
+        if (len(self.args.containers) > 0 and self.args.all) or (len(self.args.containers) < 1 and not self.args.all):
+            raise ValueError("You must select --all or provide a list of images to delete.")
 
         if self.args.all:
-            container_objects = self.beu.get_containers()
+            if self.args.storage:
+                be = self.beu.get_backend_from_string(self.args.storage)
+                container_objects = be.get_containers()
+            else:
+                container_objects = self.beu.get_containers()
         else:
             container_objects = []
             for con in self.args.containers:
                 _, con_obj = self.beu.get_backend_and_container_obj(con, str_preferred_backend=self.args.storage or storage, required=True if self.args.storage else False)
                 container_objects.append(con_obj)
 
+        if len(container_objects) == 0:
+            raise ValueError("No containers to delete")
         four_col = "   {0:12} {1:20} {2:25} {3:10}"
+        if not self.args.assumeyes:
+            util.write_out("Do you wish to delete the following images?\n")
+        else:
+            util.write_out("The following containers will be deleted.\n")
         util.write_out(four_col.format("ID", "NAME", 'IMAGE_NAME', "STORAGE"))
         for con in container_objects:
             util.write_out(four_col.format(con.id[0:12], con.name[0:20], con.image_name[0:25], con.backend.backend))
-        if not util.confirm_input("\nDo you wish to delete the following containers?\n"):
-            util.write_out("Aborting...")
-            return
+        if not self.args.assumeyes:
+            confirm = util.input("\nConfirm (y/N) ")
+            confirm = confirm.strip().lower()
+            if not confirm in ['y', 'yes']:
+                util.write_err("User aborted delete operation for {}".format(self.args.containers or "all containers"))
+                sys.exit(2)
 
         for del_con in container_objects:
             try:
