@@ -8,6 +8,7 @@ MAINTAINER Jonathan Lebon <jlebon@redhat.com>
 # two separate images.
 
 RUN dnf install -y \
+	git \
         make \
         python3-pylint \
         python3-slip-dbus \
