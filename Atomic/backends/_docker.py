@@ -410,6 +410,10 @@ class DockerBackend(Backend):
                 'Disabling label separation turns off tools like SELinux and '
                 'could allow processes from the container to break out onto '
                 'your host system.',
+            '--security-opt label=disable':
+                'Disabling label separation turns off tools like SELinux and '
+                'could allow processes from the container to break out onto '
+                'your host system.',
             '--net=host':
                 'Processes in this container can listen to ports (and '
                 'possibly rawip traffic) on the host\'s network.',
