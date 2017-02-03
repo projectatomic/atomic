@@ -1,3 +1,4 @@
+import argparse
 import sys
 from Atomic.backendutils import BackendUtils
 from Atomic.backends._docker import DockerBackend
@@ -48,11 +49,10 @@ def cli(subparser):
     runp.add_argument("-d", "--detach", default=False, action="store_true",
                       help=_("run the container in the background"))
     runp.add_argument("image", help=_("container image"))
-    runp.add_argument("command", nargs="*",
-                      help=_("optional command to execute within the container. "
+    runp.add_argument("command", nargs=argparse.REMAINDER,
+                      help=_("command to execute within the container. "
                              "If container is not running, command is appended "
                              "to the image run method"))
-
     run_group.add_argument("--quiet", "-q", action="store_true",
                       help=_("Be less verbose."))
 
