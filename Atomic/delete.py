@@ -89,7 +89,8 @@ class Delete(Atomic):
         if self.args.debug:
             util.write_out(str(self.args))
 
-        for backend in BackendUtils.BACKENDS:
+        beu = BackendUtils()
+        for backend in beu.available_backends:
             be = backend()
             be.prune()
 
