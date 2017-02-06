@@ -44,6 +44,7 @@ class TestAtomicPullByDigest(unittest.TestCase):
     class Args():
         def __init__(self):
             self.debug = None
+            self.assumeyes = None
 
     def test_pull_by_digest(self):
         image_name = "docker.io/busybox@sha256:29f5d56d12684887bdfa50dcd29fc31eea4aaf4ad3bec43daf19026a7ce69912"
