@@ -29,6 +29,7 @@ from Atomic.trust import Trust
 from Atomic.update import Update
 from Atomic.uninstall import Uninstall
 from Atomic.verify import Verify
+from Atomic import util
 
 DBUS_NAME_FLAG_DO_NOT_QUEUE = 4
 DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER = 1
@@ -570,6 +571,18 @@ class atomic_dbus(slip.dbus.service.Object):
         args.recurse = recurse
         info.set_args(args)
         return json.dumps(info.dbus_version())
+
+    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @dbus.service.method("org.atomic", in_signature='s', out_signature='s')
+    def GetScanResultsById(self, iid):
+        vuln_summary = self.atomic.get_all_vulnerable_info()
+        summary_results = vuln_summary.get(iid, None)
+        if not summary_results:
+            raise ValueError("No history for scan of {}".format(iid))
+        file_name = summary_results.get('json_file')
+        return json.dumps(util.load_scan_result_file(file_name))
+
+
 
 if __name__ == "__main__":
     mainloop = GObject.MainLoop()

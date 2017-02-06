@@ -196,6 +196,11 @@ class AtomicDBus (object):
     def vulnerable(self):
         return self.dbus_object.VulnerableInfo(dbus_interface="org.atomic")
 
+    @polkit.enable_proxy
+    def GetScanResultsById(self, iid):
+        return self.dbus_object.GetScanResultsById(iid, dbus_interface="org.atomic")
+
+
 #For outputting the list of scanners
 def print_scan_list(all_scanners):
     if len(all_scanners) == 0:

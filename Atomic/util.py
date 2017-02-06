@@ -790,6 +790,12 @@ def confirm_input(msg):
     return confirm.strip().lower() in ['y', 'yes']
 
 
+def load_scan_result_file(file_name):
+    """
+    Read a specific json file
+    """
+    return json.loads(open(os.path.join(file_name), "r").read())
+
 class Decompose(object):
     """
     Class for decomposing an input string in its respective parts like registry,
