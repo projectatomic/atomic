@@ -40,9 +40,6 @@ def gomtree_available():
 def runc_available():
     return os.path.exists(RUNC_PATH)
 
-def bwrap_oci_available():
-    return os.path.exists(BWRAP_OCI_PATH)
-
 def check_if_python2():
     if int(sys.version_info[0]) < 3:
         _input = raw_input # pylint: disable=undefined-variable,raw_input-builtin

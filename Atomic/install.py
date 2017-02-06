@@ -56,27 +56,22 @@ def cli(subparser):
         help=_("preview the command that %s would execute") % sys.argv[0])
     installp.add_argument("image", help=_("container image"))
     if OSTREE_PRESENT:
-        bwrap_oci_available = util.bwrap_oci_available()
-        runc_available = util.runc_available()
-        if bwrap_oci_available or runc_available:
-            system_xor_user = installp.add_mutually_exclusive_group()
-            if bwrap_oci_available:
-                system_xor_user.add_argument("--user", dest="user", action="store_true", default=False,
-                                             help=_("Flag to specify if user is non-root privileged."))
-            if runc_available:
-                system_xor_user.add_argument("--system", dest="system",
-                                             action='store_true', default=False,
-                                             help=_('install a system container'))
+        system_xor_user = installp.add_mutually_exclusive_group()
+        system_xor_user.add_argument("--user", dest="user", action="store_true", default=False,
+                                     help=_("install the image as an user image."))
+        system_xor_user.add_argument("--system", dest="system",
+                                     action='store_true', default=False,
+                                     help=_('install a system container'))
         installp.add_argument("--rootfs", dest="remote",
                               help=_("choose an existing exploded container/image to use "
                                      "its rootfs as a remote, read-only rootfs for the "
                                      "container to be installed"))
         installp.add_argument("--set", dest="setvalues",
                               action='append',
-                              help=_("Specify a variable in the VARIABLE=VALUE "
+                              help=_("specify a variable in the VARIABLE=VALUE "
                                      "form for a system container"))
     installp.add_argument("args", nargs=argparse.REMAINDER,
-                          help=_("Additional arguments appended to the image "
+                          help=_("additional arguments appended to the image "
                                  "install method"))
 
 

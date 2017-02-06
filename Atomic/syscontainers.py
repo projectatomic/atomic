@@ -184,12 +184,6 @@ class SystemContainers(object):
         if self.args.system and self.user:
             raise ValueError("Only root can use --system")
 
-        if not self.user:
-            try:
-                util.check_call([util.RUNC_PATH, "--version"], stdout=DEVNULL)
-            except util.FileNotFound:
-                raise ValueError("Cannot install the container: runc is needed to run system containers")
-
         image = self._pull_image_to_ostree(repo, image, False)
 
         if self.get_checkout(name):
@@ -210,6 +204,9 @@ class SystemContainers(object):
                 configuration = json.loads(conf.read())
             except ValueError:
                 raise ValueError("Invalid json in configuration file: {}.".format(conf_path))
+        # empty file, nothing to do here
+        if len(configuration) == 0:
+            return []
         if not 'root' in configuration or \
            not 'readonly' in configuration['root'] or \
            not configuration['root']['readonly']:
@@ -230,9 +227,17 @@ class SystemContainers(object):
         return missing_source_paths
 
     def _generate_default_oci_configuration(self, destination):
+        conf_path = os.path.join(destination, "config.json")
+
+        # If runc is not installed we are not able to generate the default configuration,
+        # write an empty JSON file
+        if not util.runc_available():
+            with open(conf_path, 'w') as conf:
+                conf.write('{}')
+            return
+
         args = [util.RUNC_PATH, 'spec']
         util.subp(args, cwd=destination)
-        conf_path = os.path.join(destination, "config.json")
         with open(conf_path, 'r') as conf:
             configuration = json.loads(conf.read())
         configuration['root']['readonly'] = True
@@ -246,7 +251,10 @@ class SystemContainers(object):
         if self.user:
             return ["%s '%s'" % (util.BWRAP_OCI_PATH, name), ""]
 
-        version = str(util.check_output([util.RUNC_PATH, "--version"], stderr=DEVNULL))
+        try:
+            version = str(util.check_output([util.RUNC_PATH, "--version"], stderr=DEVNULL))
+        except util.FileNotFound:
+            version = ""
         if "version 0" in version:
             runc_commands = ["start", "kill"]
         else:
