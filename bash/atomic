@@ -1269,6 +1269,8 @@ _atomic_storage_modify() {
 	local options_with_args="
 		--driver
 		--add-device
+		--rootfs
+		--lvname
 	"
 	local all_options="$options_with_args
 		--help

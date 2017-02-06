@@ -62,6 +62,9 @@ def cli(subparser):
                          help=_("remove block devices from storage pool"))
     modifyp.add_argument('--remove-unused-devices', action='store_true',
                          help=_("remove all unused block devices from storage pool"))
+    modifyp.add_argument('--rootfs', dest="rootfs", default=None,
+                         help='Mountpath where logical volume for container storage would be mounted. e.g. /var/lib/containers')
+    modifyp.add_argument('--lvname', dest="lvname", default=None, help='logical volume name for container storage. e.g container-root-lv')
     modifyp.add_argument('--driver', dest="driver", default=None, help='The storage backend driver', choices=['devicemapper', 'overlay', 'overlay2'])
     modifyp.add_argument('--vgroup', dest="vgroup", default=None, help='The storage volume group')
     modifyp.add_argument("--graph", dest="graph",
@@ -167,6 +170,14 @@ class Storage(Atomic):
                 self._remove_devices(get_dss_devs(self.dss_conf), only_unused=True)
             if self.args.driver:
                 self._driver(self.args.driver)
+            if self.args.rootfs and self.args.lvname:
+                self._rootfs(self.args.rootfs)
+                self._lvname(self.args.lvname)
+            else:
+                if self.args.rootfs:
+                    raise ValueError("You must specify --lvname when using --rootfs")
+                if self.args.lvname:
+                    raise ValueError("You must specify --rootfs when using --lvname")
             if self.args.vgroup is not None:
                 self._vgroup(self.args.vgroup)
             if len(self.args.devices) > 0:
@@ -228,6 +239,14 @@ class Storage(Atomic):
     def _driver(self, driver):
         util.sh_modify_var_in_file(self.dss_conf, "STORAGE_DRIVER",
                                    lambda old: driver)
+
+    def _rootfs(self, rootfs):
+        util.sh_modify_var_in_file(self.dss_conf, "CONTAINER_ROOT_LV_MOUNT_PATH",
+                                   lambda old: rootfs)
+
+    def _lvname(self, lvname):
+        util.sh_modify_var_in_file(self.dss_conf, "CONTAINER_ROOT_LV_NAME",
+                                   lambda old: lvname)
 
     def _vgroup(self, vgroup):
         util.sh_modify_var_in_file(self.dss_conf, "VG",

@@ -87,6 +87,17 @@ Remove all block devices from the storage pool that are currently unused.
 Backend storage driver for containers.  This options the storage driver.
 Drivers supported: devicemapper, overlay, overlay2
 
+**--lvname**
+Logical volume name for container storage.
+E.g. --lvname="container-root-lv"
+Note: You must set --rootfs when setting --lvname.
+
+**--rootfs**
+Mountpath where logical volume for container storage would be mounted.
+E.g. --rootfs="/var/lib/containers". This will mount "container-root-lv"
+on "/var/lib/containers".
+Note: You must set --lvname when setting --rootfs.
+
 **--vgroup**
 The name of the volume group for the storage pool.
 
