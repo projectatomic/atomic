@@ -30,8 +30,11 @@ class AtomicDBus (object):
         return self.dbus_object.ContainersTrim(dbus_interface="org.atomic", timeout = 2147400)
 
     @polkit.enable_proxy
-    def Diff(self, first, second, rpms=False, no_files=False, names_only=False):
-        return self.dbus_object.Diff(first, second, rpms, no_files, names_only, dbus_interface="org.atomic", timeout = 2147400)
+    def Diff(self, first, second, rpms=False, no_files=False, names_only=False, diff_keywords=None, metadata=False):
+        assert(isinstance(diff_keywords, list))
+        if diff_keywords is None:
+            diff_keywords = []
+        return self.dbus_object.Diff(first, second, rpms, no_files, names_only, diff_keywords, metadata, dbus_interface="org.atomic", timeout = 2147400)
 
     @polkit.enable_proxy
     def Stop(self, image, name=None, extra_args=None):
@@ -134,7 +137,7 @@ class AtomicDBus (object):
             command = []
         if not isinstance(command, (list, tuple)):
             command = [ command ]
-        return  self.dbus_object.Run(image, name, spc, detach, command, dbus_interface="org.atomic", timeout = 2147400)
+        return self.dbus_object.Run(image, name, spc, detach, command, dbus_interface="org.atomic", timeout = 2147400)
 
     @polkit.enable_proxy
     def Scan(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):

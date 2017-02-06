@@ -65,9 +65,11 @@ class atomic_dbus(slip.dbus.service.Object):
             self.import_location = None
             self.json = True
             self.keytype = None
+            self.keywords = None
             self.list = False
             self.live = False
             self.mountpoint = None
+            self.metadata = None
             self.name = None
             self.names_only = False
             self.no_files = False
@@ -143,8 +145,8 @@ class atomic_dbus(slip.dbus.service.Object):
     # The Diff method shows differences between two container images, file
     # diff or RPMS.
     @slip.dbus.polkit.require_auth("org.atomic.read")
-    @dbus.service.method("org.atomic", in_signature='ssbbb',out_signature='s')
-    def Diff(self, src, dest, rpms, no_files, names_only):
+    @dbus.service.method("org.atomic", in_signature='ssbbbasb',out_signature='s')
+    def Diff(self, src, dest, rpms, no_files, names_only, diff_keywords, metadata):
         diff = Diff()
         args = self.Args()
         args.compares = [src, dest]
@@ -152,6 +154,8 @@ class atomic_dbus(slip.dbus.service.Object):
         args.no_files = no_files
         args.names_only = names_only
         args.rpms = rpms
+        args.keywords = diff_keywords
+        args.metadata = metadata
         diff.set_args(args)
         return json.dumps(diff.diff())
 
@@ -173,7 +177,6 @@ class atomic_dbus(slip.dbus.service.Object):
     def ContainersDelete(self, containers, all_containers, force, storage):
         c = Containers()
         args = self.Args()
-        print(type(containers))
         args.containers = containers
         args.force = force
         args.all = all_containers
@@ -183,7 +186,7 @@ class atomic_dbus(slip.dbus.service.Object):
 
     # The ContainersTrim method will Discard unused blocks (fstrim) on rootfs of running containers.
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='', out_signature='i')
+    @dbus.service.method("org.atomic", in_signature='', out_signature='')
     def ContainersTrim(self):
         c = Containers()
         return c.fstrim()

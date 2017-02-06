@@ -10,7 +10,6 @@ from Atomic.trust import Trust
 from Atomic.objects.layer import Layer
 from dateutil.parser import parse as dateparse
 from Atomic import Atomic
-import argparse
 import os
 from requests.exceptions import HTTPError
 
