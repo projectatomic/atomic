@@ -7,6 +7,9 @@ from slip.dbus import polkit
 import dbus.service
 import dbus.mainloop.glib
 
+ATOMIC_CONFIG = util.get_atomic_config()
+_storage = ATOMIC_CONFIG.get('default_storage', "docker")
+
 class AtomicDBus (object):
     def __init__(self):
         self.bus = dbus.SystemBus()
@@ -17,10 +20,10 @@ class AtomicDBus (object):
         return self.dbus_object.ContainersList(dbus_interface="org.atomic")
 
     @polkit.enable_proxy
-    def ContainersDelete(self, containers, containers_all=False, force=False):
+    def ContainersDelete(self, containers, containers_all=False, force=False, storage=_storage):
         if not isinstance(containers, (list, tuple)):
             containers = [ containers ]
-        return self.dbus_object.ContainersDelete(containers, containers_all, force, dbus_interface="org.atomic")
+        return self.dbus_object.ContainersDelete(containers, containers_all, force, storage, dbus_interface="org.atomic" )
 
     @polkit.enable_proxy
     def ContainersTrim(self):
@@ -131,7 +134,7 @@ class AtomicDBus (object):
             command = []
         if not isinstance(command, (list, tuple)):
             command = [ command ]
-        return self.dbus_object.Run(image, name, spc, detach, command, dbus_interface="org.atomic", timeout = 2147400)
+        return  self.dbus_object.Run(image, name, spc, detach, command, dbus_interface="org.atomic", timeout = 2147400)
 
     @polkit.enable_proxy
     def Scan(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):

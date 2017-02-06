@@ -87,7 +87,6 @@ class Run(Atomic):
                 return be.run(con_obj, atomic=self, args=self.args)
             except ValueError:
                 pass
-
         be = be_utils.get_backend_from_string(storage)
         db = DockerBackend()
         img_object = be.has_image(self.image)
@@ -118,7 +117,7 @@ class Run(Atomic):
             if con_obj is None:
                 be.install(self.image, self.name)
             img_object = be.has_container(self.name)
-        be.run(img_object, atomic=self, args=self.args)
+        return be.run(img_object, atomic=self, args=self.args)
 
     @staticmethod
     def print_run():

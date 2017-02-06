@@ -267,7 +267,7 @@ class DockerBackend(Backend):
         return 0
 
     def delete_container(self, cid, force=False):
-        self.d.remove_container(cid, force=force)
+        return self.d.remove_container(cid, force=force)
 
     def delete_containers_by_image(self, img_obj, force=False):
         containers_by_image = self.get_containers_by_image(img_obj)
@@ -360,7 +360,6 @@ class DockerBackend(Backend):
         # atomic must be an instance of Atomic
         # args must be a argparse Namespace
         assert(isinstance(atomic, Atomic))
-        assert(isinstance(args, argparse.Namespace))
 
         # The object is a container
         # If container exists and not started, start it
@@ -415,7 +414,7 @@ class DockerBackend(Backend):
 
         if not atomic.args.quiet:
             self.check_args(command)
-        util.check_call(command, env=atomic.cmd_env())
+        return util.check_call(command, env=atomic.cmd_env())
 
     @staticmethod
     def check_args(cmd):

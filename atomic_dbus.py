@@ -169,20 +169,21 @@ class atomic_dbus(slip.dbus.service.Object):
     # atomic containers section
     # The ContainersDelete method will delete one or more containers on the system.
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='asbb', out_signature='')
-    def ContainersDelete(self, containers, all_containers, force):
+    @dbus.service.method("org.atomic", in_signature='asbbs', out_signature='')
+    def ContainersDelete(self, containers, all_containers, force, storage):
         c = Containers()
         args = self.Args()
-        args.container = containers[0]
-        args.containers = containers[1:]
+        print(type(containers))
+        args.containers = containers
         args.force = force
         args.all = all_containers
+        args.storage = storage
         c.set_args(args)
         return c.delete()
 
     # The ContainersTrim method will Discard unused blocks (fstrim) on rootfs of running containers.
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='', out_signature='')
+    @dbus.service.method("org.atomic", in_signature='', out_signature='i')
     def ContainersTrim(self):
         c = Containers()
         return c.fstrim()
@@ -317,7 +318,8 @@ class atomic_dbus(slip.dbus.service.Object):
     # atomic run section
     # The Run method will run the specified image
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='ssbbas', out_signature='')
+    # Return a 0 or 1 for success.  Errors result in exceptions.
+    @dbus.service.method("org.atomic", in_signature='ssbbas', out_signature='i')
     def Run(self, image, name, spc, detach, command):
         r = Run()
         args = self.Args()
