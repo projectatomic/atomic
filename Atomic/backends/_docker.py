@@ -349,6 +349,12 @@ class DockerBackend(Backend):
         return layers
 
     def run(self, iobject, **kwargs):
+        def add_string_or_list_to_list(list_item, value):
+            if not isinstance(value, list):
+                value = value.split()
+            list_item += value
+            return list_item
+
         atomic = kwargs.get('atomic', None)
         args = kwargs.get('args')
         # atomic must be an instance of Atomic
@@ -361,7 +367,7 @@ class DockerBackend(Backend):
         # If container exists and is started, execute command inside it (docker exec)
         # If container doesn't exist, create one and start it
         if args.command:
-            iobject.command = args.command
+            iobject.user_command = args.command
         if isinstance(iobject, Container):
             if iobject.running:
                 return self._running(iobject, args, atomic)
@@ -369,8 +375,11 @@ class DockerBackend(Backend):
                 return self._start(iobject, args, atomic)
 
         # The object is an image
-
-        if iobject.command:
+        command = []
+        if iobject.run_command:
+            command = add_string_or_list_to_list(command, iobject.run_command)
+            if iobject.user_command:
+                command = add_string_or_list_to_list(command, iobject.user_command)
             opts_file = iobject.get_label("RUN_OPTS_FILE")
             if opts_file:
                 opts_file = atomic.sub_env_strings("".join(opts_file))
@@ -383,26 +392,30 @@ class DockerBackend(Backend):
                 else:
                     raise ValueError("Will not read RUN_OPTS_FILE %s: not absolute path" % opts_file)
         else:
-            iobject.command = [atomic.docker_binary(), "run"]
+            command += [atomic.docker_binary(), "run"]
             if os.isatty(0):
-                iobject.command += ["-t"]
+                command += ["-t"]
             if args.detach:
-                iobject.command += ["-d"]
-            iobject.command += atomic.SPC_ARGS if args.spc else atomic.RUN_ARGS
+                command += ["-d"]
+            command += atomic.SPC_ARGS if args.spc else atomic.RUN_ARGS
+            if iobject.user_command:
+                command = add_string_or_list_to_list(command, iobject.user_command)
 
-        if len(iobject.command) > 0 and iobject.command[0] == "docker":
-            iobject.command[0] = atomic.docker_binary()
+        if len(command) > 0 and command[0] == "docker":
+            command[0] = atomic.docker_binary()
 
-        _cmd = iobject.command if isinstance(iobject.command, list) else iobject.command.split()
-        cmd = atomic.gen_cmd(_cmd)
-        cmd = atomic.sub_env_strings(cmd)
-        atomic.display(cmd)
+        if iobject.cmd and not iobject.user_command and not iobject.run_command:
+            cmd = iobject.cmd if isinstance(iobject.cmd, list) else iobject.cmd.split()
+            command += cmd
+        command = atomic.gen_cmd(command)
+        command = atomic.sub_env_strings(command)
+        atomic.display(command)
         if atomic.args.display:
             return
 
         if not atomic.args.quiet:
-            self.check_args(cmd)
-        util.check_call(cmd, env=atomic.cmd_env())
+            self.check_args(command)
+        util.check_call(command, env=atomic.cmd_env())
 
     @staticmethod
     def check_args(cmd):
@@ -451,13 +464,20 @@ class DockerBackend(Backend):
 
     def _running(self, con_obj, args, atomic):
         if con_obj.interactive:
-            cmd = [atomic.docker_binary(), "exec", "-t", "-i", con_obj.name, con_obj.command]
+            container_command = con_obj.command if not args.command else args.command
+            container_command = container_command if not isinstance(container_command, list) else " ".join(container_command)
+            cmd = [atomic.docker_binary(), "exec", "-t", "-i", con_obj.name, container_command]
             if args.display:
                 return atomic.display(cmd)
             else:
                 return util.check_call(cmd, stderr=DEVNULL)
         else:
-            cmd = [atomic.docker_binary(), "exec", "-t", "-i", con_obj.name] + con_obj.command
+            command = con_obj.command if not args.command else args.command
+            try:
+                cmd = [atomic.docker_binary(), "exec", "-t", "-i", con_obj.name] + command
+            except TypeError:
+                cmd = [atomic.docker_binary(), "exec", "-t", "-i", con_obj.name] + command.split()
+
             if args.command:
                 if args.display:
                     return util.write_out(" ".join(cmd))
@@ -469,13 +489,14 @@ class DockerBackend(Backend):
 
     def _start(self, con_obj, args, atomic):
         if con_obj.interactive:
-            if con_obj.command:
+            if args.command:
                 util.check_call(
                     [atomic.docker_binary(), "start", con_obj.name],
                     stderr=DEVNULL)
+                container_command = args.command if isinstance(args.command, list) else args.command.split()
                 return util.check_call(
                     [atomic.docker_binary(), "exec", "-t", "-i", con_obj.name] +
-                    con_obj.command)
+                    container_command)
             else:
                 return util.check_call(
                     [atomic.docker_binary(), "start", "-i", "-a", con_obj.name],

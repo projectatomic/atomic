@@ -28,6 +28,7 @@ class Image(object):
         self.cmd = None
         self._command = None
         self.repotags = None
+        self._user_command = None
 
 
         # Deeper
@@ -279,21 +280,22 @@ class Image(object):
 
 
     @property
-    def command(self):
-        run_label = self.get_label('RUN')
-        run_command = ''
-        if run_label:
-            run_command += run_label
-        if self._command:
-            try:
-                run_command = run_command.split() + self._command
-            except TypeError:
-                run_command += " {}".format(" ".join(self._command))
-        return run_command
+    def run_command(self):
+        return  self.get_label('RUN')
 
-    @command.setter
-    def command(self, value):
-        self._command = value
+    @property
+    def docker_cmd(self):
+        # This is the embedded command in an image
+        # i.e. From the Dockerfile, it is CMD
+        return self.cmd
+
+    @property
+    def user_command(self):
+        return self._user_command
+
+    @user_command.setter
+    def user_command(self, value):
+        self._user_command = value
 
     @property
     def is_system_type(self):

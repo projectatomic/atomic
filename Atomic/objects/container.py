@@ -20,6 +20,7 @@ class Container(object):
         self.state = None
         self.vulnerable = False
         self.labels = None
+        self._user_command = None
 
         # Optional
         self.running = False
@@ -95,3 +96,6 @@ class Container(object):
     def name(self, value):
         self._name = value[1:] if value[0] == '/' else value
 
+    @property
+    def user_command(self):
+        return self._user_command
