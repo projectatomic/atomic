@@ -6,7 +6,8 @@ import json
 import yaml
 import requests
 import collections
-from base64 import b64encode
+from base64 import b64encode,b64decode
+import tempfile
 
 TRANSPORT_TYPES = ["docker", "atomic", "dir"]
 
@@ -488,17 +489,20 @@ class Trust(Atomic):
         """
         if not keys:
             return ""
-        keylist = None
+        (keylist, tmpkey) = None, None
         for key in keys:
             if not os.path.exists(key):
-                # extend when we support parsing inline 'keyData' base64 encoded key
-                return ""
-            else:
-                cmd = ["gpg2", "--with-colons", key]
+                with tempfile.NamedTemporaryFile(delete=False) as tmpkey:
+                    tmpkey.write(b64decode(key))
+                key = tmpkey.name
+            cmd = ["gpg2", "--with-colons", key]
             try:
                 results = util.check_output(cmd).decode('utf-8')
             except util.FileNotFound:
                 results = ""
+            if tmpkey:
+                if os.path.exists(tmpkey.name):
+                    os.remove(tmpkey.name)
             lines = results.split('\n')
             for line in lines:
                 if line.startswith("uid:") or line.startswith("pub:"):
