@@ -52,3 +52,20 @@ if [[ -n ${OUTPUT} ]]; then
     echo "Failed ${TNAME} 5"
     exit 1
 fi
+
+# The centos image does not have an run label, so output should be $OUTPUT2
+OUTPUT=`${ATOMIC} run --display -n TEST6 centos /bin/ls | sed 's/ -t / /g' | xargs`
+OUTPUT2="docker run -i --name TEST6 centos /bin/ls"
+if [[ ${OUTPUT} != ${OUTPUT2} ]]; then
+    echo "Failed ${TNAME} 6"
+    exit 1
+fi
+
+# The centos image does not have an run label, so output should be $OUTPUT2
+OUTPUT=`${ATOMIC} run --display --spc -n TEST7 centos /bin/ls | sed 's/ -t / /g' | xargs`
+OUTPUT2="docker run -i --privileged -v /:/host -v /run:/run -v /etc/localtime:/etc/localtime -v /sys/fs/selinux:/sys/fs/selinux:ro --net=host --ipc=host --pid=host -e HOST=/host -e NAME=TEST7 -e IMAGE=centos -e SYSTEMD_IGNORE_CHROOT=1 --name TEST7 centos /bin/ls"
+
+if [[ ${OUTPUT} != ${OUTPUT2} ]]; then
+    echo "Failed ${TNAME} 7"
+    exit 1
+fi
