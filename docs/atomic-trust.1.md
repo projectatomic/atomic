@@ -50,9 +50,10 @@ testing.
   Print usage statement.
 
 **-k** **--pubkeys**
-  A reference to a local file or download URL to an exported public key. Keys
-  will be parsed and encoded inline with policy.json. Option may be used
-  multiple times to require an image be sigend by multiple keys. One of
+  A reference to a local file, download URL to an exported public key or a
+  local user GPG keyring ID (see output of 'gpg2 --list-keys'). Keys are
+  parsed and encoded inline with policy.json. Option may be used multiple
+  times to require an image be sigend by multiple keys. One of
   **--pubkeys** or **--pubkeysfile** is required for **signedBy** type. This
   option is recommended over **--pubkeysfile**.
 

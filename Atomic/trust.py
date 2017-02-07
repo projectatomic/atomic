@@ -28,10 +28,11 @@ def cli(subparser):
                      atomic: openshift-based atomic registry"""
     commonp.add_argument("-k", "--pubkeys", nargs='?', default=[],
                          action="append", dest="pubkeys",
-                         help=_("Local path or URL of public key(s) to trust for TARGET. "
+                         help=_("Local path, URL of public key(s) or local user GPG "
+                                "keyring ID to trust for TARGET. "
                                 "Keys are parsed and encoded into policy.json. "
                                 "May used multiple times to define multiple public keys. "
-                                "File(s) must exist before using this command."))
+                                "File references must exist before using this command."))
     commonp.add_argument("-f", "--pubkeysfile", nargs='?', default=[],
                          action="append", dest="pubkeysfile",
                          help=_("Path of installed public key(s) to trust for TARGET. "
@@ -204,8 +205,9 @@ class Trust(Atomic):
 
     def get_pubkey_data(self, key_reference):
         """
-        Get public key base64 encoded string to embed as keyData in policy.json
+        Return public key base64 encoded string to embed as keyData in policy.json
         :param key_reference: local file or download URI of public key
+                              also accepts local user GPG keyring ID
         :return: encoded pubkey string or False
         """
         try:
@@ -217,7 +219,16 @@ class Trust(Atomic):
         token = urlparse(key_reference)
         if not token.scheme or not token.netloc:
             if not os.path.exists(key_reference):
-                raise ValueError("The public key file %s was not found. This file must exist to proceed." % key_reference)
+                cmd = ["gpg2", "--armor", "--export", key_reference]
+                keydata = util.check_output(cmd)
+                if not keydata:
+                    raise ValueError("The public key reference '%s' was not "
+                                     "found as a file or in the user's GPG "
+                                     "keyring. Do you have any keys listed "
+                                     "with 'gpg2 --list-keys'? Or try "
+                                     "setting 'GNUPGHOME=~/.gnupg' or edit "
+                                     "'/etc/atomic.conf' to reference user's "
+                                     "GPG keyring." % key_reference)
             else:
                 with open(key_reference, 'r') as f:
                     keydata = f.read()
