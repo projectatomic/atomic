@@ -42,5 +42,4 @@ class Update(Atomic):
             input_name = img_obj.input_name
         except ValueError:
             raise ValueError("{} not found locally.  Unable to update".format(self.image))
-
-        be.update(input_name, self.args, force=self.args.force)
+        be.update(input_name, self.args)

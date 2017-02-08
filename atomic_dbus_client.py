@@ -100,10 +100,8 @@ class AtomicDBus (object):
     def ImagePull(self, image, storage="docker", reg_type=""):
         return self.dbus_object.ImagePull(image, storage, reg_type, dbus_interface="org.atomic", timeout = 2147400)
 
-    def ImagesUpdate(self, images, force=False):
-        if not isinstance(images, (list, tuple)):
-            images = [ images ]
-        return self.dbus_object.ImagesInfo(images, force, dbus_interface="org.atomic")
+    def ImageUpdate(self, image, force=False):
+        return self.dbus_object.ImageUpdate(image, force, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
     def ImageVersion(self, image, recurse=False):

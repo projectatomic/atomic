@@ -301,6 +301,8 @@ class DockerBackend(Backend):
 
     def update(self, name, force=False, **kwargs):
         debug = kwargs.get('debug', False)
+        # A TypeError is thrown if the force keywords is passed in addition to kwargs
+        force = kwargs.get('force', False)
         remote_image_obj = self.make_remote_image(name)
         try:
             # pull_image will raise a ValueError if the "latest" image is already present

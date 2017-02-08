@@ -262,10 +262,11 @@ class atomic_dbus(slip.dbus.service.Object):
     # The ImagesUpdate method downloads the latest container image.
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     @dbus.service.method("org.atomic", in_signature='sb', out_signature='')
-    def ImagesUpdate(self, image, force):
+    def ImageUpdate(self, image, force):
         u = Update()
         args = self.Args()
         args.image = image
+        args.name = image
         args.force = force
         u.set_args(args)
         return u.update()
