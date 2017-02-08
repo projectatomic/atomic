@@ -97,7 +97,9 @@ def list_lvs(vgroup):
         return [ ]
 
 def list_parents(dev):
-    return util.check_output([ "lsblk", "-snlp", "-o", "NAME", dev ]).decode('utf-8').splitlines()[1:]
+    output = util.check_output([ "lsblk", "-snlp", "-o", "NAME", dev ]).decode('utf-8').strip().split()
+    output.sort()
+    return output[:1]
 
 def list_children(dev):
     return util.check_output([ "lsblk", "-nlp", "-o", "NAME", dev ]).decode('utf-8').splitlines()[1:]
