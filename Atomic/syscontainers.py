@@ -136,6 +136,17 @@ class SystemContainers(object):
         except (NameError, AttributeError):
             pass
 
+    @staticmethod
+    def _split_set_args(setvalues):
+        values = {}
+        for i in setvalues:
+            split = i.find("=")
+            if split < 0:
+                raise ValueError("Invalid value '%s'.  Expected form NAME=VALUE" % i)
+            key, val = i[:split], i[split+1:]
+            values[key] = val
+        return values
+
     def _pull_image_to_ostree(self, repo, image, upgrade):
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
@@ -185,7 +196,13 @@ class SystemContainers(object):
             util.write_out("%s already present" % (name))
             return
 
-        return self._checkout(repo, name, image, 0, False, remote=self.args.remote)
+        values = {}
+        if self.args.setvalues is not None:
+            setvalues = SystemContainers._split_set_args(self.args.setvalues)
+            for k, v in setvalues.items():
+                values[k] = v
+
+        return self._checkout(repo, name, image, 0, False, values=values, remote=self.args.remote)
 
     def _check_oci_configuration_file(self, conf_path, remote=None):
         with open(conf_path, 'r') as conf:
@@ -423,14 +440,6 @@ class SystemContainers(object):
                         if key not in values:
                             values[key] = val
 
-        if self.args.setvalues is not None:
-            for i in self.args.setvalues:
-                split = i.find("=")
-                if split < 0:
-                    raise ValueError("Invalid value '%s'.  Expected form NAME=VALUE" % i)
-                key, val = i[:split], i[split+1:]
-                values[key] = val
-
         if "UUID" not in values:
             values["UUID"] = str(uuid.uuid4())
         values["DESTDIR"] = destination
@@ -577,7 +586,7 @@ class SystemContainers(object):
             return [image_inspect]
         return None
 
-    def update_container(self, name):
+    def update_container(self, name, setvalues=None):
         repo = self._get_ostree_repo()
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
@@ -602,13 +611,18 @@ class SystemContainers(object):
 
         # Check if the image id or the configuration for the container has
         # changed before upgrading it.
-        if revision and self.args.setvalues is None:
+        if revision and setvalues is None:
             image_inspect = self.inspect_system_image(image)
             if image_inspect:
                 if image_inspect['ImageId'] == revision:
                     # Nothing to do
                     util.write_out("Latest version already installed.")
                     return
+
+        # Override values with anything coming from setvalues
+        if setvalues:
+            for k, v in SystemContainers._split_set_args(setvalues).items():
+                values[k] = v
 
         if os.path.exists("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment)):
             shutil.rmtree("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment))

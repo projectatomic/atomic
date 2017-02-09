@@ -263,9 +263,9 @@ class Containers(Atomic):
             if con.id in vulnerable_uuids:
                 con.vulnerable = True
 
-    def update(self):
+    def update(self, to=None):
         if self.syscontainers.get_checkout(self.args.container):
-            return self.syscontainers.update_container(self.args.container)
+            return self.syscontainers.update_container(self.args.container, self.args.setvalues)
         raise ValueError("System container '%s' is not installed" % self.args.container)
 
     def rollback(self):
