@@ -586,7 +586,7 @@ class SystemContainers(object):
             return [image_inspect]
         return None
 
-    def update_container(self, name, setvalues=None):
+    def update_container(self, name, setvalues=None, rebase=None):
         repo = self._get_ostree_repo()
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
@@ -605,7 +605,7 @@ class SystemContainers(object):
         with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
             info = json.loads(info_file.read())
 
-        image = info["image"]
+        image = rebase or info["image"]
         values = info["values"]
         revision = info["revision"] if "revision" in info else None
 

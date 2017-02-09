@@ -87,6 +87,9 @@ Can use --set to update environment variables.
   Only display container IDs
 
 # update OPTIONS:
+**--rebase=IMAGE**
+  Rebase to a different image.  If not specified, the same image used to install the container will be used.
+
 **--set=NAME=VALUE**
   Set a value that is going to be used by a system container for its configuration and can be specified multiple times.  OSTree is required for this feature to be available.
 

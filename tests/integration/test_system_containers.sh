@@ -176,6 +176,9 @@ assert_matches 8081 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/config.json
 ${ATOMIC} containers update ${NAME} > update.out
 assert_matches "Latest version already installed" update.out
 
+${ATOMIC} containers update ${NAME} --rebase oci:atomic-test-system > update.out
+assert_matches "Latest version already installed" update.out
+
 ${ATOMIC} containers update --set=PORT=8082 ${NAME}
 test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/${NAME}.service
 test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1/tmpfiles-${NAME}.conf

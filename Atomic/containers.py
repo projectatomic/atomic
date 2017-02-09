@@ -73,6 +73,8 @@ def cli(subparser):
     updatep.set_defaults(_class=Containers, func='update')
     updatep.add_argument("container",
                          help=_("Specify one or more containers. Must be final arguments."))
+    updatep.add_argument("--rebase", dest="rebase", default=None,
+                         help=_("Rebase to a different image (useful for upgrading to a different tag)"))
     if OSTREE_PRESENT:
         updatep.add_argument("--set", dest="setvalues",
                              action='append',
@@ -263,9 +265,9 @@ class Containers(Atomic):
             if con.id in vulnerable_uuids:
                 con.vulnerable = True
 
-    def update(self, to=None):
+    def update(self):
         if self.syscontainers.get_checkout(self.args.container):
-            return self.syscontainers.update_container(self.args.container, self.args.setvalues)
+            return self.syscontainers.update_container(self.args.container, self.args.setvalues, self.args.rebase)
         raise ValueError("System container '%s' is not installed" % self.args.container)
 
     def rollback(self):
