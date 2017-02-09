@@ -611,18 +611,27 @@ class SystemContainers(object):
 
         # Check if the image id or the configuration for the container has
         # changed before upgrading it.
-        if revision and setvalues is None:
+        revision_changed = True
+        if revision:
             image_inspect = self.inspect_system_image(image)
             if image_inspect:
                 if image_inspect['ImageId'] == revision:
-                    # Nothing to do
-                    util.write_out("Latest version already installed.")
-                    return
+                    revision_changed = False
 
-        # Override values with anything coming from setvalues
+        # Override values with anything coming from setvalues and while at it
+        # check if anything was changed.
+        values_changed = False
         if setvalues:
             for k, v in SystemContainers._split_set_args(setvalues).items():
+                old = values.get(k)
                 values[k] = v
+                if old != v:
+                    values_changed = True
+
+        if not revision_changed and not values_changed:
+            # Nothing to do
+            util.write_out("Latest version already installed.")
+            return
 
         if os.path.exists("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment)):
             shutil.rmtree("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment))
