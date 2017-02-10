@@ -209,30 +209,36 @@ class Storage(Atomic):
         n_pvs = len(pvs)
         devices = set(devices)
         parents = None
-        for pv in pvs:
-            parents = list_parents(pv)
-            if set(parents).isdisjoint(devices):
-                continue
-            devices -= set(parents)
-
-            if query_pvs(pv, "pv_used")[0][:-1] != '0':
-                if only_unused:
+        try:
+            for pv in pvs:
+                parents = list_parents(pv)
+                if set(parents).isdisjoint(devices):
                     continue
-                else:
-                    util.check_call([ "pvmove", pv ])
+                devices -= set(parents)
 
-            if n_pvs > 1:
-                util.check_call([ "vgreduce", vgroup, pv ])
-            elif len(lvs) == 0:
-                util.check_call([ "vgremove", vgroup ])
-            n_pvs -= 1
-            util.check_call([ "wipefs", "-a", pv ])
-            util.sh_modify_var_in_file(self.dss_conf, "DEVS",
-                                       lambda old: util.sh_set_del(old, parents))
-            if len(parents) == 1:
-                children = list_children(parents[0])
-                if len(children) == 1 and children[0] == pv:
-                    util.check_call([ "wipefs", "-a", parents[0] ])
+                if query_pvs(pv, "pv_used")[0][:-1] != '0':
+                    if only_unused:
+                        continue
+                    else:
+                        util.check_output([ "pvmove", pv ], stderr=subprocess.STDOUT)
+
+                if n_pvs > 1:
+                    util.check_output([ "vgreduce", vgroup, pv ], stderr=subprocess.STDOUT)
+                elif len(lvs) == 0:
+                    util.check_output([ "vgremove", vgroup ], stderr=subprocess.STDOUT)
+                n_pvs -= 1
+                util.check_output([ "wipefs", "-a", pv ], stderr=subprocess.STDOUT)
+                util.sh_modify_var_in_file(self.dss_conf, "DEVS",
+                                        lambda old: util.sh_set_del(old, parents))
+                if len(parents) == 1:
+                    children = list_children(parents[0])
+                    if len(children) == 1 and children[0] == pv:
+                        util.check_output([ "wipefs", "-a", parents[0] ], stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
+            util.write_out("Return Code: {}".format(e.returncode))
+            util.write_out("Failure: {}".format(e.output))
+            raise ValueError("atomic storage modify --remove-device failed")
+
         if len(devices) > 0:
             raise ValueError("Not part of the storage pool: {}".format(", ".join(devices)))
 
