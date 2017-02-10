@@ -502,6 +502,8 @@ class SystemContainers(object):
             image_manifest = json.loads(image_manifest)
             if 'Digest' in image_manifest:
                 image_id = image_manifest['Digest'].replace("sha256:", "")
+            if 'config' in image_manifest and 'digest' in image_manifest['config']:
+                image_id = image_manifest['config']['digest'].replace("sha256:", "")
 
         with open(os.path.join(destination, "info"), 'w') as info_file:
             info = {"image" : img,
