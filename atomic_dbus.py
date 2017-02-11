@@ -30,6 +30,7 @@ from Atomic.update import Update
 from Atomic.uninstall import Uninstall
 from Atomic.verify import Verify
 from Atomic import util
+from gi.repository import GLib
 
 DBUS_NAME_FLAG_DO_NOT_QUEUE = 4
 DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER = 1
@@ -95,6 +96,7 @@ class atomic_dbus(slip.dbus.service.Object):
             self.rootfs = []
             self.rpms = False
             self.save = False
+            self.scan_id = None
             self.scan_targets = []
             self.scan_type = None
             self.scanner = None
@@ -119,6 +121,7 @@ class atomic_dbus(slip.dbus.service.Object):
         self.tasks = []
         self.tasks_lock = threading.Lock()
         self.last_token = 0
+        self.scans = {}
         self.scheduler_thread = threading.Thread(target = self.Scheduler)
         self.scheduler_thread.daemon = True
         self.scheduler_thread.start()
@@ -364,6 +367,7 @@ class atomic_dbus(slip.dbus.service.Object):
         args.all = _all
         args.images = images
         args.containers = containers
+        args.scan_id = None
         scan.set_args(args)
         return scan
 
@@ -374,6 +378,41 @@ class atomic_dbus(slip.dbus.service.Object):
                          out_signature= 's')
     def Scan(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):
         return self._ScanSetup(scan_targets, scanner, scan_type, rootfs, _all, images, containers).scan()
+
+    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @dbus.service.method("org.atomic", in_signature='ssss', out_signature= 's')
+    # sudo busctl --system call org.atomic /org/atomic/object org.atomic ActiveScans
+    # Only support scanning one image at a time via the async method
+    # Same with rootfs
+    def ScanAsync(self, scan_id='', scanner='', scan_type='', rootfs=''):
+        if scan_id is None and rootfs is None:
+            raise ValueError("You must define 'scan_id' or 'rootfs'")
+        rootfs = [] if rootfs is None else [rootfs]
+        if self.scans.get(scan_id, None) is not None:
+            return ValueError("{} is already being scanned")
+        scan_cls = self._ScanSetup([scan_id], scanner, scan_type, rootfs, False, False, False)
+        worker = ScanWorker(scan_id, self, scan_cls)
+        self.scans[worker.scan_id] = worker
+        self.ScanStarted(worker.scan_id)
+        worker.start()
+        return scan_id
+
+
+    @dbus.service.signal('org.atomic', signature='s')
+    def ScanStarted(self, scan_id):
+        pass
+
+    @dbus.service.signal('org.atomic', signature='s')
+    def ScanCompleted(self, scan_id):
+        pass
+
+    @dbus.service.method('org.atomic', in_signature='', out_signature='as')
+    def ActiveScans(self):
+        return [x for x in self.scans]
+
+    def finish_scan(self, worker):
+        del self.scans[worker.scan_id]
+        self.ScanCompleted(worker.scan_id)
 
     # The ScheduleScan method will return a token.
     @slip.dbus.polkit.require_auth("org.atomic.read")
@@ -591,15 +630,26 @@ class atomic_dbus(slip.dbus.service.Object):
         return json.dumps(util.load_scan_result_file(file_name))
 
 
+class ScanWorker(threading.Thread):
+    def __init__(self, scan_id, dbus_service, scan_cls):
+        threading.Thread.__init__(self)
+        self.seconds = 10
+        self.scan_id = scan_id
+        self.dbus_service = dbus_service
+        self.scan_cls = scan_cls
+
+    def run(self):
+        self.scan_cls.scan()
+        GLib.idle_add(lambda: self.dbus_service.finish_scan(self))
 
 if __name__ == "__main__":
     mainloop = GObject.MainLoop()
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
     system_bus = dbus.SystemBus()
 
-    if (system_bus.request_name("org.atomic", DBUS_NAME_FLAG_DO_NOT_QUEUE) == DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER):
-        atomic_object = atomic_dbus(system_bus, "/org/atomic/object")
-        slip.dbus.service.set_mainloop(mainloop)
-        mainloop.run()
-    else:
+    if (system_bus.request_name("org.atomic", DBUS_NAME_FLAG_DO_NOT_QUEUE) != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER):
         print("Another process owns the 'org.atomic' D-Bus name. Exiting.")
+    atomic_object = atomic_dbus(system_bus, "/org/atomic/object")
+    slip.dbus.service.set_mainloop(mainloop)
+    mainloop.run()
+
