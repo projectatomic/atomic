@@ -455,13 +455,12 @@ class atomic_dbus(slip.dbus.service.Object):
     # atomic stop section
     # The Stop method will stop the specified image
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='ssas', out_signature='')
-    def Stop(self, image, name, extra_args):
+    @dbus.service.method("org.atomic", in_signature='s', out_signature='')
+    def Stop(self, name):
         i = Stop()
         args = self.Args()
-        args.image = image
-        args.name = name
-        args.args = extra_args
+        args.container = name
+        args.args = []
         i.set_args(args)
         return i.stop()
 

@@ -37,14 +37,8 @@ class AtomicDBus (object):
         return self.dbus_object.Diff(first, second, rpms, no_files, names_only, diff_keywords, metadata, dbus_interface="org.atomic", timeout = 2147400)
 
     @polkit.enable_proxy
-    def Stop(self, image, name=None, extra_args=None):
-        if not name:
-            name = image
-        if not extra_args:
-            extra_args = []
-        if not isinstance(extra_args, (list, tuple)):
-            extra_args = [ extra_args ]
-        return self.dbus_object.Install(image, name, extra_args, dbus_interface="org.atomic", timeout = 2147400)
+    def Stop(self, name):
+        return self.dbus_object.Stop(name, dbus_interface="org.atomic", timeout = 2147400)
 
     @polkit.enable_proxy
     def StorageExport(self, graph, export_location, force):

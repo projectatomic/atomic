@@ -45,4 +45,5 @@ class Stop(Atomic):
             util.check_call(cmd, env=self.cmd_env())
 
         be.stop_container(con_obj)
+        return 0
 
