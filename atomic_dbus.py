@@ -55,6 +55,7 @@ class atomic_dbus(slip.dbus.service.Object):
             self.downgrade=False
             self.driver = None
             self.export_location = None
+            self.extra_args = None
             self.force = False
             self.gnupghome = None
             self.graph = None
@@ -536,14 +537,15 @@ class atomic_dbus(slip.dbus.service.Object):
     # atomic uninstall section
     # The Uninstall method will uninstall the specified image
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='ssbas', out_signature='')
-    def Uninstall(self, image, name, force, extra_args):
+    @dbus.service.method("org.atomic", in_signature='ssbsas', out_signature='')
+    def Uninstall(self, image, name=None, force=False, storage=None, extra_args=None):
         i = Uninstall()
         args = self.Args()
         args.image = image
         args.name = name
         args.force = force
-        args.args = extra_args
+        args.storage = storage
+        args.extra_args = [] if not extra_args else extra_args
         i.set_args(args)
         return i.uninstall()
 

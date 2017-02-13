@@ -4,6 +4,7 @@ from .util import add_opt
 from .install import INSTALL_ARGS
 from Atomic.backendutils import BackendUtils
 import sys
+from Atomic.backends._ostree import OSTreeBackend
 
 try:
     from . import Atomic
@@ -30,12 +31,12 @@ def cli(subparser):
                             action="store_true",
                             help=_("remove all containers based on this "
                                    "image"))
-    uninstallp.add_argument("--display", default=False, action="store_true", help=_("preview the command that %s would execute") % sys.argv[0])
+    uninstallp.add_argument("--display", default=False, action="store_true",
+                            help=_("preview the command that %s would execute") % sys.argv[0])
     uninstallp.add_argument("image", help=_("container image"))
     uninstallp.add_argument("--storage", dest="storage", default=None,
-               help=_("Specify the storage. Default is currently '%s'.  You can"
-                      " change the default by editing /etc/atomic.conf and changing"
-                      " the 'default_storage' field." % _storage))
+                            help=_("Specify the storage. Default is currently '%s'.  You can change the default "
+                                   "by editing /etc/atomic.conf and changing the 'default_storage' field." % _storage))
     uninstallp.add_argument("args", nargs=argparse.REMAINDER,
                             help=_("Additional arguments appended to the "
                                    "image uninstall method"))
@@ -53,7 +54,6 @@ class Uninstall(Atomic):
             be, img_obj = beu.get_backend_and_image_obj(self.args.image, str_preferred_backend=self.args.storage)
         except ValueError as e:
             if 'ostree' in [x().backend for x in beu.available_backends]:
-                from Atomic.backends._ostree import OSTreeBackend
                 ost = OSTreeBackend()
                 img_obj = ost.has_container(self.args.image)
                 if not img_obj:
