@@ -287,17 +287,21 @@ class atomic_dbus(slip.dbus.service.Object):
     # atomic install section
     # The Install method will install the specified image
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='ssbbsasas', out_signature='')
-    def Install(self, image, name, user, system, remote, setvalues, extra_args):
+    @dbus.service.method("org.atomic", in_signature='ssbbsbas', out_signature='')
+    def Install(self, image, name='', system=False, remote=False, storage='', user=False, setvalues=''):
+        if setvalues is None:
+            setvalues = []
+        assert(isinstance(setvalues, list))
         i = Install()
         args = self.Args()
         args.image = image
         args.name = name
         args.user = user
         args.system = system
+        args.storage = storage
         args.remote = remote
         args.setvalues = setvalues
-        args.args = extra_args
+        args.args = []
         i.set_args(args)
         return i.install()
 
