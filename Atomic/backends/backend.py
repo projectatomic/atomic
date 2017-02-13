@@ -48,7 +48,7 @@ class Backend(object): #pylint: disable=metaclass-assignment
         pass
 
     @abstractmethod
-    def uninstall(self, name):
+    def uninstall(self, iobject, name=None, **kwargs):
         """
         Uninstalls an image from a backend
         :param name:

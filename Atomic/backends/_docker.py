@@ -276,7 +276,7 @@ class DockerBackend(Backend):
     def get_containers_by_image(self, img_obj):
         containers = []
         for container in self.get_containers():
-            if img_obj.id == container.image:
+            if img_obj.id == container.image_id:
                 containers.append(container)
         return containers
 
@@ -292,6 +292,7 @@ class DockerBackend(Backend):
             raise util.NoDockerDaemon()
 
     def delete_image(self, image, force=False):
+        assert(image is not None)
         try:
             return self.d.remove_image(image, force=force)
         except errors.NotFound:
@@ -326,8 +327,38 @@ class DockerBackend(Backend):
     def install(self, image, name, **kwargs):
         pass
 
-    def uninstall(self, name):
-        pass
+    def uninstall(self, iobject, name=None, **kwargs):
+        atomic = kwargs.get('atomic')
+        assert(isinstance(atomic, Atomic))
+        args = atomic.args
+        con_obj = None if not name else self.has_container(name)
+
+        # We have a container by that name, need to stop and delete it
+        if con_obj:
+            if con_obj.running:
+                self.stop_container(con_obj)
+            self.delete_container(con_obj.id)
+
+        if args.force:
+            self.delete_containers_by_image(iobject, force=True)
+
+        uninstall_command = iobject.get_label('UNINSTALL')
+        command_line_args = args.args
+
+        cmd = []
+        if uninstall_command:
+            cmd =+ uninstall_command
+        if command_line_args:
+            cmd += command_line_args
+
+        cmd = atomic.gen_cmd(cmd)
+        cmd = atomic.sub_env_strings(cmd)
+        atomic.display(cmd)
+        if args.display:
+            return 0
+        if cmd:
+            return util.check_call(cmd, env=atomic.cmd_env())
+        return self.delete_image(iobject.image, force=args.force)
 
     def validate_layer(self, layer):
         pass

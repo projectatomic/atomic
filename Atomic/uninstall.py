@@ -2,12 +2,16 @@ import argparse
 from . import util
 from .util import add_opt
 from .install import INSTALL_ARGS
-from docker.errors import NotFound
+from Atomic.backendutils import BackendUtils
+import sys
 
 try:
     from . import Atomic
 except ImportError:
     from atomic import Atomic # pylint: disable=relative-import
+
+ATOMIC_CONFIG = util.get_atomic_config()
+_storage = ATOMIC_CONFIG.get('default_storage', "docker")
 
 def cli(subparser):
     # atomic uninstall
@@ -26,7 +30,12 @@ def cli(subparser):
                             action="store_true",
                             help=_("remove all containers based on this "
                                    "image"))
+    uninstallp.add_argument("--display", default=False, action="store_true", help=_("preview the command that %s would execute") % sys.argv[0])
     uninstallp.add_argument("image", help=_("container image"))
+    uninstallp.add_argument("--storage", dest="storage", default=None,
+               help=_("Specify the storage. Default is currently '%s'.  You can"
+                      " change the default by editing /etc/atomic.conf and changing"
+                      " the 'default_storage' field." % _storage))
     uninstallp.add_argument("args", nargs=argparse.REMAINDER,
                             help=_("Additional arguments appended to the "
                                    "image uninstall method"))
@@ -36,34 +45,23 @@ class Uninstall(Atomic):
         super(Uninstall, self).__init__()
 
     def uninstall(self):
-        if self.syscontainers.get_checkout(self.args.image):
-            return self.syscontainers.uninstall(self.args.image)
+        if self.args.debug:
+            util.write_out(str(self.args))
 
-        self.inspect = self._inspect_container()
-        if self.inspect and self.force:
-            self.force_delete_containers()
+        beu = BackendUtils()
         try:
-            # Attempt to remove container, if it exists just return
-            self.d.stop(self.name)
-            self.d.remove_container(self.name)
-        except NotFound:
-            # On exception attempt to remove image
-            pass
+            be, img_obj = beu.get_backend_and_image_obj(self.args.image, str_preferred_backend=self.args.storage)
+        except ValueError as e:
+            if 'ostree' in [x().backend for x in beu.available_backends]:
+                from Atomic.backends._ostree import OSTreeBackend
+                ost = OSTreeBackend()
+                img_obj = ost.has_container(self.args.image)
+                if not img_obj:
+                    raise ValueError(e)
+                be = ost
+        be.uninstall(img_obj, name=self.args.name, atomic=self)
+        return 0
 
-        self.inspect = self._inspect_image()
-        if not self.inspect:
-            raise ValueError("Image '%s' is not installed" % self.image)
-
-        args = self._get_args("UNINSTALL")
-        if args:
-            cmd = self.gen_cmd(args + self.quote(self.args.args))
-            cmd = self.sub_env_strings(cmd)
-            self.display(cmd)
-            util.check_call(cmd, env=self.cmd_env())
-
-        if self.name == self.image:
-            util.write_out("docker rmi %s" % self.image)
-            util.check_call([self.docker_binary(), "rmi", self.image])
 
     @staticmethod
     def print_uninstall():

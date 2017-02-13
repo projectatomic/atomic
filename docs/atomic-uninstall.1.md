@@ -6,9 +6,11 @@ atomic-uninstall - Remove/Uninstall container/container image from system
 
 # SYNOPSIS
 **atomic uninstall**
+[**--display**]
 [**-f**][**--force**]
 [**-h**|**--help**]
 [**-n**][**--name**[=*NAME*]]
+[**--storage**]
 IMAGE [ARG...]
 
 # DESCRIPTION
@@ -40,6 +42,12 @@ If the container image has a LABEL UNINSTALL instruction like the following:
 Any additional arguments will be appended to the command.
 
 # OPTIONS:
+**--display**
+Display the image's uninstall options and environment variables
+populated into the uninstall command.
+The uninstall command will not execute if --display is specified.
+If --display is not specified the uninstall command will execute.
+
 **-f** **--force**
   Remove all containers based on this image
 
@@ -48,6 +56,10 @@ Any additional arguments will be appended to the command.
 
 **-n** **--name**=""
    If name is specified `atomic uninstall` will uninstall the named container from the system, otherwise it will uninstall the container images.
+   
+**--storage**
+The --storage option will direct atomic where it should look for the image
+prior to uninstalling. Valid options are `docker` and `ostree`.
 
 # HISTORY
 January 2015, Originally compiled by Daniel Walsh (dwalsh at redhat dot com)

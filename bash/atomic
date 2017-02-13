@@ -587,6 +587,18 @@ _atomic_containers_update() {
 }
 
 _atomic_uninstall() {
+	local all_options="
+	    --display
+	    --force
+		--help
+	    --storage
+	"
+  case "$prev" in
+    --storage)
+      COMPREPLY=( $( compgen -W "docker ostree" -- "$cur" ) )
+      return 0
+      ;;
+  esac
 	case "$cur" in
 		-*)
 			COMPREPLY=( $( compgen -W -- "$cur" ) )

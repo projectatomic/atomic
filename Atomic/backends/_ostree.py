@@ -128,8 +128,8 @@ class OSTreeBackend(Backend):
     def install(self, image, name, **kwargs):
         return self.syscontainers.install(image, name)
 
-    def uninstall(self, name):
-        return self.syscontainers.uninstall(name)
+    def uninstall(self, iobject, name=None, **kwargs):
+        return self.syscontainers.uninstall(iobject.name)
 
     def prune(self):
         return self.syscontainers.prune_ostree_images()
