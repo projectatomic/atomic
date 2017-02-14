@@ -308,6 +308,16 @@ class SystemContainers(object):
                 pass
             raise e
 
+    @staticmethod
+    def _get_image_id_from_manifest(image_manifest):
+        if 'Digest' in image_manifest:
+            image_id = image_manifest['Digest']
+        elif 'config' in image_manifest and 'digest' in image_manifest['config']:
+            image_id = image_manifest['config']['digest']
+        else:
+            return None
+        return SystemContainers._drop_sha256_prefix(image_id)
+
     # Accept both name and version Id, and return the ostree rev
     def _resolve_image(self, repo, img, allow_multiple=False):
         imagebranch = SystemContainers._get_ostree_image_branch(img)
@@ -508,11 +518,7 @@ class SystemContainers(object):
         image_id = rev
         if image_manifest:
             image_manifest = json.loads(image_manifest)
-            if 'Digest' in image_manifest:
-                image_id = image_manifest['Digest']
-            if 'config' in image_manifest and 'digest' in image_manifest['config']:
-                image_id = image_manifest['config']['digest']
-            image_id = SystemContainers._drop_sha256_prefix(image_id)
+            image_id = SystemContainers._get_image_id_from_manifest(image_manifest) or image_id
 
         with open(os.path.join(destination, "info"), 'w') as info_file:
             info = {"image" : img,
@@ -843,12 +849,7 @@ class SystemContainers(object):
             manifest = json.loads(manifest)
             if 'Labels' in manifest:
                 labels = manifest['Labels']
-
-            if 'config' in manifest:
-                image_id = manifest['config']['digest']
-            if 'Digest' in manifest:
-                image_id = manifest['Digest']
-            image_id = SystemContainers._drop_sha256_prefix(image_id)
+            image_id = SystemContainers._get_image_id_from_manifest(manifest) or image_id
 
         if self.user:
             image_type = "user"
