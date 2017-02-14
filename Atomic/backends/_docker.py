@@ -71,7 +71,11 @@ class DockerBackend(Backend):
                              "matching '{0}'. They are:\n    {1} \n{2}"
                              .format(img, "\n    ".join(repo_tags),
                                      err_append))
-        return self._make_image(img, self._inspect_image(img), deep=True)
+
+        inspected = self._inspect_image(img)
+        if not inspected:
+            return None
+        return self._make_image(img, inspected, deep=True)
 
     def already_has_image(self, local_img, remote_img):
         """
