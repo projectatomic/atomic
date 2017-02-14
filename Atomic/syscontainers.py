@@ -998,7 +998,9 @@ class SystemContainers(object):
 
     @staticmethod
     def get_default_system_name(image):
-        image = image.replace("oci:", "").replace("docker:", "")
+        if '@sha256:' in image:
+            image = image.split('@sha256:')[0]
+        image = image.replace("oci:", "", 1).replace("docker:", "", 1)
         _, image, tag = SystemContainers._parse_imagename(image)
         name = image.split("/")[-1]
         if tag != "latest":
