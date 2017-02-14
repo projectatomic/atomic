@@ -16,19 +16,21 @@ set -euo pipefail
 # run only when ENABLE_DESTRUCTIVE is set
 # :destructive-test
 
-# This can copy non-existing files
-#
-smarter_copy() {
+copy() {
     if [ -f "$1" ]; then
         cp "$1" "$2"
-    else
-        rm -f "$2"
+    fi
+}
+
+remove(){
+    if [ -f "$1" ]; then
+       rm -f "$1"
     fi
 }
 
 setup () {
     # Perform setup routines here.
-    smarter_copy /etc/sysconfig/docker-storage-setup /etc/sysconfig/docker-storage-setup.atomic-tests-backup
+    copy /etc/sysconfig/docker-storage-setup /etc/sysconfig/docker-storage-setup.atomic-tests-backup
     TEST_DEV_1=/dev/vdb
     MNT=$(mount | awk '$1 ~/vdb/' | awk '{print $3}')
     if [ ${MNT} ]; then
@@ -45,7 +47,8 @@ teardown () {
     # Cleanup your test data.
     set -e
     wipefs -a "$TEST_DEV_1"
-    smarter_copy /etc/sysconfig/docker-storage-setup.atomic-tests-backup /etc/sysconfig/docker-storage-setup
+    copy /etc/sysconfig/docker-storage-setup.atomic-tests-backup /etc/sysconfig/docker-storage-setup
+    remove /etc/sysconfig/docker-storage-setup.atomic-tests-backup
 }
 
 setup
