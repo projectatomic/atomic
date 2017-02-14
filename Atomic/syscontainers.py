@@ -1287,7 +1287,9 @@ class SystemContainers(object):
         if "ostree:" in img:
             imagebranch = img.replace("ostree:", "")
         else: # assume "oci:" image
-            imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(img.replace("sha256:", "")))
+            if img.startswith("sha256:"):
+                img = img.replace("sha256:", "", 1)
+            imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(img))
         return imagebranch
 
     def has_image(self, img):
