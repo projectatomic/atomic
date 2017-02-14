@@ -254,8 +254,9 @@ class Images(Atomic):
             if var == "image":
                 var = "id"
 
-            if var not in filterables: # Default to allowing all images through for non-existing filterable
-                continue
+            if var not in filterables:
+                raise ValueError("The filter {} is not valid.  "
+                                 "Please choose from {}".format(var, filterables))
             if var == "type":
                 var = "str_backend"
             if getattr(image_obj, var, None).lower() != value.lower():
