@@ -90,7 +90,7 @@ class TestAtomicUtil(unittest.TestCase):
     @unittest.skipUnless(new_enough, "Requires 2.7.6 or newer")
     def test_valid_uri(self):
         valid_uris = ['example.com', 'example.com:5000', 'example.US.com', 'example.com/image/name:version1', 'example.com:5000/foo/bar/image:tag', 'example_inc.com']
-        invalid_uris = ['example.com/Image/name', 'example.com/image(name):latest', 'example.com/foo_bar', 'example.com:5000:8888', 'example.com:foo', 'example[us].com', 'example.com#foo/bar']
+        invalid_uris = ['example.com/Image/name', 'example.com/image(name):latest', 'example.com/foo_bar', 'example[us].com', 'example.com#foo/bar']
         for uri in valid_uris:
             self.assertTrue(util.is_valid_image_uri(uri))
 

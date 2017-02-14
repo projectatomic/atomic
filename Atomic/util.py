@@ -750,7 +750,7 @@ def is_valid_image_uri(uri, qualifying=None):
     # does it parse?
     token = urlparse("http://" + uri, allow_fragments=False)
     # check registry component
-    registry_pattern = re.compile(r'^[a-zA-Z0-9-_\.]+:?([0-9]*)?$')
+    registry_pattern = re.compile(r'^[a-zA-Z0-9-_\.]+\/?:?[0-9]*[a-z0-9-\/:]*$')
     if not re.search(registry_pattern, token.netloc):
         raise ValueError("Invalid registry format")
     # check repository component
