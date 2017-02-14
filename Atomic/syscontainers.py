@@ -321,7 +321,7 @@ class SystemContainers(object):
             return None
 
         tagged_images = [i for i in self.get_system_images(get_all=True, repo=repo) if i['RepoTags']]
-        matches = [i for i in tagged_images if i['Id'].startswith(img)]
+        matches = [i for i in tagged_images if i['ImageId'].startswith(img)]
 
         if len(matches) == 0:
             return None
@@ -509,9 +509,10 @@ class SystemContainers(object):
         if image_manifest:
             image_manifest = json.loads(image_manifest)
             if 'Digest' in image_manifest:
-                image_id = image_manifest['Digest'].replace("sha256:", "")
+                image_id = image_manifest['Digest']
             if 'config' in image_manifest and 'digest' in image_manifest['config']:
-                image_id = image_manifest['config']['digest'].replace("sha256:", "")
+                image_id = image_manifest['config']['digest']
+            image_id = SystemContainers._drop_sha256_prefix(image_id)
 
         with open(os.path.join(destination, "info"), 'w') as info_file:
             info = {"image" : img,
@@ -820,34 +821,41 @@ class SystemContainers(object):
             _, commit_rev = imgs[0]
         commit = repo.load_commit(commit_rev)[1]
 
-        branch_id = SystemContainers._decode_from_ostree_ref(imagebranch.replace(OSTREE_OCIIMAGE_PREFIX, ""))
-        tag = ":".join(branch_id.rsplit(':', 1))
         timestamp = OSTree.commit_get_timestamp(commit)
-        labels = {}
+        branch_id = SystemContainers._decode_from_ostree_ref(imagebranch.replace(OSTREE_OCIIMAGE_PREFIX, ""))
 
-        manifest = self._image_manifest(repo, commit_rev)
+        image_id = commit_rev
+        id_ = None
+
         if len(branch_id) == 64:
             image_id = branch_id
             tag = "<none>"
+        elif '@sha256:' in branch_id:
+            id_ = branch_id
+            tags = branch_id.rsplit('@sha256:', 1)
+            tag = ":".join(tags)
         else:
-            image_id = commit_rev
+            tag = ":".join(branch_id.rsplit(':', 1))
 
+        labels = {}
+        manifest = self._image_manifest(repo, commit_rev)
         if manifest:
             manifest = json.loads(manifest)
             if 'Labels' in manifest:
                 labels = manifest['Labels']
 
             if 'config' in manifest:
-                image_id = manifest['config']['digest'].replace("sha256:", "")
+                image_id = manifest['config']['digest']
             if 'Digest' in manifest:
-                image_id = manifest['Digest'].replace("sha256:", "")
+                image_id = manifest['Digest']
+            image_id = SystemContainers._drop_sha256_prefix(image_id)
 
         if self.user:
             image_type = "user"
         else:
             image_type = "system"
 
-        return {'Id' : image_id, 'Version' : tag, 'ImageId' : image_id, 'RepoTags' : [tag], 'Names' : [],
+        return {'Id' : id_ or image_id, 'Version' : tag, 'ImageId' : image_id, 'RepoTags' : [tag], 'Names' : [],
                 'Created': timestamp, 'ImageType' : image_type, 'Labels' : labels, 'OSTree-rev' : commit_rev}
 
     def get_system_images(self, get_all=False, repo=None):
@@ -1285,12 +1293,17 @@ class SystemContainers(object):
             return name
 
     @staticmethod
+    def _drop_sha256_prefix(img):
+        if img.startswith("sha256:"):
+            img = img.replace("sha256:", "", 1)
+        return img
+
+    @staticmethod
     def _get_ostree_image_branch(img):
         if "ostree:" in img:
             imagebranch = img.replace("ostree:", "")
         else: # assume "oci:" image
-            if img.startswith("sha256:"):
-                img = img.replace("sha256:", "", 1)
+            img = SystemContainers._drop_sha256_prefix(img)
             imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(img))
         return imagebranch
 
