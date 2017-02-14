@@ -1032,9 +1032,9 @@ class SystemContainers(object):
         with AtomicDocker() as client:
             fqn_image = util.find_remote_image(client, image) or image
             if insecure:
-                return ["--insecure", "--raw"], "docker://" + fqn_image
+                return ["--insecure"], "docker://" + fqn_image
             else:
-                return ["--raw"], "docker://" + fqn_image
+                return None, "docker://" + fqn_image
 
     def _skopeo_get_manifest(self, image):
         args, img = self._convert_to_skopeo(image)

@@ -285,7 +285,7 @@ ${ATOMIC} verify --storage ostree busybox > verify.out
 assert_not_matches "contains images or layers that have updates" verify.out
 
 image_digest=$(ostree --repo=${ATOMIC_OSTREE_REPO} show --print-metadata-key=docker.manifest ociimage/busybox_3Alatest | \
-                   $PYTHON -c 'import json, sys; print(json.loads(sys.stdin.read().strip()[1:-1])["config"]["digest"].replace("sha256:", "")[:12])')
+                   $PYTHON -c 'import json, sys; print(json.loads(sys.stdin.read().strip()[1:-1])["Digest"].replace("sha256:", "")[:12])')
 ${ATOMIC} images list > images.out
 grep "busybox.*$image_digest" images.out
 
