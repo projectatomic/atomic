@@ -342,8 +342,13 @@ class SystemContainers(object):
 
         # only one image, use it
         def get_image(i):
-            imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(i['RepoTags'][0]))
+            repotag = i['RepoTags'][0]
+            if repotag == '<none>':
+                imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, i['Id'])
+            else:
+                imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(repotag))
             return imagebranch, i['OSTree-rev']
+
         return [get_image(i) for i in matches]
 
     def _do_checkout(self, repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote):
