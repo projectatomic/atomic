@@ -12,6 +12,7 @@ from dateutil.parser import parse as dateparse
 from Atomic import Atomic
 import os
 from requests.exceptions import HTTPError
+from Atomic.backends._docker_errors import NoDockerDaemon
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -28,7 +29,7 @@ class DockerBackend(Backend):
         try:
             _ = self.d
             return True
-        except util.NoDockerDaemon:
+        except NoDockerDaemon:
             return False
 
     @property
@@ -316,7 +317,7 @@ class DockerBackend(Backend):
         try:
             self.d.ping()
         except exceptions.ConnectionError:
-            raise util.NoDockerDaemon()
+            raise NoDockerDaemon()
 
     def delete_image(self, image, force=False):
         assert(image is not None)

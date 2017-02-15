@@ -6,7 +6,8 @@ import os
 from . import util
 from .Export import export_docker
 from .Import import import_docker
-from .util import NoDockerDaemon, default_docker_lib
+from .util import default_docker_lib
+from Atomic.backends._docker_errors import NoDockerDaemon
 import subprocess
 
 try:

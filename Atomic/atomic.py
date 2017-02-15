@@ -9,7 +9,7 @@ import requests
 
 from . import util
 import re
-from .util import NoDockerDaemon, DockerObjectNotFound
+from Atomic.backends._docker_errors import NoDockerDaemon, DockerObjectNotFound
 from docker.errors import NotFound
 from .discovery import RegistryInspect, RegistryInspectError
 

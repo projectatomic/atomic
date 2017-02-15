@@ -9,7 +9,7 @@ import select
 from os import isatty
 from operator import itemgetter
 import requests
-from .util import NoDockerDaemon
+from Atomic.backends._docker_errors import NoDockerDaemon
 
 def check_negative(value):
     ivalue = int(value)

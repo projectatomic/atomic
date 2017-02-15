@@ -1,17 +1,22 @@
 import docker
-from docker.utils import kwargs_from_env
 import sys
 import requests
+from Atomic.backends._docker_errors import NoDockerDaemon
 
 def get_docker_client():
     """
     Universal method to use docker.client()
     """
+    kwargs = {"version": "auto"}
+    kwargs.update(docker.utils.kwargs_from_env(assert_hostname=False))
     try:
-        return docker.AutoVersionClient(**kwargs_from_env())
-
+        client = docker.APIClient #pylint: disable=no-member
+    except AttributeError:
+        client = docker.Client #pylint: disable=no-member
+    try:
+        return client(**kwargs)
     except docker.errors.DockerException:
-        return docker.Client(**kwargs_from_env())
+        raise NoDockerDaemon()
 
 def check_if_python2():
     if int(sys.version_info[0]) < 3:
@@ -51,7 +56,10 @@ class AtomicDocker():
         if name == "_dockerclient" or name == "_client":
             return object.__getattribute__(self, name)
         obj = self._dockerclient
-        attr = docker.AutoVersionClient.__getattribute__(obj, name)
+        try:
+            attr = docker.Client.__getattribute__(obj, name) #pylint: disable=no-member
+        except AttributeError:
+            attr = docker.APIClient.__getattribute__(obj, name) #pylint: disable=no-member
         if hasattr(attr, '__call__'):
             def newfunc(*args, **kwargs):
                 try:

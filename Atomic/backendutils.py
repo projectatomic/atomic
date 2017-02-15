@@ -1,4 +1,5 @@
 from Atomic.backends._docker import DockerBackend
+from Atomic.backends._docker_errors import NoDockerDaemon
 from Atomic.backends._ostree import OSTreeBackend
 from Atomic.util import write_out, get_atomic_config
 
@@ -19,9 +20,12 @@ class BackendUtils(object):
     def _set_available_backends(self):
         bes = []
         for x in self.BACKENDS:
-            be = x()
-            if be.available:
-                bes.append(x)
+            try:
+                be = x()
+                if be.available:
+                    bes.append(x)
+            except NoDockerDaemon:
+                pass
         if len(bes) < 1:
             raise ValueError("No backends are enabled for Atomic.")
         return bes

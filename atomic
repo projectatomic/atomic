@@ -52,7 +52,8 @@ from Atomic import update
 from Atomic import verify
 from Atomic.mount import MountError
 from Atomic import images
-from Atomic.util import write_err, NoDockerDaemon
+from Atomic.util import write_err
+from Atomic.backends._docker_errors import NoDockerDaemon
 
 PROGNAME = "atomic"
 gettext.bindtextdomain(PROGNAME, "/usr/share/locale")

@@ -364,14 +364,6 @@ def skopeo_copy(source, destination, debug=False, sign_by=None, insecure=False, 
     return check_call(cmd)
 
 
-class NoDockerDaemon(Exception):
-    def __init__(self):
-        super(NoDockerDaemon, self).__init__("The docker daemon does not appear to be running.")
-
-
-class DockerObjectNotFound(ValueError):
-    def __init__(self, msg):
-        super(DockerObjectNotFound, self).__init__("Unable to associate '{}' with an image or container".format(msg))
 
 def get_atomic_config(atomic_config=None):
     """

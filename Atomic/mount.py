@@ -29,7 +29,7 @@ import time
 import docker
 from . import util
 import requests
-from .util import NoDockerDaemon
+from Atomic.backends._docker_errors import NoDockerDaemon
 import shutil
 from .syscontainers import OSTREE_PRESENT as OSTREE_PRESENT
 from gi.repository import GLib  # pylint: disable=no-name-in-module
