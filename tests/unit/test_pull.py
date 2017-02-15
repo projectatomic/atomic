@@ -54,7 +54,7 @@ class TestAtomicPullByDigest(unittest.TestCase):
         img_obj.populate_remote_inspect_info()
         db.make_remote_image = MagicMock(return_value=img_obj)
         db.has_image = MagicMock(return_value=None)
-        util.skopeo_inspect = MagicMock(return_value=[])
+        util.skopeo_inspect = MagicMock(return_value=remote_inspect_info)
         args = self.Args()
         args.image = image_name
         args.storage = 'docker'
