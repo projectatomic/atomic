@@ -5,15 +5,22 @@ NO_TEST=${NO_TEST:-}
 mount --make-rshared /
 
 
-if [ -f /run/ostree-booted ]; then
+if [ -f /run/ostree-booted ] && grep -q ID=fedora /etc/os-release; then
     if [ ! -e /var/tmp/ostree-unlock-ovl.* ]; then
         ostree admin unlock
+    fi
+elif [ -f /run/ostree-booted ]; then
+    # Until overlayfs and selinux get along, use remount
+    # instead of ostree admin unlock
+    if [ ! -w /usr ]; then
+	mount -o remount,rw /usr
     fi
 else
     dnf install -y atomic python3-coverage
 fi
 
-systemctl start docker
+# Restarting docker helps with permissions related to above.
+systemctl restart docker
 
 # somewhat mimic the spec conditional
 source /etc/os-release
