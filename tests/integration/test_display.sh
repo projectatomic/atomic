@@ -69,3 +69,14 @@ if [[ ${OUTPUT} != ${OUTPUT2} ]]; then
     echo "Failed ${TNAME} 7"
     exit 1
 fi
+
+# Test for regression on atomic stop
+CID=`docker run -d atomic-test-6 sleep 100`
+OUTPUT=`${ATOMIC} stop --display ${CID}`
+OUTPUT2="docker stop ${CID}"
+docker stop ${CID}
+
+if [[ ${OUTPUT} != ${OUTPUT2} ]]; then
+    echo "Failed ${TNAME} 8"
+    exit 1
+fi

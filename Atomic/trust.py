@@ -80,6 +80,13 @@ def cli(subparser):
     resetp = subparsers.add_parser("reset", help="Reset trust policy")
     resetp.set_defaults(_class=Trust, func="reset")
 
+class Args():
+    def __init__(self):
+        self.debug = None
+        self.assumeyes = None
+        self.pubkeysfile = None
+
+
 class Trust(Atomic):
     def __init__(self, policy_filename="/etc/containers/policy.json"):
         """
@@ -88,11 +95,6 @@ class Trust(Atomic):
         super(Trust, self).__init__()
         self.policy_filename = os.environ.get('TRUST_POLICY', policy_filename)
         self.atomic_config = util.get_atomic_config()
-        class Args():
-            def __init__(self):
-                self.debug = None
-                self.assumeyes = None
-                self.pubkeysfile = None
         self.set_args(Args())
 
     def add(self, registry=None, pubkeys=None, pubkeysfile=None, sigstore=None, sigstoretype=None, keytype=None, trust_type=None):

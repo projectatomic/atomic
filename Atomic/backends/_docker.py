@@ -168,7 +168,12 @@ class DockerBackend(Backend):
         except KeyError:
             con_obj.command = con_struct['Config']['Cmd']
 
-        con_obj.state = con_struct.get('State', None) or con_struct.get['State'].get('Status', None)
+        try:
+            con_obj.state = con_struct.get('State', None) or con_struct.get['State'].get('Status', None)
+        except TypeError:
+            # Docker 1.10 on F24 has a different structure
+            con_obj.state = con_struct['Status']
+
         if isinstance(con_obj.state, dict):
             con_obj.state = con_obj.state['Status']
         con_obj.running = True if con_obj.state.lower() in ['true', 'running'] else False
@@ -237,7 +242,25 @@ class DockerBackend(Backend):
             raise ValueError("Unable to locate container '{}' in {} backend".format(name, self.backend))
         return self.d.start(name)
 
-    def stop_container(self, con_obj):
+    def stop_container(self, con_obj, **kwargs):
+        atomic = kwargs.get('atomic')
+        args = kwargs.get('args')
+        con_obj.stop_args = con_obj.get_label('stop')
+        if con_obj.stop_args:
+            try:
+                cmd = atomic.gen_cmd(con_obj.stop_args.split() + atomic.quote(args.args))
+            except TypeError:
+                cmd = atomic.gen_cmd(con_obj.stop_args + atomic.quote(args.args))
+            cmd = atomic.sub_env_strings(cmd)
+            atomic.display(cmd)
+            if args.display:
+                return 0
+            # There should be some error handling around this
+            # in case it fails.  And what should then be done?
+            return util.check_call(cmd, env=atomic.cmd_env())
+        elif args.display:
+            return 0
+
         return self.d.stop(con_obj.id)
 
 

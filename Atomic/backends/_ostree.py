@@ -100,7 +100,7 @@ class OSTreeBackend(Backend):
     def start_container(self, name):
         return self.syscontainers.start_service(name)
 
-    def stop_container(self, con_obj):
+    def stop_container(self, con_obj, **kwargs):
         return self.syscontainers.stop_service(con_obj.id)
 
     def get_images(self, get_all=False):

@@ -157,6 +157,12 @@ class Atomic(object):
             if self.system or self.user:
                 self.name = self.syscontainers.get_default_system_name(self.image)
 
+        try:
+            if not self.name and args.container:
+                self.name = args.container
+        except (NameError, AttributeError):
+            pass
+
         self.syscontainers.set_args(self.args)
 
     def _getconfig(self, key, default=None):

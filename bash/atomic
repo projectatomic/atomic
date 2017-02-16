@@ -1138,9 +1138,15 @@ _atomic_unmount() {
 }
 
 _atomic_stop() {
+    local options_with_args="
+		--name -n
+		"
+    local all_options="$options_with_args
+        --display
+        "
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "--name -n" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
 			;;
 		*)
 			__atomic_containers_running

@@ -6,6 +6,7 @@ atomic-stop - Execute container image stop method
 
 # SYNOPSIS
 **atomic stop**
+[**--display**]
 [**-h**|**--help**]
 container [ARG...]
 
@@ -27,6 +28,10 @@ the container is running.
 Any additional arguments will be appended to the command.
 
 # OPTIONS:
+**--display**
+  Display the container's stop options and environment variables populated into the stop command.
+The stop command will not execute if --display is specified.
+If --display is not specified the stop command will execute.
 **-h** **--help**
   Print usage statement
 
