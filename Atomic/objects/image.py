@@ -245,8 +245,8 @@ class Image(object):
         return 'image'
 
     def _get_template_info(self):
-        self._template_variables_set, self._template_variables_unset = self.backend.syscontainers.\
-            get_template_variables(self.image)
+        self._template_variables_set, self._template_variables_unset = \
+            self.backend.syscontainers.get_template_variables(self.image)
 
     @property
     def template_variables_set(self):

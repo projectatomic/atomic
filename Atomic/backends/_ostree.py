@@ -5,6 +5,7 @@ from Atomic.objects.container import Container
 from Atomic.syscontainers import SystemContainers
 from Atomic.objects.layer import Layer
 from json import loads as json_loads
+from Atomic.util import Decompose
 
 class OSTreeBackend(Backend):
 
@@ -56,16 +57,13 @@ class OSTreeBackend(Backend):
         img_obj.config = info
         img_obj.backend = self
         img_obj.id = name
-        img_obj.registry = None
-        img_obj.repo = None
-        img_obj.image = image
-        img_obj.tag = 'latest'
+        img_obj.registry, img_obj.repo, img_obj.image, img_obj.tag, _ = Decompose(image).all
         img_obj.repotags = info['RepoTags']
         img_obj.created = info['Created']
         img_obj.size = None
         img_obj.original_structure = info
         img_obj.deep = True
-        img_obj.labels = info['Labels']
+        img_obj.labels = info.get('Labels', None)
         img_obj.version = img_obj.get_label("Version")
         img_obj.release = img_obj.get_label("Release")
         ostree_manifest = self.syscontainers.get_manifest(image)

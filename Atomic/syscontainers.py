@@ -734,7 +734,7 @@ class SystemContainers(object):
         repo = self._get_ostree_repo()
         imgs = self._resolve_image(repo, image)
         if not imgs:
-            return
+            return None, None
         _, commit_rev = imgs[0]
         manifest = self._image_manifest(repo, commit_rev)
         layers = SystemContainers.get_layers_from_manifest(json.loads(manifest))
