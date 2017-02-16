@@ -98,6 +98,16 @@ E.g. --rootfs="/var/lib/containers". This will mount "container-root-lv"
 on "/var/lib/containers".
 Note: You must set --lvname when setting --rootfs.
 
+**--lvsize**
+Logical volume size for container storage.
+E.g. --lvsize="20%FREE". It defaults to 40% of all free space.
+--lvsize can take values acceptable to "lvcreate -L" as well
+as some values acceptable to "lvcreate -l". If user intends to pass
+values acceptable to "lvcreate -l", then only those values which
+contains "%" in syntax are acceptable.  If value does not contain
+"%" it is assumed value is suitable for "lvcreate -L".
+Note: You must set --lvname and --rootfs when setting --lvsize.
+
 **--vgroup**
 The name of the volume group for the storage pool.
 

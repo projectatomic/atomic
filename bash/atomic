@@ -1289,6 +1289,7 @@ _atomic_storage_modify() {
 		--add-device
 		--rootfs
 		--lvname
+		--lvsize
 	"
 	local all_options="$options_with_args
 		--help

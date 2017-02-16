@@ -66,6 +66,7 @@ def cli(subparser):
     modifyp.add_argument('--rootfs', dest="rootfs", default=None,
                          help='Mountpath where logical volume for container storage would be mounted. e.g. /var/lib/containers')
     modifyp.add_argument('--lvname', dest="lvname", default=None, help='logical volume name for container storage. e.g container-root-lv')
+    modifyp.add_argument('--lvsize', dest="lvsize", default=None, help='logical volume size for container storage.')
     modifyp.add_argument('--driver', dest="driver", default=None, help='The storage backend driver', choices=['devicemapper', 'overlay', 'overlay2'])
     modifyp.add_argument('--vgroup', dest="vgroup", default=None, help='The storage volume group')
     modifyp.add_argument("--graph", dest="graph",
@@ -172,6 +173,13 @@ class Storage(Atomic):
             if self.args.driver:
                 self._driver(self.args.driver)
             if self.args.rootfs and self.args.lvname:
+                if self.args.lvsize:
+                    try:
+                        cmd = 'bash -c ". /usr/lib/docker-storage-setup/libdss.sh; check_data_size_syntax {0}"'.format(self.args.lvsize)
+                        util.check_call(cmd)
+                    except subprocess.CalledProcessError:
+                        raise ValueError("Invalid format for --lvsize")
+                    self._lvsize(self.args.lvsize)
                 self._rootfs(self.args.rootfs)
                 self._lvname(self.args.lvname)
             else:
@@ -254,6 +262,9 @@ class Storage(Atomic):
     def _lvname(self, lvname):
         util.sh_modify_var_in_file(self.dss_conf, "CONTAINER_ROOT_LV_NAME",
                                    lambda old: lvname)
+    def _lvsize(self, lvsize):
+        util.sh_modify_var_in_file(self.dss_conf, "CONTAINER_ROOT_LV_SIZE",
+                                   lambda old: lvsize)
 
     def _vgroup(self, vgroup):
         util.sh_modify_var_in_file(self.dss_conf, "VG",
