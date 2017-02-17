@@ -128,7 +128,21 @@ make_docker_images () {
 
 make_docker_images
 
-# Python unit tests.
+if [ ! -n "${PYTHON+ }" ]; then
+    if hash python3 > /dev/null 2>&1 /dev/null; then
+        PYTHON=$(hash -t python3)
+    elif type python3 > /dev/null 2>&1; then
+        PYTHON=$(type python3 | awk '{print $3}')
+    elif hash python2 > /dev/null 2>&1; then
+        PYTHON=$(hash -t python2)
+    elif type python2 > /dev/null 2>&1; then
+        PYTHON=$(type python2 | awk '{print $3}')
+    else
+        PYTHON='/usr/bin/python'
+    fi
+fi
+
+
 echo "UNIT TESTS:"
 
 COVERAGE_BIN=${COVERAGE_BIN-"/usr/bin/coverage"}
@@ -195,10 +209,13 @@ fi
 
 
 if [ ! -n "${TEST_UNIT+ }" ]; then
-    for tf in `find ./tests/integration/ -name test_*.sh`; do
+    for tf in `find ./tests/integration/ -name test_*`; do
+	bn=$(basename "$tf")
+	extension="${bn##*.}"
 
         if [ -n "${TEST_INTEGRATION+ }" ]; then
-            tfbn=$(basename "$tf" .sh)
+		tfbn="${bn%.*}"
+
             tfbn="${tfbn#test_}"
             if [[ " $TEST_INTEGRATION " != *" $tfbn "* ]]; then
                 continue
@@ -213,7 +230,9 @@ if [ ! -n "${TEST_UNIT+ }" ]; then
 
         printf "Running %-40.40s" "$(basename ${tf})...."
         printf "\n==== ${tf} ====\n" >> ${LOG}
-
+	if [ "${extension}" == "py" ]; then
+	    tf="$PYTHON	${tf}"
+	fi
         if ${tf} &>> ${LOG}; then
             printf "PASS\n";
         else
