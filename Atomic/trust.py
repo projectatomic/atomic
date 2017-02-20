@@ -492,7 +492,7 @@ class Trust(Atomic):
         (keylist, tmpkey) = None, None
         for key in keys:
             if not os.path.exists(key):
-                with tempfile.NamedTemporaryFile(delete=False) as tmpkey:
+                with tempfile.NamedTemporaryFile(delete=False, dir="/run/") as tmpkey:
                     tmpkey.write(b64decode(key))
                 key = tmpkey.name
             cmd = ["gpg2", "--with-colons", key]
