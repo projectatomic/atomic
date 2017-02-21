@@ -16,7 +16,7 @@ RUN dnf install -y \
         python-dbus \
         pylint \
         python-slip-dbus \
-        python-docker-py \
+        python2-docker \
         python2-dateutil \
         PyYAML \
         rpm-python \

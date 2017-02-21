@@ -1,6 +1,6 @@
 requests>=2.4.3
 setuptools
-docker-py
+docker
 websocket-client>=0.11.0
 six>=1.3.0
 xattr
