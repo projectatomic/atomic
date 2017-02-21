@@ -333,11 +333,8 @@ class DockerBackend(Backend):
         # A TypeError is thrown if the force keywords is passed in addition to kwargs
         force = kwargs.get('force', False)
         remote_image_obj = self.make_remote_image(name)
-        try:
-            # pull_image will raise a ValueError if the "latest" image is already present
-            self.pull_image(name, remote_image_obj, debug=debug)
-        except ValueError:
-            return
+        # pull_image will raise a ValueError if the "latest" image is already present
+        self.pull_image(name, remote_image_obj, debug=debug)
         # Only delete containers if a new image is actually pulled.
         img_obj = self.inspect_image(name)
         if force:

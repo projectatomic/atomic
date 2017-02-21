@@ -52,8 +52,7 @@ class Pull(Atomic):
                 remote_image_obj = None
             be.pull_image(self.args.image, remote_image_obj, debug=self.args.debug, assumeyes=self.args.assumeyes)
         except ValueError as e:
-            write_out("Failed: {}".format(e))
-            return 1
+            raise ValueError("Failed: {}".format(e))
         return 0
 
 

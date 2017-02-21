@@ -178,13 +178,15 @@ class atomic_dbus(slip.dbus.service.Object):
     # The ContainersDelete method will delete one or more containers on the system.
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     @dbus.service.method("org.atomic", in_signature='asbbs', out_signature='')
-    def ContainersDelete(self, containers, all_containers, force, storage):
+    def ContainersDelete(self, containers, all_containers=False, force=False, storage=''):
         c = Containers()
         args = self.Args()
+        assert(isinstance(containers, list))
         args.containers = containers
         args.force = force
+        args.assumeyes = True
         args.all = all_containers
-        args.storage = storage
+        args.storage = storage if storage is not '' else None
         c.set_args(args)
         return c.delete()
 
@@ -252,28 +254,33 @@ class atomic_dbus(slip.dbus.service.Object):
 
     # The ImagesPull method will pull the specified image
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='sss', out_signature='')
-    def ImagePull(self, image, storage, reg_type):
+    @dbus.service.method("org.atomic", in_signature='sss', out_signature='i')
+    def ImagePull(self, image, storage='', reg_type=''):
         p = Pull()
         args = self.Args()
         args.image = image
-        args.storage = storage
-        if reg_type != "":
-            args.reg_type = reg_type
+        args.storage = None if storage == '' else storage
+        args.reg_type = None if reg_type == '' else reg_type
         p.set_args(args)
-        return p.pull_image()
+        try:
+            return p.pull_image()
+        except Exception as e:
+            raise dbus.DBusException(str(e))
 
     # The ImagesUpdate method downloads the latest container image.
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='sb', out_signature='')
-    def ImageUpdate(self, image, force):
+    @dbus.service.method("org.atomic", in_signature='sb', out_signature='i')
+    def ImageUpdate(self, image, force=False):
         u = Update()
         args = self.Args()
         args.image = image
         args.name = image
         args.force = force
         u.set_args(args)
-        return u.update()
+        try:
+            return u.update()
+        except Exception as e:
+            raise dbus.DBusException(str(e))
 
     # The Vulnerable method will send back information that says
     # whether or not an installed container image is vulnerable
@@ -332,16 +339,20 @@ class atomic_dbus(slip.dbus.service.Object):
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     # Return a 0 or 1 for success.  Errors result in exceptions.
     @dbus.service.method("org.atomic", in_signature='ssbbas', out_signature='i')
-    def Run(self, image, name, spc, detach, command):
+    def Run(self, image, name='', spc=False, detach=False, command=''):
         r = Run()
         args = self.Args()
         args.image = image
-        args.name = name
+        args.name = name if name is not '' else None
         args.spc = spc
         args.detach = detach
-        args.command = command
+        args.command = command if command is not '' else []
         r.set_args(args)
-        return r.run()
+        try:
+            return r.run()
+        except ValueError as e:
+            raise dbus.DBusException(str(e))
+
 
     # atomic scan section
     # The ScanList method will return a list of all scanners.

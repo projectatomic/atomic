@@ -43,3 +43,4 @@ class Update(Atomic):
         except ValueError:
             raise ValueError("{} not found locally.  Unable to update".format(self.image))
         be.update(input_name, self.args)
+        return 0
