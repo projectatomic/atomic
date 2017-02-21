@@ -28,6 +28,9 @@ remove(){
     fi
 }
 
+lvname="container-root-lv"
+rootfs="/var/lib/containers"
+
 setup () {
     # Perform setup routines here.
     copy /etc/sysconfig/docker-storage-setup /etc/sysconfig/docker-storage-setup.atomic-tests-backup
@@ -45,10 +48,19 @@ setup () {
 
 teardown () {
     # Cleanup your test data.
+    local mnt
     set -e
     wipefs -a "$TEST_DEV_1"
     copy /etc/sysconfig/docker-storage-setup.atomic-tests-backup /etc/sysconfig/docker-storage-setup
     remove /etc/sysconfig/docker-storage-setup.atomic-tests-backup
+    local vgname=$(echo "$VGROUP"|sed 's/ //g')
+    set +e
+    mnt=$(findmnt -n -o TARGET --first-only --source /dev/${vgname}/${lvname})
+    if [ -n "$mnt" ];then
+       umount $mnt
+    fi
+    echo 'y'|lvremove /dev/${vgname}/${lvname}> /dev/null 2>&1
+    set -e
 }
 
 setup
@@ -116,4 +128,40 @@ EOF
     set -e
     echo $OUTPUT | grep -q "Not part of the storage pool: /dev/nonexisting"
 
+    # Test atomic storage modify: --lvname, --lvsize and --rootfs options.
+
+    ${ATOMIC} storage modify --lvname "$lvname" --lvsize "20%FREE" --rootfs "$rootfs"
+    grep -q "^CONTAINER_ROOT_LV_NAME=\"$lvname\"$" /etc/sysconfig/docker-storage-setup
+    grep -q "^CONTAINER_ROOT_LV_MOUNT_PATH=\"$rootfs\"$" /etc/sysconfig/docker-storage-setup
+    grep -q "^CONTAINER_ROOT_LV_SIZE=\"20%FREE\"$" /etc/sysconfig/docker-storage-setup
+
+    # atomic storage modify --lvname should throw error if passed without --rootfs.
+
+    set +e
+    OUTPUT=$(${ATOMIC} storage modify --lvname "$lvname" 2>&1)
+    if [[ $? -eq 0 ]]; then
+        exit 1
+    fi
+    set -e
+    echo $OUTPUT | grep -q "You must specify --rootfs when using --lvname"
+
+    # atomic storage modify --rootfs should throw error if passed without --lvname.
+
+    set +e
+    OUTPUT=$(${ATOMIC} storage modify --rootfs "$rootfs" 2>&1)
+    if [[ $? -eq 0 ]]; then
+        exit 1
+    fi
+    set -e
+    echo $OUTPUT | grep -q "You must specify --lvname when using --rootfs"
+
+    # Test atomic storage modify: --lvsize option with invalid value/format.
+
+    set +e
+    OUTPUT=$(${ATOMIC} storage modify --lvname "$lvname" --rootfs "$rootfs" --lvsize="free" 2>&1)
+    if [[ $? -eq 0 ]]; then
+        exit 1
+    fi
+    set -e
+    echo $OUTPUT | grep -q "Invalid format for --lvsize"
 fi
