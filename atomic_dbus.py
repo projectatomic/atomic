@@ -348,9 +348,9 @@ class atomic_dbus(slip.dbus.service.Object):
     # atomic install section
     # The Install method will install the specified image
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='ssbbsbas', out_signature='')
+    @dbus.service.method("org.atomic", in_signature='ssbbsbas', out_signature='i')
     def Install(self, image, name='', system=False, remote=False, storage='', user=False, setvalues=''):
-        if setvalues is None:
+        if not setvalues:
             setvalues = []
         assert(isinstance(setvalues, list))
         i = Install()
@@ -644,14 +644,14 @@ class atomic_dbus(slip.dbus.service.Object):
     # atomic uninstall section
     # The Uninstall method will uninstall the specified image
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='ssbsas', out_signature='')
-    def Uninstall(self, image, name=None, force=False, storage=None, extra_args=None):
+    @dbus.service.method("org.atomic", in_signature='ssbsas', out_signature='i')
+    def Uninstall(self, image, name, force, storage, extra_args):
         i = Uninstall()
         args = self.Args()
         args.image = image
-        args.name = name
+        args.name = name if name is not '' else None
         args.force = force
-        args.storage = storage
+        args.storage = storage if storage is not '' else None
         args.extra_args = [] if not extra_args else extra_args
         i.set_args(args)
         return i.uninstall()

@@ -94,7 +94,6 @@ class TestDBus():
         except dbus.DBusException:
             pass
 
-
     @integration_test
     def test_pull_already_present(self):
         try:
@@ -102,6 +101,7 @@ class TestDBus():
             raise ValueError("This should have resulted in an exception")
         except dbus.DBusException:
             pass
+
     @integration_test
     def test_run(self):
         self.dbus_object.Run('atomic-test-3', name='atomic-dbus-3')
@@ -115,7 +115,6 @@ class TestDBus():
         self.dbus_object.ContainersDelete([self.cid])
         TestDBus.remove_cleanup_cmd('docker rm {}'.format(self.cid))
 
-
     @integration_test
     def test_container_delete_nonexistent(self):
         try:
@@ -125,13 +124,40 @@ class TestDBus():
             pass
 
     @integration_test
+    def test_install(self):
+        # Setup
+        TestDBus.run_cmd('docker run atomic-test-3')
+        t_cid = TestDBus.run_cmd('docker ps -aq -l').decode('utf-8').rstrip()
+        TestDBus.run_cmd('docker commit {} dbus-test-3'.format(t_cid))
+        TestDBus.run_cmd('docker rm {}'.format(t_cid))
+
+        results = self.dbus_object.Install('dbus-test-3', name='atomic-dbus-3')
+        self.cid = TestDBus.run_cmd('docker ps -aq -l').decode('utf-8').rstrip()
+        TestDBus.add_cleanup_cmd('docker rm {}'.format(self.cid))
+        TestDBus.add_cleanup_cmd('docker rmi atomic-dbus-3')
+        assert(results == 0)
+
+    @integration_test
+    def test_uninstall(self):
+        results = self.dbus_object.Uninstall('dbus-test-3', '', True, '', '')
+        TestDBus.remove_cleanup_cmd('docker rm {}'.format(self.cid))
+        TestDBus.remove_cleanup_cmd('docker rmi atomic-dbus-3')
+        try:
+            # The container should have been deleted on uninstall
+            TestDBus.run_cmd('docker inspect {}'.format(self.cid))
+            raise ValueError("Expected an exception to be raised and was not.")
+        except Exception:
+            pass
+        assert(results == 0)
+
+    @integration_test
     def test_push(self):
         TestDBus.run_cmd('docker pull docker.io/alpine:latest')
         TestDBus.run_cmd('docker tag docker.io/alpine:latest localhost:5000/alpine:latest')
-        TestDBus.run_cmd('docker run -d -p 5000:5000 --restart=always --name registry docker.io/registry:2')
+        TestDBus.run_cmd('docker run -d -p 5000:5000 --restart=always --name registry docker.io/library/registry:2')
         registry_cid = TestDBus.run_cmd('docker ps -aq -l').decode('utf-8').rstrip()
         TestDBus.add_cleanup_cmd('docker rm -f {}'.format(registry_cid))
-        TestDBus.add_cleanup_cmd('docker rmi docker.io/registry:2')
+        TestDBus.add_cleanup_cmd('docker rmi docker.io/library/registry:2')
         TestDBus.add_cleanup_cmd('docker rmi docker.io/alpine:latest')
         TestDBus.add_cleanup_cmd('docker rmi localhost:5000/alpine:latest')
         results = self.dbus_object.ImagePush("localhost:5000/alpine:latest", False, False, False, "", "foo", "bar", "", "", "", "", "")
