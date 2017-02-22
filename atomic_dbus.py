@@ -19,6 +19,7 @@ from Atomic.install import Install
 from Atomic.mount import Mount
 from Atomic.images import Images
 from Atomic.pull import Pull
+from Atomic.push import Push, REGISTRY_TYPE_CHOICES
 from Atomic.run import Run
 from Atomic.scan import Scan
 from Atomic.sign import Sign
@@ -29,6 +30,7 @@ from Atomic.trust import Trust
 from Atomic.update import Update
 from Atomic.uninstall import Uninstall
 from Atomic.verify import Verify
+from Atomic.util import Decompose
 from Atomic import util
 from gi.repository import GLib
 
@@ -40,6 +42,7 @@ class atomic_dbus(slip.dbus.service.Object):
 
     class Args():
         def __init__(self):
+            self.activation_key = None
             self.all = False
             self.args = []
             self.assumeyes = True
@@ -78,10 +81,12 @@ class atomic_dbus(slip.dbus.service.Object):
             self.optional = None
             self.options = None
             self.os = None
+            self.password = None
             self.pretty = False
             self.preview = False
             self.prune = False
             self.pubkeys = []
+            self.pulp = False
             self.quiet = True
             self.raw = False
             self.rebase=False
@@ -92,9 +97,11 @@ class atomic_dbus(slip.dbus.service.Object):
             self.reg_type = None
             self.registry = None
             self.remote = False
+            self.repo_id = None
             self.revision = None
             self.rootfs = []
             self.rpms = False
+            self.satellite = False
             self.save = False
             self.scan_id = None
             self.scan_targets = []
@@ -112,8 +119,11 @@ class atomic_dbus(slip.dbus.service.Object):
             self.system = False
             self.truncate = False
             self.trust_type = None
+            self.url = None
             self.user = None
+            self.username = None
             self.verbose = False
+            self.verify_ssl = False
 
     def __init__(self, *p, **k):
         super(atomic_dbus, self).__init__(*p, **k)
@@ -264,6 +274,50 @@ class atomic_dbus(slip.dbus.service.Object):
         p.set_args(args)
         try:
             return p.pull_image()
+        except Exception as e:
+            raise dbus.DBusException(str(e))
+
+    # The ImagePush method will push the specific image to a registry
+    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
+    @dbus.service.method("org.atomic", in_signature='sbbbssssssss', out_signature='i')
+    def ImagePush(self, image, pulp, satellite, verify_ssl, url, username, password,
+                  activation_key, repo_id, registry_type, sign_by, gnupghome):
+        p = Push()
+        args = self.Args()
+        args.image = image
+        args.pulp = pulp
+        args.satellite = satellite
+        args.verify_ssl = verify_ssl
+        args.url = None if not url else url
+        args.username = None if not username else username
+        args.password = None if not password else password
+        args.activation_key = activation_key
+        args.repo_id = repo_id
+        registry = Decompose(image).registry
+        if registry not in self.atomic.load_local_tokens() and not args.username or not args.password:
+            raise dbus.DBusException("There is no local token and no username/password were provided.  Please try "
+                                     "again with a username and password")
+        if args.satellite or args.pulp:
+            if not args.username or args.password:
+                raise dbus.DBusException("No username or password was provided for satellite or pulp.  Please try "
+                                         "again with a username and password")
+            if not args.url:
+                raise dbus.DBusException("No URL was provided for satellite or pulp.  Please try again "
+                                         "with a defined URL.")
+
+        if not registry_type:
+            args.reg_type = 'docker'
+        else:
+            args.reg_type = registry_type
+        if args.reg_type not in REGISTRY_TYPE_CHOICES:
+            raise dbus.DBusException("Registry type must be one of '{}'.".format(REGISTRY_TYPE_CHOICES))
+        args.sign_by = None if not sign_by else sign_by
+        args.gnupghome = None if not gnupghome else gnupghome
+        p.set_args(args)
+        try:
+            return p.push()
+
+
         except Exception as e:
             raise dbus.DBusException(str(e))
 

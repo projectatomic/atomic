@@ -10,6 +10,7 @@ except ImportError:
     from atomic import Atomic # pylint: disable=relative-import
 
 ATOMIC_CONFIG = util.get_atomic_config()
+REGISTRY_TYPE_CHOICES = ['docker', 'atomic']
 
 def cli(subparser):
     signer = ATOMIC_CONFIG.get('default_signer', None)
@@ -56,7 +57,7 @@ def cli(subparser):
                          dest="repo_id",
                          help=_("Repository ID"))
     pushp.add_argument("-t", "--type", dest="reg_type", default="docker",
-                       choices=['docker', 'atomic'],
+                       choices=REGISTRY_TYPE_CHOICES,
                        help=_("Registry type"))
     pushp.add_argument("--sign-by", dest="sign_by", default=signer,
                        help=_("Name of the signing key. Currently %s, "
@@ -193,3 +194,4 @@ class Push(Atomic):
                 raise ValueError("Pushing {} failed.".format(self.image))
             if self.args.debug:
                 util.write_out("Pushed: {}".format(self.image))
+            return 0

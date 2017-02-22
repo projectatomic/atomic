@@ -60,6 +60,7 @@ class TestDBus():
 
     # Add this decorator to define the method as something that should be
     # tested
+
     @integration_test
     def test_scan_list(self):
         results = self.dbus_object.ScanList()
@@ -123,8 +124,50 @@ class TestDBus():
         except dbus.DBusException:
             pass
 
+    @integration_test
+    def test_push(self):
+        TestDBus.run_cmd('docker pull docker.io/alpine:latest')
+        TestDBus.run_cmd('docker tag docker.io/alpine:latest localhost:5000/alpine:latest')
+        TestDBus.run_cmd('docker run -d -p 5000:5000 --restart=always --name registry docker.io/registry:2')
+        registry_cid = TestDBus.run_cmd('docker ps -aq -l').decode('utf-8').rstrip()
+        TestDBus.add_cleanup_cmd('docker rm -f {}'.format(registry_cid))
+        TestDBus.add_cleanup_cmd('docker rmi docker.io/registry:2')
+        TestDBus.add_cleanup_cmd('docker rmi docker.io/alpine:latest')
+        TestDBus.add_cleanup_cmd('docker rmi localhost:5000/alpine:latest')
+        results = self.dbus_object.ImagePush("localhost:5000/alpine:latest", False, False, False, "", "foo", "bar", "", "", "", "", "")
+        assert(results == 0)
 
+    @integration_test
+    def test_push_no_password(self):
+        try:
+            self.dbus_object.ImagePush("localhost:5000/alpine:latest", False, False, False, "", "foo", "", "", "", "", "", "")
+            raise ValueError("Expected an exception to be raised and was not.")
+        except dbus.DBusException:
+            pass
 
+    @integration_test
+    def test_push_no_username(self):
+        try:
+            self.dbus_object.ImagePush("localhost:5000/alpine:latest", False, False, False, "", "", "", "", "", "", "", "")
+            raise ValueError("Expected an exception to be raised and was not.")
+        except dbus.DBusException:
+            pass
+
+    @integration_test
+    def test_push_pulp_no_username(self):
+        try:
+            self.dbus_object.ImagePush("localhost:5000/alpine:latest", True, False, False, "url", "", "", "", "", "", "", "")
+            raise ValueError("Expected an exception to be raised and was not.")
+        except dbus.DBusException:
+            pass
+
+    @integration_test
+    def test_push_pulp_no_url(self):
+        try:
+            self.dbus_object.ImagePush("localhost:5000/alpine:latest", True, False, False, "", "foo", "bar", "", "", "", "", "")
+            raise ValueError("Expected an exception to be raised and was not.")
+        except dbus.DBusException:
+            pass
 if __name__ == '__main__':
 
     #tb = TestDBus()
