@@ -258,6 +258,7 @@ class Containers(Atomic):
                 del_con.backend.delete_container(del_con.id, force=self.args.force)
             except APIError as e:
                 util.write_err("Failed to delete container {}: {}".format(con.id, e))
+        return 0
 
     def _mark_vulnerable(self, containers):
         assert isinstance(containers, list)

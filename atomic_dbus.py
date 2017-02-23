@@ -187,7 +187,7 @@ class atomic_dbus(slip.dbus.service.Object):
     # atomic containers section
     # The ContainersDelete method will delete one or more containers on the system.
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='asbbs', out_signature='')
+    @dbus.service.method("org.atomic", in_signature='asbbs', out_signature='i')
     def ContainersDelete(self, containers, all_containers=False, force=False, storage=''):
         c = Containers()
         args = self.Args()
@@ -524,7 +524,7 @@ class atomic_dbus(slip.dbus.service.Object):
     # atomic stop section
     # The Stop method will stop the specified image
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='s', out_signature='')
+    @dbus.service.method("org.atomic", in_signature='s', out_signature='i')
     def Stop(self, name):
         i = Stop()
         args = self.Args()

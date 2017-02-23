@@ -35,6 +35,7 @@ class TestDBus():
         self.bus = dbus.SystemBus()
         self.dbus_object = self.bus.get_object("org.atomic", "/org/atomic/object")
         self.cid = None
+        self.registry_cid = None
 
     @staticmethod
     def run_cmd(cmd):
@@ -155,8 +156,8 @@ class TestDBus():
         TestDBus.run_cmd('docker pull docker.io/alpine:latest')
         TestDBus.run_cmd('docker tag docker.io/alpine:latest localhost:5000/alpine:latest')
         TestDBus.run_cmd('docker run -d -p 5000:5000 --restart=always --name registry docker.io/library/registry:2')
-        registry_cid = TestDBus.run_cmd('docker ps -aq -l').decode('utf-8').rstrip()
-        TestDBus.add_cleanup_cmd('docker rm -f {}'.format(registry_cid))
+        self.registry_cid = TestDBus.run_cmd('docker ps -aq -l').decode('utf-8').rstrip()
+        TestDBus.add_cleanup_cmd('docker rm -f {}'.format(self.registry_cid))
         TestDBus.add_cleanup_cmd('docker rmi docker.io/library/registry:2')
         TestDBus.add_cleanup_cmd('docker rmi docker.io/alpine:latest')
         TestDBus.add_cleanup_cmd('docker rmi localhost:5000/alpine:latest')
@@ -194,11 +195,29 @@ class TestDBus():
             raise ValueError("Expected an exception to be raised and was not.")
         except dbus.DBusException:
             pass
+
+    @integration_test
+    def test_stop(self):
+        results = self.dbus_object.Stop('{}'.format(self.registry_cid))
+        TestDBus.remove_cleanup_cmd('docker rm -f {}'.format(self.registry_cid))
+        TestDBus.add_cleanup_cmd('docker rm {}'.format(self.registry_cid))
+        assert(results == 0)
+
+    @integration_test
+    def test_container_delete(self):
+        results = self.dbus_object.ContainersDelete([self.registry_cid])
+        assert (results == 0)
+        TestDBus.remove_cleanup_cmd('docker rm {}'.format(self.registry_cid))
+
+    @integration_test
+    def test_container_delete_nonexistent(self):
+        try:
+            self.dbus_object.ContainersDelete([self.registry_cid])
+            raise ValueError("Expected an exception to be raised and was not.")
+        except dbus.DBusException:
+            pass
+
 if __name__ == '__main__':
-
-    #tb = TestDBus()
-    #method = getattr(tb, 'test_scan_list')
-
 
     def get_test_methods(_tb):
         """
