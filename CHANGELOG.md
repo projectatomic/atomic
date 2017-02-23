@@ -1,3 +1,15 @@
+## 1.16 (2016-02-22)
+    Fix uninstall bug: BZ 1425495
+    add --lvsize option to atomic storage modify
+    Account for API Changes in docker-py-2
+    Suppress STDOUT of lower level commands e.g. vgreduce, wipefs.
+    Fix Stop Regression: BZ #1422448
+    Enable dbus install, stop.
+    Allow for async scans via dbus
+    syscontainers: allow delete by image id
+    syscontainers: support @sha256: format for image listing
+    Fix FQ Name for SystemContainers
+
 ## 1.15 (2016-01-17)
     update default trust policy file
     Validate reg input to trust add cmd
