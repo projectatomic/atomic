@@ -144,7 +144,7 @@ class Scan(Atomic):
         scan_cmd = self.sub_env_strings(" ".join(scan_cmd))
 
         # Show the command being run
-        if self.useTTY:
+        if self.useTTY and (self.args.verbose or self.args.debug):
             util.write_out(scan_cmd)
 
         # Show stdout from container if --debug or --verbose
