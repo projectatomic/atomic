@@ -149,9 +149,8 @@ class Storage(Atomic):
         try:
             self.d.info()
             raise ValueError("Docker daemon must be stopped before resetting storage")
-        except requests.exceptions.ConnectionError:
+        except (NoDockerDaemon, requests.exceptions.ConnectionError):
             pass
-
         util.check_call(["docker-storage-setup", "--reset"], stdout=DEVNULL)
         util.call(["umount", root + "/devicemapper"], stderr=DEVNULL)
         util.call(["umount", root + "/overlay"], stderr=DEVNULL)
