@@ -22,8 +22,6 @@ def cli(subparser):
                        help=_("Container images to compare"))
     diffp.add_argument("-m", "--metadata", default=False, action='store_true', dest='metadata',
                        help=_("Compare images' metadata"))
-    diffp.add_argument("--json", default=False, action='store_true',
-                       help=_("output json"))
     diffp.add_argument("-k", "--keywords", nargs='?',
                        action='append',
                        choices=['all'] + CHOICES,
@@ -34,8 +32,12 @@ def cli(subparser):
                        action='store_true', help=_("Only compare RPM names and not versions"))
     diffp.add_argument("-r", "--rpms", default=False, action='store_true',
                        help=_("List different rpms between the container images."))
-    diffp.add_argument("-v", "--verbose", default=False, action='store_true',
-                       help=_("Show verbose output, listing all RPMs"))
+    disp_group = diffp.add_mutually_exclusive_group()
+    disp_group.add_argument("--json", default=False, action='store_true',
+                            help=_("output json"))
+    disp_group.add_argument("-v", "--verbose", default=False, action='store_true',
+                            help=_("Show verbose output, listing all RPMs"))
+
 
 
 class Diff(Atomic):

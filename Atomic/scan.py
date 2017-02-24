@@ -19,8 +19,9 @@ def cli(subparser):
     scanp.add_argument("--scanner", choices=[x['scanner_name'] for x in scanners], default=None, help=_("define the intended scanner"))
     scanp.add_argument("--scan_type", default=None, help=_("define the intended scan type"))
     scanp.add_argument("--list", action='store_true', default=False, help=_("List available scanners"))
-    scanp.add_argument("--verbose", action='store_true', default=False, help=_("Show more output from scanning container"))
-    scanp.add_argument("--json", action='store_true', default=False, help=_("Output results in JSON format"))
+    disp_group = scanp.add_mutually_exclusive_group()
+    disp_group.add_argument("--verbose", action='store_true', default=False, help=_("Show more output from scanning container"))
+    disp_group.add_argument("--json", action='store_true', default=False, help=_("Output results in JSON format"))
     scan_group.add_argument("--rootfs", nargs='?', default=[], action='append', help=_("Rootfs path to scan"))
     scan_group.add_argument("--all", default=False, action='store_true', help=_("scan all images (excluding intermediate layers) and containers"))
     scan_group.add_argument("--images", default=False, action='store_true', help=_("scan all images (excluding intermediate layers)"))
@@ -144,7 +145,7 @@ class Scan(Atomic):
         scan_cmd = self.sub_env_strings(" ".join(scan_cmd))
 
         # Show the command being run
-        if self.useTTY and (self.args.verbose or self.args.debug):
+        if self.useTTY and not self.args.json:
             util.write_out(scan_cmd)
 
         # Show stdout from container if --debug or --verbose
