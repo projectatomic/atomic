@@ -51,13 +51,17 @@ def check_if_python2():
 input, is_python2 = check_if_python2() # pylint: disable=redefined-builtin
 
 
-def get_registries():
-    registries = []
+def get_docker_conf():
     with AtomicDocker() as c:
         try:
             dconf = c.info()
         except requests.exceptions.ConnectionError:
             raise ValueError("This Atomic function requires an active docker daemon.")
+    return dconf
+
+def get_registries():
+    registries = []
+    dconf = get_docker_conf()
     search_regs = [x['Name'] for x in dconf['Registries']]
     rconf = dconf['RegistryConfig']['IndexConfigs']
     # docker.io is special
@@ -440,6 +444,12 @@ def default_docker():
 default_docker.cache = None
 
 def default_docker_lib():
+    try:
+        return get_docker_conf()["DockerRootDir"]
+    except ValueError:
+        # looks like dockerd is not running
+        pass
+
     if not default_docker_lib.cache:
         dockerlib_path = "/var/lib/%s" % default_docker()
         if os.path.exists(dockerlib_path):
