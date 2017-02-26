@@ -1305,7 +1305,7 @@ _atomic_storage_modify() {
 			;;
 
 		--driver)
-			COMPREPLY=( $( compgen -W "devicemapper overlay" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "devicemapper overlay overlay2" -- "$cur" ) )
 			return 0
 			;;
 	esac
