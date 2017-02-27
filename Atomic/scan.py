@@ -221,12 +221,14 @@ class Scan(Atomic):
     def _mount_scan_rootfs(self, scan_list):
         for docker_object in scan_list:
             mount_path = os.path.join(self.chroot_dir, docker_object.id.replace("/", "_"))
-            self.mount_paths[mount_path.rstrip('/')] = docker_object['Id']
             os.mkdir(mount_path)
             if self.debug:
                 util.write_out("Created {}".format(mount_path))
-            self.mount(mountpoint=mount_path, image=docker_object.id)
-            docker_object.mount_path = mount_path
+            new_mount_path = self.mount(mountpoint=mount_path, image=docker_object.id)
+            if new_mount_path != mount_path:
+                rmtree(mount_path)
+                os.symlink(new_mount_path, mount_path)
+            self.mount_paths[new_mount_path.rstrip('/')] = docker_object.id
             if self.debug:
                 util.write_out("Mounted {} to {}".format(docker_object.id, mount_path))
 
@@ -438,7 +440,8 @@ class Scan(Atomic):
         m.mountpoint = mountpoint
         m.image = image
         m.shared = True
-        m.mount()
+        m.mount(best_mountpoint_for_storage=True)
+        return m.mountpoint
 
     def unmount(self, mountpoint):
         m = mount.Mount()
