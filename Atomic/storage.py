@@ -268,7 +268,6 @@ class Storage(Atomic):
             raise NoDockerDaemon()
 
     def Import(self):
-        self.ping()
         try:
             import_docker(self.graphdir, self.args.import_location, self.args.assumeyes)
         except requests.exceptions.ConnectionError:
