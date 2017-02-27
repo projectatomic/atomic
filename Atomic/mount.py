@@ -140,14 +140,33 @@ class Mount(Atomic):
     def _info(self):
         return self.d.info()
 
-    def mount(self):
+    def _try_ostree_mount(self, best_mountpoint_for_storage):
+        if best_mountpoint_for_storage:
+            mountpoint = os.path.join(self.syscontainers.get_ostree_repo_location(), "tmp/atomic-mount", str(os.getpid()), self.image)
+            if os.path.exists(mountpoint):
+                shutil.rmtree(mountpoint)
+            os.makedirs(mountpoint)
+        else:
+            mountpoint = self.mountpoint
+
+        d = OSTreeMount(self.args, mountpoint, live=self.live, shared=self.shared)
+        if d.mount(self.image, self.options):
+            self.mountpoint = mountpoint
+            return True
+
+        return False
+
+    # if best_mountpoint_for_storage the storage can modify the mountpoint so
+    # to optimize the checkout (for example OSTree requires this to create
+    # hard links on the same file system.
+    def mount(self, best_mountpoint_for_storage=False):
+
         if not self.storage:
             if self.is_duplicate_image(self.image):
                 raise ValueError("Found more than one Image with name {}; "
                                  "please specify with --storage.".format(self.image))
             try:
-                d = OSTreeMount(self.args, self.mountpoint, live=self.live, shared=self.shared)
-                if d.mount(self.image, self.options):
+                if self._try_ostree_mount(best_mountpoint_for_storage):
                     return
             except GLib.Error: # pylint: disable=catching-non-exception
                 pass
@@ -167,8 +186,7 @@ class Mount(Atomic):
 
         elif self.storage.lower() == "ostree":
             try:
-                d = OSTreeMount(self.args, self.mountpoint, live=self.live, shared=self.shared)
-                if d.mount(self.image, self.options):
+                if self._try_ostree_mount(best_mountpoint_for_storage):
                     return
             except GLib.Error: # pylint: disable=catching-non-exception
                 self._no_such_image()
@@ -713,7 +731,7 @@ class DockerMount(Mount):
         if not self.live:
             self.d.remove_container(short_cid)
         self._clean_tmp_image()
-        
+
 def getxattrfuncs():
     # Python 3 has support for extended attributes in the os module, while
     # Python 2 needs the xattr library.  Detect if any is available.
