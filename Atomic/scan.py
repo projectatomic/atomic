@@ -221,7 +221,7 @@ class Scan(Atomic):
     def _mount_scan_rootfs(self, scan_list):
         for docker_object in scan_list:
             mount_path = os.path.join(self.chroot_dir, docker_object.id.replace("/", "_"))
-            self.mount_paths[os.path.basename(mount_path.rstrip('/'))] = docker_object.id
+            self.mount_paths[mount_path.rstrip('/')] = docker_object['Id']
             os.mkdir(mount_path)
             if self.debug:
                 util.write_out("Created {}".format(mount_path))
@@ -231,8 +231,7 @@ class Scan(Atomic):
                 util.write_out("Mounted {} to {}".format(docker_object.id, mount_path))
 
     def _unmount_rootfs_in_dir(self):
-        for _dir in self.get_rootfs_paths():
-            rootfs_dir = os.path.join(self.chroot_dir, _dir)
+        for rootfs_dir in self.get_rootfs_paths():
             if len(self.args.rootfs) == 0:
                 if os.path.ismount(rootfs_dir):
                     self.unmount(rootfs_dir)
@@ -252,16 +251,10 @@ class Scan(Atomic):
 
     def get_rootfs_paths(self):
         """
-        Returns the list of rootfs paths (not fully qualified); if defined,
-        returns self.rootfs_paths, else defines and returns it
+        Returns the list of rootfs paths (not fully qualified)
         :return: list
         """
-        def _get_rootfs_paths():
-            return next(os.walk(self.chroot_dir))[1]
-
-        if len(self.rootfs_paths) == 0:
-            self.rootfs_paths = _get_rootfs_paths()
-        return self.rootfs_paths
+        return self.mount_paths.keys()
 
     def output_results(self):
         """
@@ -274,7 +267,7 @@ class Scan(Atomic):
             if self.args.json:
                 util.output_json(json_results)
             else:
-                uuid = self.mount_paths[os.path.basename(json_results['UUID']).rstrip('/')] if len(self.args.rootfs) == 0 \
+                uuid = self.mount_paths[json_results['UUID'].rstrip('/')] if len(self.args.rootfs) == 0 \
                     else self._get_roots_path_from_bind_name(json_file)
 
                 name1 = uuid if len(self.args.rootfs) > 1 else self._get_input_name_for_id(uuid)
