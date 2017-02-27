@@ -233,8 +233,10 @@ class Scan(Atomic):
     def _unmount_rootfs_in_dir(self):
         for rootfs_dir in self.get_rootfs_paths():
             if len(self.args.rootfs) == 0:
-                if os.path.ismount(rootfs_dir):
+                try:
                     self.unmount(rootfs_dir)
+                except (ValueError, mount.MountError):
+                    pass
             else:
                 # Clean up bind mounts if the chroot feature is used
                 mcmd = ['umount', rootfs_dir]
