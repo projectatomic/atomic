@@ -84,9 +84,10 @@ DEVS=""
 EOF
 
     # Adding a device should put it into the volume group and should add
-    # it to /e/s/d-s-s.
+    # it to /etc/sysconfig/docker-storage-setup.
 
     ${ATOMIC} storage modify --add-device $TEST_DEV_1
+    /usr/bin/docker-storage-setup 1>/dev/null||exit 1
     [ $(pvs --noheadings -o vg_name $TEST_DEV_1_pvs) == $VGROUP ]
     grep -q "^DEVS=\"$TEST_DEV_1\"$" /etc/sysconfig/docker-storage-setup
 
@@ -99,6 +100,7 @@ EOF
     # Adding it again straight away should work.
 
     ${ATOMIC} storage modify --add-device $TEST_DEV_1
+    /usr/bin/docker-storage-setup 1>/dev/null||exit 1
     [ $(pvs --noheadings -o vg_name $TEST_DEV_1_pvs) == $VGROUP ]
     grep -q "^DEVS=\"$TEST_DEV_1\"$" /etc/sysconfig/docker-storage-setup
 
