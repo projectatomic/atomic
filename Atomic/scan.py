@@ -6,6 +6,7 @@ import os
 from shutil import rmtree
 import json
 import sys
+from Atomic.backendutils import BackendUtils
 
 def cli(subparser):
     # atomic scan
@@ -37,6 +38,7 @@ class Scan(Atomic):
     def __init__(self):
         super(Scan, self).__init__()
         self.scan_dir = None
+        self.scan_list = []
         self.rootfs_paths = []
         self.cur_time = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
         self.chroot_dir = '/run/atomic/{}'.format(self.cur_time)
@@ -116,10 +118,7 @@ class Scan(Atomic):
             util.write_out("Created {}".format(self.chroot_dir))
 
         if len(self.args.rootfs) == 0:
-            scan_list = self._get_scan_list()
-            for i in scan_list:
-                self.scan_content[i['Id']] = i.get('input')
-
+            self.scan_list = self._get_scan_list()
             security_args = []
         else:
             # Check to make sure all the chroots provided are legit
@@ -154,7 +153,7 @@ class Scan(Atomic):
         try:
             if len(self.args.rootfs) == 0:
                 # mount all the rootfs
-                self._mount_scan_rootfs(scan_list)
+                self._mount_scan_rootfs(self.scan_list)
 
                 if self.debug:
                     util.write_out("Creating the output dir at {}".format(self.results_dir))
@@ -178,49 +177,26 @@ class Scan(Atomic):
             return (json.dumps(self.get_scan_data()))
 
     def _get_scan_list(self):
-
-        def gen_images():
-            slist = []
-            for image in self.get_images():
-                if image['ImageType'] == 'system':
-                    image['Id'] = image['RepoTags'][0]
-                image['input'] = image['Id']
-                slist.append(image)
-            return slist
-
-        def gen_containers():
-            slist = []
-            for con in self.get_containers():
-                # If con does not have 'Status' return empty string
-                if con.get('Status', '').upper() != 'DEAD':
-                    con['input'] = con['Id']
-                else:
-                    raise ValueError("The container ID {} is Dead.".format(con['Id'][:12]))
-                slist.append(con)
-            return slist
-
+        beu = BackendUtils()
         if self.args.images:
-            scan_list = gen_images()
+            scan_list = beu.get_images()
         elif self.args.containers:
-            scan_list = gen_containers()
+            scan_list = beu.get_containers()
         elif self.args.all:
-            scan_list = gen_containers() + gen_images()
+            scan_list = beu.get_images() + beu.get_containers()
         else:
             scan_list = []
-            images = self.get_images()
-            containers = self.get_containers()
-            for scan_input in self.args.scan_targets:
-                docker_object = (next((item for item in containers
-                                       if item['Id'] == self.get_input_id(scan_input)), None))
-                docker_object = docker_object if docker_object is not None \
-                    else (next((item for item in images if item['Id'] == self.get_input_id(scan_input)), None))
-                if docker_object is not None:
-                    docker_object['input'] = scan_input
-                    scan_list.append(docker_object)
-            if len(scan_list) < 1:
-                raise ValueError("You must provide at least one container or image for atomic "
-                                 "scan. See 'atomic scan --help' for more information")
-
+            for scan_target in self.args.scan_targets:
+                try:
+                    # get_backend_and_container throws a ValueError when it cannot find anything
+                    _, scan_obj = beu.get_backend_and_container_obj(scan_target)
+                except ValueError:
+                    try:
+                        # get_backend_and_image throws a ValueError when it cannot find anything
+                        _, scan_obj = beu.get_backend_and_image_obj(scan_target)
+                    except ValueError:
+                        raise ValueError("Unable to locate the container or image '{}'".format(scan_target))
+                scan_list.append(scan_obj)
         return scan_list
 
     def _get_roots_path_from_bind_name(self, in_bind_name):
@@ -237,14 +213,15 @@ class Scan(Atomic):
 
     def _mount_scan_rootfs(self, scan_list):
         for docker_object in scan_list:
-            mount_path = os.path.join(self.chroot_dir, docker_object['Id'].replace("/", "_"))
-            self.mount_paths[os.path.basename(mount_path.rstrip('/'))] = docker_object['Id']
+            mount_path = os.path.join(self.chroot_dir, docker_object.id.replace("/", "_"))
+            self.mount_paths[os.path.basename(mount_path.rstrip('/'))] = docker_object.id
             os.mkdir(mount_path)
             if self.debug:
                 util.write_out("Created {}".format(mount_path))
-            self.mount(mountpoint=mount_path, image=docker_object['Id'])
+            self.mount(mountpoint=mount_path, image=docker_object.id)
+            docker_object.mount_path = mount_path
             if self.debug:
-                util.write_out("Mounted {} to {}".format(docker_object, mount_path))
+                util.write_out("Mounted {} to {}".format(docker_object.id, mount_path))
 
     def _unmount_rootfs_in_dir(self):
         for _dir in self.get_rootfs_paths():
@@ -362,14 +339,20 @@ class Scan(Atomic):
                     json_files.append(os.path.join(files[0], jfile))
         return json_files
 
+
+    def _get_object_by_id(self, iid):
+        scan_obj = next((x for x in self.scan_list if x.id == iid))
+        return scan_obj
+
     def _get_input_name_for_id(self, iid):
         if len(self.args.rootfs) > 0:
             return iid
         else:
-            return self.scan_content[iid]
+            return self._get_object_by_id(iid).input_name
 
     def _is_iid(self, input_name):
-        if input_name.startswith(self.scan_content[input_name]):
+        scan_obj = next((x for x in self.scan_list if x.id == input_name))
+        if scan_obj.id == scan_obj.input_name:
             return True
         return False
 

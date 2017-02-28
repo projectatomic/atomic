@@ -21,6 +21,7 @@ class Container(object):
         self.vulnerable = False
         self.labels = None
         self._user_command = None
+        self.mount_path = None
 
         # Optional
         self.running = False

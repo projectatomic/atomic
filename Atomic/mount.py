@@ -806,7 +806,7 @@ class OSTreeMount(Mount):
             mountpoint = self.mountpoint.rstrip('/')
             infofile = os.path.join(os.path.dirname(mountpoint), ".%s.info" % os.path.basename(mountpoint))
             with open(infofile, 'w') as f:
-                data = json.dumps({"user.atomic.type" : typ})
+                data = json.dumps({"user.atomic.type" : typ.decode('utf-8')})
                 f.write(data)
 
         if not self.user:

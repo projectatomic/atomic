@@ -29,6 +29,7 @@ class Image(object):
         self._command = None
         self.repotags = None
         self._user_command = None
+        self.mount_path = None
 
 
         # Deeper
