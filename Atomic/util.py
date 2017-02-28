@@ -20,6 +20,7 @@ import re
 import requests
 import ipaddress
 import socket
+from Atomic.backends._docker_errors import NoDockerDaemon
 # Atomic Utility Module
 
 ReturnTuple = collections.namedtuple('ReturnTuple',
@@ -55,7 +56,7 @@ def get_docker_conf():
     with AtomicDocker() as c:
         try:
             dconf = c.info()
-        except requests.exceptions.ConnectionError:
+        except (NoDockerDaemon, requests.exceptions.ConnectionError):
             raise ValueError("This Atomic function requires an active docker daemon.")
     return dconf
 
