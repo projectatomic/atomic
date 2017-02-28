@@ -53,11 +53,9 @@ input, is_python2 = check_if_python2() # pylint: disable=redefined-builtin
 
 
 def get_docker_conf():
+    dconf = []
     with AtomicDocker() as c:
-        try:
-            dconf = c.info()
-        except (NoDockerDaemon, requests.exceptions.ConnectionError):
-            raise ValueError("This Atomic function requires an active docker daemon.")
+        dconf = c.info()
     return dconf
 
 def get_registries():
@@ -447,7 +445,7 @@ default_docker.cache = None
 def default_docker_lib():
     try:
         return get_docker_conf()["DockerRootDir"]
-    except ValueError:
+    except (NoDockerDaemon, requests.ConnectionError):
         # looks like dockerd is not running
         pass
 

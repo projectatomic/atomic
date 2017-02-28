@@ -68,7 +68,10 @@ class Atomic(object):
         return self
 
     def __exit__(self, typ, value, traceback):
-        self.d.close()
+        try:
+            self.d.close()
+        except NoDockerDaemon:
+            pass
 
     def docker_binary(self):
         if not self.docker_cmd:

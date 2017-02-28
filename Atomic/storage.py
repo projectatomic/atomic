@@ -20,6 +20,11 @@ try:
 except ImportError:
     from atomic import Atomic # pylint: disable=relative-import
 
+try:
+    _default_docker_lib = default_docker_lib()
+except NoDockerDaemon:
+    _default_docker_lib = None
+
 def cli(subparser):
     # atomic storage
     storagep = subparser.add_parser(
@@ -35,8 +40,8 @@ def cli(subparser):
                                            "containers, and volumes into a filesystem directory.")
     exportp.set_defaults(_class=Storage, func='Export')
     exportp.add_argument("--graph", dest="graph",
-                         default=default_docker_lib(),
-                         help=_("Root of the Docker runtime (Default: %s)" % default_docker_lib()))
+                         default=_default_docker_lib,
+                         help=_("Root of the Docker runtime (Default: %s)" % _default_docker_lib))
     exportp.add_argument("--dir", dest="export_location",
                          default="/var/lib/atomic/migrate",
                          help=_("Path for exporting container's content (Default: /var/lib/atomic/migrate)"))
@@ -48,8 +53,8 @@ def cli(subparser):
                                            "containers, and volumes from a filesystem directory.")
     importp.set_defaults(_class=Storage, func='Import')
     importp.add_argument("--graph", dest="graph",
-                         default=default_docker_lib(),
-                         help=_("Root of the Docker runtime (Default: %s)" % default_docker_lib()))
+                         default=_default_docker_lib,
+                         help=_("Root of the Docker runtime (Default: %s)" % _default_docker_lib))
 
     importp.add_argument("--dir", dest="import_location",
                          default="/var/lib/atomic/migrate",
@@ -70,16 +75,16 @@ def cli(subparser):
     modifyp.add_argument('--driver', dest="driver", default=None, help='The storage backend driver', choices=['devicemapper', 'overlay', 'overlay2'])
     modifyp.add_argument('--vgroup', dest="vgroup", default=None, help='The storage volume group')
     modifyp.add_argument("--graph", dest="graph",
-                        default=default_docker_lib(),
-                        help=_("Root of the Docker runtime (Default: %s)" % default_docker_lib()))
+                        default=_default_docker_lib,
+                        help=_("Root of the Docker runtime (Default: %s)" % _default_docker_lib))
     modifyp.set_defaults(_class=Storage, func='modify')
 
     # atomic storage reset
     resetp = storage_subparser.add_parser("reset",
                                           help=_("delete all containers/images from your system. Reset storage to its initial configuration."))
     resetp.add_argument("--graph", dest="graph",
-                        default=default_docker_lib(),
-                        help=_("Root of the Docker runtime (Default: %s)" % default_docker_lib()))
+                        default=_default_docker_lib,
+                        help=_("Root of the Docker runtime (Default: %s)" % _default_docker_lib))
     resetp.set_defaults(_class=Storage, func='reset')
 
 def query_pvs(pv, fields):
