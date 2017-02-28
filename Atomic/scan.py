@@ -176,6 +176,13 @@ class Scan(Atomic):
         if not self.useTTY:
             return (json.dumps(self.get_scan_data()))
 
+
+        for json_file in self._get_json_files():
+            json_results = json.load(open(json_file))
+            if json_results['Successful'].upper() != 'TRUE':
+                return 1
+        return 0
+
     def _get_scan_list(self):
         beu = BackendUtils()
         if self.args.images:
