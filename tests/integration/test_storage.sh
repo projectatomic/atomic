@@ -66,30 +66,22 @@ teardown () {
 setup
 trap teardown EXIT
 
-# Running without /e/s/d-s-s should fail.
+# If /etc/sysconfig/docker-storage-setup is missing, atomic should create the file.
 
-set +e
 rm -f /etc/sysconfig/docker-storage-setup
 OUTPUT=$(${ATOMIC} storage modify --add-device $TEST_DEV_1 2>&1)
-if [[ $? -eq 0 ]]; then
-    exit 1
-fi
-set -e
-echo $OUTPUT | grep -q "No such file or directory"
+grep -q "^DEVS=\"$TEST_DEV_1\"$" /etc/sysconfig/docker-storage-setup
 
 if [ -n "$VGROUP" ]; then
-    cat >/etc/sysconfig/docker-storage-setup <<EOF
+    cat >>/etc/sysconfig/docker-storage-setup <<EOF
 MIN_DATA_SIZE=0G
-DEVS=""
 EOF
 
-    # Adding a device should put it into the volume group and should add
-    # it to /etc/sysconfig/docker-storage-setup.
+    # Executing docker-storage-setup should add the device
+    # and put it into the volume group.
 
-    ${ATOMIC} storage modify --add-device $TEST_DEV_1
     /usr/bin/docker-storage-setup 1>/dev/null||exit 1
     [ $(pvs --noheadings -o vg_name $TEST_DEV_1_pvs) == $VGROUP ]
-    grep -q "^DEVS=\"$TEST_DEV_1\"$" /etc/sysconfig/docker-storage-setup
 
     # Removing it should undo all that.
 
