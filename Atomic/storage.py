@@ -169,6 +169,8 @@ class Storage(Atomic):
 
     def modify(self):
         try:
+            if not os.path.exists(self.dss_conf):
+                open(self.dss_conf, 'w').close()
             shutil.copyfile(self.dss_conf, self.dss_conf_bak)
             if len(self.args.remove_devices) > 0:
                 self._remove_devices(self.args.remove_devices, only_unused=False)
