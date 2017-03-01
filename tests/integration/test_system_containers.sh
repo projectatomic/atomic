@@ -207,8 +207,8 @@ ${ATOMIC} --debug containers list --no-trunc > ps.out
 assert_matches "remote" ps.out
 test -e /etc/systemd/system/${NAME}-remote.service
 
-# The rootfs should not exist
-test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}-remote.0/rootfs
+# The rootfs should be a symlink
+test -h ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}-remote/rootfs
 
 # Values should still be able to be updated for remote containers
 ${ATOMIC} containers update --set=PORT=8083 ${NAME}-remote

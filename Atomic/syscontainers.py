@@ -505,6 +505,9 @@ class SystemContainers(object):
                 config['root']['path'] = remote_rootfs
             with open(destination_path, 'w') as config_file:
                 config_file.write(json.dumps(config, indent=4))
+            # create a symlink to the real rootfs, so that it is possible
+            # to access the rootfs in the same way as in the not --remote case.
+            os.symlink(remote_rootfs, os.path.join(destination, "rootfs"))
 
         # When upgrading, stop the service and remove previously installed
         # tmpfiles, before restarting the service.
