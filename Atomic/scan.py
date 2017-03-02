@@ -271,7 +271,8 @@ class Scan(Atomic):
             if self.args.json:
                 util.output_json(json_results)
             else:
-                uuid = self.mount_paths[json_results['UUID'].rstrip('/')] if len(self.args.rootfs) == 0 \
+                uuid = next(self.mount_paths[x] for x in self.mount_paths.keys() if
+                            os.path.basename(json_results['UUID'].rstrip('/')) in x) if len(self.args.rootfs) == 0 \
                     else self._get_roots_path_from_bind_name(json_file)
 
                 name1 = uuid if len(self.args.rootfs) > 1 else self._get_input_name_for_id(uuid)
