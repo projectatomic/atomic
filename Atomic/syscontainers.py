@@ -446,6 +446,10 @@ class SystemContainers(object):
             values["RUN_DIRECTORY"] = "/run"
             values["STATE_DIRECTORY"] = "/var/lib"
 
+        if not os.path.exists(exports):
+            util.write_out("""Warning: /exports directory not found.  Default config files will be generated.
+Warning: You may want to modify `%s` before starting the service""" % os.path.join(destination, "config.json"))
+
         # When installing a new system container, set values in this order:
         #
         # 1) What comes from manifest.json, if present, as default value.
