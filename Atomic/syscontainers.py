@@ -11,6 +11,7 @@ import stat
 import subprocess
 import time
 from .client import AtomicDocker
+from Atomic.backends._docker_errors import NoDockerDaemon
 from ctypes import cdll, CDLL
 import uuid
 
@@ -1050,12 +1051,16 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         for i in ["oci:", "http:", "https:"]:
             image = image.replace(i, "")
 
-        with AtomicDocker() as client:
-            fqn_image = util.find_remote_image(client, image) or image
-            if insecure:
-                return ["--insecure"], "docker://" + fqn_image
-            else:
-                return None, "docker://" + fqn_image
+        try:
+            with AtomicDocker() as client:
+                image = util.find_remote_image(client, image) or image
+        except NoDockerDaemon:
+            pass
+
+        if insecure:
+            return ["--insecure"], "docker://" + image
+        else:
+            return None, "docker://" + image
 
     def _skopeo_get_manifest(self, image):
         args, img = self._convert_to_skopeo(image)
