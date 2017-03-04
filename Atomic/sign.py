@@ -98,6 +98,8 @@ class Sign(Atomic):
                     reg_info = util.have_match_registry("{}/{}".format(reg, repo), registry_configs)
                     if not reg_info:
                         reg_info = default_store
+                        if reg_info is None:
+                            raise ValueError("No applicable configuration for {}/{} was found in {}".format(reg, repo, registry_config_path))
 
                     signature_path = util.get_signature_write_path(reg_info)
                     if signature_path is None:
