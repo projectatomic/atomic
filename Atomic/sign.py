@@ -76,7 +76,7 @@ class Sign(Atomic):
         for sign_image in images:
             registry, repo, image, tag, _ = util.Decompose(sign_image).all
             ri = discovery.RegistryInspect(registry, repo, image, tag, debug=self.args.debug, orig_input=sign_image)
-            manifest = ri.get_manifest()
+            manifest = ri.get_manifest(return_json=False)
 
 
             try:

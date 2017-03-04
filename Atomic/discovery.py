@@ -37,9 +37,9 @@ class RegistryInspect():
         inspect_data['Name'] = self.assemble_fqdn(include_tag=False)
         return inspect_data
 
-    def get_manifest(self):
+    def get_manifest(self, return_json=True):
         assert(self.fqdn is not None)
-        return util.skopeo_inspect("docker://{}".format(self.fqdn), return_json=True, args=['--raw'])
+        return util.skopeo_inspect("docker://{}".format(self.fqdn), return_json=return_json, args=['--raw'])
 
     @property
     def remote_id(self):
