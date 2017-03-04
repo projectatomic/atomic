@@ -67,7 +67,7 @@ class RegistryInspect():
         """
         if self.debug:
             for i in [x for x in self.registries if x['search']]:
-                util.write_out(i)
+                util.write_out(repr(i))
 
         registries = [i['name'] for i in [x for x in self.registries if x['search']]]
         for registry in registries:
