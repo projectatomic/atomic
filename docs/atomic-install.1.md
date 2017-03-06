@@ -12,6 +12,7 @@ atomic-install - Execute Image Install Method
 [**--rootfs**=*ROOTFS*]
 [**--set**=*NAME*=*VALUE*]
 [**--storage**]
+[**--system-package=auto|build|yes|no**]
 [**--system**]
 IMAGE [ARG...]
 
@@ -95,6 +96,18 @@ OSTree and runc are required for this feature to be available.
 Note: If the image being pulled contains a label of `system.type=ostree`,
 atomic will automatically substitute the storage backend to be ostree. This
 can be overridden with the --storage option.
+
+**--system-package=auto|build|no|yes**
+Control how the container will be installed to the system.
+
+*auto* generates an rpm and install it to the system when the
+image defines a .spec file.  This is the default.
+
+*build* build only the software package, without installing it.
+
+*no* do not generate an rpm package to install the container.
+
+*yes* generate an rpm package and install it to the system.
 
 **--user**
 If running as non-root, specify to install the image from the current

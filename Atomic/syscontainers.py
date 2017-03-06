@@ -181,6 +181,14 @@ class SystemContainers(object):
         # Same entrypoint
         return self.install(image, name)
 
+    def _install_rpm(self, rpm_file):
+        if os.path.exists("/run/ostree-booted"):
+            raise ValueError("This doesn't work on Atomic Host yet")
+        elif os.path.exists("/usr/bin/dnf"):
+            util.check_call(["dnf", "install", "-y", rpm_file])
+        else:
+            util.check_call(["yum", "install", "-y", rpm_file])
+
     def install(self, image, name):
         repo = self._get_ostree_repo()
         if not repo:
@@ -189,16 +197,41 @@ class SystemContainers(object):
         if self.args.system and self.user:
             raise ValueError("Only root can use --system")
 
-        if self.args.generate_rpm:
-            if not self.args.system:
-                raise ValueError("Only --system can generate rpms")
-            return self.generate_rpm(repo, name, image)
-
-        image = self._pull_image_to_ostree(repo, image, False)
+        accepted_system_package_values = ['auto', 'build', 'no', 'yes']
+        if self.args.system_package not in accepted_system_package_values:
+            raise ValueError("Invalid --system-package mode.  Accepted values: '%s'" % "', '".join(accepted_system_package_values))
 
         if self.get_checkout(name):
             util.write_out("%s already present" % (name))
             return
+
+        image = self._pull_image_to_ostree(repo, image, False)
+
+        if self.args.system_package in ['build', 'yes', 'auto']:
+            if not self.args.system:
+                raise ValueError("Only --system can generate rpms")
+
+            rpm_file = None
+            tmp_dir = self.generate_rpm(repo, self.args.system_package == 'auto', name, image)
+            if tmp_dir:
+                try:
+                    for root, _, files in os.walk(os.path.join(tmp_dir, "build")):
+                        if rpm_file:
+                            break
+                        for f in files:
+                            if f.endswith('.rpm'):
+                                rpm_file = os.path.join(root, f)
+                                break
+                    # If we are only build'ing the rpm, copy it to the cwd and exit
+                    if self.args.system_package == 'build':
+                        destination = os.path.join(os.getcwd(), os.path.basename(rpm_file))
+                        shutil.move(rpm_file, destination)
+                        util.write_out("Generated rpm %s" % destination)
+                    else:
+                        self._install_rpm(rpm_file)
+                finally:
+                    shutil.rmtree(tmp_dir)
+                return False
 
         values = {}
         if self.args.setvalues is not None:
@@ -797,6 +830,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             return
 
         self._checkout(repo, name, image, next_deployment, True, values, remote=self.args.remote, installed_files=installed_files)
+        return
 
     def rollback(self, name):
         path = os.path.join(self._get_system_checkout_path(), name)
@@ -1596,25 +1630,26 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         traverse(it)
         return ret
 
-    def generate_rpm(self, repo, name, image):
+    def generate_rpm(self, repo, auto, name, image):
         image_inspect = self.inspect_system_image(image)
         temp_dir = tempfile.mkdtemp()
         rpm_content = os.path.join(temp_dir, "rpmroot")
         rootfs = os.path.join(rpm_content, "usr/lib/containers/atomic", name)
         os.makedirs(rootfs)
+        success = False
         try:
             spec_file = os.path.join(temp_dir, "container.spec")
             self._checkout(repo, name, image, 0, False, destination=rootfs, prefix=rpm_content)
 
             if self.display:
-                return
+                return None
 
             installed_files = None
             with open(os.path.join(rootfs, "info"), "r") as info_file:
                 info = json.loads(info_file.read())
                 installed_files = info["installed-files"] if "installed-files" in info else None
 
-            labels = {k.lower() : v for k, v in image_inspect.get('Labels', {})}
+            labels = {k.lower() : v for k, v in image_inspect.get('Labels', {}).items()}
             summary = labels.get('summary', name)
             version = labels.get("version", "1.0")
             release = labels.get("release", "1.0")
@@ -1630,6 +1665,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 with open(os.path.join(rootfs, "rpm.spec"), "r") as f:
                     spec_content = f.read()
             else:
+                # If there is no spec file and 'auto' is used, do not install an rpm
+                if auto:
+                    return None
                 spec_content = self._generate_spec_file(rpm_content, name, summary, license_, version=version,
                                                         release=release, url=url, source0=source0, requires=requires,
                                                         provides=provides, conflicts=conflicts, description=description,
@@ -1639,20 +1677,25 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 f.write(spec_content)
 
             cwd = os.getcwd()
+            result_dir = os.path.join(temp_dir, "build")
+            if not os.path.exists(result_dir):
+                os.makedirs(result_dir)
             cmd = ["rpmbuild", "--noclean", "-bb", spec_file,
                    "--define", "_sourcedir %s" % temp_dir,
                    "--define", "_specdir %s" % temp_dir,
                    "--define", "_builddir %s" % temp_dir,
                    "--define", "_srcrpmdir %s" % cwd,
-                   "--define", "_rpmdir %s" % cwd,
+                   "--define", "_rpmdir %s" % result_dir,
                    "--build-in-place",
                    "--buildroot=%s" % rpm_content]
             util.write_out(" ".join(cmd))
             if not self.display:
                 util.check_call(cmd)
-            return False
+            success = True
+            return temp_dir
         finally:
-            shutil.rmtree(temp_dir)
+            if not success:
+                shutil.rmtree(temp_dir)
 
     def _generate_spec_file(self, destdir, name, summary, license_, version="1.0", release="1", url=None,
                             source0=None, requires=None, conflicts=None, provides=None, description=None,

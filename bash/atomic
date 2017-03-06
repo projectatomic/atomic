@@ -718,6 +718,7 @@ _atomic_install() {
 	       --rootfs
 	       --storage
 	       --system
+	       --system-package
 	       --set
 	       --user
 	"
