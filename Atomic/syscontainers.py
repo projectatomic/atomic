@@ -1644,6 +1644,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             if self.display:
                 return None
 
+            included_rpm = os.path.join(rootfs, "rootfs", "exports", "container.rpm")
+            if os.path.exists(included_rpm):
+                return included_rpm
+
             installed_files = None
             with open(os.path.join(rootfs, "info"), "r") as info_file:
                 info = json.loads(info_file.read())
