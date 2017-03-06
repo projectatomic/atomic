@@ -21,17 +21,27 @@ class RegistryInspect():
         self.digest = digest
         self.orig_input = orig_input
         self._remote_inspect = None
-        self.fqdn = None
+        self._fqdn = None
 
         if self.debug:
             util.output_json(self.registries)
 
+    @property
+    def fqdn(self):
+        if not self._fqdn:
+            self.fqdn = self.assemble_fqdn(include_tag=True) if self.registry else self.find_image_on_registry()
+        return self._fqdn
+
+    @fqdn.setter
+    def fqdn(self, value):
+        self._fqdn = value
+
     def inspect(self):
+        if not self.fqdn:
+            _ = self.fqdn
         if self.registry:
-            self.fqdn = self.assemble_fqdn(include_tag=True)
             inspect_data = util.skopeo_inspect("docker://{}".format(self.fqdn), return_json=True)
         else:
-            self.fqdn = self.find_image_on_registry()
             inspect_data = self._remote_inspect
         inspect_data['Tag'] = self.tag
         inspect_data['Name'] = self.assemble_fqdn(include_tag=False)
