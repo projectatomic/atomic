@@ -59,7 +59,7 @@ WorkingDirectory=$DESTDIR
 WantedBy=multi-user.target
 """
 TEMPLATE_FORCED_VARIABLES = ["DESTDIR", "NAME", "EXEC_START", "EXEC_STOP",
-                             "HOST_UID", "HOST_GID", "IMAGE_ID"]
+                             "HOST_UID", "HOST_GID", "IMAGE_ID", "IMAGE_NAME"]
 TEMPLATE_OVERRIDABLE_VARIABLES = ["RUN_DIRECTORY", "STATE_DIRECTORY", "UUID"]
 
 class SystemContainers(object):
@@ -239,7 +239,7 @@ class SystemContainers(object):
             for k, v in setvalues.items():
                 values[k] = v
 
-        return self._checkout(repo, name, image, 0, False, values=values, remote=self.args.remote)
+        self._checkout(repo, name, image, 0, False, values=values, remote=self.args.remote)
 
     def _check_oci_configuration_file(self, conf_path, remote=None, include_all=False):
         with open(conf_path, 'r') as conf:
@@ -556,6 +556,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         values["EXEC_START"], values["EXEC_STOP"] = self._generate_systemd_startstop_directives(name)
         values["HOST_UID"] = os.getuid()
         values["HOST_GID"] = os.getgid()
+        values["IMAGE_NAME"] = img
         values["IMAGE_ID"] = image_id
 
         src = os.path.join(exports, "config.json")
