@@ -59,7 +59,7 @@ WorkingDirectory=$DESTDIR
 WantedBy=multi-user.target
 """
 TEMPLATE_FORCED_VARIABLES = ["DESTDIR", "NAME", "EXEC_START", "EXEC_STOP",
-                             "HOST_UID", "HOST_GID"]
+                             "HOST_UID", "HOST_GID", "IMAGE_ID"]
 TEMPLATE_OVERRIDABLE_VARIABLES = ["RUN_DIRECTORY", "STATE_DIRECTORY", "UUID"]
 
 class SystemContainers(object):
@@ -453,7 +453,7 @@ class SystemContainers(object):
         was_service_active = self._is_service_active(name)
 
         if self.display:
-            return
+            return values
 
         if self.user:
             rootfs = os.path.join(destination, "rootfs")
@@ -504,7 +504,7 @@ class SystemContainers(object):
                     os.close(rootfs_fd)
 
         if extract_only:
-            return
+            return values
 
         if self.user:
             values["RUN_DIRECTORY"] = os.environ.get("XDG_RUNTIME_DIR", "/run/user/%s" % (os.getuid()))
@@ -543,6 +543,12 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 if "noContainerService" in manifest and manifest["noContainerService"]:
                     has_container_service = False
 
+        image_manifest = self._image_manifest(repo, rev)
+        image_id = rev
+        if image_manifest:
+            image_manifest = json.loads(image_manifest)
+            image_id = SystemContainers._get_image_id_from_manifest(image_manifest) or image_id
+
         if "UUID" not in values:
             values["UUID"] = str(uuid.uuid4())
         values["DESTDIR"] = os.path.join("/", os.path.relpath(destination, prefix)) if prefix else destination
@@ -550,6 +556,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         values["EXEC_START"], values["EXEC_STOP"] = self._generate_systemd_startstop_directives(name)
         values["HOST_UID"] = os.getuid()
         values["HOST_GID"] = os.getgid()
+        values["IMAGE_ID"] = image_id
 
         src = os.path.join(exports, "config.json")
         destination_path = os.path.join(destination, "config.json")
@@ -599,12 +606,6 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         new_installed_files = self._rm_add_files_to_host(installed_files, exports, prefix or "/", files_template=installed_files_template, values=values, rename_files=rename_files)
 
         missing_bind_paths = self._check_oci_configuration_file(destination_path, remote_path, True)
-
-        image_manifest = self._image_manifest(repo, rev)
-        image_id = rev
-        if image_manifest:
-            image_manifest = json.loads(image_manifest)
-            image_id = SystemContainers._get_image_id_from_manifest(image_manifest) or image_id
 
         # If rpm.spec or rpm.spec.template exist, copy them to the checkout directory, processing the .template version.
         if os.path.exists(os.path.join(exports, "rpm.spec.template")):
@@ -663,10 +664,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if not has_container_service:
             if not remote_path:
                 shutil.rmtree(os.path.join(destination, "rootfs"))
-            return
+            return values
 
         if prefix:
-            return
+            return values
 
         sym = "%s/%s" % (self._get_system_checkout_path(), name)
         if os.path.exists(sym):
@@ -681,6 +682,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             self._systemctl_command("enable", name)
         elif was_service_active:
             self._systemctl_command("start", name)
+
+        return values
 
     def _get_preinstalled_containers_path(self):
         return ATOMIC_USR
@@ -1497,7 +1500,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         repo = self._get_ostree_repo()
         if not repo:
             return False
-        return self._checkout(repo, img, img, 0, False, destination=destination, extract_only=True)
+        self._checkout(repo, img, img, 0, False, destination=destination, extract_only=True)
 
     @staticmethod
     def _encode_to_ostree_ref(name):
@@ -1639,7 +1642,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         success = False
         try:
             spec_file = os.path.join(temp_dir, "container.spec")
-            self._checkout(repo, name, image, 0, False, destination=rootfs, prefix=rpm_content)
+            values = self._checkout(repo, name, image, 0, False, destination=rootfs, prefix=rpm_content)
 
             if self.display:
                 return None
@@ -1665,6 +1668,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             conflicts = labels.get("conflicts")
             description = labels.get("description")
 
+            image_id = values["IMAGE_ID"]
+
             if os.path.exists(os.path.join(rootfs, "rpm.spec")):
                 with open(os.path.join(rootfs, "rpm.spec"), "r") as f:
                     spec_content = f.read()
@@ -1672,7 +1677,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 # If there is no spec file and 'auto' is used, do not install an rpm
                 if auto:
                     return None
-                spec_content = self._generate_spec_file(rpm_content, name, summary, license_, version=version,
+                spec_content = self._generate_spec_file(rpm_content, name, summary, license_, image_id, version=version,
                                                         release=release, url=url, source0=source0, requires=requires,
                                                         provides=provides, conflicts=conflicts, description=description,
                                                         installed_files=installed_files)
@@ -1701,7 +1706,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             if not success:
                 shutil.rmtree(temp_dir)
 
-    def _generate_spec_file(self, destdir, name, summary, license_, version="1.0", release="1", url=None,
+    def _generate_spec_file(self, destdir, name, summary, license_, image_id, version="1.0", release="1", url=None,
                             source0=None, requires=None, conflicts=None, provides=None, description=None,
                             installed_files=None):
         spec = "%global __requires_exclude_from ^.*$\n"
@@ -1714,7 +1719,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             if v is not None:
                 spec = spec + "%s:\t%s\n" % (k, v)
 
-        spec = spec + "\n%description\n"
+        spec = spec + ("\n%%description\nImage ID: %s\n" % image_id)
         if description:
             spec = spec + "%s\n" % description
 
