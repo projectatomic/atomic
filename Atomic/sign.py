@@ -137,8 +137,9 @@ class Sign(Atomic):
         cmd = ['gpg2', '--no-permission-warning', '--with-colons', '--fingerprint', signer]
         stdout = util.check_output(cmd)
         for line in stdout.splitlines():
-            if line.startswith('fpr:'):
-                return line.split(":")[9]
+            _line = line.decode('utf-8')
+            if _line.startswith('fpr:'):
+                return _line.split(":")[9]
 
     @staticmethod
     def make_sig_dirs(sig_path):

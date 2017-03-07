@@ -29,7 +29,7 @@ class RegistryInspect():
     @property
     def fqdn(self):
         if not self._fqdn:
-            self.fqdn = self.assemble_fqdn(include_tag=True) if self.registry else self.find_image_on_registry()
+            self._fqdn = self.assemble_fqdn(include_tag=True) if self.registry else self.find_image_on_registry()
         return self._fqdn
 
     @fqdn.setter
@@ -37,8 +37,6 @@ class RegistryInspect():
         self._fqdn = value
 
     def inspect(self):
-        if not self.fqdn:
-            _ = self.fqdn
         if self.registry:
             inspect_data = util.skopeo_inspect("docker://{}".format(self.fqdn), return_json=True)
         else:
