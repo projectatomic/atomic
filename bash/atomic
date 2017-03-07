@@ -190,6 +190,7 @@ _atomic_images_info() {
 	"
 	local all_options="$options_with_args
 		-h --help
+		--remote
 	"
 
 	case "$prev" in

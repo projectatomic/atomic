@@ -113,7 +113,7 @@ class Info(Atomic):
 
         if self.args.force:
             # The user wants information on a remote image
-            be = self.beu.get_backend_from_string(self.args.storage)
+            be = self.beu.get_backend_from_string(str_backend=self.args.storage or storage)
             img_obj = be.make_remote_image(self.image)
         else:
             # The image is local
