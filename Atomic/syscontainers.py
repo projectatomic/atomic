@@ -189,6 +189,14 @@ class SystemContainers(object):
         else:
             util.check_call(["yum", "install", "-y", rpm_file])
 
+    def _uninstall_rpm(self, rpm):
+        if os.path.exists("/run/ostree-booted"):
+            raise ValueError("This doesn't work on Atomic Host yet")
+        elif os.path.exists("/usr/bin/dnf"):
+            util.check_call(["dnf", "remove", "-y", rpm])
+        else:
+            util.check_call(["yum", "remove", "-y", rpm])
+
     def install(self, image, name):
         repo = self._get_ostree_repo()
         if not repo:
@@ -1163,7 +1171,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
     def uninstall(self, name):
         if self._is_preinstalled_container(name):
-            raise ValueError("Cannot uninstall a preinstalled container")
+            self._uninstall_rpm("%s-%s" % (RPM_NAME_PREFIX, name))
+            return
 
         with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
             info = json.loads(info_file.read())
