@@ -70,9 +70,9 @@ Can use --set to update environment variables.
   Print all the installed containers
 
 **-f** **--filter**
-  Filter output based on given filters, example usage: `--filter id=foo` will list all containers that has "foo" as part of their ID.
+  Filter output based on given filters, example usage: `--filter container=foo` will list all containers that has "foo" as part of their container ID.
 
-  Filterables: `container (id)`, `image`, `command`, `created`, `status`, `runtime`
+  Filterables: `backend`, `command`, `container`, `created`, `image`, `runtime`, `state`
 
 **--json**
   Print in a machine parsable format

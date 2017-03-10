@@ -187,7 +187,7 @@ class Images(Atomic):
                     else:
                         indicator = indicator + str(self.skull, "utf-8") + space
                 _id = image.short_id if self.args.truncate else image.id
-                util.write_out(col_out.format(indicator, image.repo or "<none>", image.tag or "<none>", _id, image.timestamp,
+                util.write_out(col_out.format(indicator, image.repo or "<none>", image.tag or "<none>", _id, image.created[0:16],
                                               image.virtual_size, image.backend.backend))
         util.write_out("")
         return
@@ -241,7 +241,7 @@ class Images(Atomic):
             shutil.rmtree(tmpdir)
 
     def _filter_include_image(self, image_obj):
-        filterables = ["repo", "tag", "id", "created", "size", "type", "dangling"]
+        filterables = ["repo", "tag", "id", "image", "created", "size", "type", "is_dangling"]
         for i in self.args.filter:
             try:
                 var, value = str(i).split("=")
@@ -259,10 +259,11 @@ class Images(Atomic):
                                  "Please choose from {}".format(var, filterables))
             if var == "type":
                 var = "str_backend"
-            if getattr(image_obj, var, None).lower() != value.lower():
-                return False
 
-        return True
+            if hasattr(image_obj, var) and value.lower() in str(getattr(image_obj, var)).lower():
+                return True
+
+        return False
 
     def _mark_used(self, images):
         assert isinstance(images, list)

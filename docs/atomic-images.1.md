@@ -99,8 +99,9 @@ Atomic --assumeyes option can be used
   Show all images, including intermediate images
 
 [**-f|--filter**]
-  Filter output based on given filters, example usage: '--filter repo=foo'
-will list all images that has "foo" as part of their repository name.
+  Filter output based on given filters, example usage: '--filter repo=foo' will list all images that has "foo" as part of their repository name.
+
+  Filterables: `created`, `id`, `image`, `is_dangling`, `repo`, `size`, `tag`, `type`
 
 [**-n|--noheading**]
   Do not print heading when listing the images

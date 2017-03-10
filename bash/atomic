@@ -523,12 +523,12 @@ _atomic_containers_list() {
 	"
 
 	local filterables="
-		id
 		container
 		image
 		command
 		created
-		status
+		state
+		backend
 		runtime
 	"
 
@@ -799,6 +799,7 @@ _atomic_images_list() {
     created
     size
     type
+    is_dangling
   "
 
   local options_with_args_glob=$(__atomic_to_extglob "$options_with_args")

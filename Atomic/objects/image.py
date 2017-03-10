@@ -2,8 +2,9 @@ from Atomic.util import Decompose, output_json
 from Atomic.discovery import RegistryInspect
 from Atomic.objects.layer import Layer
 from Atomic.client import no_shaw
+import datetime
 import math
-import time
+import numbers
 
 
 class Image(object):
@@ -18,7 +19,7 @@ class Image(object):
         self.image = None
         self.tag = None
         self.repotags = None
-        self.created = None
+        self._created = None
         self.size = None
         self.original_structure = None
         self._backend = backend
@@ -154,7 +155,7 @@ class Image(object):
 
     def populate_remote_inspect_info(self):
         remote_inspect_info = self.remote_inspect()
-        self.created = remote_inspect_info['Created']
+        self._created = remote_inspect_info['Created']
         self.name = remote_inspect_info['Name']
         self.os = remote_inspect_info['Os']
         self.digest = remote_inspect_info['Digest']
@@ -238,8 +239,19 @@ class Image(object):
         return self.id[:12]
 
     @property
-    def timestamp(self):
-        return time.strftime("%F %H:%M", time.localtime(self.created))
+    def created(self):
+        if (isinstance(self._created, numbers.Number)):
+            return str(datetime.datetime.fromtimestamp(self._created))
+
+        return self._created
+
+    @property
+    def created_raw(self):
+        return self._created
+
+    @created.setter
+    def created(self, value):
+        self._created = value
 
     @property
     def type(self):
