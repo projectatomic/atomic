@@ -210,19 +210,6 @@ class Atomic(object):
                 return labels[l].split()
         return None
 
-    def _check_latest(self):
-        inspect = self._inspect_image()
-        if inspect and inspect["Id"] != self.inspect["Image"]:
-            util.write_out(
-                "The '%(name)s' container is using an older version of the "
-                "installed\n'%(image)s' container image. If you wish to use "
-                "the newer image,\nyou must either create a new container "
-                "with a new name or\nuninstall the '%(name)s' container."
-                "\n\n# atomic uninstall --name %(name)s %(image)s\n\nand "
-                "create new container on the '%(image)s' image.\n\n# atomic "
-                "update --force %(image)s\n\n removes all containers based on "
-                "an image." % {"name": self.name, "image": self.image})
-
     #def ps -> Atomic/ps.py
 
     #def run -> Atomic/run.py

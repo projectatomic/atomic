@@ -420,7 +420,6 @@ class DockerBackend(Backend):
         # atomic must be an instance of Atomic
         # args must be a argparse Namespace
         assert(isinstance(atomic, Atomic))
-
         # The object is a container
         # If container exists and not started, start it
         # If container exists and is started, execute command inside it (docker exec)
@@ -428,6 +427,15 @@ class DockerBackend(Backend):
         if args.command:
             iobject.user_command = args.command
         if isinstance(iobject, Container):
+            latest_image = self.inspect_image(iobject.image_name)
+            if latest_image.id != iobject.image_id:
+                util.write_out("The '{}' container is using an older version of the installed\n'{}' container image. If "
+                               "you wish to use the newer image,\nyou must either create a new container with a "
+                               "new name or\nuninstall the '{}' container. \n\n# atomic uninstall --name "
+                               "{} {}\n\nand create new container on the {} image.\n\n# atomic update --force "
+                               "{}s\n\n removes all containers based on an "
+                               "image.".format(iobject.name, iobject.image_name, iobject.name, iobject.name,
+                                               iobject.image_name, iobject.image_name, iobject.image_name))
             if iobject.running:
                 return self._running(iobject, args, atomic)
             else:
@@ -526,7 +534,6 @@ class DockerBackend(Backend):
             container_command = con_obj.command if not args.command else args.command
             container_command = container_command if not isinstance(container_command, list) else " ".join(container_command)
             cmd = [atomic.docker_binary(), "exec", "-t", "-i", con_obj.name] + container_command.split()
-            print(cmd)
             if args.display:
                 return atomic.display(" ".join(cmd))
             else:
