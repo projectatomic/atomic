@@ -118,7 +118,8 @@ class OSTreeBackend(Backend):
     def version(self, image):
         return self.get_layers(image)
 
-    def update(self, name, force=False, **kwargs):
+    def update(self, name, **kwargs):
+        force = kwargs.get('force', False)
         if force:
             raise ValueError("--force is not supported by ostree images")
         return self.syscontainers.pull_image(name)

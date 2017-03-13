@@ -13,6 +13,7 @@ from Atomic import Atomic
 import os
 from requests.exceptions import HTTPError
 from Atomic.backends._docker_errors import NoDockerDaemon
+from Atomic.discovery import RegistryInspectError
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -328,13 +329,22 @@ class DockerBackend(Backend):
         except HTTPError:
             pass
 
-    def update(self, name, force=False, **kwargs):
+    def update(self, name, **kwargs):
         debug = kwargs.get('debug', False)
         # A TypeError is thrown if the force keywords is passed in addition to kwargs
         force = kwargs.get('force', False)
-        remote_image_obj = self.make_remote_image(name)
-        # pull_image will raise a ValueError if the "latest" image is already present
-        self.pull_image(name, remote_image_obj, debug=debug)
+        local_only = False
+        try:
+            remote_image_obj = self.make_remote_image(name)
+        except RegistryInspectError:
+            # We might be dealing with a local only image
+            local_only = True
+        if local_only:
+            img_obj = kwargs.get('image_object')
+            return self.delete_image(img_obj.id, force=True)
+        else:
+            # pull_image will raise a ValueError if the "latest" image is already present
+            self.pull_image(name, remote_image_obj, debug=debug)
         # Only delete containers if a new image is actually pulled.
         img_obj = self.inspect_image(name)
         if force:
