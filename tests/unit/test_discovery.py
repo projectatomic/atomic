@@ -12,7 +12,7 @@ class TestAtomicUtil(unittest.TestCase):
         for img in ['docker.io/library/busybox:latest', 'docker.io/library/busybox', 'docker.io/busybox', 'busybox']:
             registry, repo, image, tag, _ = util.Decompose(img).all
             ri = discovery.RegistryInspect(registry=registry, repo=repo, image=image, tag=tag)
-            self.assertIn(ri.find_image_on_registry(), [fq, 'docker.io/busybox:latest'])
+            self.assertEqual(ri.find_image_on_registry(), fq)
 
     def test_inspect(self):
         ri = discovery.RegistryInspect(registry=self.I_REGISTRY,

@@ -58,7 +58,10 @@ class RegistryInspect():
 
     def assemble_fqdn(self, include_tag=True, registry=None):
         fqdn = "{}".format(registry or self.registry)
-        fqdn = fqdn if not self.repo else "{}/{}".format(fqdn, self.repo)
+        if self.repo:
+            fqdn = "{}/{}".format(fqdn, self.repo)
+        elif fqdn == "docker.io": # and no repo specified
+            fqdn = fqdn + "/library"
         fqdn += "/{}".format(self.image)
         if include_tag:
             if self.tag:
