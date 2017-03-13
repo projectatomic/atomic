@@ -197,6 +197,14 @@ class Storage(Atomic):
                 self._vgroup(self.args.vgroup)
             if len(self.args.devices) > 0:
                 self._add_device(self.args.devices)
+            try:
+                util.check_output(["docker-storage-setup"], stderr=subprocess.STDOUT)
+            except subprocess.CalledProcessError as e:
+                util.write_out("Return Code: {}".format(e.returncode))
+                util.write_out("Failure: {}".format(e.output))
+                util.check_call(["docker-storage-setup", "--reset"], stdout=DEVNULL)
+                os.rename(self.dss_conf_bak, self.dss_conf)
+                raise ValueError("docker-storage-setup failed")
         except:
             if os.path.exists(self.dss_conf_bak):
                 os.rename(self.dss_conf_bak, self.dss_conf)

@@ -72,13 +72,11 @@ the directory must be present for the import to happen successfully.
   Print usage statement
 
 **--add-device**
-Add the block devices names to /etc/sysconfig/docker-storage-setup.
-You must run docker-storage-setup to add the block devices
-to storage pool. docker-storage-setup will expand your devicemapper
+Add block devices to storage pool. This command will expand your devicemapper
 storage pool by adding the block device. Only works with devicemapper driver.
 
-E.g atomic storage modify --add-device /dev/vdb will add `DEVS="/dev/vdb"`
-to /etc/sysconfig/docker-storage-setup.
+E.g atomic storage modify --add-device /dev/vdb will add /dev/vdb
+to storage pool.
 
 **--remove-device**
 Remove block devices from the storage pool.  If a device is not empty, this
@@ -88,49 +86,37 @@ command will try to first move its data to some other device in the pool.
 Remove all block devices from the storage pool that are currently unused.
 
 **--driver**
-Add the backend storage driver name to /etc/sysconfig/docker-storage-setup.
-Drivers supported: devicemapper, overlay, overlay2.
-E.g atomic storage modify --driver=overlay2 will add `STORAGE_DRIVER=overlay2`
-to /etc/sysconfig/docker-storage-setup.
+Backend storage driver for containers. This options the storage driver.
+Drivers supported: devicemapper, overlay, overlay2
 
 **--lvname**
-Add the logical volume name for container storage to
-/etc/sysconfig/docker-storage-setup.
+Logical volume name for container storage.
 E.g atomic storage modify --lvname="container-root-lv"
---rootfs="/var/lib/containers" will add
-`CONTAINER_ROOT_LV_NAME="container-root-lv"` and
-`CONTAINER_ROOT_LV_MOUNT_PATH="/var/lib/containers"`
-to /etc/sysconfig/docker-storage-setup.
+--rootfs="/var/lib/containers" will create logical volume named
+container-root-lv and mount it on /var/lib/containers.
 Note: You must set --rootfs when setting --lvname.
 
 **--rootfs**
-Add the mountpath where logical volume for container storage
-would be mounted to /etc/sysconfig/docker-storage-setup.
+Mountpath where logical volume for container storage would be mounted.
 E.g. atomic storage modify --rootfs="/var/lib/containers"
---lvname="container-root-lv" will add
-`CONTAINER_ROOT_LV_MOUNT_PATH="/var/lib/containers"` and
-`CONTAINER_ROOT_LV_NAME="container-root-lv"` to
-/etc/sysconfig/docker-storage-setup.
+--lvname="container-root-lv" will create logical volume named
+container-root-lv and mount it on /var/lib/containers.
 Note: You must set --lvname when setting --rootfs.
 
 **--lvsize**
-Add logical volume size for container storage to
-/etc/sysconfig/docker-storage-setup. It defaults to 40% of all free space.
+Logical volume size for container storage. It defaults to 40% of all free space.
 --lvsize can take values acceptable to "lvcreate -L" as well as some values
 acceptable to "lvcreate -l". If user intends to pass values acceptable to
 "lvcreate -l", then only those values which contains "%" in syntax are acceptable.
 If value does not contain "%" it is assumed value is suitable for "lvcreate -L".
 E.g. atomic storage modify --rootfs="/var/lib/containers" --lvname="container-root-lv"
---lvsize=20%FREE will add `CONTAINER_ROOT_LV_MOUNT_PATH="/var/lib/containers"`,
-`CONTAINER_ROOT_LV_NAME="container-root-lv"` and `CONTAINER_ROOT_LV_SIZE=20%FREE` to
-/etc/sysconfig/docker-storage-setup.
+--lvsize=20%FREE will create logical volume named container-root-lv of size
+(20% of the available free space in the volume group)
+and mount it on /var/lib/containers.
 Note: You must set --lvname and --rootfs when setting --lvsize.
 
 **--vgroup**
-Add the name of the volume group for the storage pool to
-/etc/sysconfig/docker-storage-setup.
-E.g atomic storage modify --vgroup=atomicos would add
-`VG=atomicos` to /etc/sysconfig/docker-storage-setup.
+The name of the volume group for the storage pool.
 
 # reset OPTIONS
 **-h** **--help**
