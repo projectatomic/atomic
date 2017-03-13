@@ -525,9 +525,10 @@ class DockerBackend(Backend):
         if con_obj.interactive:
             container_command = con_obj.command if not args.command else args.command
             container_command = container_command if not isinstance(container_command, list) else " ".join(container_command)
-            cmd = [atomic.docker_binary(), "exec", "-t", "-i", con_obj.name, container_command]
+            cmd = [atomic.docker_binary(), "exec", "-t", "-i", con_obj.name] + container_command.split()
+            print(cmd)
             if args.display:
-                return atomic.display(cmd)
+                return atomic.display(" ".join(cmd))
             else:
                 return util.check_call(cmd, stderr=DEVNULL)
         else:

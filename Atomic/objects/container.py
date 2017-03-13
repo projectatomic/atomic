@@ -100,3 +100,7 @@ class Container(object):
     @property
     def user_command(self):
         return self._user_command
+
+    @user_command.setter
+    def user_command(self, value):
+        self._user_command = value
