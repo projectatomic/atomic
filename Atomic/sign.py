@@ -117,7 +117,14 @@ class Sign(Atomic):
                     if not os.path.exists(signature_path):
                         raise ValueError("The signature path {} does not exist".format(signature_path))
 
-                sigstore_path = "{}/{}@{}".format(signature_path, expanded_image_name.rsplit(':', 1)[0], manifest_hash)
+                # remote_path contains neither the registry hostname nor a digest/tag
+                expanded_image_name_components = util.Decompose(expanded_image_name)
+                if expanded_image_name_components.repo:
+                    remote_path = expanded_image_name_components.repo + '/' + expanded_image_name_components.image
+                else:
+                    remote_path = expanded_image_name_components.image
+                sigstore_path = "{}/{}@{}".format(signature_path, remote_path, manifest_hash.replace(':', '=', 1))
+
                 self.make_sig_dirs(sigstore_path)
                 sig_name = self.get_sig_name(sigstore_path)
                 fq_sig_path = os.path.join(sigstore_path, sig_name)
