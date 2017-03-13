@@ -93,19 +93,20 @@ class Sign(Atomic):
                     signature_path = in_signature_path
 
                 else:
-                    reg, repo, _, _, _ = expanded_image_name_components.all
+                    config_key = "{}/{}".format(expanded_image_name_components.registry,
+                                                expanded_image_name_components.repo)
                     if not registry_configs and not default_store:
                         raise ValueError(no_reg_no_default_error(sign_image, registry_config_path))
-                    reg_info = util.have_match_registry("{}/{}".format(reg, repo), registry_configs)
+                    reg_info = util.have_match_registry(config_key, registry_configs)
                     if not reg_info:
                         reg_info = default_store
                         if reg_info is None:
-                            raise ValueError("No applicable configuration for {}/{} was found in {}".format(reg, repo, registry_config_path))
+                            raise ValueError("No applicable configuration for {} was found in {}".format(config_key, registry_config_path))
 
                     signature_path = util.get_signature_write_path(reg_info)
                     if signature_path is None:
-                        raise ValueError("No write path for {}/{} was "
-                                         "found in {}".format(reg, repo, registry_config_path))
+                        raise ValueError("No write path for {} was "
+                                         "found in {}".format(config_key, registry_config_path))
                     elif urlparse(signature_path).scheme not in WRITE_URIS:
                         raise ValueError("Writing to {} is not supported. Use a supported scheme {} "
                                          "instead.".format(urlparse(signature_path).scheme, WRITE_URIS))
