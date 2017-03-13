@@ -85,6 +85,7 @@ class Sign(Atomic):
                 manifest_file.close()
                 manifest_hash = str(util.skopeo_manifest_digest(manifest_file.name))
                 expanded_image_name = ri.fqdn
+                expanded_image_name_components = util.Decompose(expanded_image_name)
 
                 if in_signature_path:
                     if not os.path.exists(in_signature_path):
@@ -92,7 +93,7 @@ class Sign(Atomic):
                     signature_path = in_signature_path
 
                 else:
-                    reg, repo, _, _, _ = util.Decompose(expanded_image_name).all
+                    reg, repo, _, _, _ = expanded_image_name_components.all
                     if not registry_configs and not default_store:
                         raise ValueError(no_reg_no_default_error(sign_image, registry_config_path))
                     reg_info = util.have_match_registry("{}/{}".format(reg, repo), registry_configs)
@@ -118,7 +119,6 @@ class Sign(Atomic):
                         raise ValueError("The signature path {} does not exist".format(signature_path))
 
                 # remote_path contains neither the registry hostname nor a digest/tag
-                expanded_image_name_components = util.Decompose(expanded_image_name)
                 if expanded_image_name_components.repo:
                     remote_path = expanded_image_name_components.repo + '/' + expanded_image_name_components.image
                 else:
