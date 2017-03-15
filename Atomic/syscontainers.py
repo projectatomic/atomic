@@ -653,7 +653,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             with open(tmpfiles, 'r') as infile:
                 tmpfiles_template = infile.read()
         else:
-            tmpfiles_template = SystemContainers._generate_tmpfiles_data(missing_bind_paths, values["STATE_DIRECTORY"])
+            tmpfiles_template = SystemContainers._generate_tmpfiles_data(missing_bind_paths)
 
         if has_container_service:
             SystemContainers._write_template(unitfile, systemd_template, values, unitfileout)
@@ -1486,16 +1486,12 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         return True
 
     @staticmethod
-    def _generate_tmpfiles_data(missing_bind_paths, state_directory):
+    def _generate_tmpfiles_data(missing_bind_paths):
         def _generate_line(x, state):
             return "%s    %s   0700 %i %i - -\n" % (state, x, os.getuid(), os.getgid())
         lines = []
         for x in missing_bind_paths:
-            if os.path.commonprefix([x, state_directory]) == state_directory:
-                lines.append(_generate_line(x, "d"))
-            else:
-                lines.append(_generate_line(x, "D"))
-                lines.append(_generate_line(x, "R"))
+            lines.append(_generate_line(x, "d"))
         return "".join(lines)
 
     @staticmethod
