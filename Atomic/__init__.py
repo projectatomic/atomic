@@ -7,5 +7,5 @@ from .util import write_out
 #pylint: disable=no-member
 __version__ = '1.16.4'
 __author__  = 'Daniel Walsh'
-__author_email__ = 'dwalsh@redhat.com>'
+__author_email__ = 'dwalsh@redhat.com'
 
