@@ -20,7 +20,7 @@ except ImportError:
 class TestAtomicPull(unittest.TestCase):
     class Args():
         def __init__(self):
-            self.image = "docker:centos"
+            self.image = "docker:centos:latest"
             self.user = False
 
     def test_pull_as_privileged_user(self):

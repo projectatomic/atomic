@@ -255,7 +255,7 @@ test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}
 test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0
 test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1
 
-${ATOMIC} pull --storage ostree docker:atomic-test-secret
+${ATOMIC} pull --storage ostree docker:atomic-test-secret:latest
 # Move directly the OSTree reference to a new one, so that we have different names and info doesn't error out
 mv ${ATOMIC_OSTREE_REPO}/refs/heads/ociimage/atomic-test-secret_3Alatest ${ATOMIC_OSTREE_REPO}/refs/heads/ociimage/atomic-test-secret-ostree_3Alatest
 ${ATOMIC} info atomic-test-secret-ostree > version.out
@@ -332,7 +332,7 @@ teardown
 
 # Install from a docker local docker image
 export NAME="test-docker-system-container-$$"
-${ATOMIC} install --name=${NAME} --set=RECEIVER=${SECRET} --system docker:atomic-test-system
+${ATOMIC} install --name=${NAME} --set=RECEIVER=${SECRET} --system docker:atomic-test-system:latest
 test -e /etc/tmpfiles.d/${NAME}.conf
 
 test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/${NAME}.service

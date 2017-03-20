@@ -155,12 +155,12 @@ class SystemContainers(object):
     def _pull_image_to_ostree(self, repo, image, upgrade):
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
-        if image.startswith("ostree:"):
+        if image.startswith("ostree:") and image.count(':') > 1:
             self._check_system_ostree_image(repo, image, upgrade)
-        elif image.startswith("docker:"):
+        elif image.startswith("docker:") and image.count(':') > 1:
             image = self._pull_docker_image(repo, image.replace("docker:", "", 1))
-        elif image.startswith("dockertar:"):
-            tarpath = image.replace("dockertar:", "", 1)
+        elif image.startswith("dockertar:/"):
+            tarpath = image.replace("dockertar:/", "", 1)
             image = self._pull_docker_tar(repo, tarpath, os.path.basename(tarpath).replace(".tar", ""))
         else: # Assume "oci:"
             self._check_system_oci_image(repo, image, upgrade)
