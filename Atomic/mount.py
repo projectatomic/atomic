@@ -36,10 +36,16 @@ from gi.repository import GLib  # pylint: disable=no-name-in-module
 
 # Module for mounting and unmounting containerized applications.
 
-DMSETUP_PATH='/usr/sbin/dmsetup'
-LSBLK_PATH='/usr/bin/lsblk'
-MOUNT_PATH='/usr/bin/mount'
-FINDMNT_PATH='/usr/bin/findmnt'
+def path_exists(paths):
+    for path in paths:
+        if os.path.exists(path):
+            return path
+    raise ValueError("Unable to find command in {}".format(paths))
+
+MOUNT_PATH = path_exists(['/usr/bin/mount', '/bin/mount'])
+DMSETUP_PATH = path_exists(['/usr/sbin/dmsetup', '/sbin/dmsetup'])
+LSBLK_PATH = path_exists(['/usr/bin/lsblk', '/bin/lsblk'])
+FINDMNT_PATH = path_exists(['/usr/bin/findmnt', '/bin/findmnt'])
 
 def cli_unmount(subparser):
     # atomic unmount
