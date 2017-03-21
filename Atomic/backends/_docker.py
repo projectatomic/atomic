@@ -189,7 +189,7 @@ class DockerBackend(Backend):
 
         else:
             con_obj.status = con_struct['Status']
-            con_obj.image_id = con_struct['ImageID']
+            con_obj.image = con_struct['ImageID']
             con_obj.image_name = con_struct['Image']
 
         return con_obj
@@ -305,7 +305,7 @@ class DockerBackend(Backend):
     def get_containers_by_image(self, img_obj):
         containers = []
         for container in self.get_containers():
-            if img_obj.id == container.image_id:
+            if img_obj.id == container.image:
                 containers.append(container)
         return containers
 
@@ -367,7 +367,6 @@ class DockerBackend(Backend):
         assert(isinstance(atomic, Atomic))
         args = atomic.args
         con_obj = None if not name else self.has_container(name)
-
         # We have a container by that name, need to stop and delete it
         if con_obj:
             if con_obj.running:
@@ -438,7 +437,7 @@ class DockerBackend(Backend):
             iobject.user_command = args.command
         if isinstance(iobject, Container):
             latest_image = self.inspect_image(iobject.image_name)
-            if latest_image.id != iobject.image_id:
+            if latest_image.id != iobject.image:
                 util.write_out("The '{}' container is using an older version of the installed\n'{}' container image. If "
                                "you wish to use the newer image,\nyou must either create a new container with a "
                                "new name or\nuninstall the '{}' container. \n\n# atomic uninstall --name "

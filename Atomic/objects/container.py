@@ -14,7 +14,7 @@ class Container(object):
         self.deep = False
         self._backend = backend
         self.runtime = backend.backend
-        self.image_id = None
+        self.image = None
         self.image_name = None
         self._command = None
         self.state = None
@@ -104,3 +104,4 @@ class Container(object):
     @user_command.setter
     def user_command(self, value):
         self._user_command = value
+
