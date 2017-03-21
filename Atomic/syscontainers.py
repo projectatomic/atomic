@@ -197,6 +197,18 @@ class SystemContainers(object):
         else:
             util.check_call(["yum", "remove", "-y", rpm])
 
+    @staticmethod
+    def _find_rpm(tmp_dir):
+        rpm_file = None
+        for root, _, files in os.walk(os.path.join(tmp_dir, "build")):
+            if rpm_file:
+                break
+            for f in files:
+                if f.endswith('.rpm'):
+                    rpm_file = os.path.join(root, f)
+                    break
+        return rpm_file
+
     def install(self, image, name):
         repo = self._get_ostree_repo()
         if not repo:
@@ -224,26 +236,16 @@ class SystemContainers(object):
                 if not self.args.system:
                     raise ValueError("Only --system can generate rpms")
 
-                rpm_file = None
                 auto = self.args.system_package == 'auto'
                 include_containers_file = self.args.system_package == 'build'
                 tmp_dir = self.generate_rpm(repo, auto, name, image, include_containers_file=include_containers_file)
                 if tmp_dir:
-                    for root, _, files in os.walk(os.path.join(tmp_dir, "build")):
-                        if rpm_file:
-                            break
-                        for f in files:
-                            if f.endswith('.rpm'):
-                                rpm_file = os.path.join(root, f)
-                                break
+                    rpm_preinstalled = SystemContainers._find_rpm(tmp_dir)
                     # If we are only build'ing the rpm, copy it to the cwd and exit
                     if self.args.system_package == 'build':
-                        destination = os.path.join(os.getcwd(), os.path.basename(rpm_file))
-                        shutil.move(rpm_file, destination)
+                        destination = os.path.join(os.getcwd(), os.path.basename(rpm_preinstalled))
+                        shutil.move(rpm_preinstalled, destination)
                         util.write_out("Generated rpm %s" % destination)
-                    else:
-                        self._install_rpm(rpm_file)
-                        rpm_preinstalled = rpm_file
 
                 if self.args.system_package == "build":
                     return False
@@ -631,7 +633,6 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         if rpm_preinstalled:
             new_installed_files = []
-            shutil.move(rpm_preinstalled, destination)
         else:
             new_installed_files = self._rm_add_files_to_host(installed_files, exports, prefix or "/", files_template=installed_files_template, values=values, rename_files=rename_files)
 
@@ -646,7 +647,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             shutil.copyfile(os.path.join(rootfs, "rpm.spec"), os.path.join(destination, "rpm.spec"))
 
         try:
-            rpm_installed = os.path.basename(rpm_preinstalled).replace(".rpm", "") if rpm_preinstalled else None
+            rpm_installed = os.path.basename(rpm_preinstalled) if rpm_preinstalled else None
             with open(os.path.join(destination, "info"), 'w') as info_file:
                 info = {"image" : img,
                         "revision" : image_id,
@@ -705,6 +706,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if os.path.exists(sym):
             os.unlink(sym)
         os.symlink(destination, sym)
+
+        if rpm_preinstalled:
+            self._install_rpm(rpm_preinstalled)
+            shutil.move(rpm_preinstalled, destination)
 
         self._systemctl_command("daemon-reload")
         if (tmpfiles_template):
@@ -839,6 +844,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         values = info["values"]
         revision = info["revision"] if "revision" in info else None
         installed_files = info["installed-files"] if "installed-files" in info else None
+        rpm_installed = info["rpm-installed"] if "rpm-installed" in info else True
 
         # Check if the image id or the configuration for the container has
         # changed before upgrading it.
@@ -864,7 +870,14 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             util.write_out("Latest version already installed.")
             return
 
-        self._checkout(repo, name, image, next_deployment, True, values, remote=self.args.remote, installed_files=installed_files)
+        # was installed with an rpm, update in the same way.
+        rpm_preinstalled = None
+        if rpm_installed:
+            tmp_dir = self.generate_rpm(repo, False, name, image, include_containers_file=False)
+            if tmp_dir:
+                rpm_preinstalled = SystemContainers._find_rpm(tmp_dir)
+
+        self._checkout(repo, name, image, next_deployment, True, values, remote=self.args.remote, installed_files=installed_files, rpm_preinstalled=rpm_preinstalled)
         return
 
     def rollback(self, name):
@@ -916,6 +929,16 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         os.unlink(path)
         os.symlink(destination, path)
+
+        # reinstall the previous rpm if any.
+        rpm_installed = None
+        with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
+            info = json.loads(info_file.read())
+            rpm_installed = info["rpm-installed"] if "rpm-installed" in info else True
+
+        if rpm_installed:
+            self._install_rpm(os.path.join(self._get_system_checkout_path(), name, rpm_installed))
+
         if has_container_service:
             self._systemctl_command("daemon-reload")
         if (os.path.exists(tmpfiles)):
@@ -1242,7 +1265,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             os.unlink(unitfileout)
 
         if rpm_installed:
-            self._uninstall_rpm(rpm_installed)
+            self._uninstall_rpm(rpm_installed.replace(".rpm", ""))
 
     def prune_ostree_images(self):
         repo = self._get_ostree_repo()
