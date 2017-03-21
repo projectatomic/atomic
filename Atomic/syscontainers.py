@@ -217,7 +217,10 @@ class SystemContainers(object):
         rpm_preinstalled = None
         tmp_dir = None
         try:
-            if self.args.system_package in ['build', 'yes', 'auto']:
+            if self.args.system_package == 'auto' and self.args.system:
+                self.args.system_package = 'no'
+
+            if self.args.system_package in ['build', 'yes']:
                 if not self.args.system:
                     raise ValueError("Only --system can generate rpms")
 
