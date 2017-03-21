@@ -293,7 +293,7 @@ class SystemContainers(object):
             return self._do_checkout(repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote)
         except (ValueError, OSError) as e:
             try:
-                if not extract_only:
+                if not extract_only and not upgrade:
                     shutil.rmtree(destination)
             except OSError:
                 pass
@@ -408,13 +408,12 @@ class SystemContainers(object):
                     pass
             rootfs = os.path.join(destination, "rootfs")
 
-        if os.path.exists(destination):
-            shutil.rmtree(destination)
-
         if remote_path:
-            os.makedirs(destination)
+            if not os.path.exists(destination):
+                os.makedirs(destination)
         else:
-            os.makedirs(rootfs)
+            if not os.path.exists(rootfs):
+                os.makedirs(rootfs)
 
         manifest = self._image_manifest(repo, rev)
 
@@ -662,9 +661,6 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             # Nothing to do
             util.write_out("Latest version already installed.")
             return
-
-        if os.path.exists("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment)):
-            shutil.rmtree("%s/%s.%d" % (self._get_system_checkout_path(), name, next_deployment))
 
         self._checkout(repo, name, image, next_deployment, True, values, remote=self.args.remote)
 
