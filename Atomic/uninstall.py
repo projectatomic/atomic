@@ -59,7 +59,7 @@ class Uninstall(Atomic):
                 if not img_obj:
                     raise ValueError(e)
                 be = ost
-        be.uninstall(img_obj, name=self.args.name, atomic=self)
+        be.uninstall(img_obj, name=self.args.name, atomic=self, ignore=self.args.ignore)
         return 0
 
 

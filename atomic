@@ -124,6 +124,8 @@ def create_parser(help_text):
                         help=_("show atomic version and exit"))
     parser.add_argument('--debug', default=False, action='store_true',
                         help=_("show debug messages"))
+    parser.add_argument('-i', '--ignore', default=False, action='store_true',
+                        help=_("ignore install-first requirement"))
     parser.add_argument('-y', '--assumeyes', default=False, action='store_true',
                         help=_("automatically answer yes for all questions"))
     subparser = parser.add_subparsers(help=_("commands"))

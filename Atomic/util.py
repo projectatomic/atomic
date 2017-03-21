@@ -21,6 +21,9 @@ import requests
 import ipaddress
 import socket
 from Atomic.backends._docker_errors import NoDockerDaemon
+import fcntl
+import time
+
 # Atomic Utility Module
 
 ReturnTuple = collections.namedtuple('ReturnTuple',
@@ -29,6 +32,9 @@ ATOMIC_CONF = os.environ.get('ATOMIC_CONF', '/etc/atomic.conf')
 ATOMIC_CONFD = os.environ.get('ATOMIC_CONFD', '/etc/atomic.d/')
 ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
 ATOMIC_VAR_LIB = os.environ.get('ATOMIC_VAR_LIB', '/var/lib/atomic')
+if not os.path.exists(ATOMIC_VAR_LIB):
+    os.makedirs(ATOMIC_VAR_LIB)
+ATOMIC_INSTALL_JSON = os.environ.get('ATOMIC_INSTALL_JSON', os.path.join(ATOMIC_VAR_LIB, 'install.json'))
 
 GOMTREE_PATH = "/usr/bin/gomtree"
 BWRAP_OCI_PATH = "/usr/bin/bwrap-oci"
@@ -793,6 +799,117 @@ def load_scan_result_file(file_name):
     Read a specific json file
     """
     return json.loads(open(os.path.join(file_name), "r").read())
+
+
+def file_lock(func):
+    lock_file_name = "{}.lock".format(os.path.join(os.path.dirname(ATOMIC_INSTALL_JSON), "." + os.path.basename(ATOMIC_INSTALL_JSON)))
+
+    # Create the temporary lockfile if it doesn't exist
+    if not os.path.exists(lock_file_name):
+        open(lock_file_name, 'a').close()
+
+    install_data_file = open(lock_file_name, "r")
+
+    def get_lock():
+        '''
+        Obtains a read-only file lock on the install data
+        :return: 
+        '''
+        time_out = 0
+        f_lock = False
+        while time_out < 10.5: # Ten second attempt to get a lock
+            try:
+                fcntl.flock(install_data_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                f_lock = True
+                break
+            except IOError:
+                time.sleep(.5)
+                time_out += .5
+        if not f_lock:
+            raise ValueError("Unable to get file lock for {}".format(ATOMIC_INSTALL_JSON))
+
+    def release_lock():
+        fcntl.flock(install_data_file, fcntl.LOCK_UN)
+
+    def wrapper(*args, **kwargs):
+        get_lock()
+        ret = func(*args, **kwargs)
+        release_lock()
+        return ret
+
+    return wrapper
+
+
+class InstallData(object):
+    if not os.path.exists(ATOMIC_INSTALL_JSON):
+        open(ATOMIC_INSTALL_JSON, 'a').close()
+
+    install_file_handle = open(ATOMIC_INSTALL_JSON, 'r')
+
+    @staticmethod
+    def _read_install_data(file_handle):
+        try:
+            return json.loads(file_handle.read())
+        except ValueError:
+            return {}
+
+    @classmethod
+    def _write_install_data(cls, new_data):
+        install_data = cls._read_install_data(cls.install_file_handle)
+        for x in new_data:
+            install_data[x] = new_data[x]
+        temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False)
+        json.dump(install_data, temp_file)
+        temp_file.close()
+        shutil.move(temp_file.name, ATOMIC_INSTALL_JSON)
+
+    @classmethod
+    @file_lock
+    def read_install_data(cls):
+        if os.path.exists(ATOMIC_INSTALL_JSON):
+            read_data = cls._read_install_data(cls.install_file_handle)
+            return read_data
+        return {}
+
+    @classmethod
+    @file_lock
+    def write_install_data(cls, new_data):
+        cls._write_install_data(new_data)
+
+    @classmethod
+    def get_install_name_by_id(cls, iid, install_data=None):
+        if not install_data:
+            install_data = cls._read_install_data(cls.install_file_handle)
+        for installed_image in install_data:
+            if install_data[installed_image]['id'] == iid:
+                return installed_image
+        raise ValueError("Unable to find {} in installed image data ({}). Re-run command with -i to ignore".format(id, ATOMIC_INSTALL_JSON))
+
+    @classmethod
+    @file_lock
+    def delete_by_id(cls, iid, ignore=False):
+        install_data = cls._read_install_data(cls.install_file_handle)
+        try:
+            id_key = InstallData.get_install_name_by_id(iid, install_data=install_data)
+        except ValueError as e:
+            if not ignore:
+                raise ValueError(str(e))
+            return
+        del install_data[id_key]
+        return cls._write_install_data(install_data)
+
+    @classmethod
+    def image_installed(cls, img_object):
+        install_data = cls.read_install_data()
+        if install_data.get(img_object.id, None):
+            return True
+        if install_data.get(img_object.input_name, None):
+            return True
+        if install_data.get(img_object.name, None):
+            return True
+        if install_data.get(img_object.image, None):
+            return True
+        return False
 
 class Decompose(object):
     """

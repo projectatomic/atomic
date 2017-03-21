@@ -43,7 +43,7 @@ __atomic_scanners() {
 
 _atomic_atomic() {
 	local boolean_options="
-		--help -h --version -v --debug --assumeyes -y
+		--help -h --version -v --debug --assumeyes -y -i --ignore
 	"
 	case "$prev" in
 		$main_options_with_args_glob )

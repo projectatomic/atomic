@@ -324,7 +324,9 @@ class DockerBackend(Backend):
         assert(image is not None)
         try:
             return self.d.remove_image(image, force=force)
-        except errors.NotFound:
+        except errors.APIError as e:
+            raise ValueError(str(e))
+        except errors.NotFound: # pylint: disable=bad-except-order
             pass
         except HTTPError:
             pass
@@ -364,6 +366,7 @@ class DockerBackend(Backend):
 
     def uninstall(self, iobject, name=None, **kwargs):
         atomic = kwargs.get('atomic')
+        ignore = kwargs.get('ignore')
         assert(isinstance(atomic, Atomic))
         args = atomic.args
         con_obj = None if not name else self.has_container(name)
@@ -395,7 +398,11 @@ class DockerBackend(Backend):
             return 0
         if cmd:
             return util.check_call(cmd, env=atomic.cmd_env())
+
+        # Delete the entry in the install data
+        util.InstallData.delete_by_id(iobject.id, ignore=ignore)
         return self.delete_image(iobject.image, force=args.force)
+
 
     def validate_layer(self, layer):
         pass
@@ -450,6 +457,10 @@ class DockerBackend(Backend):
             else:
                 return self._start(iobject, args, atomic)
 
+        if iobject.get_label('INSTALL') and not args.ignore and not util.InstallData.image_installed(iobject):
+            raise ValueError("The image '{}' appears to have not been installed and has an INSTALL label.  You "
+                             "should install this image first.  Re-run with --ignore to bypass this "
+                             "error.".format(iobject.name or iobject.image))
         # The object is an image
         command = []
         if iobject.run_command:

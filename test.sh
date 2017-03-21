@@ -142,6 +142,11 @@ if [ ! -n "${PYTHON+ }" ]; then
     fi
 fi
 
+# Add images with INSTALL labels to /var/lib/atomic/install.json
+INSTALL_DATA_FILE="$(pwd)/install.json"
+INSTALL_DATA=`docker images --no-trunc | awk '/atomic-test-/ {printf "\"%s\": {\"install_id\": \"%s\"},\n", $1, $3}' | sed 's/sha256://g' | sed '$ s/,$//'`
+echo "{$INSTALL_DATA}" > ${INSTALL_DATA_FILE}
+export ATOMIC_INSTALL_JSON=$INSTALL_DATA_FILE
 
 echo "UNIT TESTS:"
 

@@ -4,6 +4,8 @@ from . import util
 from .util import add_opt
 from .syscontainers import OSTREE_PRESENT
 from Atomic.backendutils import BackendUtils
+from Atomic.discovery import RegistryInspectError
+from time import gmtime, strftime
 
 try:
     from . import Atomic
@@ -129,6 +131,15 @@ class Install(Atomic):
         self.display(cmd)
 
         if not self.args.display:
+            try:
+                name = img_obj.fq_name
+            except RegistryInspectError:
+                name = img_obj.input_name
+            install_data = {}
+            install_data[name] = {'id': img_obj.id,
+                                  'install_date': strftime("%Y-%m-%d %H:%M:%S", gmtime())
+                                  }
+            util.InstallData.write_install_data(install_data)
             return util.check_call(cmd)
 
     @staticmethod

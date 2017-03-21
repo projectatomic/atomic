@@ -65,6 +65,7 @@ class atomic_dbus(slip.dbus.service.Object):
             self.graph = None
             self.heading = False
             self.hotfix = False
+            self.ignore = False
             self.image = None
             self.images = []
             self.import_location = None
@@ -392,8 +393,8 @@ class atomic_dbus(slip.dbus.service.Object):
     # The Run method will run the specified image
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     # Return a 0 or 1 for success.  Errors result in exceptions.
-    @dbus.service.method("org.atomic", in_signature='ssbbas', out_signature='i')
-    def Run(self, image, name='', spc=False, detach=False, command=''):
+    @dbus.service.method("org.atomic", in_signature='ssbbbas', out_signature='i')
+    def Run(self, image, name='', spc=False, detach=False, ignore=False, command=''):
         r = Run()
         args = self.Args()
         args.image = image
@@ -401,6 +402,7 @@ class atomic_dbus(slip.dbus.service.Object):
         args.spc = spc
         args.detach = detach
         args.command = command if command is not '' else []
+        args.ignore = ignore
         r.set_args(args)
         try:
             return r.run()
@@ -644,13 +646,14 @@ class atomic_dbus(slip.dbus.service.Object):
     # atomic uninstall section
     # The Uninstall method will uninstall the specified image
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='ssbsas', out_signature='i')
-    def Uninstall(self, image, name, force, storage, extra_args):
+    @dbus.service.method("org.atomic", in_signature='ssbsbas', out_signature='i')
+    def Uninstall(self, image, name, force, storage, ignore, extra_args):
         i = Uninstall()
         args = self.Args()
         args.image = image
         args.name = name if name is not '' else None
         args.force = force
+        args.ignore = ignore
         args.storage = storage if storage is not '' else None
         args.extra_args = [] if not extra_args else extra_args
         i.set_args(args)

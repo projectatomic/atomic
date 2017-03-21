@@ -118,14 +118,14 @@ class AtomicDBus (object):
 
     # The Run method will create and run a container on the specified image
     @polkit.enable_proxy
-    def Run(self, image, name=None, spc=False, detach=False, command=None):
+    def Run(self, image, name=None, spc=False, detach=False, ignore=False, command=None):
         if not name:
             name = image
         if not command:
             command = []
         if not isinstance(command, (list, tuple)):
             command = [ command ]
-        return self.dbus_object.Run(image, name, spc, detach, command, dbus_interface="org.atomic", timeout = 2147400)
+        return self.dbus_object.Run(image, name, spc, detach, ignore, command, dbus_interface="org.atomic", timeout = 2147400)
 
     @polkit.enable_proxy
     def Scan(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):
@@ -167,14 +167,14 @@ class AtomicDBus (object):
         return self.dbus_object.TrustShow(dbus_interface="org.atomic")
 
     @polkit.enable_proxy
-    def Uninstall(self, image, name=None, force=False, storage=None, extra_args=None):
+    def Uninstall(self, image, name=None, force=False, storage=None, ignore=False, extra_args=None):
         if not name:
             name = image
         if not extra_args:
             extra_args = []
         if not isinstance(extra_args, (list, tuple)):
             extra_args = [ extra_args ]
-        return self.dbus_object.Install(image, name=name, force=force, storage=storage, extra_args=extra_args, dbus_interface="org.atomic", timeout = 2147400)
+        return self.dbus_object.Uninstall(image, name, force, storage, ignore, extra_args, dbus_interface="org.atomic", timeout = 2147400)
 
     @polkit.enable_proxy
     def UnmountImage(self, dest):

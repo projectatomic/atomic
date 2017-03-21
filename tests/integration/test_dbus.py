@@ -105,11 +105,12 @@ class TestDBus():
 
     @integration_test
     def test_run(self):
-        self.dbus_object.Run('atomic-test-3', name='atomic-dbus-3')
+        self.dbus_object.Run('atomic-test-3', 'atomic-dbus-3', False, False, True)
         self.cid = TestDBus.run_cmd('docker ps -aq -l').decode('utf-8').rstrip()
         TestDBus.add_cleanup_cmd('docker rm {}'.format(self.cid))
         container_inspect = json.loads(TestDBus.run_cmd('docker inspect {}'.format(self.cid)).decode('utf-8'))[0]
-        assert(container_inspect['Name'] == '/atomic-test-3')
+        print(container_inspect)
+        assert(container_inspect['Name'] == '/atomic-dbus-3')
 
     @integration_test
     def test_container_delete(self):
@@ -140,7 +141,7 @@ class TestDBus():
 
     @integration_test
     def test_uninstall(self):
-        results = self.dbus_object.Uninstall('dbus-test-3', '', True, '', '')
+        results = self.dbus_object.Uninstall('dbus-test-3', '', True, '', True, '')
         TestDBus.remove_cleanup_cmd('docker rm {}'.format(self.cid))
         TestDBus.remove_cleanup_cmd('docker rmi atomic-dbus-3')
         try:
