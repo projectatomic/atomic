@@ -214,15 +214,18 @@ class SystemContainers(object):
             return
 
         image = self._pull_image_to_ostree(repo, image, False)
+        rpm_preinstalled = None
+        tmp_dir = None
+        try:
+            if self.args.system_package in ['build', 'yes', 'auto']:
+                if not self.args.system:
+                    raise ValueError("Only --system can generate rpms")
 
-        if self.args.system_package in ['build', 'yes', 'auto']:
-            if not self.args.system:
-                raise ValueError("Only --system can generate rpms")
-
-            rpm_file = None
-            tmp_dir = self.generate_rpm(repo, self.args.system_package == 'auto', name, image)
-            if tmp_dir:
-                try:
+                rpm_file = None
+                auto = self.args.system_package == 'auto'
+                include_containers_file = self.args.system_package == 'build'
+                tmp_dir = self.generate_rpm(repo, auto, name, image, include_containers_file=include_containers_file)
+                if tmp_dir:
                     for root, _, files in os.walk(os.path.join(tmp_dir, "build")):
                         if rpm_file:
                             break
@@ -237,17 +240,25 @@ class SystemContainers(object):
                         util.write_out("Generated rpm %s" % destination)
                     else:
                         self._install_rpm(rpm_file)
-                finally:
-                    shutil.rmtree(tmp_dir)
-                return False
+                        rpm_preinstalled = rpm_file
 
-        values = {}
-        if self.args.setvalues is not None:
-            setvalues = SystemContainers._split_set_args(self.args.setvalues)
-            for k, v in setvalues.items():
-                values[k] = v
+                if self.args.system_package == "build":
+                    return False
 
-        self._checkout(repo, name, image, 0, False, values=values, remote=self.args.remote)
+            values = {}
+            if self.args.setvalues is not None:
+                setvalues = SystemContainers._split_set_args(self.args.setvalues)
+                for k, v in setvalues.items():
+                    values[k] = v
+
+            self._checkout(repo, name, image, 0, False, values=values, remote=self.args.remote, rpm_preinstalled=rpm_preinstalled)
+        except:
+            if rpm_preinstalled:
+                self._uninstall_rpm(os.path.basename(rpm_preinstalled).replace(".rpm", ""))
+            raise
+        finally:
+            if tmp_dir:
+                shutil.rmtree(tmp_dir)
 
     def _check_oci_configuration_file(self, conf_path, remote=None, include_all=False):
         with open(conf_path, 'r') as conf:
@@ -334,7 +345,8 @@ class SystemContainers(object):
             raise ValueError("The container's rootfs is set to remote, but the remote rootfs does not exist")
         return real_path
 
-    def _checkout(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False, remote=None, prefix=None, installed_files=None):
+    def _checkout(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False, remote=None, prefix=None, installed_files=None,
+                  rpm_preinstalled=None):
         destination = destination or "%s/%s.%d" % (self._get_system_checkout_path(), name, deployment)
         unitfileout, tmpfilesout = self._get_systemd_destination_files(name, prefix)
 
@@ -344,7 +356,8 @@ class SystemContainers(object):
                     raise ValueError("The file %s already exists." % f)
 
         try:
-            return self._do_checkout(repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix, installed_files=installed_files)
+            return self._do_checkout(repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix, installed_files=installed_files,
+                                     rpm_preinstalled=rpm_preinstalled)
         except (ValueError, OSError) as e:
             try:
                 if not extract_only and not upgrade:
@@ -427,7 +440,8 @@ class SystemContainers(object):
                 outfile.write(result)
         return result
 
-    def _do_checkout(self, repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix=None, installed_files=None):
+    def _do_checkout(self, repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix=None, installed_files=None,
+                     rpm_preinstalled=None):
         if values is None:
             values = {}
 
@@ -544,9 +558,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                     for key, val in manifest["defaultValues"].items():
                         if key not in values:
                             values[key] = val
-                if "installedFilesTemplate" in manifest:
+                if rpm_preinstalled is None and "installedFilesTemplate" in manifest:
                     installed_files_template = manifest["installedFilesTemplate"]
-                if "renameFiles" in manifest:
+                if rpm_preinstalled is None and "renameFiles" in manifest:
                     rename_files = manifest["renameFiles"]
                 if "noContainerService" in manifest and manifest["noContainerService"]:
                     has_container_service = False
@@ -612,7 +626,11 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                                      (str(e)))
                 rename_files[k] = new_v
 
-        new_installed_files = self._rm_add_files_to_host(installed_files, exports, prefix or "/", files_template=installed_files_template, values=values, rename_files=rename_files)
+        if rpm_preinstalled:
+            new_installed_files = []
+            shutil.move(rpm_preinstalled, destination)
+        else:
+            new_installed_files = self._rm_add_files_to_host(installed_files, exports, prefix or "/", files_template=installed_files_template, values=values, rename_files=rename_files)
 
         missing_bind_paths = self._check_oci_configuration_file(destination_path, remote_path, True)
 
@@ -625,6 +643,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             shutil.copyfile(os.path.join(rootfs, "rpm.spec"), os.path.join(destination, "rpm.spec"))
 
         try:
+            rpm_installed = os.path.basename(rpm_preinstalled).replace(".rpm", "") if rpm_preinstalled else None
             with open(os.path.join(destination, "info"), 'w') as info_file:
                 info = {"image" : img,
                         "revision" : image_id,
@@ -635,6 +654,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                         "installed-files": new_installed_files,
                         "installed-files-template": installed_files_template,
                         "rename-installed-files" : rename_files,
+                        "rpm-installed" : rpm_installed,
                         "remote" : remote}
                 info_file.write(json.dumps(info, indent=4))
                 info_file.write("\n")
@@ -854,8 +874,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         rename_files = None
         with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
             info = json.loads(info_file.read())
-            installed_files = info["installed-files"] if "installed-files" in info else None
-            installed_files_template = info["installed-files-template"] if "installed-files-template" in info else None
+            rpm_installed = info["rpm-installed"] if "rpm-installed" in info else True
+            installed_files = info["installed-files"] if "installed-files" in info and rpm_installed is None else None
+            installed_files_template = info["installed-files-template"] if "installed-files-template" in info and rpm_installed is None else None
             has_container_service = info["has-container-service"] if "has-container-service" in info else True
             rename_files = info["rename-installed-files"] if "rename-installed-files" in info else None
 
@@ -887,7 +908,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if (os.path.exists(tmpfiles)):
             shutil.copyfile(tmpfiles, tmpfilesout)
 
-        self._rm_add_files_to_host(installed_files, os.path.join(destination, "rootfs/exports"), files_template=installed_files_template, rename_files=rename_files)
+        if installed_files:
+            self._rm_add_files_to_host(installed_files, os.path.join(destination, "rootfs/exports"), files_template=installed_files_template, rename_files=rename_files)
 
         os.unlink(path)
         os.symlink(destination, path)
@@ -1172,11 +1194,14 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
     def uninstall(self, name):
         if self._is_preinstalled_container(name):
             self._uninstall_rpm("%s-%s" % (RPM_NAME_PREFIX, name))
+
+        if not os.path.exists(os.path.join(self._get_system_checkout_path(), name)):
             return
 
         with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
             info = json.loads(info_file.read())
             has_container_service = info["has-container-service"] if "has-container-service" in info else True
+            rpm_installed = info["rpm-installed"] if "rpm-installed" in info else True
 
         unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
         if has_container_service:
@@ -1212,6 +1237,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         if os.path.exists(unitfileout):
             os.unlink(unitfileout)
+
+        if rpm_installed:
+            self._uninstall_rpm(rpm_installed)
 
     def prune_ostree_images(self):
         repo = self._get_ostree_repo()
@@ -1639,84 +1667,90 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         traverse(it)
         return ret
 
-    def generate_rpm(self, repo, auto, name, image):
-        image_inspect = self.inspect_system_image(image)
+    def generate_rpm(self, repo, auto, name, image, include_containers_file=True):
         temp_dir = tempfile.mkdtemp()
         rpm_content = os.path.join(temp_dir, "rpmroot")
         rootfs = os.path.join(rpm_content, "usr/lib/containers/atomic", name)
         os.makedirs(rootfs)
         success = False
         try:
-            spec_file = os.path.join(temp_dir, "container.spec")
             values = self._checkout(repo, name, image, 0, False, destination=rootfs, prefix=rpm_content)
-
             if self.display:
                 return None
-
-            included_rpm = os.path.join(rootfs, "rootfs", "exports", "container.rpm")
-            if os.path.exists(included_rpm):
-                return included_rpm
-
-            installed_files = None
-            with open(os.path.join(rootfs, "info"), "r") as info_file:
-                info = json.loads(info_file.read())
-                installed_files = info["installed-files"] if "installed-files" in info else None
-
-            labels = {k.lower() : v for k, v in image_inspect.get('Labels', {}).items()}
-            summary = labels.get('summary', name)
-            version = labels.get("version", "1.0")
-            release = labels.get("release", "1.0")
-            license_ = labels.get("license", "GPLv2")
-            url = labels.get("url")
-            source0 = labels.get("source0")
-            requires = labels.get("requires")
-            provides = labels.get("provides")
-            conflicts = labels.get("conflicts")
-            description = labels.get("description")
-
-            image_id = values["IMAGE_ID"]
-
-            if os.path.exists(os.path.join(rootfs, "rpm.spec")):
-                with open(os.path.join(rootfs, "rpm.spec"), "r") as f:
-                    spec_content = f.read()
-            else:
-                # If there is no spec file and 'auto' is used, do not install an rpm
-                if auto:
-                    return None
-                spec_content = self._generate_spec_file(rpm_content, name, summary, license_, image_id, version=version,
-                                                        release=release, url=url, source0=source0, requires=requires,
-                                                        provides=provides, conflicts=conflicts, description=description,
-                                                        installed_files=installed_files)
-
-            with open(spec_file, "w") as f:
-                f.write(spec_content)
-
-            cwd = os.getcwd()
-            result_dir = os.path.join(temp_dir, "build")
-            if not os.path.exists(result_dir):
-                os.makedirs(result_dir)
-            cmd = ["rpmbuild", "--noclean", "-bb", spec_file,
-                   "--define", "_sourcedir %s" % temp_dir,
-                   "--define", "_specdir %s" % temp_dir,
-                   "--define", "_builddir %s" % temp_dir,
-                   "--define", "_srcrpmdir %s" % cwd,
-                   "--define", "_rpmdir %s" % result_dir,
-                   "--build-in-place",
-                   "--buildroot=%s" % rpm_content]
-            util.write_out(" ".join(cmd))
-            if not self.display:
-                util.check_call(cmd)
-            success = True
-            return temp_dir
+            ret = self._generate_rpm_from_rootfs(rootfs, temp_dir, auto, name, image, values, include_containers_file)
+            if ret:
+                success = True
+            return ret
         finally:
             if not success:
                 shutil.rmtree(temp_dir)
 
+    def _generate_rpm_from_rootfs(self, rootfs, temp_dir, auto, name, image, values, include_containers_file):
+        image_inspect = self.inspect_system_image(image)
+        rpm_content = os.path.join(temp_dir, "rpmroot")
+        spec_file = os.path.join(temp_dir, "container.spec")
+
+        included_rpm = os.path.join(rootfs, "rootfs", "exports", "container.rpm")
+        if os.path.exists(included_rpm):
+            return included_rpm
+
+        installed_files = None
+        with open(os.path.join(rootfs, "info"), "r") as info_file:
+            info = json.loads(info_file.read())
+            installed_files = info["installed-files"] if "installed-files" in info else None
+
+        labels = {k.lower() : v for k, v in image_inspect.get('Labels', {}).items()}
+        summary = labels.get('summary', name)
+        version = labels.get("version", "1.0")
+        release = labels.get("release", "1.0")
+        license_ = labels.get("license", "GPLv2")
+        url = labels.get("url")
+        source0 = labels.get("source0")
+        requires = labels.get("requires")
+        provides = labels.get("provides")
+        conflicts = labels.get("conflicts")
+        description = labels.get("description")
+
+        image_id = values["IMAGE_ID"]
+
+        if os.path.exists(os.path.join(rootfs, "rpm.spec")):
+            with open(os.path.join(rootfs, "rpm.spec"), "r") as f:
+                spec_content = f.read()
+        else:
+            # If there is no spec file and 'auto' is used, do not install an rpm
+            if auto:
+                return None
+            spec_content = self._generate_spec_file(rpm_content, name, summary, license_, image_id, version=version,
+                                                    release=release, url=url, source0=source0, requires=requires,
+                                                    provides=provides, conflicts=conflicts, description=description,
+                                                    installed_files=installed_files, include_containers_file=include_containers_file)
+
+        with open(spec_file, "w") as f:
+            f.write(spec_content)
+
+        cwd = os.getcwd()
+        result_dir = os.path.join(temp_dir, "build")
+        if not os.path.exists(result_dir):
+            os.makedirs(result_dir)
+        cmd = ["rpmbuild", "--noclean", "-bb", spec_file,
+               "--define", "_sourcedir %s" % temp_dir,
+               "--define", "_specdir %s" % temp_dir,
+               "--define", "_builddir %s" % temp_dir,
+               "--define", "_srcrpmdir %s" % cwd,
+               "--define", "_rpmdir %s" % result_dir,
+               "--build-in-place",
+               "--buildroot=%s" % rpm_content]
+        util.write_out(" ".join(cmd))
+        if not self.display:
+            util.check_call(cmd)
+        return temp_dir
+
     def _generate_spec_file(self, destdir, name, summary, license_, image_id, version="1.0", release="1", url=None,
                             source0=None, requires=None, conflicts=None, provides=None, description=None,
-                            installed_files=None):
+                            installed_files=None, include_containers_file=True):
         spec = "%global __requires_exclude_from ^.*$\n"
         spec = spec + "%global __provides_exclude_from ^.*$\n"
+        spec = spec + "%define _unpackaged_files_terminate_build 0\n"
 
         fields = {"Name" : "%s-%s" % (RPM_NAME_PREFIX, name), "Version" : version, "Release" : release, "Summary" : summary,
                   "License" : license_, "URL" : url, "Source0" : source0, "Requires" : requires,
@@ -1735,7 +1769,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             for f in files:
                 spec += "%config \"%s\"\n" % os.path.join("/", rel_path, f)
 
-        spec += "/usr/lib/containers/atomic/%s\n" % name
+        if include_containers_file:
+            spec += "/usr/lib/containers/atomic/%s\n" % name
         for root, _, files in os.walk(os.path.join(destdir, "usr/lib/systemd/system")):
             for f in files:
                 spec = spec + "/usr/lib/systemd/system/%s\n" % f
