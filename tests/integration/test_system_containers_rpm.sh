@@ -35,6 +35,9 @@ ostree --version &>/dev/null || exit 77
 runc --version &>/dev/null || exit 77
 rpmbuild --version &>/dev/null || exit 77
 
+touch /usr/lib/.writeable || exit 77
+rm /usr/lib/.writeable
+
 ${ATOMIC}  install --help 2>&1 > help.out
 grep -q -- --system help.out || exit 77
 
@@ -59,12 +62,12 @@ assert_matches "/usr/local/lib/secret-message" rpm_file_list
 assert_matches "/usr/lib/containers/atomic/atomic-test-system" rpm_file_list
 
 # now install the package to the system
-${ATOMIC} install --system --system-package=yes atomic-test-system-hostfs
+ATOMIC_OSTREE_TEST_FORCE_IMAGE_ID=563246d74eda8a9337a5ad1f019d1c7aaa221c5288f16b975d230644017953b1 ${ATOMIC} install --system --system-package=yes atomic-test-system-hostfs
 
 teardown () {
     set +o pipefail
-    ${ATOMIC} uninstall --storage ostree atomic-test-system-hostfs
-    exit 0
+    ${ATOMIC} uninstall --storage ostree atomic-test-system-hostfs || true
+    rm -rf /etc/systemd/system/atomic-test-system-*.service /etc/tmpfiles.d/atomic-test-system-*.conf
 }
 trap teardown EXIT
 
@@ -75,13 +78,10 @@ rpm -ql $RPM_NAME > rpm_file_list
 # --system-package=yes doesn't include the files of the container rootfs
 assert_not_matches "/usr/lib/containers/atomic/atomic-test-system" rpm_file_list
 
-for i in /usr/lib/systemd/system/atomic-test-system.service \
-         /usr/lib/tmpfiles.d/atomic-test-system.conf \
-         /usr/local/lib/renamed-atomic-test-system \
-         /usr/local/lib/secret-message \
-         /usr/local/lib/secret-message-template;
+for i in /usr/local/lib/renamed-atomic-test-system-hostfs /usr/local/lib/secret-message /usr/local/lib/secret-message-template;
 do
     assert_matches $i rpm_file_list
+    test -e $i
 done
 
 # This is not a template file, the $RECEIVER is not replaced
@@ -89,4 +89,41 @@ assert_matches "\$RECEIVER" /usr/local/lib/secret-message
 
 # Instead this is a template file, the $RECEIVER must be replaced
 assert_not_matches "\$RECEIVER" /usr/local/lib/secret-message-template
-assert_matches "Hello World" /usr/local/lib/secret-message
+ATOMIC_OSTREE_TEST_FORCE_IMAGE_ID=a948904f2f0f479b8f8197694b30184b0d2ed1c1cd2a1ec0fb85d299a192a448 ${ATOMIC} containers update atomic-test-system-hostfs
+
+rpm -qa | grep ^atomic-container-atomic-test-system > rpm_name_upgrade
+assert_matches "a948904f2" rpm_name_upgrade
+
+${ATOMIC} containers rollback atomic-test-system-hostfs
+
+rpm -qa | grep ^atomic-container-atomic-test-system > rpm_name_rollback
+assert_matches "563246d7" rpm_name_rollback
+
+# We try another container that install the same files to the host, this must fail, and check that
+# there are no files left on the host as well.
+if ${ATOMIC} install --system --system-package=yes --set RECEIVER=Mars --name atomic-test-system-broken atomic-test-system-hostfs; then
+	assert_not_reached "Conflicting container installation succedeed"
+fi
+test \! -e /etc/systemd/system/atomic-test-system-broken.service
+test \! -e /etc/tmpfiles.d/atomic-test-system-broken.conf
+
+${ATOMIC} uninstall --storage ostree atomic-test-system-hostfs
+
+# check that auto behaves in the same way as yes with this container.
+${ATOMIC} install --system --system-package=auto atomic-test-system-hostfs
+RPM_NAME=$(rpm -qa | grep ^atomic-container-atomic-test-system)
+
+rpm -ql $RPM_NAME > rpm_file_list_2
+cmp rpm_file_list rpm_file_list_2
+${ATOMIC} uninstall --storage ostree atomic-test-system-hostfs
+
+for i in /usr/local/lib/renamed-atomic-test-system-hostfs /usr/local/lib/secret-message /usr/local/lib/secret-message-template;
+do
+    test \! -e $i
+done
+
+${ATOMIC} install --system --system-package=no atomic-test-system-hostfs
+for i in /usr/local/lib/renamed-atomic-test-system-hostfs /usr/local/lib/secret-message /usr/local/lib/secret-message-template;
+do
+    test -e $i
+done
