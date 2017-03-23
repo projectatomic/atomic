@@ -353,7 +353,7 @@ class SystemContainers(object):
         try:
             return self._do_checkout(repo, name, img, upgrade, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix, installed_files=installed_files,
                                      system_package=system_package)
-        except (ValueError, OSError) as e:
+        except (ValueError, OSError, subprocess.CalledProcessError) as e:
             try:
                 if not extract_only and not upgrade:
                     shutil.rmtree(destination)
@@ -362,7 +362,7 @@ class SystemContainers(object):
             try:
                 if not extract_only and not upgrade:
                     shutil.rmtree(unitfileout)
-            except OSError:
+            except OSError as e:
                 pass
             try:
                 if not extract_only and not upgrade:
@@ -731,17 +731,27 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             os.unlink(sym)
         os.symlink(destination, sym)
 
-        if rpm_preinstalled:
-            self._install_rpm(os.path.join(destination, "container.rpm"))
+        try:
+            if rpm_preinstalled:
+                self._install_rpm(os.path.join(destination, "container.rpm"))
+        except subprocess.CalledProcessError:
+            os.unlink(sym)
+            raise
 
-        self._systemctl_command("daemon-reload")
-        if (tmpfiles_template):
-            self._systemd_tmpfiles("--create", tmpfilesout)
+        try:
+            self._systemctl_command("daemon-reload")
+            if (tmpfiles_template):
+                self._systemd_tmpfiles("--create", tmpfilesout)
 
-        if not upgrade:
-            self._systemctl_command("enable", name)
-        elif was_service_active:
-            self._systemctl_command("start", name)
+            if not upgrade:
+                self._systemctl_command("enable", name)
+            elif was_service_active:
+                self._systemctl_command("start", name)
+        except subprocess.CalledProcessError:
+            if rpm_preinstalled:
+                self._uninstall_rpm(rpm_installed)
+            os.unlink(sym)
+            raise
 
         return values
 
