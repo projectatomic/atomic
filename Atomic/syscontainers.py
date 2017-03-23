@@ -658,8 +658,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 rpm_root = self._generate_rpm_from_rootfs(destination, temp_dir, name, img, values, include_containers_file=False, installed_files=installed_files)
                 rpm_preinstalled = SystemContainers._find_rpm(rpm_root)
                 if rpm_preinstalled:
-                    shutil.move(rpm_preinstalled, destination)
-                    rpm_preinstalled = os.path.join(destination, os.path.basename(rpm_preinstalled))
+                    dest_path = os.path.join(destination, "container.rpm")
+                    if os.path.exists(dest_path):
+                        os.unlink(dest_path)
+                    shutil.move(rpm_preinstalled, dest_path)
             finally:
                 shutil.rmtree(temp_dir)
 
@@ -730,7 +732,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         os.symlink(destination, sym)
 
         if rpm_preinstalled:
-            self._install_rpm(rpm_preinstalled)
+            self._install_rpm(os.path.join(destination, "container.rpm"))
 
         self._systemctl_command("daemon-reload")
         if (tmpfiles_template):
@@ -952,7 +954,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             rpm_installed = info["rpm-installed"] if "rpm-installed" in info else None
 
         if rpm_installed:
-            self._install_rpm(os.path.join(self._get_system_checkout_path(), name, rpm_installed))
+            self._install_rpm(os.path.join(self._get_system_checkout_path(), name, "container.rpm"))
 
         if has_container_service:
             self._systemctl_command("daemon-reload")
