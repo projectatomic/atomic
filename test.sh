@@ -100,9 +100,14 @@ make_docker_images () {
             cp ./tests/test-images/show-hostname.sh ${WORK_DIR}
         fi
 
-        # Copy install.sh into atomic-test-system
+        # Copy needed files into atomic-test-system
         if [[ ${iname} = "atomic-test-system" ]]; then
             cp ./tests/test-images/system-container-files/* ${WORK_DIR}
+        fi
+
+        # Copy needed files atomic-test-system-hostfs
+        if [[ ${iname} = "atomic-test-system-hostfs" ]]; then
+            cp ./tests/test-images/system-container-files-hostfs/* ${WORK_DIR}
         fi
 
         # Remove the old image... Though there may not be one.

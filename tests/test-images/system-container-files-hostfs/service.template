@@ -1,0 +1,12 @@
+[Unit]
+Description=Hello World System Container
+
+[Service]
+ExecStart=$EXEC_START
+ExecStop=$EXEC_STOP
+Restart=on-failure
+WorkingDirectory=$DESTDIR
+
+[Install]
+WantedBy=multi-user.target
+

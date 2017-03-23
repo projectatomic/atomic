@@ -1,0 +1,13 @@
+{
+    "version": "1.0",
+    "defaultValues": {
+	"PORT": "8081",
+	"RECEIVER": "World"
+    },
+    "renameFiles" : {
+        "/usr/local/lib/placeholder-file" : "/usr/local/lib/renamed-$NAME"
+    },
+    "installedFilesTemplate" : [
+        "/usr/local/lib/secret-message-template"
+    ]
+}

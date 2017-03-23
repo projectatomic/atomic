@@ -62,3 +62,4 @@ context: fedora/25/cloud
 packages:
   - atomic
   - python3-coverage
+  - rpm-build
