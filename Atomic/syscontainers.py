@@ -227,6 +227,101 @@ class SystemContainers(object):
         return None
 
     def install(self, image, name):
+        """
+        External container install logic.
+
+        :param image: The name of the image
+        :type image: str
+        :param name: The name of the checkout
+        :type name: str
+        :returns: Shell call result
+        :rtype: int
+        """
+        return_value = None
+        # If we don't have a dockertar file or a reference to a docker engine image
+        if not image.startswith('dockertar:/') and not (image.startswith("docker:") and image.count(':') > 1):
+            labels = self.inspect_system_image(image).get('Labels', {})
+            # And we have a run-once label
+            if labels.get('atomic.run') == 'once':
+                # Execute the _run_once method and set the return_value
+                return_value = self._run_once(image, name)
+        # If we don't have a return_value then use the traditional install
+        if return_value is None:
+            return_value = self._install(image, name)
+        # Return
+        return return_value
+
+    def _run_once(self, image, name):
+        """
+        Runs the container once and then removes it.
+
+        :param image: The name of the image
+        :type image: str
+        :param name: The name of the checkout
+        :type name: str
+        :returns: Shell call result
+        :rtype: int
+        """
+        # Create a temporary directory to house the oneshot container
+        base_dir = os.path.join(self.get_ostree_repo_location(), "tmp/atomic-container", str(os.getpid()))
+        os.makedirs(base_dir)
+        try:
+            rootfs = os.path.sep.join([base_dir, 'rootfs'])
+            # Extract the image to a temp directory.
+            self.extract(image, rootfs)
+
+            # This part should be shared with install.
+            values = {}
+            if self.args.setvalues is not None:
+                setvalues = SystemContainers._split_set_args(self.args.setvalues)
+                for k, v in setvalues.items():
+                    values[k] = v
+
+            # Check for config.json in exports
+            destination_config = os.path.sep.join([base_dir, 'config.json'])
+            template_config_file = os.path.sep.join([rootfs, 'exports', 'config.json.template'])
+            template_tmpfiles = os.path.sep.join([rootfs, 'exports', 'tmpfiles.template'])
+            tmpfiles_destination = None
+            # If there is a config.json, use it
+            if os.path.exists(os.path.sep.join([rootfs, 'exports', 'config.json'])):
+                shutil.copy(os.path.sep.join([rootfs, 'exports', 'config.json']),
+                            destination_config)
+            # Else, if we have a template, populate it
+            elif os.path.exists(template_config_file):
+                with open(template_config_file, 'r') as infile:
+                    util.write_template(template_config_file, infile.read(), values, destination_config)
+            # Otherwise, use a default one
+            else:
+                self._generate_default_oci_configuration(destination_config)
+
+            # If we have a tmpfiles template, populate it
+            if os.path.exists(template_tmpfiles):
+                with open(template_tmpfiles, 'r') as infile:
+                    tmp = os.path.sep.join([base_dir, 'tmpfiles.conf'])
+                    util.write_template(template_tmpfiles, infile.read(), values, tmp)
+                    self._systemd_tmpfiles("--create", tmp)
+                    tmpfiles_destination = tmp
+
+            # Get the start command for the system container
+            (start_command, _) = self._generate_systemd_startstop_directives(name)
+            # Move to the base directory to start the system container
+            os.chdir(base_dir)
+            # ... and run it. We use call() because the actual
+            # run may be expected to fail.
+            return util.call(start_command)
+        finally:
+            if tmpfiles_destination:
+                try:
+                    self._systemd_tmpfiles("--remove", tmpfiles_destination)
+                except subprocess.CalledProcessError:
+                    pass
+            # Remove the temporary checkout
+            shutil.rmtree(base_dir)
+
+    def _install(self, image, name):
+        """
+        Internal container install logic.
+        """
         repo = self._get_ostree_repo()
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
