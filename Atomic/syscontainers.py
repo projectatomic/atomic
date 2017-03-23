@@ -373,6 +373,12 @@ class SystemContainers(object):
 
     @staticmethod
     def _get_image_id_from_manifest(image_manifest):
+        # Allow to override the image id read from the manifest so that
+        # we can test atomic updates even though the image itself was not
+        # changed.  This must be used only for tests.
+        if os.environ.get("ATOMIC_OSTREE_TEST_FORCE_IMAGE_ID"):
+            return os.environ.get("ATOMIC_OSTREE_TEST_FORCE_IMAGE_ID")
+
         if 'Digest' in image_manifest:
             image_id = image_manifest['Digest']
         elif 'config' in image_manifest and 'digest' in image_manifest['config']:
