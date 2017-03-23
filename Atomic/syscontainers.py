@@ -1220,6 +1220,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
     def uninstall(self, name):
         if self._is_preinstalled_container(name):
             self._uninstall_rpm("%s-%s" % (RPM_NAME_PREFIX, name))
+            return
 
         if not os.path.exists(os.path.join(self._get_system_checkout_path(), name)):
             return
