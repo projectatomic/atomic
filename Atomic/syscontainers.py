@@ -1727,8 +1727,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         labels = {k.lower() : v for k, v in image_inspect.get('Labels', {}).items()}
         summary = labels.get('summary', name)
-        version = labels.get("version", "1.0")
-        release = labels.get("release", "1.0")
+        version = labels.get("version", '1')
+        release = labels.get("release", image_inspect["ImageId"])
         license_ = labels.get("license", "GPLv2")
         url = labels.get("url")
         source0 = labels.get("source0")
