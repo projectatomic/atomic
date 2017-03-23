@@ -361,12 +361,12 @@ class SystemContainers(object):
                 pass
             try:
                 if not extract_only and not upgrade:
-                    shutil.rmtree(unitfileout)
+                    os.unlink(unitfileout)
             except OSError as e:
                 pass
             try:
                 if not extract_only and not upgrade:
-                    shutil.rmtree(tmpfilesout)
+                    os.unlink(tmpfilesout)
             except OSError:
                 pass
             raise e
