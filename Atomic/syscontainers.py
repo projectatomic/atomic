@@ -844,7 +844,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         values = info["values"]
         revision = info["revision"] if "revision" in info else None
         installed_files = info["installed-files"] if "installed-files" in info else None
-        rpm_installed = info["rpm-installed"] if "rpm-installed" in info else True
+        rpm_installed = info["rpm-installed"] if "rpm-installed" in info else None
 
         # Check if the image id or the configuration for the container has
         # changed before upgrading it.
@@ -890,7 +890,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         rename_files = None
         with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
             info = json.loads(info_file.read())
-            rpm_installed = info["rpm-installed"] if "rpm-installed" in info else True
+            rpm_installed = info["rpm-installed"] if "rpm-installed" in info else None
             installed_files = info["installed-files"] if "installed-files" in info and rpm_installed is None else None
             installed_files_template = info["installed-files-template"] if "installed-files-template" in info and rpm_installed is None else None
             has_container_service = info["has-container-service"] if "has-container-service" in info else True
@@ -934,7 +934,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         rpm_installed = None
         with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
             info = json.loads(info_file.read())
-            rpm_installed = info["rpm-installed"] if "rpm-installed" in info else True
+            rpm_installed = info["rpm-installed"] if "rpm-installed" in info else None
 
         if rpm_installed:
             self._install_rpm(os.path.join(self._get_system_checkout_path(), name, rpm_installed))
@@ -1227,7 +1227,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
             info = json.loads(info_file.read())
             has_container_service = info["has-container-service"] if "has-container-service" in info else True
-            rpm_installed = info["rpm-installed"] if "rpm-installed" in info else True
+            rpm_installed = info["rpm-installed"] if "rpm-installed" in info else None
 
         unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
         if has_container_service:
