@@ -46,7 +46,7 @@ export ATOMIC_OSTREE_CHECKOUT_PATH=${WORK_DIR}/checkout
 
 ${ATOMIC} pull --storage ostree docker:atomic-test-system-hostfs:latest
 
-${ATOMIC} install --system --system-package=build atomic-test-system-hostfs
+${ATOMIC} install --system --system-package=build --set RECEIVER=Venus atomic-test-system-hostfs
 
 rpm -qip atomic-container-atomic-test-system-*.x86_64.rpm > rpm_info
 
@@ -56,6 +56,9 @@ assert_matches "^Release.*:.*1" rpm_info
 rpm -qlp atomic-container-atomic-test-system-*.x86_64.rpm > rpm_file_list
 
 assert_matches "/usr/local/lib/secret-message" rpm_file_list
+
+rpm2cpio atomic-container-atomic-test-system-*.x86_64.rpm | cpio -iv --to-stdout ./usr/local/lib/secret-message-template > secret-message-template
+assert_matches "Venus" secret-message-template
 
 # A --system-package=build includes also the files for running
 # the container itself, let's check it...
@@ -104,14 +107,17 @@ assert_matches "563246d7" rpm_name_rollback
 if ${ATOMIC} install --system --system-package=yes --set RECEIVER=Mars --name atomic-test-system-broken atomic-test-system-hostfs; then
 	assert_not_reached "Conflicting container installation succedeed"
 fi
+
 test \! -e /etc/systemd/system/atomic-test-system-broken.service
 test \! -e /etc/tmpfiles.d/atomic-test-system-broken.conf
 
 ${ATOMIC} uninstall --storage ostree atomic-test-system-hostfs
 
 # check that auto behaves in the same way as yes with this container.
-${ATOMIC} install --system --system-package=auto atomic-test-system-hostfs
+${ATOMIC} install --system --system-package=auto --set RECEIVER=Jupiter atomic-test-system-hostfs
 RPM_NAME=$(rpm -qa | grep ^atomic-container-atomic-test-system)
+
+assert_matches "Jupiter" /usr/local/lib/secret-message-template
 
 rpm -ql $RPM_NAME > rpm_file_list_2
 cmp rpm_file_list rpm_file_list_2
