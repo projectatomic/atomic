@@ -6,10 +6,10 @@ custom_args: ['-v', '/etc/oscapd:/etc/oscapd:ro']
 scans: [ 
       { name: cve,
         args: ['oscapd-evaluate', 'scan',  '--no-standard-compliance', '--targets', 'chroots-in-dir:///scanin',  '--output', '/scanout', '-j1'],
-        description: "Performs a CVE scan based on known CVE data"},
+        description: "Performs a CVE scan based on Red Hat relesead CVE OVAL. !WARNING! This CVE is built into container image, and it might be out-of-date"},
       { name: standards_compliance,
         args: ['oscapd-evaluate', 'scan', '--targets', 'chroots-in-dir:///scanin',  '--output', '/scanout', '--no-cve-scan', '-j1'],
-        description: "Performs a standard scan"
+        description: "Performs scan with Standard Profile, as present in Scap Security Guide shipped in Red Hat Enterprise Linux"
       }
 ]
     
