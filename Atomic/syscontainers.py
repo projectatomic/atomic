@@ -228,25 +228,16 @@ class SystemContainers(object):
             return
 
         image = self._pull_image_to_ostree(repo, image, False)
-        tmp_dir = None
-        try:
-            if self.args.system_package == 'auto' and not self.args.system:
-                self.args.system_package = 'no'
-            if self.args.system_package in ['build', 'yes'] and not self.args.system:
-                raise ValueError("Only --system can generate rpms")
+        if self.args.system_package == 'auto' and not self.args.system:
+            self.args.system_package = 'no'
+        if self.args.system_package in ['build', 'yes'] and not self.args.system:
+            raise ValueError("Only --system can generate rpms")
 
-            if self.args.system_package == 'build':
-                tmp_dir = self.generate_rpm(repo, name, image, include_containers_file=True)
-                if tmp_dir:
-                    rpm_preinstalled = SystemContainers._find_rpm(tmp_dir)
-                    # If we are only build'ing the rpm, copy it to the cwd and exit
-                    destination = os.path.join(os.getcwd(), os.path.basename(rpm_preinstalled))
-                    shutil.move(rpm_preinstalled, destination)
-                    util.write_out("Generated rpm %s" % destination)
-                return False
-        finally:
-            if tmp_dir:
-                shutil.rmtree(tmp_dir)
+        if self.args.system_package == 'build':
+            destination = self.generate_rpm(repo, name, image, os.getcwd(), include_containers_file=True)
+            if destination:
+                util.write_out("Generated rpm %s" % destination)
+            return False
 
         values = {}
         if self.args.setvalues is not None:
@@ -1721,23 +1712,24 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         traverse(it)
         return ret
 
-    def generate_rpm(self, repo, name, image, include_containers_file=True):
+    def generate_rpm(self, repo, name, image, destination, include_containers_file=True):
         temp_dir = tempfile.mkdtemp()
         rpm_content = os.path.join(temp_dir, "rpmroot")
         rootfs = os.path.join(rpm_content, "usr/lib/containers/atomic", name)
         os.makedirs(rootfs)
-        success = False
         try:
             values = self._checkout(repo, name, image, 0, False, destination=rootfs, prefix=rpm_content)
             if self.display:
                 return None
             ret = self._generate_rpm_from_rootfs(rootfs, temp_dir, name, image, values, include_containers_file)
             if ret:
-                success = True
-            return ret
+                rpm_built = SystemContainers._find_rpm(ret)
+                generated_rpm = os.path.join(destination, os.path.basename(rpm_built))
+                shutil.move(rpm_built, generated_rpm)
+                return generated_rpm
         finally:
-            if not success:
-                shutil.rmtree(temp_dir)
+            shutil.rmtree(temp_dir)
+        return None
 
     def _generate_rpm_from_rootfs(self, rootfs, temp_dir, name, image, values, include_containers_file, installed_files=None):
         image_inspect = self.inspect_system_image(image)
