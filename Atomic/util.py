@@ -23,6 +23,7 @@ import socket
 from Atomic.backends._docker_errors import NoDockerDaemon
 import fcntl
 import time
+from string import Template
 
 # Atomic Utility Module
 
@@ -1013,3 +1014,23 @@ class SkopeoError(object):
         for line in shlex.split(string_error):
             key, _, msg = line.partition("=")
             setattr(SkopeoError, key, msg)
+
+def write_template(inputfilename, data, values, destination):
+    if destination:
+        try:
+            os.makedirs(os.path.dirname(destination))
+        except OSError:
+            pass
+
+    template = Template(data)
+    try:
+        result = template.substitute(values)
+    except KeyError as e:
+        raise ValueError("The template file '%s' still contains an unreplaced value for: '%s'" % \
+                         (inputfilename, str(e)))
+
+    if destination is not None:
+        with open(destination, "w") as outfile:
+            outfile.write(result)
+        return result
+    return None
