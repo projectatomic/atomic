@@ -109,11 +109,9 @@ class Install(Atomic):
         elif OSTREE_PRESENT and self.args.setvalues:
             raise ValueError("--set is valid only when used with --system or --user")
 
-        # Assumed backend now is docker
-        be = be_utils.get_backend_from_string('docker')
+        # Check if image exists in any local backends
+        be, img_obj = be_utils.get_backend_and_image_obj(self.image, str_preferred_backend=self.args.storage or storage, required=True if self.args.storage else False)
 
-        # If the image is already present,
-        img_obj = be.has_image(self.image)
         if img_obj is None:
             remote_image_obj = be.make_remote_image(self.args.image)
             # We found an atomic.type of system, therefore install it onto the ostree
@@ -123,6 +121,10 @@ class Install(Atomic):
                 return self.syscontainers.install(self.image, self.name)
             be.pull_image(self.args.image, remote_image_obj, debug=self.args.debug)
             img_obj = be.has_image(self.image)
+
+        if img_obj.is_system_type:
+            return self.syscontainers.install(self.image, self.name)
+
         install_args = img_obj.get_label('INSTALL')
         if not install_args:
             return 0
