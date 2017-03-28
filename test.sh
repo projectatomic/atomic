@@ -110,6 +110,11 @@ make_docker_images () {
             cp ./tests/test-images/system-container-files-hostfs/* ${WORK_DIR}
         fi
 
+        # Copy runonce files into into atomic-test-runonce-system
+        if [[ ${iname} = "atomic-test-runonce" ]]; then
+            cp ./tests/test-images/system-container-runonce-files/* ${WORK_DIR}
+        fi
+
         # Remove the old image... Though there may not be one.
         set +e
         ${DOCKER} rmi ${iname} &>> ${LOG}

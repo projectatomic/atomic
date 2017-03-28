@@ -57,7 +57,6 @@ export ATOMIC_OSTREE_REPO=${WORK_DIR}/repo
 export ATOMIC_OSTREE_CHECKOUT_PATH=${WORK_DIR}/checkout
 
 docker save atomic-test-system > ${WORK_DIR}/atomic-test-system.tar
-
 ${ATOMIC} pull --storage ostree dockertar:/${WORK_DIR}/atomic-test-system.tar
 
 # Check that the branch is created in the OSTree repository
@@ -345,3 +344,13 @@ test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/${NAME}.service
 test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/tmpfiles-${NAME}.conf
 
 systemctl start ${NAME}
+
+teardown
+
+# "Install" a run once system container
+echo "Test runonce..."
+export NAME="atomic-test-runonce"
+${ATOMIC} pull --storage ostree docker:${NAME}:latest
+${ATOMIC} install --system ${NAME}:latest > ps.out
+assert_matches "HI" ps.out
+${ATOMIC} --assumeyes images delete -f --storage ostree ${NAME}
