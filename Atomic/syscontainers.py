@@ -528,6 +528,41 @@ class SystemContainers(object):
                 return True
         return False
 
+    def _amend_values(self, values, manifest, name, image, image_id, destination, prefix=None):
+        # When installing a new system container, set values in this order:
+        #
+        # 1) What comes from manifest.json, if present, as default value.
+        # 2) What the user sets explictly as --set
+        # 3) Values for DESTDIR and NAME
+        if "RUN_DIRECTORY" not in values:
+            if self.user:
+                values["RUN_DIRECTORY"] = os.environ.get("XDG_RUNTIME_DIR", "/run/user/%s" % (os.getuid()))
+            else:
+                values["RUN_DIRECTORY"] = "/run"
+
+        if "STATE_DIRECTORY" not in values:
+            if self.user:
+                values["STATE_DIRECTORY"] = "%s/.data" % HOME
+            else:
+                values["STATE_DIRECTORY"] = "/var/lib"
+
+        if manifest is not None and "defaultValues" in manifest:
+            for key, val in manifest["defaultValues"].items():
+                if key not in values:
+                    values[key] = val
+
+        if "UUID" not in values:
+            values["UUID"] = str(uuid.uuid4())
+        values["DESTDIR"] = os.path.join("/", os.path.relpath(destination, prefix)) if prefix else destination
+        values["NAME"] = name
+        values["EXEC_START"], values["EXEC_STOP"] = self._generate_systemd_startstop_directives(name)
+        values["HOST_UID"] = os.getuid()
+        values["HOST_GID"] = os.getgid()
+        values["IMAGE_NAME"] = image
+        values["IMAGE_ID"] = image_id
+        return values
+
+
     def _do_checkout(self, repo, name, img, upgrade, deployment, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix=None, installed_files=None,
                      system_package='no'):
         if values is None:
@@ -623,25 +658,17 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if system_package == 'auto':
             system_package = "yes" if self._should_be_installed_rpm(exports) else 'no'
 
-        # When installing a new system container, set values in this order:
-        #
-        # 1) What comes from manifest.json, if present, as default value.
-        # 2) What the user sets explictly as --set
-        # 3) Values for DESTDIR and NAME
         manifest_file = os.path.join(exports, "manifest.json")
         installed_files_template = []
         has_container_service = True
         rename_files = {}
+        manifest = None
         if os.path.exists(manifest_file):
             with open(manifest_file, "r") as f:
                 try:
                     manifest = json.loads(f.read())
                 except ValueError:
                     raise ValueError("Invalid manifest.json file in image: {}.".format(img))
-                if "defaultValues" in manifest:
-                    for key, val in manifest["defaultValues"].items():
-                        if key not in values:
-                            values[key] = val
                 if "installedFilesTemplate" in manifest:
                     installed_files_template = manifest["installedFilesTemplate"]
                 if "renameFiles" in manifest:
@@ -655,27 +682,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             image_manifest = json.loads(image_manifest)
             image_id = SystemContainers._get_image_id_from_manifest(image_manifest) or image_id
 
-        if "RUN_DIRECTORY" not in values:
-            if self.user:
-                values["RUN_DIRECTORY"] = os.environ.get("XDG_RUNTIME_DIR", "/run/user/%s" % (os.getuid()))
-            else:
-                values["RUN_DIRECTORY"] = "/run"
-
-        if "STATE_DIRECTORY" not in values:
-            if self.user:
-                values["STATE_DIRECTORY"] = "%s/.data" % HOME
-            else:
-                values["STATE_DIRECTORY"] = "/var/lib"
-
-        if "UUID" not in values:
-            values["UUID"] = str(uuid.uuid4())
-        values["DESTDIR"] = os.path.join("/", os.path.relpath(destination, prefix)) if prefix else destination
-        values["NAME"] = name
-        values["EXEC_START"], values["EXEC_STOP"] = self._generate_systemd_startstop_directives(name)
-        values["HOST_UID"] = os.getuid()
-        values["HOST_GID"] = os.getgid()
-        values["IMAGE_NAME"] = img
-        values["IMAGE_ID"] = image_id
+        values = self._amend_values(values, manifest, name, img, image_id, destination, prefix)
 
         src = os.path.join(exports, "config.json")
         destination_path = os.path.join(destination, "config.json")
