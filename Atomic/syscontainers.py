@@ -323,7 +323,7 @@ class SystemContainers(object):
             runc_commands = ["start", "kill"]
         else:
             runc_commands = ["run", "kill"]
-        return ["%s %s '%s'" % (util.RUNC_PATH, command, name) for command in runc_commands]
+        return ["%s --systemd-cgroup %s '%s'" % (util.RUNC_PATH, command, name) for command in runc_commands]
 
     def _get_systemd_destination_files(self, name, prefix=None):
         if self.user:
