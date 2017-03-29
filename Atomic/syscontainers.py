@@ -265,6 +265,7 @@ class SystemContainers(object):
         # Create a temporary directory to house the oneshot container
         base_dir = os.path.join(self.get_ostree_repo_location(), "tmp/atomic-container", str(os.getpid()))
         os.makedirs(base_dir)
+        tmpfiles_destination = None
         try:
             rootfs = os.path.sep.join([base_dir, 'rootfs'])
             # Extract the image to a temp directory.
@@ -277,11 +278,30 @@ class SystemContainers(object):
                 for k, v in setvalues.items():
                     values[k] = v
 
+            manifest_file = os.path.sep.join([rootfs, 'exports', "manifest.json"])
+            manifest = None
+            if os.path.exists(manifest_file):
+                with open(manifest_file, "r") as f:
+                    try:
+                        manifest = json.loads(f.read())
+                    except ValueError:
+                        raise ValueError("Invalid manifest.json file in image: {}.".format(image))
+
+            # if we got here, we know there is one image
+            repo = self._get_ostree_repo()
+            imgs = self._resolve_image(repo, image)
+            _, rev = imgs[0]
+            image_manifest = self._image_manifest(repo, rev)
+            image_id = rev
+            if image_manifest:
+                image_id = SystemContainers._get_image_id_from_manifest(manifest) or image_id
+
+            self._amend_values(values, manifest, name, image, image_id, base_dir)
+
             # Check for config.json in exports
             destination_config = os.path.sep.join([base_dir, 'config.json'])
             template_config_file = os.path.sep.join([rootfs, 'exports', 'config.json.template'])
             template_tmpfiles = os.path.sep.join([rootfs, 'exports', 'tmpfiles.template'])
-            tmpfiles_destination = None
             # If there is a config.json, use it
             if os.path.exists(os.path.sep.join([rootfs, 'exports', 'config.json'])):
                 shutil.copy(os.path.sep.join([rootfs, 'exports', 'config.json']),
@@ -563,36 +583,46 @@ class SystemContainers(object):
         return values
 
 
-    def _do_checkout(self, repo, name, img, upgrade, deployment, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix=None, installed_files=None,
-                     system_package='no'):
+    def _do_checkout(self, repo, name, img, upgrade, deployment, values, destination, unitfileout,
+                     tmpfilesout, extract_only, remote, prefix=None, installed_files=None, system_package='no'):
+        """
+        Actually do the checkout.
+
+        .. todo::
+
+           This method should be simplified by breaking it up into smaller, reusable methods.
+
+        :rtype: dict
+        :raises: AttributeError,NameError, OSError, ValueError
+        """
         if values is None:
             values = {}
 
+        # Get the rev or raise out of the method
+        try:
+            _, rev = self._resolve_image(repo, img)[0]
+        except (IndexError, TypeError):
+            raise ValueError("Image {} not found".format(img))
+
         remote_path = self._resolve_remote_path(remote)
 
-        imgs = self._resolve_image(repo, img)
-        if imgs is None:
-            raise ValueError("Image %s not found" % img)
-
-        _, rev = imgs[0]
-
         if remote_path:
-            remote_rootfs = os.path.join(remote_path, "rootfs")
+            remote_rootfs = os.path.sep.join([remote_path, "rootfs"])
             if os.path.exists(remote_rootfs):
-                util.write_out("The remote rootfs for this container is set to be %s" % remote_rootfs)
-            elif os.path.exists(os.path.join(remote, "usr")): # Assume that the user directly gave the location of the rootfs
+                util.write_out("The remote rootfs for this container is set to be {}".format(remote_rootfs))
+            elif os.path.exists(os.path.sep.join([remote, "usr"])):  # Assume that the user directly gave the location of the rootfs
                 remote_rootfs = remote
-                remote_path = os.path.dirname(remote_path) # Use the parent directory as the "container location"
+                remote_path = os.path.dirname(remote_path)  # Use the parent directory as the "container location"
             else:
                 raise ValueError("--remote was specified but the given location does not contain a rootfs")
             exports = os.path.join(remote_path, "rootfs/exports")
         else:
             exports = os.path.join(destination, "rootfs/exports")
 
-        unitfile = os.path.join(exports, "service.template")
-        tmpfiles = os.path.join(exports, "tmpfiles.template")
+        unitfile = os.path.sep.join([exports, "service.template"])
+        tmpfiles = os.path.sep.join([exports, "tmpfiles.template"])
 
-        util.write_out("Extracting to %s" % destination)
+        util.write_out("Extracting to {}".format(destination))
 
         # upgrade will not restart the service if it was not already running
         was_service_active = self._is_service_active(name)
