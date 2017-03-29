@@ -202,7 +202,8 @@ class Scan(Atomic):
                         # get_backend_and_image throws a ValueError when it cannot find anything
                         _, scan_obj = beu.get_backend_and_image_obj(scan_target)
                     except ValueError:
-                        raise ValueError("Unable to locate the container or image '{}'".format(scan_target))
+                        raise ValueError("Unable to locate the container or image '{}' locally. Check the "
+                                         "input name for typos or pull the image first.".format(scan_target))
                 scan_list.append(scan_obj)
         return scan_list
 
