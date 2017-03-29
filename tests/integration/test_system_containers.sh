@@ -351,6 +351,6 @@ teardown
 echo "Test runonce..."
 export NAME="atomic-test-runonce"
 ${ATOMIC} pull --storage ostree docker:${NAME}:latest
-${ATOMIC} install --system ${NAME}:latest > ps.out
-assert_matches "HI" ps.out
+${ATOMIC} install --system --name=Saturn --set RECEIVER=Pluto ${NAME}:latest > ps.out
+assert_matches "HI Pluto from Saturn" ps.out
 ${ATOMIC} --assumeyes images delete -f --storage ostree ${NAME}

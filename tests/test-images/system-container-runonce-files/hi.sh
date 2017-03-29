@@ -1,2 +1,3 @@
 #!/bin/sh
-echo "HI"
+
+echo "HI $RECEIVER from $NAME"
