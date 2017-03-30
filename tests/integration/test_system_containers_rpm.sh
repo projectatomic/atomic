@@ -51,7 +51,7 @@ ${ATOMIC} install --system --system-package=build --set RECEIVER=Venus atomic-te
 rpm -qip atomic-container-atomic-test-system-*.x86_64.rpm > rpm_info
 
 assert_matches "atomic-container-atomic-test-system" rpm_info
-assert_matches "^Release.*:.*1" rpm_info
+assert_matches "^Version.*:.*1" rpm_info
 
 rpm -qlp atomic-container-atomic-test-system-*.x86_64.rpm > rpm_file_list
 
