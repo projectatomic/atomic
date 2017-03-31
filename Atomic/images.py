@@ -6,6 +6,7 @@ from Atomic import verify
 from Atomic import help as Help
 from Atomic.mount import Mount
 from Atomic.delete import Delete
+from Atomic.tag import Tag
 import os
 import math
 import shutil
@@ -100,6 +101,19 @@ def cli(subparser):
                              help=_("Only display image IDs"))
     list_parser.add_argument("--json", action='store_true',dest="json", default=False,
                              help=_("print in a machine parseable form"))
+
+    # atomic images tag
+    tag_parser = images_subparser.add_parser("tag",
+                                                help=_("Create a tag for the specified image"),
+                                                epilog="Tag the specified image with a different name")
+    tag_parser.add_argument("--storage", default=None, dest="storage",
+                               help=_("Specify the storage to use for tagging the image. "
+                                      "If not specified and there are images with the same name in "
+                                      "different storages, you will be prompted to specify."))
+    tag_parser.add_argument('src', metavar='SRC')
+    tag_parser.add_argument('target', metavar='TARGET')
+
+    tag_parser.set_defaults(_class=Tag, func='tag_image')
 
     prune_parser = images_subparser.add_parser("prune",
                                                help=_("delete unused 'dangling' images"),
