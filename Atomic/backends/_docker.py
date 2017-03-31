@@ -280,7 +280,7 @@ class DockerBackend(Backend):
             if self.already_has_image(local_image, remote_image_obj):
                 raise ValueError("Latest version of {} already present.".format(image))
         registry, _, _, tag, _ = util.Decompose(fq_name).all
-        image = "docker-daemon:{}".format(image)
+        image = "docker-daemon:{}".format(fq_name)
         if not image.endswith(tag):
             image += ":{}".format(tag)
         if '@sha256:' in image:
