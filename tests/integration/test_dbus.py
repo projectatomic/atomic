@@ -218,6 +218,18 @@ class TestDBus():
         except dbus.DBusException:
             pass
 
+    @integration_test
+    def test_image_tag(self):
+        try:
+            self.dbus_object.ImagePull('docker.io/library/busybox:1.24')
+        except:
+            pass
+
+        result_tag = self.dbus_object.ImagesTag('docker.io/library/busybox:1.24', 'foobar', 'docker')
+        result_delete = self.dbus_object.ImagesDelete(['foobar'], True, False, 'docker')
+        assert (result_tag == 0)
+        assert (result_delete == 0)
+
 if __name__ == '__main__':
 
     def get_test_methods(_tb):

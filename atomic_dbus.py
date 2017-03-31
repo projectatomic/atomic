@@ -31,6 +31,7 @@ from Atomic.update import Update
 from Atomic.uninstall import Uninstall
 from Atomic.verify import Verify
 from Atomic.util import Decompose
+from Atomic.tag import Tag
 from Atomic import util
 from gi.repository import GLib
 
@@ -126,6 +127,8 @@ class atomic_dbus(slip.dbus.service.Object):
             self.username = None
             self.verbose = False
             self.verify_ssl = False
+            self.src = None
+            self.target = None
 
     def __init__(self, *p, **k):
         super(atomic_dbus, self).__init__(*p, **k)
@@ -258,6 +261,19 @@ class atomic_dbus(slip.dbus.service.Object):
         args.assumeyes = True
         i.set_args(args)
         return i.delete_image()
+
+    # atomic containers section
+    # The ImagesTag method will create a tag from an existing image.
+    @slip.dbus.polkit.require_auth("org.atomic.readwrite")
+    @dbus.service.method("org.atomic", in_signature='sss', out_signature='i')
+    def ImagesTag(self, src, target, storage):
+        i = Tag()
+        args = self.Args()
+        args.src = src
+        args.target = target
+        args.storage = storage
+        i.set_args(args)
+        return i.tag_image()
 
     # The ImagesPrune method will delete unused 'dangling' images
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")

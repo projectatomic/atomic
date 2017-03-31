@@ -74,6 +74,10 @@ class AtomicDBus (object):
         return self.dbus_object.ImagesDelete(images, force, remote, storage, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
+    def ImagesTag(self, src, target, storage='docker'):
+        return self.dbus_object.ImagesTag(src, target, storage, dbus_interface="org.atomic")
+
+    @polkit.enable_proxy
     def ImagesHelp(self, image):
         return self.dbus_object.ImagesHelp(image, dbus_interface="org.atomic")
 
