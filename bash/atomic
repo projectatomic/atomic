@@ -760,6 +760,7 @@ _atomic_images() {
     info
     list
     prune
+    tag
     update
     version
     verify
@@ -828,6 +829,32 @@ _atomic_images_delete() {
     --force -f
     --help -h
     --remote
+  "
+
+  case "$prev" in
+    --storage)
+      COMPREPLY=( $( compgen -W "docker ostree" -- "$cur" ) )
+      return 0
+      ;;
+  esac
+
+  case "$cur" in
+      -*)
+	COMPREPLY=( $( compgen -W "$all_options" -- "$cur" ) )
+	;;
+      *)
+	__atomic_image_repos_and_tags
+	__atomic_system_containers_images
+	;;
+  esac
+}
+
+_atomic_images_tag() {
+  local options_with_args="
+    --storage
+  "
+  local all_options="$options_with_args
+    --help -h
   "
 
   case "$prev" in
