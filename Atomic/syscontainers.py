@@ -1640,3 +1640,14 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         it.init_commit(repo, repo.load_commit(current_rev)[1], OSTree.RepoCommitTraverseFlags.REPO_COMMIT_TRAVERSE_FLAG_NONE)
         traverse(it)
         return ret
+
+    def tag_image(self, src, dest):
+        def get_image_branch(img):
+            img = SystemContainers._drop_sha256_prefix(img)
+            return "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(img))
+
+        repo = self._get_ostree_repo()
+        rev = repo.resolve_rev(get_image_branch(src), True)[1]
+        repo.prepare_transaction()
+        repo.transaction_set_ref(None, get_image_branch(dest), rev)
+        repo.commit_transaction(None)
