@@ -47,6 +47,10 @@ You can also use any of the many options to create the help file including using
 
   Prune/delete all **dangling** images, freeing wasted disk space.
 
+**tag**
+
+  Tag locally the image with a different name.  The source image won't be modified.
+
 **update**
 
   Pulls the latest update of the image from the repository. If a container based on this image exists, the container will continue to use the old image. Use --force to remove the container.
