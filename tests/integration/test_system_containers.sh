@@ -260,8 +260,10 @@ test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0
 test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.1
 
 ${ATOMIC} pull --storage ostree docker:atomic-test-secret:latest
-# Move directly the OSTree reference to a new one, so that we have different names and info doesn't error out
-mv ${ATOMIC_OSTREE_REPO}/refs/heads/ociimage/atomic-test-secret_3Alatest ${ATOMIC_OSTREE_REPO}/refs/heads/ociimage/atomic-test-secret-ostree_3Alatest
+
+${ATOMIC} images tag --storage ostree atomic-test-secret:latest atomic-test-secret-ostree:latest
+${ATOMIC} --assumeyes images delete -f --storage ostree atomic-test-secret:latest
+
 ${ATOMIC} info atomic-test-secret-ostree > version.out
 assert_matches ${SECRET} version.out
 ${ATOMIC} --assumeyes images delete -f atomic-test-secret-ostree
