@@ -148,4 +148,6 @@ class Backend(object): #pylint: disable=metaclass-assignment
     def available(self):
         pass
 
-
+    @abstractmethod
+    def tag_image(self, src, dest):
+        pass

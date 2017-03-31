@@ -164,3 +164,6 @@ class OSTreeBackend(Backend):
 
     def run(self, iobject, **kwargs):
         return self.syscontainers.start_service(iobject.name)
+
+    def tag_image(self, src, dest):
+        return self.syscontainers.tag_image(src, dest)

@@ -600,3 +600,6 @@ class DockerBackend(Backend):
                 return util.check_call(
                     [atomic.docker_binary(), "start", con_obj.name],
                     stderr=DEVNULL)
+
+    def tag_image(self, src, dest):
+        return self.d.tag(src, dest)
