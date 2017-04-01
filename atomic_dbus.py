@@ -253,6 +253,7 @@ class atomic_dbus(slip.dbus.service.Object):
         args.delete_targets = images
         args.remote = remote
         args.force = force
+        args.assumeyes = True
         i.set_args(args)
         return i.delete_image()
 
