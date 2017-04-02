@@ -246,13 +246,14 @@ class atomic_dbus(slip.dbus.service.Object):
     # atomic containers section
     # The ImagesDelete method will delete one or more images on the system.
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='asbb', out_signature='i')
-    def ImagesDelete(self, images, force, remote):
+    @dbus.service.method("org.atomic", in_signature='asbbs', out_signature='i')
+    def ImagesDelete(self, images, force, remote, storage):
         i = Delete()
         args = self.Args()
         args.delete_targets = images
         args.remote = remote
         args.force = force
+        args.storage = storage
         args.assumeyes = True
         i.set_args(args)
         return i.delete_image()
