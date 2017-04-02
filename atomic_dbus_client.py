@@ -71,7 +71,7 @@ class AtomicDBus (object):
     def ImagesDelete(self, images, force=False, remote=False):
         if not isinstance(images, (list, tuple)):
             images = [ images ]
-        return self.dbus_object.ImagesDelete(images, remote, force, dbus_interface="org.atomic")
+        return self.dbus_object.ImagesDelete(images, force, remote, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
     def ImagesHelp(self, image):
