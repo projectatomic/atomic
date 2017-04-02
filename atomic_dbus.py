@@ -241,7 +241,7 @@ class atomic_dbus(slip.dbus.service.Object):
         args = self.Args()
         args.all=True
         images.set_args(args)
-        i = images.display_all_image_info()
+        i = images.images()
         return json.dumps(i)
 
     # atomic containers section
