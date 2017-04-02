@@ -60,6 +60,7 @@ class atomic_dbus(slip.dbus.service.Object):
             self.driver = None
             self.export_location = None
             self.extra_args = None
+            self.filter = None
             self.force = False
             self.gnupghome = None
             self.graph = None
