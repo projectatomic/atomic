@@ -72,21 +72,25 @@ class PulpServer(object):
         self._chunk_size = 1048576  # 1 MB per upload call
 
     def _call_pulp(self, url, req_type='get', payload=None):
+        proxies = util.get_proxy()
         if req_type == 'get':
             r = requests.get(url, auth=(self._username, self._password),
-                             verify=self._verify_ssl)
+                             verify=self._verify_ssl,
+                             proxies=proxies)
         elif req_type == 'post':
             r = requests.post(url, auth=(self._username, self._password),
                               data=json.dumps(payload),
-                              verify=self._verify_ssl)
+                              verify=self._verify_ssl,
+                              proxies=proxies)
         elif req_type == 'put':
             # some calls pass in binary data so we don't log payload data or
             # json encode it here
             r = requests.put(url, auth=(self._username, self._password),
-                             data=payload, verify=self._verify_ssl)
+                             data=payload, verify=self._verify_ssl,
+                             proxies=proxies)
         elif req_type == 'delete':
             r = requests.delete(url, auth=(self._username, self._password),
-                                verify=self._verify_ssl)
+                                verify=self._verify_ssl, proxies=proxies)
         else:
             raise ValueError('Invalid value of "req_type" parameter: {0}'
                              ''.format(req_type))

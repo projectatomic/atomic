@@ -429,6 +429,7 @@ _atomic_push() {
 	      --pulp
 	      --satellite
 	      --verify_ssl
+	      --insecure
 	      --debug
 	      --all -a
 	      --force -f

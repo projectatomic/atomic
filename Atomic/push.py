@@ -69,6 +69,8 @@ def cli(subparser):
                               "use an alternate user's GPG keyring for signing. "
                               "Useful when running with sudo, "
                               "e.g. set to '~/.gnupg'."))
+    pushp.add_argument("--insecure", dest="insecure", default=False,
+                       action='store_true', help=_("Do not check registry certificates"))
     # pushp.add_argument("--activation_key_name",
     #                      default=None,
     #                      dest="activation_key_name",
@@ -180,8 +182,10 @@ class Push(Atomic):
             if sign and self.args.debug:
                 util.write_out("\nSigning with '{}'\n".format(self.args.sign_by))
 
-            insecure = True if util.is_insecure_registry(self.d.info()['RegistryConfig'], util.strip_port(reg)) else False
-
+            if self.args.insecure:
+                insecure = True
+            else:
+                insecure = True if util.is_insecure_registry(self.d.info()['RegistryConfig'], util.strip_port(reg)) else False
             # We must push the file to the registry first prior to performing a
             # local signature because the manifest file must be on the registry
             return_code = util.skopeo_copy(local_image, remote_image, debug=self.args.debug,

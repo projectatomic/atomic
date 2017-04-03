@@ -18,7 +18,6 @@ import tempfile
 import shutil
 import re
 import requests
-import ipaddress
 import socket
 from Atomic.backends._docker_errors import NoDockerDaemon
 import fcntl
@@ -124,7 +123,8 @@ def subp(cmd, cwd=None, newline=False):
     proc = subprocess.Popen(cmd, cwd=cwd,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, close_fds=True,
-                            universal_newlines=newline)
+                            universal_newlines=newline,
+                            env=os.environ)
     out, err = proc.communicate()
     return ReturnTuple(proc.returncode, stdout=out, stderr=err)
 
@@ -338,7 +338,7 @@ def skopeo_standalone_sign(image, manifest_file_name, fingerprint, signature_pat
                  fingerprint, "-o", signature_path]
     if debug:
         write_out("Executing: {}".format(" ".join(cmd)))
-    return check_call(cmd)
+    return check_call(cmd, env=os.environ)
 
 def skopeo_manifest_digest(manifest_file, debug=False):
     cmd = [SKOPEO_PATH]
@@ -371,7 +371,7 @@ def skopeo_copy(source, destination, debug=False, sign_by=None, insecure=False, 
     cmd = cmd + [source, destination]
     if debug:
         write_out("Executing: {}".format(" ".join(cmd)))
-    return check_call(cmd)
+    return check_call(cmd, env=os.environ)
 
 
 
@@ -408,9 +408,12 @@ def get_atomic_config_item(config_items, atomic_config=None, default=None):
         yaml_struct = atomic_config
         try:
             for i in items:
-                yaml_struct = yaml_struct[i]
+                yaml_struct = yaml_struct[i.lower()]
         except KeyError:
-            return None
+            try:
+                yaml_struct = yaml_struct[i.upper()]
+            except KeyError:
+                return None
         return yaml_struct
     if atomic_config is None:
         atomic_config = get_atomic_config()
@@ -693,56 +696,12 @@ def is_insecure_registry(registry_config, registry):
         raise ValueError("Registry value cannot be blank")
     if is_python2 and not isinstance(registry, unicode): #pylint: disable=undefined-variable,unicode-builtin
         registry = unicode(registry) #pylint: disable=unicode-builtin,undefined-variable
+    insecure_registries = [x for x in registry_config['IndexConfigs'] if registry_config['IndexConfigs'][x]['Secure'] is False]
 
-    ip_registries = []
-    ipv4_regs = []
-    ipv6_regs = []
-    registry_ips = []
-
-    def is_ipv4(_ip):
-        if is_python2 and not isinstance(_ip, unicode): #pylint: disable=unicode-builtin,undefined-variable
-            _ip = unicode(_ip) #pylint: disable=unicode-builtin,undefined-variable
-        if ipaddress.ip_address(_ip).version == 4:
-            return True
-        return False
-
-    def get_ips_from_host(_host):
-        return list(set([x[4][0] for x in socket.getaddrinfo(_host, None)]))
-
-    try:
-        ipaddress.ip_address(registry)
-        registry_ips.append(registry)
-    except ValueError:
-        for r in get_ips_from_host(registry):
-            registry_ips.append(r)
-
-    insecure_cidrs = registry_config['InsecureRegistryCIDRs']
-    insecure_registries = [strip_port(v['Name']) for _, v in registry_config['IndexConfigs'].items() if not v['Secure']]
-    for i in insecure_registries:
-        try:
-            ipaddress.ip_address(i)
-            ip_registries.append(i)
-        except ValueError:
-            for j in get_ips_from_host(i):
-                ip_registries.append(j)
-
-    for ip in ip_registries:
-        if is_ipv4(ip):
-            ipv4_regs.append(ip)
-        else:
-            ipv6_regs.append(ip)
-
-    # Everything is now in IP notation or CIDR
-    for registry_ip in registry_ips:
-        # Check IP addresses associated with known insecure registries
-        if is_python2 and not isinstance(registry_ip, unicode): #pylint: disable=unicode-builtin, undefined-variable
-            registry_ip = unicode(registry_ip) #pylint: disable=unicode-builtin, undefined-variable
-        if registry_ip in ipv4_regs or registry_ip in ipv6_regs:
-            return True
-        # Check if the IP falls in the the CIDR notation
-        for cidr_subnet in insecure_cidrs:
-            if ipaddress.ip_address(registry_ip ) in ipaddress.ip_network(cidr_subnet):
-                return True
+    # Be only as good as docker
+    if registry in insecure_registries:
+        return True
+    return False
 
 def is_valid_image_uri(uri, qualifying=None):
     '''
@@ -938,6 +897,8 @@ class Decompose(object):
             try:
                 socket.gethostbyname(strip_port(_input))
             except socket.gaierror:
+                if _input in [x['hostname'] for x in get_registries()]:
+                    return True
                 return False
             return True
 
@@ -1034,3 +995,29 @@ def write_template(inputfilename, data, values, destination):
             outfile.write(result)
         return result
     return None
+
+def get_proxy():
+    """
+    Returns proxy information from environment variables as a dict
+    """
+    def _get_envs_capped():
+        return {k.upper(): v for k,v in os.environ.items()}
+
+    proxies = {}
+    envs = _get_envs_capped()
+
+    # Environment variables should override configuration items
+    proxies['http'] = get_atomic_config_item(['HTTP_PROXY']) if 'HTTP_PROXY' not in envs else envs['HTTP_PROXY']
+    proxies['https'] = get_atomic_config_item(['HTTPS_PROXY']) if 'HTTPS_PROXY' not in envs else envs['HTTPS_PROXY']
+    return proxies
+
+def set_proxy():
+    """
+    Sets proxy as environment variable if not set already
+    """
+    proxies = get_proxy()
+    if proxies['http'] and 'HTTP_PROXY' not in os.environ:
+        os.environ['HTTP_PROXY'] = proxies['http']
+    if proxies['https'] and 'HTTPS_PROXY' not in os.environ:
+        os.environ['HTTPS_PROXY'] = proxies['https']
+    return proxies

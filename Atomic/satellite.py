@@ -70,11 +70,12 @@ class SatelliteServer(object):
 
     def _call_satellite(self, url, req_type='get', payload=None):
         """This function handles requests to the Satellite Server"""
+        proxies = util.get_proxy()
         if req_type == 'get':
             if (self._debug):
                 print('Calling Satellite URL "{0}"'.format(url))
             r = requests.get(url, auth=(self._username, self._password),
-                             verify=self._verify_ssl)
+                             verify=self._verify_ssl, proxies=proxies)
         elif req_type == 'post':
             if (self._debug):
                 print('Posting to Satellite URL "{0}"'.format(url))
@@ -83,7 +84,8 @@ class SatelliteServer(object):
                           json.dumps(payload, indent=2)))
             r = requests.post(url, auth=(self._username, self._password),
                               data=json.dumps(payload),
-                              verify=self._verify_ssl)
+                              verify=self._verify_ssl,
+                              proxies=proxies)
         elif req_type == 'post-nodata':
             if (self._debug):
                 print('Posting to Satellite URL "{0}". No data sent.'.format(
@@ -91,12 +93,14 @@ class SatelliteServer(object):
             header = {'Content-Type': 'application/json'}
             r = requests.post(url, auth=(self._username, self._password),
                               headers=header, data=json.dumps(payload),
-                              verify=self._verify_ssl)
+                              verify=self._verify_ssl,
+                              proxies=proxies)
         elif req_type == 'put':
             if self._debug:
                 print('Putting to Satellite URL "{0}"'.format(url))
             r = requests.put(url, auth=(self._username, self._password),
-                             data=payload, verify=self._verify_ssl)
+                             data=payload, verify=self._verify_ssl,
+                             proxies=proxies)
         elif req_type == 'put-jsonHead':
             if self._debug:
                 print('Putting with json header to Satellite URL "{0}"'
@@ -104,7 +108,7 @@ class SatelliteServer(object):
             header = {'Content-Type': 'application/json'}
             r = requests.put(url, auth=(self._username, self._password),
                              headers=header, data=json.dumps(payload),
-                             verify=self._verify_ssl)
+                             verify=self._verify_ssl, proxies=proxies)
         elif req_type == 'put-multi-part':
             if self._debug:
                 print('Multi-Part Putting to Satellite URL "{0}"'.format(url))
@@ -115,13 +119,15 @@ class SatelliteServer(object):
             }
             r = requests.put(url, auth=(self._username, self._password),
                              headers=header, data=payload,
-                             verify=self._verify_ssl)
+                             verify=self._verify_ssl,
+                             proxies=proxies)
         elif req_type == 'delete':
             if self._debug:
                 print('Delete call to Satellite URL "{0}"'.format(url))
             header = {'Content-Type': 'application/json'}
             r = requests.delete(url, auth=(self._username, self._password),
-                                headers=header, verify=self._verify_ssl)
+                                headers=header, verify=self._verify_ssl,
+                                proxies=proxies)
         else:
             raise IOError('Invalid value of "req_type" parameter: {0}'
                              .format(req_type))

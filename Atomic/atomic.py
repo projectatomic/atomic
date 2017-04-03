@@ -63,6 +63,7 @@ class Atomic(object):
         self.run_opts = None
         self.atomic_config = util.get_atomic_config()
         self.local_tokens = {}
+        util.set_proxy()
 
     def __enter__(self):
         return self

@@ -9,6 +9,7 @@ atomic-push - push Image to repository
 [**-a**][**--activation_key**[=*ACTIVATION_KEY*]]
 [**--debug**]
 [**-h**|**--help**]
+[**--insecure**]
 [**--pulp**]
 [**-p**][**--password**[=*PASSWORD*]]
 [**-r**][**--repository_id**[=*REPOSITORY_ID*]]
@@ -32,6 +33,9 @@ atomic-push - push Image to repository
 **-h** **--help**
   Print usage statement
 
+**--insecure**
+  Indicate that the regsitry does not require HTTPS or certificate verification.
+  
 **-p PASSWORD** **--password PASSWORD**
   Password for remote registry
 

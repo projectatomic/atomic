@@ -243,7 +243,8 @@ class Trust(Atomic):
                         raise ValueError("Aborting 'trust add' due to insecure download of public key from %s." % key_reference)
             if self.args.debug:
                 util.write_out("Downloading key from %s" % key_reference)
-            r = requests.get(key_reference)
+            proxies = util.get_proxy()
+            r = requests.get(key_reference, proxies=proxies)
             if r.status_code == 200:
                 keydata = r.content
             else:

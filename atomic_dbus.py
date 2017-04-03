@@ -70,6 +70,7 @@ class atomic_dbus(slip.dbus.service.Object):
             self.ignore = False
             self.image = None
             self.images = []
+            self.insecure = False
             self.import_location = None
             self.json = True
             self.keytype = None
@@ -299,15 +300,16 @@ class atomic_dbus(slip.dbus.service.Object):
 
     # The ImagePush method will push the specific image to a registry
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='sbbbssssssss', out_signature='i')
+    @dbus.service.method("org.atomic", in_signature='sbbbssssssssb', out_signature='i')
     def ImagePush(self, image, pulp, satellite, verify_ssl, url, username, password,
-                  activation_key, repo_id, registry_type, sign_by, gnupghome):
+                  activation_key, repo_id, registry_type, sign_by, gnupghome, insecure):
         p = Push()
         args = self.Args()
         args.image = image
         args.pulp = pulp
         args.satellite = satellite
         args.verify_ssl = verify_ssl
+        args.insecure = insecure
         args.url = None if not url else url
         args.username = None if not username else username
         args.password = None if not password else password
