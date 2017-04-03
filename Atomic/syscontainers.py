@@ -319,10 +319,11 @@ class SystemContainers(object):
             version = str(util.check_output([util.RUNC_PATH, "--version"], stderr=DEVNULL))
         except util.FileNotFound:
             version = ""
+
         if "version 0" in version:
-            runc_commands = ["start", "kill"]
-        else:
-            runc_commands = ["run", "kill"]
+            raise ValueError("The version of runC is too old.")
+
+        runc_commands = ["run", "kill"]
         return ["%s --systemd-cgroup %s '%s'" % (util.RUNC_PATH, command, name) for command in runc_commands]
 
     def _get_systemd_destination_files(self, name, prefix=None):

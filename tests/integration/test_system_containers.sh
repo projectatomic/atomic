@@ -46,6 +46,10 @@ PYTHON=${PYTHON:-/usr/bin/python}
 ostree --version &>/dev/null || exit 77
 runc --version &>/dev/null || exit 77
 
+if runc --version | grep -q "version 0"; then
+    exit 77
+fi
+
 ${ATOMIC}  install --help 2>&1 > help.out
 grep -q -- --system help.out || exit 77
 

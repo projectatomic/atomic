@@ -35,6 +35,10 @@ ostree --version &>/dev/null || exit 77
 runc --version &>/dev/null || exit 77
 rpmbuild --version &>/dev/null || exit 77
 
+if runc --version | grep -q "version 0"; then
+    exit 77
+fi
+
 touch /usr/lib/.writeable || exit 77
 rm /usr/lib/.writeable
 
