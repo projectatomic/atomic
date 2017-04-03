@@ -767,7 +767,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             img_obj = self.inspect_system_image(img)
             image_id = img_obj["ImageId"]
             labels = {k.lower() : v for k, v in img_obj.get('Labels', {}).items()}
-            (rpm_preinstalled, rpm_file) = RPMHostInstall.generate_rpm(name, image_id, labels, exports, destination, values=values, installed_files_template=installed_files_template, rename_files=rename_files, defaultversion=deployment)
+            (rpm_preinstalled, rpm_file, _) = RPMHostInstall.generate_rpm(name, image_id, labels, exports, destination, values=values, installed_files_template=installed_files_template, rename_files=rename_files, defaultversion=deployment)
         if rpm_preinstalled:
             new_installed_files = []
         else:

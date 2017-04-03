@@ -206,4 +206,4 @@ class RPMHostInstall(object):
                 shutil.move(rpm_file, dest_path)
         finally:
             shutil.rmtree(temp_dir)
-        return (orig_name, dest_path)
+        return orig_name, dest_path, installed_files
