@@ -88,10 +88,13 @@ class RPMHostInstall(object):
             spec = spec + "%s\n" % description
 
         spec = spec + "\n%files\n"
+        installed_files_in_etc = []
         for root, _, files in os.walk(os.path.join(destdir, "etc")):
             rel_path = os.path.relpath(root, destdir)
             for f in files:
-                spec += "%%config \"%s\"\n" % os.path.join("/", rel_path, f)
+                p = os.path.join("/", rel_path, f)
+                installed_files_in_etc.append(p)
+                spec += "%%config \"%s\"\n" % p
 
         if include_containers_file:
             spec += "/usr/lib/containers/atomic/%s\n" % name
@@ -103,7 +106,8 @@ class RPMHostInstall(object):
                 spec = spec + "/usr/lib/tmpfiles.d/%s\n" % f
         if installed_files:
             for i in installed_files:
-                spec = spec + "%s\n" % i
+                if i not in installed_files_in_etc:
+                    spec = spec + "%s\n" % i
 
         return spec
 
