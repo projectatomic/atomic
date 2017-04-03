@@ -520,13 +520,6 @@ class SystemContainers(object):
         if extract_only:
             return values
 
-        if self.user:
-            values["RUN_DIRECTORY"] = os.environ.get("XDG_RUNTIME_DIR", "/run/user/%s" % (os.getuid()))
-            values["STATE_DIRECTORY"] = "%s/.data" % HOME
-        else:
-            values["RUN_DIRECTORY"] = "/run"
-            values["STATE_DIRECTORY"] = "/var/lib"
-
         if not os.path.exists(exports):
             util.write_out("""Warning: /exports directory not found.  Default config files will be generated.
 Warning: You may want to modify `%s` before starting the service""" % os.path.join(destination, "config.json"))
@@ -565,6 +558,18 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if image_manifest:
             image_manifest = json.loads(image_manifest)
             image_id = SystemContainers._get_image_id_from_manifest(image_manifest) or image_id
+
+        if "RUN_DIRECTORY" not in values:
+            if self.user:
+                values["RUN_DIRECTORY"] = os.environ.get("XDG_RUNTIME_DIR", "/run/user/%s" % (os.getuid()))
+            else:
+                values["RUN_DIRECTORY"] = "/run"
+
+        if "STATE_DIRECTORY" not in values:
+            if self.user:
+                values["STATE_DIRECTORY"] = "%s/.data" % HOME
+            else:
+                values["STATE_DIRECTORY"] = "/var/lib"
 
         if "UUID" not in values:
             values["UUID"] = str(uuid.uuid4())
