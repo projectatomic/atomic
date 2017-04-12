@@ -19,6 +19,10 @@ def cli(subparser):
         "push", aliases=['upload'], help=_("push latest image to repository"),
         epilog="push the latest specified image to a repository.")
     pushp.set_defaults(_class=Push, func='push')
+    pushp.add_argument("--anonymous",
+                     default=False,
+                     action="store_true",
+                     help=_("Push images without a username or password"))
     # making it so we cannot call both the --pulp and --satellite commands
     # at the same time (mutually exclusive)
     pushgroup = pushp.add_mutually_exclusive_group()
@@ -165,7 +169,7 @@ class Push(Atomic):
         else:
             reg, _, _, tag, _ = util.Decompose(self.image).all
             # Check if any local tokens exist
-            if reg not in [x for x in self.get_local_tokens()]:
+            if reg not in [x for x in self.get_local_tokens()] and not self.args.anonymous:
                 # If we find a token for the registry, we don't
                 # prompt for a username or password
                 prompt()

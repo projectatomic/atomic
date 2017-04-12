@@ -7,6 +7,7 @@ atomic-push - push Image to repository
 # SYNOPSIS
 **atomic push**
 [**-a**][**--activation_key**[=*ACTIVATION_KEY*]]
+[**--anonymous**]
 [**--debug**]
 [**-h**|**--help**]
 [**--insecure**]
@@ -26,6 +27,9 @@ atomic-push - push Image to repository
 # OPTIONS:
 **-a ACTIVATION_KEY** **--activation_key ACTIVATION_KEY**
   Activation Key
+
+**--anonymous** 
+  Push without a username or password
 
 **--debug**
   Debug mode

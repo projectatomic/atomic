@@ -431,7 +431,7 @@ _atomic_push() {
 	      --verify_ssl
 	      --insecure
 	      --debug
-	      --all -a
+	      --anonymous
 	      --force -f
 	      --help
 	"
