@@ -170,14 +170,12 @@ class InstallData(unittest.TestCase):
             self.image = None
 
     @patch('Atomic.util.InstallData.read_install_data', new=MockIO.read_mock)
-    @patch('Atomic.util.InstallData._read_install_data', new=MockIO.read_mock)
     @patch('Atomic.util.InstallData.write_install_data', new=MockIO.write_mock)
     def test_read(self):
         MockIO.reset_data()
         self.assertEqual(util.InstallData.read_install_data(), MockIO.install_data)
 
     @patch('Atomic.util.InstallData.read_install_data', new=MockIO.read_mock)
-    @patch('Atomic.util.InstallData._read_install_data', new=MockIO.read_mock)
     @patch('Atomic.util.InstallData.write_install_data', new=MockIO.write_mock)
     def test_write(self):
         MockIO.reset_data()
@@ -187,7 +185,6 @@ class InstallData(unittest.TestCase):
         self.assertTrue('docker.io/library/centos:latest' in util.InstallData.read_install_data())
 
     @patch('Atomic.util.InstallData.read_install_data', new=MockIO.read_mock)
-    @patch('Atomic.util.InstallData._read_install_data', new=MockIO.read_mock)
     @patch('Atomic.util.InstallData.write_install_data', new=MockIO.write_mock)
     def test_get_install_name_by_id(self):
         MockIO.reset_data()
@@ -195,14 +192,12 @@ class InstallData(unittest.TestCase):
         self.assertEqual(util.InstallData.get_install_name_by_id('16e9fdecc1febc87fb1ca09271009cf5f28eb8d4aec5515922ef298c145a6726', install_data=MockIO.install_data), 'docker.io/library/centos:latest')
 
     @patch('Atomic.util.InstallData.read_install_data', new=MockIO.read_mock)
-    @patch('Atomic.util.InstallData._read_install_data', new=MockIO.read_mock)
     @patch('Atomic.util.InstallData.write_install_data', new=MockIO.write_mock)
     def test_fail_get_install_name_by_id(self):
         MockIO.reset_data()
         self.assertRaises(ValueError, util.InstallData.get_install_name_by_id, 1, MockIO.install_data)
 
     @patch('Atomic.util.InstallData.read_install_data', new=MockIO.read_mock)
-    @patch('Atomic.util.InstallData._read_install_data', new=MockIO.read_mock)
     @patch('Atomic.util.InstallData.write_install_data', new=MockIO.write_mock)
     def test_image_installed_name(self):
         MockIO.reset_data()
@@ -216,7 +211,6 @@ class InstallData(unittest.TestCase):
         self.assertTrue(util.InstallData.image_installed(local_image_object))
 
     @patch('Atomic.util.InstallData.read_install_data', new=MockIO.read_mock)
-    @patch('Atomic.util.InstallData._read_install_data', new=MockIO.read_mock)
     @patch('Atomic.util.InstallData.write_install_data', new=MockIO.write_mock)
     def test_image_installed_id(self):
         MockIO.reset_data()
@@ -230,7 +224,6 @@ class InstallData(unittest.TestCase):
         self.assertTrue(util.InstallData.image_installed(local_image_object))
 
     @patch('Atomic.util.InstallData.read_install_data', new=MockIO.read_mock)
-    @patch('Atomic.util.InstallData._read_install_data', new=MockIO.read_mock)
     @patch('Atomic.util.InstallData.write_install_data', new=MockIO.write_mock)
     def test_image_not_installed(self):
         MockIO.reset_data()
