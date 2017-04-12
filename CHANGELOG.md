@@ -1,4 +1,4 @@
-## 1.16 (2016-02-22)
+## 1.16 (2017-02-22)
     Fix uninstall bug: BZ 1425495
     add --lvsize option to atomic storage modify
     Account for API Changes in docker-py-2
@@ -10,7 +10,7 @@
     syscontainers: support @sha256: format for image listing
     Fix FQ Name for SystemContainers
 
-## 1.15 (2016-01-17)
+## 1.15 (2017-01-17)
     update default trust policy file
     Validate reg input to trust add cmd
     Atomic/objects/image.py: Fix verify for v1
@@ -23,7 +23,7 @@
     Refactor atomic stop
     Add keywords to completions
 
-## 1.14 (2016-01-02)
+## 1.14 (2017-01-02)
     update: refactor into non-base verbs
     Atomic storage reset does not work on docker-latest
     Fixes for documentation
