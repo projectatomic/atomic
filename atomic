@@ -55,6 +55,12 @@ from Atomic import images
 from Atomic.util import write_err
 from Atomic.backends._docker_errors import NoDockerDaemon
 
+try:
+    import cProfile
+    can_profile = True
+except ImportError:
+    can_profile = False
+
 PROGNAME = "atomic"
 gettext.bindtextdomain(PROGNAME, "/usr/share/locale")
 gettext.textdomain(PROGNAME)
@@ -128,6 +134,9 @@ def create_parser(help_text):
                         help=_("ignore install-first requirement"))
     parser.add_argument('-y', '--assumeyes', default=False, action='store_true',
                         help=_("automatically answer yes for all questions"))
+    if can_profile:
+        parser.add_argument('--profile', default=False, action='store_true',
+                            help=argparse.SUPPRESS)
     subparser = parser.add_subparsers(help=_("commands"))
 
     # atomic cluster (if commctl.cli is available)
@@ -184,6 +193,9 @@ if __name__ == '__main__':
         with Atomic.Atomic() as atomic:
             aparser = create_parser(atomic.help())
             args = aparser.parse_args()
+            if 'profile' in args and args.profile:
+                pr = cProfile.Profile()
+                pr.enable()
             _class = atomic if '_class' not in args else args._class() # pylint: disable=protected-access
             _class.set_args(args)
             if "func" in args:
@@ -217,5 +229,9 @@ if __name__ == '__main__':
             args.debug = False
         sys.exit(e.code)
     finally:
+        if 'args' in locals() and 'profile' in args and args.profile:
+            pr.disable()
+            pr.print_stats("cumulative")
+
         if 'args' in locals() and args.debug:
             traceback.print_exc(file=sys.stderr)
