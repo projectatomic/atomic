@@ -105,11 +105,10 @@ class TestDBus():
 
     @integration_test
     def test_run(self):
-        self.dbus_object.Run('atomic-test-3', 'atomic-dbus-3', False, False, True)
+        self.dbus_object.Run('atomic-test-3', 'atomic-dbus-3', False, False, True, '')
         self.cid = TestDBus.run_cmd('docker ps -aq -l').decode('utf-8').rstrip()
         TestDBus.add_cleanup_cmd('docker rm {}'.format(self.cid))
         container_inspect = json.loads(TestDBus.run_cmd('docker inspect {}'.format(self.cid)).decode('utf-8'))[0]
-        print(container_inspect)
         assert(container_inspect['Name'] == '/atomic-dbus-3')
 
     @integration_test
@@ -132,8 +131,7 @@ class TestDBus():
         t_cid = TestDBus.run_cmd('docker ps -aq -l').decode('utf-8').rstrip()
         TestDBus.run_cmd('docker commit {} dbus-test-3'.format(t_cid))
         TestDBus.run_cmd('docker rm {}'.format(t_cid))
-
-        results = self.dbus_object.Install('dbus-test-3', name='atomic-dbus-3')
+        results = self.dbus_object.Install('dbus-test-3', 'dbus-test-3', False, False, 'docker', False, '')
         self.cid = TestDBus.run_cmd('docker ps -aq -l').decode('utf-8').rstrip()
         TestDBus.add_cleanup_cmd('docker rm {}'.format(self.cid))
         TestDBus.add_cleanup_cmd('docker rmi atomic-dbus-3')

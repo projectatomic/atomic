@@ -373,7 +373,7 @@ class atomic_dbus(slip.dbus.service.Object):
     # The Install method will install the specified image
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     @dbus.service.method("org.atomic", in_signature='ssbbsbas', out_signature='i')
-    def Install(self, image, name='', system=False, remote=False, storage='', user=False, setvalues=''):
+    def Install(self, image, name, system, remote, storage, user, setvalues):
         if not setvalues:
             setvalues = []
         assert(isinstance(setvalues, list))
@@ -417,11 +417,11 @@ class atomic_dbus(slip.dbus.service.Object):
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     # Return a 0 or 1 for success.  Errors result in exceptions.
     @dbus.service.method("org.atomic", in_signature='ssbbbas', out_signature='i')
-    def Run(self, image, name='', spc=False, detach=False, ignore=False, command=''):
+    def Run(self, image, name, spc, detach, ignore, command):
         r = Run()
         args = self.Args()
         args.image = image
-        args.name = name if name is not '' else None
+        args.name = name
         args.spc = spc
         args.detach = detach
         args.command = command if command is not '' else []

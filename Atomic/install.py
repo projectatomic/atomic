@@ -104,26 +104,34 @@ class Install(Atomic):
             if not util.is_user_mode():
                 raise ValueError("--user does not work for privileged user")
             return self.syscontainers.install_user_container(self.image, self.name)
-        elif self.system or storage == 'ostree':
+        if self.ostree_uri(self.image):
             return self.syscontainers.install(self.image, self.name)
-        elif OSTREE_PRESENT and self.args.setvalues:
-            raise ValueError("--set is valid only when used with --system or --user")
-
-        # Check if image exists in any local backends
-        be, img_obj = be_utils.get_backend_and_image_obj(self.image, str_preferred_backend=self.args.storage or storage, required=True if self.args.storage else False)
+        # Check if image exists
+        str_backend = 'ostree' if self.args.system else self.args.storage or storage
+        be = be_utils.get_backend_from_string(str_backend)
+        img_obj = be.has_image(self.args.image)
+        if img_obj and img_obj.is_system_type:
+            be = be_utils.get_backend_from_string('ostree')
 
         if img_obj is None:
+            # Unable to find the image locally, look remotely
             remote_image_obj = be.make_remote_image(self.args.image)
             # We found an atomic.type of system, therefore install it onto the ostree
             # backend
             if remote_image_obj.is_system_type and not storage_set:
                 be_utils.message_backend_change('docker', 'ostree')
-                return self.syscontainers.install(self.image, self.name)
+                be = be_utils.get_backend_from_string('ostree')
             be.pull_image(self.args.image, remote_image_obj, debug=self.args.debug)
             img_obj = be.has_image(self.image)
 
-        if img_obj.is_system_type:
-            return self.syscontainers.install(self.image, self.name)
+        if be.backend is not 'docker':
+            if OSTREE_PRESENT and self.args.setvalues and not self.user and not self.system:
+                raise ValueError("--set is valid only when used with --system or --user")
+
+            # We need to fix this long term and get ostree
+            # using the backend approach vs the atomic args
+            be.syscontainers.set_args(self.args)
+            return be.install(self.image, self.name)
 
         install_args = img_obj.get_label('INSTALL')
         if not install_args:
@@ -147,4 +155,11 @@ class Install(Atomic):
     @staticmethod
     def print_install():
         return "%s %s %s" % (util.default_docker(), " ".join(INSTALL_ARGS), "/usr/bin/INSTALLCMD")
+
+    @staticmethod
+    def ostree_uri(image_name):
+        for i in ['dockertar:', 'ostree:', 'docker:']:
+            if image_name.startswith(i):
+                return True
+        return False
 
