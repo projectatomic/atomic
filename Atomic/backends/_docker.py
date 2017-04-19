@@ -412,7 +412,12 @@ class DockerBackend(Backend):
 
     def get_layer(self, image):
         _layer = Layer(self.inspect_image(image))
-        _layer.remote = image.remote
+        # Disabling this assignment; not sure where it used and why
+        # Enabled it will cause an Attribute Error because image is
+        # a str object and has not attrs.  Leaving for historical
+        # purposes in case I break something.
+
+        #_layer.remote = image.remote
         return _layer
 
     def get_layers(self, image):

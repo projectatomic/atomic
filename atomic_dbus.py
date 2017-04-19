@@ -122,6 +122,7 @@ class atomic_dbus(slip.dbus.service.Object):
             self.detach = False
             self.storage = None
             self.system = False
+            self.system_package = None
             self.truncate = False
             self.trust_type = None
             self.url = None
@@ -281,7 +282,10 @@ class atomic_dbus(slip.dbus.service.Object):
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
     @dbus.service.method("org.atomic", in_signature='', out_signature='')
     def ImagesPrune(self):
+        args = self.Args()
+        args.debug = False
         d = Delete()
+        d.set_args(args)
         return d.prune_images()
 
     # The ImagesPull method will pull the specified image
@@ -372,8 +376,8 @@ class atomic_dbus(slip.dbus.service.Object):
     # atomic install section
     # The Install method will install the specified image
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")
-    @dbus.service.method("org.atomic", in_signature='ssbbsbas', out_signature='i')
-    def Install(self, image, name, system, remote, storage, user, setvalues):
+    @dbus.service.method("org.atomic", in_signature='ssbbsbsas', out_signature='i')
+    def Install(self, image, name, system, remote, storage, user, system_package, setvalues):
         if not setvalues:
             setvalues = []
         assert(isinstance(setvalues, list))
@@ -383,12 +387,15 @@ class atomic_dbus(slip.dbus.service.Object):
         args.name = name
         args.user = user
         args.system = system
+        args.system_package = system_package
         args.storage = storage
         args.remote = remote
         args.setvalues = setvalues
         args.args = []
         i.set_args(args)
-        return i.install()
+        results = i.install()
+        return 0 if results is None else results
+
 
     # atomic mount section
     @slip.dbus.polkit.require_auth("org.atomic.readwrite")

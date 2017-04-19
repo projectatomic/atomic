@@ -31,6 +31,8 @@ class AtomicDBus (object):
 
     @polkit.enable_proxy
     def Diff(self, first, second, rpms=False, no_files=False, names_only=False, diff_keywords=None, metadata=False):
+        if not diff_keywords:
+            diff_keywords = []
         assert(isinstance(diff_keywords, list))
         if diff_keywords is None:
             diff_keywords = []
@@ -106,14 +108,15 @@ class AtomicDBus (object):
         return self.dbus_object.ImageVersion(image, recurse, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
-    def Install(self, image, name='', system=False, remote=False, storage='', user=False, setvalues=''):
+    def Install(self, image, name='', system=False, remote=False, storage=_storage, user=False, system_package='auto', setvalues=''):
         if not name:
             name = image
         if not setvalues:
             setvalues = []
         if not isinstance(setvalues, (list, tuple)):
             setvalues = [ setvalues ]
-        return self.dbus_object.Install(image, name, system, remote, storage, user, setvalues, dbus_interface="org.atomic", timeout = 2147400)
+
+        return self.dbus_object.Install(image, name, system, remote, storage, user, system_package, setvalues, dbus_interface="org.atomic", timeout = 2147400)
 
     @polkit.enable_proxy
     def MountImage(self, src, dest, options="", live=False, shared=False):
@@ -176,6 +179,8 @@ class AtomicDBus (object):
             name = image
         if not extra_args:
             extra_args = []
+        if not storage:
+            storage = ''
         if not isinstance(extra_args, (list, tuple)):
             extra_args = [ extra_args ]
         return self.dbus_object.Uninstall(image, name, force, storage, ignore, extra_args, dbus_interface="org.atomic", timeout = 2147400)

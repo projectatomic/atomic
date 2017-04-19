@@ -131,7 +131,7 @@ class TestDBus():
         t_cid = TestDBus.run_cmd('docker ps -aq -l').decode('utf-8').rstrip()
         TestDBus.run_cmd('docker commit {} dbus-test-3'.format(t_cid))
         TestDBus.run_cmd('docker rm {}'.format(t_cid))
-        results = self.dbus_object.Install('dbus-test-3', 'dbus-test-3', False, False, 'docker', False, '')
+        results = self.dbus_object.Install('dbus-test-3', 'dbus-test-3', False, False, 'docker', False, 'auto', '')
         self.cid = TestDBus.run_cmd('docker ps -aq -l').decode('utf-8').rstrip()
         TestDBus.add_cleanup_cmd('docker rm {}'.format(self.cid))
         TestDBus.add_cleanup_cmd('docker rmi atomic-dbus-3')
