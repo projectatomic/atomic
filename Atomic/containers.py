@@ -49,7 +49,7 @@ def cli(subparser):
     pss.set_defaults(_class=Containers, func='ps_tty')
     pss.add_argument("-a", "--all", action='store_true',dest="all", default=False,
                      help=_("show all containers"))
-    pss.add_argument("-f", "--filter", metavar='FILTER', action='append', dest="filters",
+    pss.add_argument("-f", "--filter", metavar='FILTER', action='append', dest="filter",
                      help=_("Filter output based on conditions given in the VARIABLE=VALUE form"))
     pss.add_argument("--json", action='store_true',dest="json", default=False,
                      help=_("print in a machine parseable form"))
@@ -118,10 +118,10 @@ class Containers(Atomic):
                     _filtered.append(con_obj)
             return _filtered
 
-        if not self.args.filters:
+        if not self.args.filter:
             return con_objs
         filtered_objs = copy.deepcopy(con_objs)
-        for f in self.args.filters:
+        for f in self.args.filter:
             cfilter, value = f.split('=', 1)
             cfilter = self.FILTER_KEYWORDS[cfilter]
             filtered_objs = _walk(filtered_objs, cfilter, value)
@@ -183,9 +183,9 @@ class Containers(Atomic):
 
     def _ps(self):
         def _check_filters():
-            if not self.args.filters:
+            if not self.args.filter:
                 return True
-            for f in self.args.filters:
+            for f in self.args.filter:
                 _filter, _ = f.split('=', 1)
                 keywords = list(self.FILTER_KEYWORDS.keys())
                 if _filter not in keywords:
