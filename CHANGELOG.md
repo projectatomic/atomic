@@ -1,3 +1,31 @@
+## 1.17 (2017-04-20)
+    Allow anonymous push
+    Always use fq names for dest image
+    dbus: Lots of fixes
+    Atomic/install.py: Record installs for later use
+    Signing
+    Fix registries.d/*.yaml config lookup
+    Fix “fqdn” computation in RegistryInspect
+    Honor proxy usage
+    Makefile: add new rule test-suite
+    Only compute util.Decompose(expanded_image_name) once
+    Simplify registries.d/*.yaml config lookup
+    Update (atomic sign) for the updated sigstore layout
+    atomic.d/openscap: Improve openscap scans
+    backends: add tag_image method
+    bash: add autocompletion for images tag
+    docs: document images tag
+    image: add new subcommand tag
+    install: add --system-package
+    Improve Atomic Install
+        Lots of improvements in system containers
+        syscontainer: support rpm installs
+	syscontainers: Add run once logic to install
+    syscontainers: fix containers list --json
+    syscontainers: use --systemd-cgroup with runC
+    systemcontainers: fill default values when using oneshot
+    util: Don't try to create directories at module import time
+
 ## 1.16 (2017-02-22)
     Fix uninstall bug: BZ 1425495
     add --lvsize option to atomic storage modify
