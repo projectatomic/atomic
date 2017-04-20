@@ -20,19 +20,31 @@ def cli(subparser, hidden=False):
     helpp.set_defaults(_class=AtomicHelp, func='help_tty')
     helpp.add_argument("image", help=_("Image ID or name"))
 
+
+GROFF_BINARY = "/usr/bin/groff"
+
+
 class AtomicHelp(Atomic):
     ATOMIC_DIR="/run/atomic"
+
     def __init__(self):
         super(AtomicHelp, self).__init__()
         if not os.path.exists(self.ATOMIC_DIR):
             os.makedirs(self.ATOMIC_DIR)
-        self.mount_location = tempfile.mkdtemp(prefix=self.ATOMIC_DIR)
-        self.help_file_name = 'help.1'
+
+        # possible filenames for help file inside container
+        self.help_file_candidates = (
+            # help filename inside image, command to process the help file before displaying
+            ("help.1", (GROFF_BINARY, '-man', '-Tascii')),
+            ("README.md", None)
+        )
+
         self.docker_object = None
         self.is_container = True
         self.use_pager = True
         self.image = None
         self.inspect = None
+        self.enc = sys.getdefaultencoding()
 
     def help_tty(self):
         result = self.help()
@@ -59,13 +71,16 @@ class AtomicHelp(Atomic):
             # its image
             self.image = self.inspect['Image']
 
-        # Check if an help command label is provided
-        help_cmd = self._get_args('HELP')
-
-        if help_cmd:
-            return self.alt_help(help_cmd)
-        else:
+        try:
             return self.man_help(docker_id)
+        except ValueError:
+            # Check if "help" label is provided
+            # The label contains command which will be executed
+            help_cmd = self._get_args('HELP')
+            if help_cmd:
+                return self.alt_help(help_cmd)
+            else:
+                raise ValueError("There is no help for {}.".format(self.docker_object))
 
     def man_help(self, docker_id):
         """
@@ -74,29 +89,40 @@ class AtomicHelp(Atomic):
         :param docker_id: docker object to get help for
         :return: None
         """
-        if not os.path.exists(self.mount_location):
-            os.makedirs(self.mount_location)
-        dm = mount.DockerMount(self.mount_location, mnt_mkdir=True)
-        with mount.MountContextManager(dm, docker_id) as dmcm:
-            help_path = os.path.join(dmcm.mnt_path, self.help_file_name)
-            if not os.path.exists(help_path):
-                help_path = os.path.join(dmcm.mnt_path, 'rootfs', self.help_file_name)
-            try:
-                help_file=open(help_path)
-            except IOError:
-                raise ValueError("Unable to find help file for {}".format(self.docker_object))
+        mount_location = tempfile.mkdtemp(prefix=self.ATOMIC_DIR)
+        try:
+            dm = mount.DockerMount(mount_location)
+            with mount.MountContextManager(dm, docker_id):
+                # defined b/c of pylint, this is not needed due to for & else construct
+                candidate_file = None
+                candidate_preprocessor = None
+                for candidate_file, candidate_preprocessor in self.help_file_candidates:
+                    # overlay
+                    help_path = os.path.join(dm.mountpoint, candidate_file)
+                    if not os.path.exists(help_path):
+                        # devicemapper
+                        help_path = os.path.join(dm.mountpoint, 'rootfs', candidate_file)
+                    if os.path.exists(help_path):
+                        break
+                else:
+                    # not found
+                    raise ValueError(
+                        "Unable to find help file for {}.\nTried these files {}.".format(
+                            self.docker_object, [x[0] for x in self.help_file_candidates])
+                    )
 
-            groff_cmd = '/usr/bin/groff'
-            cmd = [groff_cmd, '-man', '-Tascii']
-            if not os.path.exists(groff_cmd):
-                raise IOError("Cannot display help file for {} as the 'groff' "
-                              "command was not found at {}.".format(
-                    self.docker_object, groff_cmd))
+                with open(help_path, "r") as help_file:
+                    if candidate_preprocessor:
+                        if not os.path.exists(candidate_preprocessor[0]):
+                            raise IOError(
+                                "Cannot display help file {} for {}: {} unavailable".format(
+                                    candidate_file, self.docker_object, candidate_preprocessor)
+                            )
 
-            result = util.check_output(cmd, stdin=help_file)
-            # Clean up
-            help_file.close()
-            return result
+                        return util.check_output(candidate_preprocessor, stdin=help_file)
+                    return help_file.read()
+        finally:
+            os.rmdir(mount_location)
 
     def alt_help(self, help_cmd):
         """
@@ -106,4 +132,4 @@ class AtomicHelp(Atomic):
         cmd = self.gen_cmd(help_cmd)
         cmd = self.sub_env_strings(cmd)
         self.display(cmd)
-        return util.check_output(cmd, env=self.cmd_env())
+        return util.check_output(cmd, env=self.cmd_env()).decode(self.enc)

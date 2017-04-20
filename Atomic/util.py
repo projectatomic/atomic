@@ -154,8 +154,11 @@ def check_output(cmd, env=None, stdin=None, stderr=None):
     if not env:
         env=os.environ
     # Make sure cmd is a list
-    if not isinstance(cmd, list):
-        cmd = shlex.split(cmd)
+    if not isinstance(cmd, (list, tuple)):
+        try:
+            cmd = shlex.split(cmd)
+        except Exception as ex:
+            raise ValueError("Command '{}' is not valid: {!r}".format(cmd, ex))
     try:
         return subprocess.check_output(cmd, env=env, stdin=stdin, stderr=stderr, close_fds=True)
     except OSError as e:
