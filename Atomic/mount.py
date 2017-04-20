@@ -738,6 +738,7 @@ class DockerMount(Mount):
             self.d.remove_container(short_cid)
         self._clean_tmp_image()
 
+
 def getxattrfuncs():
     # Python 3 has support for extended attributes in the os module, while
     # Python 2 needs the xattr library.  Detect if any is available.
@@ -892,3 +893,29 @@ class OSTreeMount(Mount):
                 os.unlink(infofile)
 
         return True
+
+
+class MountContextManager(object):
+    """
+    context manager for DockerMount and OSTreeMount classes
+    """
+
+    def __init__(self, mount_instance, identifier, mount_options=None):
+        """
+        mount_instance - DockerMount or OSTreeMount instance
+        identifier - container ID or image ID
+        mount_options - options passed to mount method of mount_instance
+        """
+        if not isinstance(mount_instance, (DockerMount, OSTreeMount)):
+            raise ValueError('mount_instance needs to be instance of DockerMount or OSTreeMount')
+        self.mount_instance = mount_instance
+        self.identifier = identifier
+        self.mount_options = mount_options
+        self.mnt_path = None
+
+    def __enter__(self):
+        self.mnt_path = self.mount_instance.mount(self.identifier, options=self.mount_options)
+        return self
+
+    def __exit__(self, *args):
+        self.mount_instance.unmount(path=self.mnt_path)

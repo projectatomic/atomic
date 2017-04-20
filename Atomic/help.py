@@ -1,6 +1,5 @@
 from . import Atomic
 import argparse
-import subprocess
 import tempfile
 from pydoc import pager
 import os
@@ -77,29 +76,27 @@ class AtomicHelp(Atomic):
         """
         if not os.path.exists(self.mount_location):
             os.makedirs(self.mount_location)
-        # Set the pager to less -R
-        enc = sys.getdefaultencoding()
         dm = mount.DockerMount(self.mount_location, mnt_mkdir=True)
-        mnt_path = dm.mount(docker_id)
-        help_path = os.path.join(mnt_path, self.help_file_name)
-        if not os.path.exists(help_path):
-            help_path = os.path.join(mnt_path, 'rootfs', self.help_file_name)
-        try:
-            help_file=open(help_path)
-        except IOError:
-            dm.unmount(path=mnt_path)
-            raise ValueError("Unable to find help file for {}".format(self.docker_object))
+        with mount.MountContextManager(dm, docker_id) as dmcm:
+            help_path = os.path.join(dmcm.mnt_path, self.help_file_name)
+            if not os.path.exists(help_path):
+                help_path = os.path.join(dmcm.mnt_path, 'rootfs', self.help_file_name)
+            try:
+                help_file=open(help_path)
+            except IOError:
+                raise ValueError("Unable to find help file for {}".format(self.docker_object))
 
-        cmd2 = ['/usr/bin/groff', '-man', '-Tascii']
-        if not os.path.exists(cmd2[0]):
-            raise IOError("Cannot display help file for {}: groff unavailable".format(self.docker_object))
+            groff_cmd = '/usr/bin/groff'
+            cmd = [groff_cmd, '-man', '-Tascii']
+            if not os.path.exists(groff_cmd):
+                raise IOError("Cannot display help file for {} as the 'groff' "
+                              "command was not found at {}.".format(
+                    self.docker_object, groff_cmd))
 
-        c2 = subprocess.Popen(cmd2, stdin=help_file, stdout=subprocess.PIPE, close_fds=True)
-        result = c2.communicate()[0].decode(enc)
-        help_file.close()
-        # Clean up
-        dm.unmount(path=mnt_path)
-        return result
+            result = util.check_output(cmd, stdin=help_file)
+            # Clean up
+            help_file.close()
+            return result
 
     def alt_help(self, help_cmd):
         """

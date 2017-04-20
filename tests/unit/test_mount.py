@@ -21,6 +21,18 @@ class TestAtomicMount(unittest.TestCase):
             assertRaisesRegex(mount.MountError, exp, m.mount, 'fedora:22')
             assertRaisesRegex(mount.MountError, exp, m.unmount)
 
+    def test_dockermount_context_manager(self):
+        def mock_info():
+            return {'Driver': 'foobardriver'}
+        dm = mount.DockerMount('foobar')
+        dm._info = mock_info  # pylint: disable=protected-access
+        message = 'Atomic mount is not supported on the foobardriver docker ' \
+                  'storage backend.'
+        with self.assertRaises(mount.MountError) as cm:
+            with mount.MountContextManager(dm, 'fedora:25'):
+                pass
+        self.assertEqual(cm.exception.val, message)
+
     def test_default_options(self):
         with mount.DockerMount('foobar') as m:
             o = m.default_options([], default_con='foobar_context',

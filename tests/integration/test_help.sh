@@ -18,7 +18,15 @@ OUTPUT=$(/bin/true)
 
 # Test standard help in man format
 if [ -x /usr/bin/groff ]; then
+    MOUNTS_NUM=$(mount | wc -l)
     ${ATOMIC} help atomic-test-1 1>/dev/null
+    MOUNTS_NUM_AFTER=$(mount | wc -l)
+    # Make sure that container mount is unmounted
+    if [[ ${MOUNTS_NUM} != ${MOUNTS_NUM_AFTER} ]]; then
+        # Test failed
+        echo "It looks like that container is not unmounted after showing help file."
+        exit 1
+    fi
 fi
 
 # Test override label - uppercase help
