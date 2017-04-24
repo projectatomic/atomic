@@ -1,8 +1,6 @@
 #!/bin/bash
 set -xeuo pipefail
 NO_TEST=${NO_TEST:-}
-# https://bugzilla.redhat.com/show_bug.cgi?id=1318547#c7
-mount --make-rshared /
 
 
 if [ -f /run/ostree-booted ] && grep -q ID=fedora /etc/os-release; then
