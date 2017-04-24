@@ -1,19 +1,23 @@
 #!/bin/bash
 set -xeuo pipefail
 NO_TEST=${NO_TEST:-}
-# https://bugzilla.redhat.com/show_bug.cgi?id=1318547#c7
-mount --make-rshared /
 
+if [ -f /run/ostree-booted ]; then
 
-if [ -f /run/ostree-booted ] && grep -q ID=fedora /etc/os-release; then
-    if [ ! -e /var/tmp/ostree-unlock-ovl.* ]; then
-        ostree admin unlock
-    fi
-elif [ -f /run/ostree-booted ]; then
-    # Until overlayfs and selinux get along, use remount
-    # instead of ostree admin unlock
-    if [ ! -w /usr ]; then
-	mount -o remount,rw /usr
+    # by default, the root LV on AH is only 3G, but we need a
+    # bit more for our tests
+    lvresize -r -L +5G atomicos/root
+
+    if grep -q ID=fedora /etc/os-release; then
+        if [ ! -e /var/tmp/ostree-unlock-ovl.* ]; then
+            ostree admin unlock
+        fi
+    else
+        # Until overlayfs and selinux get along, use remount
+        # instead of ostree admin unlock
+        if [ ! -w /usr ]; then
+            mount -o remount,rw /usr
+        fi
     fi
 else
     dnf install -y atomic python3-coverage
@@ -46,5 +50,5 @@ $DOCKER_RUN make PYTHON=$PYTHON PYLINT=true install DESTDIR=/host
 
 # ... but run the testsuite on the host
 if [ -z ${NO_TEST} ]; then
-	PYTHON=$PYTHON ./test.sh
+    PYTHON=$PYTHON ./test.sh
 fi

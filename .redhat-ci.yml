@@ -4,11 +4,11 @@ branches:
   - try
 
 host:
-  distro: fedora/24/atomic
+  distro: fedora/25/atomic
   specs:
     secondary-disk: 10
 
-context: fedora/24/atomic
+context: fedora/25/atomic
 
 required: true
 
@@ -22,17 +22,6 @@ artifacts:
   - tests.log
 
 timeout: 30m
-
----
-
-inherit: true
-
-host:
-  distro: fedora/25/atomic
-  specs:
-    secondary-disk: 10
-
-context: fedora/25/atomic
 
 ---
 
