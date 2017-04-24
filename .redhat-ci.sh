@@ -2,6 +2,8 @@
 set -xeuo pipefail
 NO_TEST=${NO_TEST:-}
 
+# by default, the root LV is only 3G, but we need a bit more for our tests
+lvresize -r -L +5G atomicos/root
 
 if [ -f /run/ostree-booted ] && grep -q ID=fedora /etc/os-release; then
     if [ ! -e /var/tmp/ostree-unlock-ovl.* ]; then
