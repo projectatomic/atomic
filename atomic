@@ -220,6 +220,9 @@ if __name__ == '__main__':
         else:
             write_err("%s" % str(e))
         sys.exit(1)
+    except AssertionError as e:
+        traceback.print_exc(file=sys.stderr)
+        sys.exit()
     except Exception as e: # pylint: disable=broad-except
         write_err("%s" % str(e))
         sys.exit(1)
