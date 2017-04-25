@@ -476,7 +476,7 @@ class SystemContainers(object):
             try:
                 if not extract_only and not upgrade:
                     os.unlink(unitfileout)
-            except OSError as e:
+            except OSError:
                 pass
             try:
                 if not extract_only and not upgrade:
