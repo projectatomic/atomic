@@ -575,6 +575,20 @@ class SystemContainers(object):
         return values
 
 
+    def _canonicalize_location(self, destination):
+        # Under Atomic, get the real deployment location if we're using the
+        # system repo. It is needed to create the hard links.
+        if self.get_ostree_repo_location() != '/ostree/repo':
+            return destination
+        try:
+            sysroot = OSTree.Sysroot()
+            sysroot.load()
+            osname = sysroot.get_booted_deployment().get_osname()
+            destination = os.path.realpath(os.path.join("/ostree/deploy/", osname, os.path.relpath(destination, "/")))
+        except: #pylint: disable=bare-except
+            pass
+        return destination
+
     def _do_checkout(self, repo, name, img, upgrade, deployment, values, destination, unitfileout,
                      tmpfilesout, extract_only, remote, prefix=None, installed_files=None, system_package='no'):
         """
@@ -629,17 +643,7 @@ class SystemContainers(object):
         elif remote_path:
             rootfs = os.path.join(remote_path, "rootfs")
         else:
-            # Under Atomic, get the real deployment location if we're using the
-            # system repo. It is needed to create the hard links.
-            if self.get_ostree_repo_location() == '/ostree/repo':
-                try:
-                    sysroot = OSTree.Sysroot()
-                    sysroot.load()
-                    osname = sysroot.get_booted_deployment().get_osname()
-                    destination = os.path.join("/ostree/deploy/", osname, os.path.relpath(destination, "/"))
-                    destination = os.path.realpath(destination)
-                except: #pylint: disable=bare-except
-                    pass
+            destination = self._canonicalize_location(destination)
             rootfs = os.path.join(destination, "rootfs")
 
         if remote_path:
@@ -869,10 +873,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             return location
 
         if self.user:
-            return  "%s/.containers/repo" % HOME
-        else:
-            return self.get_atomic_config_item(["ostree_repository"]) or \
-                "/ostree/repo"
+            return "%s/.containers/repo" % HOME
+
+        return self.get_atomic_config_item(["ostree_repository"]) or "/ostree/repo"
 
     def _get_ostree_repo(self):
         if not OSTREE_PRESENT:
@@ -1787,7 +1790,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
 
     def get_storage_path(self):
-        return os.path.sep.join([self._get_system_checkout_path(), ".storage"])
+        storage = os.path.sep.join([self._get_system_checkout_path(), ".storage"])
+        return self._canonicalize_location(storage)
 
 
     def _ensure_storage_for_image(self, repo, img):
