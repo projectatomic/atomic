@@ -1377,6 +1377,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 util.write_out("Deleting %s" % k)
                 repo.set_ref_immediate(ref[1], ref[2], None)
         repo.prune(OSTree.RepoPruneFlags.NONE, -1)
+        self._prune_storage(repo)
+
 
     @staticmethod
     def get_default_system_name(image):
@@ -1819,3 +1821,14 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                     os.close(rootfs_fd)
 
         return layers_dir
+
+
+    def _prune_storage(self, repo):
+        storage = self.get_storage_path()
+        if not os.path.exists(storage):
+            return
+        for i in os.listdir(storage):
+            branch = "{}{}".format(OSTREE_OCIIMAGE_PREFIX, i)
+            rev_layer = repo.resolve_rev(branch, True)[1]
+            if not rev_layer:
+                shutil.rmtree(os.path.join(storage, i))
