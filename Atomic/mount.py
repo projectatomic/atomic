@@ -31,6 +31,7 @@ from . import util
 import requests
 from Atomic.backends._docker_errors import NoDockerDaemon
 import shutil
+import subprocess
 from .syscontainers import OSTREE_PRESENT as OSTREE_PRESENT
 from gi.repository import GLib  # pylint: disable=no-name-in-module
 
@@ -818,9 +819,21 @@ class OSTreeMount(Mount):
             typ = "image"
             if len(os.listdir(self.mountpoint)):
                 raise MountError('The destination path is not empty.')
-            self.syscontainers.extract(identifier, self.mountpoint)
+
+            mounted = False
             if not self.user:
-                Mount.mount_path(self.mountpoint, self.mountpoint, bind=True)
+                try:
+                    self.syscontainers.mount_from_storage(identifier, self.mountpoint)
+                    typ = "image-storage"
+                    mounted = True
+                except (subprocess.CalledProcessError, ValueError):
+                    pass
+
+            if not mounted:
+                abspath = os.path.abspath(self.mountpoint)
+                self.syscontainers.extract(identifier, abspath)
+                if not self.user:
+                    Mount.mount_path(abspath, abspath, bind=True)
         else:
             return False
 
@@ -834,8 +847,6 @@ class OSTreeMount(Mount):
                 data = json.dumps({"user.atomic.type" : typ.decode('utf-8')})
                 f.write(data)
 
-        if not self.user:
-            Mount.mount_path(self.mountpoint, self.mountpoint, bind=True, optstring=(','.join(options)))
         return True
 
     def unmount(self, path=None): # pylint: disable=arguments-differ
@@ -861,7 +872,7 @@ class OSTreeMount(Mount):
                 info = json.loads(f.read())
                 typ = info['user.atomic.type']
 
-        if not typ or "ostree" not in typ.decode():
+        if typ == None or "ostree" not in str(typ):
             return False
 
         if self.user:
@@ -877,7 +888,7 @@ class OSTreeMount(Mount):
         else:
             Mount.unmount_path(self.mountpoint)
 
-        if "-image" in typ.decode():
+        if "-image" in str(typ) and not "storage" in str(typ):
             for i in os.listdir(self.mountpoint):
                 path = os.path.join(self.mountpoint, i)
                 if os.path.islink(path):
