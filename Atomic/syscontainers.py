@@ -94,32 +94,13 @@ class SystemContainers(object):
         return OSTREE_PRESENT
 
     def _checkout_layer(self, repo, rootfs_fd, rootfs, rev):
-        # ostree 2016.8 has a glib introspection safe API for checkout, use it
-        # when available.
-        if hasattr(repo, "checkout_at"):
-            options = OSTree.RepoCheckoutAtOptions() # pylint: disable=no-member
-            options.overwrite_mode = OSTree.RepoCheckoutOverwriteMode.UNION_FILES
-            options.process_whiteouts = True
-            options.disable_fsync = True
-            if self.user:
-                options.mode = OSTree.RepoCheckoutMode.USER
-            repo.checkout_at(options, rootfs_fd, rootfs, rev)
-        else:
-            if self.user:
-                user = ["--user-mode"]
-            else:
-                user = []
-            util.check_call(["ostree", "--repo=%s" % self.get_ostree_repo_location(),
-                             "checkout",
-                             "--union"] +
-                            user +
-                             ["--whiteouts",
-                              "--fsync=no",
-                              rev,
-                              rootfs],
-                            stdin=DEVNULL,
-                            stdout=DEVNULL,
-                            stderr=DEVNULL)
+        options = OSTree.RepoCheckoutAtOptions() # pylint: disable=no-member
+        options.overwrite_mode = OSTree.RepoCheckoutOverwriteMode.UNION_FILES
+        options.process_whiteouts = True
+        options.disable_fsync = True
+        if self.user:
+            options.mode = OSTree.RepoCheckoutMode.USER
+        repo.checkout_at(options, rootfs_fd, rootfs, rev)
 
     def set_args(self, args):
         self.args = args
