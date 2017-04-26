@@ -105,6 +105,11 @@ make_docker_images () {
             cp ./tests/test-images/system-container-files/* ${WORK_DIR}
         fi
 
+	# Copy needed files into atomic-test-system-update
+        if [[ ${iname} = "atomic-test-system-update" ]]; then
+            cp ./tests/test-images/system-container-update-files/* ${WORK_DIR}
+        fi
+
         # Copy needed files atomic-test-system-hostfs
         if [[ ${iname} = "atomic-test-system-hostfs" ]]; then
             cp ./tests/test-images/system-container-files-hostfs/* ${WORK_DIR}
