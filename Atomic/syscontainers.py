@@ -1476,6 +1476,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             mtree = OSTree.MutableTree()
             def filter_func(*args):
                 info = args[2]
+
+                if info.get_file_type() == Gio.FileType.SPECIAL:
+                    return OSTree.RepoCommitFilterResult.SKIP
+
                 if info.get_file_type() == Gio.FileType.DIRECTORY:
                     info.set_attribute_uint32("unix::mode", info.get_attribute_uint32("unix::mode") | stat.S_IWUSR)
                 return OSTree.RepoCommitFilterResult.ALLOW
