@@ -237,12 +237,21 @@ class SystemContainers(object):
         """
         # Create a temporary directory to house the oneshot container
         base_dir = os.path.join(self.get_ostree_repo_location(), "tmp/atomic-container", str(os.getpid()))
-        os.makedirs(base_dir)
         tmpfiles_destination = None
+        mounted_from_storage = False
         try:
             rootfs = os.path.sep.join([base_dir, 'rootfs'])
-            # Extract the image to a temp directory.
-            self.extract(image, rootfs)
+            os.makedirs(rootfs)
+            try:
+                upperdir = os.path.sep.join([base_dir, 'upperdir'])
+                workdir = os.path.sep.join([base_dir, 'workdir'])
+                for i in [upperdir, workdir]:
+                    os.makedirs(i)
+                self.mount_from_storage(image, rootfs, upperdir, workdir)
+                mounted_from_storage = True
+            except (subprocess.CalledProcessError, ValueError):
+                # Extract the image to a temp directory.
+                self.extract(image, rootfs)
 
             # This part should be shared with install.
             values = {}
@@ -309,7 +318,10 @@ class SystemContainers(object):
                 except subprocess.CalledProcessError:
                     pass
             # Remove the temporary checkout
+            if mounted_from_storage:
+                util.call("umount %s" % rootfs)
             shutil.rmtree(base_dir)
+
 
     def _install(self, image, name):
         """
@@ -1822,10 +1834,13 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 shutil.rmtree(os.path.join(storage, i))
 
 
-    def mount_from_storage(self, img, destination):
+    def mount_from_storage(self, img, destination, upperdir=None, workdir=None):
         repo = self._get_ostree_repo()
         if not repo:
             raise ValueError("OSTree not supported")
         layers_dir = self._ensure_storage_for_image(repo, img)
-        cmd = "mount -t overlay overlay -olowerdir={} {}".format(":".join(layers_dir), destination)
+        if upperdir is not None:
+            cmd = "mount -t overlay overlay -olowerdir={},upperdir={},workdir={} {}".format(":".join(layers_dir), upperdir, workdir, destination)
+        else:
+            cmd = "mount -t overlay overlay -olowerdir={} {}".format(":".join(layers_dir), destination)
         return util.call(cmd)
