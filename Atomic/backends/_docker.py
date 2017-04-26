@@ -385,9 +385,9 @@ class DockerBackend(Backend):
         cmd = []
         if uninstall_command:
             try:
-                cmd =+ uninstall_command
+                cmd += uninstall_command
             except TypeError:
-                cmd = cmd + uninstall_command.split()
+                cmd += uninstall_command.split()
         if command_line_args:
             cmd += command_line_args
 
