@@ -81,6 +81,11 @@ where your image will reside if pulled.  If the image is already local,
 the --storage option will dictate where atomic should look for the image
 prior to installing. Valid options are `docker` and `ostree`.
 
+If you are installing a container using `docker` storage, you may define a
+label in your image named `atomic.has_install_files`. This label indicates
+there are files inside the container image which are meant to be placed on host
+system. An rpm is created from these files and installed onto host system.
+
 **--system**
 Install a system container.  A system container is a container that
 is executed out of an systemd unit file early in boot, using runc.

@@ -814,6 +814,14 @@ class InstallData(object):
             shutil.move(temp_file.name, ATOMIC_INSTALL_JSON)
 
     @classmethod
+    def get_install_data_by_id(cls, iid):
+        install_data = cls.read_install_data()
+        for installed_image in install_data:
+            if install_data[installed_image]['id'] == iid:
+                return install_data[installed_image]
+        raise ValueError("Unable to find {} in installed image data ({}). Re-run command with -i to ignore".format(id, ATOMIC_INSTALL_JSON))
+
+    @classmethod
     def get_install_name_by_id(cls, iid, install_data=None):
         if not install_data:
             install_data = cls.read_install_data()

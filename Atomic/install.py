@@ -1,4 +1,5 @@
 import argparse
+import re
 import sys
 from . import util
 from .util import add_opt
@@ -80,9 +81,6 @@ def cli(subparser):
 
 
 class Install(Atomic):
-    def __init__(self):
-        super(Install, self).__init__()
-
     def install(self):
         if self.args.debug:
             util.write_out(str(self.args))
@@ -133,7 +131,34 @@ class Install(Atomic):
             be.syscontainers.set_args(self.args)
             return be.install(self.image, self.name)
 
+        installation = None
+        if storage == 'docker' and not args_system:
+            if self.args.system_package == 'build':
+                raise ValueError("'--system-package=build' is not supported for docker backend")
+            installation = be.rpm_install(img_obj, self.name)
+
         install_args = img_obj.get_label('INSTALL')
+
+        if installation or install_args:
+            try:
+                name = img_obj.fq_name
+            except RegistryInspectError:
+                name = img_obj.input_name
+            install_data_content = {
+                'id': img_obj.id,
+                "container_name": self.name,
+                'install_date': strftime("%Y-%m-%d %H:%M:%S", gmtime())
+            }
+            if installation:
+                # let's fail the installation if rpm for this image is already installed
+                if util.InstallData.image_installed(img_obj):
+                    raise ValueError("Image {} is already installed.".format(self.image))
+                install_data_content["rpm_installed_files"] = installation.installed_files
+                rpm_nvra = re.sub(r"\.rpm$", "", installation.original_rpm_name)
+                install_data_content["system_package_nvra"] = rpm_nvra
+            install_data = {name: install_data_content}
+            util.InstallData.write_install_data(install_data)
+
         if not install_args:
             return 0
         install_args = install_args.split()
@@ -141,15 +166,6 @@ class Install(Atomic):
         self.display(cmd)
 
         if not self.args.display:
-            try:
-                name = img_obj.fq_name
-            except RegistryInspectError:
-                name = img_obj.input_name
-            install_data = {}
-            install_data[name] = {'id': img_obj.id,
-                                  'install_date': strftime("%Y-%m-%d %H:%M:%S", gmtime())
-                                  }
-            util.InstallData.write_install_data(install_data)
             return util.check_call(cmd)
 
     @staticmethod
@@ -162,4 +178,3 @@ class Install(Atomic):
             if image_name.startswith(i):
                 return True
         return False
-

@@ -2,6 +2,7 @@ FROM centos
 RUN yum -y install nmap-ncat && yum clean all
 
 LABEL "Name"="atomic-test-system-hostfs"
+LABEL "atomic.has_install_files"="yes"
 
 # Add a file that can be handled by the rpm generator
 RUN mkdir -p /exports/hostfs/usr/local/lib

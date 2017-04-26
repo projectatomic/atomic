@@ -1,3 +1,7 @@
+import os
+import shutil
+import tempfile
+
 from docker import errors
 
 import Atomic.util as util
@@ -5,12 +9,13 @@ from Atomic.backends.backend import Backend
 from Atomic.client import AtomicDocker, no_shaw
 from Atomic.objects.image import Image
 from Atomic.objects.container import Container
+from Atomic.mount import DockerMount, MountContextManager
 from requests import exceptions
+from Atomic.rpm_host_install import RPMHostInstall
 from Atomic.trust import Trust
 from Atomic.objects.layer import Layer
 from dateutil.parser import parse as dateparse
 from Atomic import Atomic
-import os
 from requests.exceptions import HTTPError
 from Atomic.backends._docker_errors import NoDockerDaemon
 from Atomic.discovery import RegistryInspectError
@@ -19,6 +24,51 @@ try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
 except ImportError:
     DEVNULL = open(os.devnull, 'wb')
+
+
+class ContainerInstallation(object):
+    """
+    Provides variables which hold data for how build and
+    installation process of a container went
+    """
+    def __init__(self, original_rpm_name, destination_path, installed_files):
+        """
+        :param original_rpm_name: verbose RPM name
+        :param destination_path: path to built RPM
+        :param installed_files: list of files provided by the built RPM
+        """
+        self.original_rpm_name = original_rpm_name
+        self.destination_path = destination_path
+        self.installed_files = installed_files
+
+
+def build_rpm_for_docker_backend(image, name, temp_dir, labels):
+    """
+    build rpm package for specified docker image
+
+    :param image, instance of Atomic.objects.image.Image
+    :param name, str, name of the associated container
+    :param temp_dir: str, directory where all the data will be processed
+    :param labels: dict, these labels come from container image
+    :return: instance of StandaloneContainerInstallation
+    """
+    mount_path = os.path.join(temp_dir, "mountpoint")
+    destination = os.path.join(temp_dir, "system_rpm")
+    os.makedirs(destination)
+    os.makedirs(mount_path)
+    dm = DockerMount(mount_path)
+    cm = MountContextManager(dm, image.id)
+    with cm:
+        # if we are on devicemapper, the path to container is <mount_point>/hostfs/
+        dm_candidate_path = os.path.join(cm.mnt_path, "rootfs")
+        if os.path.exists(dm_candidate_path):
+            exports_dir = os.path.join(dm_candidate_path, "exports")
+        else:
+            exports_dir = os.path.join(cm.mnt_path, "exports")
+        r = RPMHostInstall.generate_rpm(
+            name, image.id, labels, exports_dir, destination)
+        return ContainerInstallation(r[0], r[1], r[2])
+
 
 class DockerBackend(Backend):
     def __init__(self):
@@ -364,6 +414,27 @@ class DockerBackend(Backend):
     def install(self, image, name, **kwargs):
         pass
 
+    def rpm_install(self, image, name):
+        """
+        Install system rpm for selected docker image on this system.
+
+        :param image: instance of Atomic.objects.image.Image
+        :param name, str, name of the associated container
+        :return: instance of ContainerInstallation or None if no rpm was installed
+        """
+        labels = image.labels or {}
+        # we actually don't care about value of the label
+        if 'atomic.has_install_files' in labels:
+            # we are going to install the system package - the image provides some files to host
+            temp_dir = tempfile.mkdtemp()
+            try:
+                installation = build_rpm_for_docker_backend(image, name, temp_dir, labels)
+                RPMHostInstall.install_rpm(installation.destination_path)
+            finally:
+                shutil.rmtree(temp_dir)
+            return installation
+        # if the label is not present, we won't install any package on the system
+
     def uninstall(self, iobject, name=None, **kwargs):
         atomic = kwargs.get('atomic')
         ignore = kwargs.get('ignore')
@@ -399,10 +470,14 @@ class DockerBackend(Backend):
         if cmd:
             return util.check_call(cmd, env=atomic.cmd_env())
 
+        install_data = util.InstallData.get_install_data_by_id(iobject.id)
+        system_package_nvra = install_data.get("system_package_nvra", None)
+        if system_package_nvra:
+            RPMHostInstall.uninstall_rpm(system_package_nvra)
+
         # Delete the entry in the install data
         util.InstallData.delete_by_id(iobject.id, ignore=ignore)
         return self.delete_image(iobject.image, force=args.force)
-
 
     def validate_layer(self, layer):
         pass
