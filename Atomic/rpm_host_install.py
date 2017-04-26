@@ -81,7 +81,7 @@ class RPMHostInstall(object):
         for root, _, files in os.walk(os.path.join(destdir, "etc")):
             rel_path = os.path.relpath(root, destdir)
             for f in files:
-                spec += "%config \"%s\"\n" % os.path.join("/", rel_path, f)
+                spec += "%%config \"%s\"\n" % os.path.join("/", rel_path, f)
 
         if include_containers_file:
             spec += "/usr/lib/containers/atomic/%s\n" % name
