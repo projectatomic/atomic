@@ -1779,3 +1779,43 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         repo.prepare_transaction()
         repo.transaction_set_ref(None, get_image_branch(dest), rev)
         repo.commit_transaction(None)
+
+
+    def get_storage_path(self):
+        return os.path.sep.join([self._get_system_checkout_path(), ".storage"])
+
+
+    def _ensure_storage_for_image(self, repo, img):
+        # Get the rev or raise out of the method
+        try:
+            _, rev = self._resolve_image(repo, img)[0]
+        except (IndexError, TypeError):
+            raise ValueError("Image {} not found".format(img))
+        manifest = self._image_manifest(repo, rev)
+        if manifest is None:
+            raise ValueError("Image `%s` not present" % img)
+        layers = SystemContainers.get_layers_from_manifest(json.loads(manifest))
+
+        storage_path = self.get_storage_path()
+        layers_dir = []
+        for i in layers:
+            layer = SystemContainers._drop_sha256_prefix(i)
+            rootfs = os.path.sep.join([storage_path, layer])
+            layers_dir.append(rootfs)
+            if os.path.exists(rootfs):
+                continue
+            os.makedirs(rootfs)
+            rootfs_fd = None
+            try:
+                rootfs_fd = os.open(rootfs, os.O_DIRECTORY)
+                branch = "{}{}".format(OSTREE_OCIIMAGE_PREFIX, SystemContainers._drop_sha256_prefix(layer))
+                rev_layer = repo.resolve_rev(branch, True)[1]
+                if not rev_layer:
+                    raise ValueError("Layer not found: %s.  Please pull again the image" % layer.replace("sha256:", ""))
+
+                self._checkout_layer(repo, rootfs_fd, rootfs, rev_layer)
+            finally:
+                if rootfs_fd:
+                    os.close(rootfs_fd)
+
+        return layers_dir
