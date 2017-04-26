@@ -864,11 +864,14 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             return ATOMIC_VAR
 
     def get_ostree_repo_location(self):
+        location = os.environ.get("ATOMIC_OSTREE_REPO")
+        if location is not None:
+            return location
+
         if self.user:
-            return "%s/.containers/repo" % HOME
+            return  "%s/.containers/repo" % HOME
         else:
-            return os.environ.get("ATOMIC_OSTREE_REPO") or \
-                self.get_atomic_config_item(["ostree_repository"]) or \
+            return self.get_atomic_config_item(["ostree_repository"]) or \
                 "/ostree/repo"
 
     def _get_ostree_repo(self):
