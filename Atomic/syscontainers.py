@@ -1832,3 +1832,12 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             rev_layer = repo.resolve_rev(branch, True)[1]
             if not rev_layer:
                 shutil.rmtree(os.path.join(storage, i))
+
+
+    def mount_from_storage(self, img, destination):
+        repo = self._get_ostree_repo()
+        if not repo:
+            raise ValueError("OSTree not supported")
+        layers_dir = self._ensure_storage_for_image(repo, img)
+        cmd = "mount -t overlay overlay -olowerdir={} {}".format(":".join(layers_dir), destination)
+        return util.call(cmd)
