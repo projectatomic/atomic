@@ -207,3 +207,29 @@ class RPMHostInstall(object):
         finally:
             shutil.rmtree(temp_dir)
         return orig_name, dest_path, installed_files
+
+    @staticmethod
+    def install_rpm(rpm):
+        """
+        :param rpm_file: str, name of the rpm to install, is passed to dnf/yum
+        :return: None
+        """
+        if os.path.exists("/run/ostree-booted"):
+            raise ValueError("This doesn't work on Atomic Host yet")
+        elif os.path.exists("/usr/bin/dnf"):
+            util.check_call(["dnf", "install", "-y", rpm])
+        else:
+            util.check_call(["yum", "install", "-y", rpm])
+
+    @staticmethod
+    def uninstall_rpm(rpm):
+        """
+        :param rpm: str, name of the rpm to uninstall, is passed to dnf/yum
+        :return: None
+        """
+        if os.path.exists("/run/ostree-booted"):
+            raise ValueError("This doesn't work on Atomic Host yet")
+        elif os.path.exists("/usr/bin/dnf"):
+            util.check_call(["dnf", "remove", "-y", rpm])
+        else:
+            util.check_call(["yum", "remove", "-y", rpm])

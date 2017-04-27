@@ -189,14 +189,6 @@ class SystemContainers(object):
         else:
             util.check_call(["yum", "install", "-y", rpm_file])
 
-    def _uninstall_rpm(self, rpm):
-        if os.path.exists("/run/ostree-booted"):
-            raise ValueError("This doesn't work on Atomic Host yet")
-        elif os.path.exists("/usr/bin/dnf"):
-            util.check_call(["dnf", "remove", "-y", rpm])
-        else:
-            util.check_call(["yum", "remove", "-y", rpm])
-
     # Create a checkout and generate an RPM file
     def build_rpm(self, repo, name, image, values, destination):
         installed_files = None
@@ -836,7 +828,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         try:
             if rpm_preinstalled:
-                self._install_rpm(rpm_file)
+                RPMHostInstall.install_rpm(rpm_file)
         except subprocess.CalledProcessError:
             os.unlink(sym)
             raise
@@ -852,7 +844,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 self._systemctl_command("start", name)
         except subprocess.CalledProcessError:
             if rpm_preinstalled:
-                self._uninstall_rpm(rpm_installed)
+                RPMHostInstall.uninstall_rpm(rpm_installed)
             os.unlink(sym)
             raise
 
@@ -1016,7 +1008,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             rpm_installed = info["rpm-installed"] if "rpm-installed" in info else None
 
         if rpm_installed:
-            self._install_rpm(os.path.join(self._get_system_checkout_path(), name, "container.rpm"))
+            RPMHostInstall.install_rpm(os.path.join(self._get_system_checkout_path(), name, "container.rpm"))
 
         if has_container_service:
             self._systemctl_command("daemon-reload")
@@ -1298,7 +1290,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
     def uninstall(self, name):
         if self._is_preinstalled_container(name):
-            self._uninstall_rpm("%s-%s" % (RPM_NAME_PREFIX, name))
+            RPMHostInstall.uninstall_rpm("%s-%s" % (RPM_NAME_PREFIX, name))
             return
 
         if not os.path.exists(os.path.join(self._get_system_checkout_path(), name)):
@@ -1345,7 +1337,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             os.unlink(unitfileout)
 
         if rpm_installed:
-            self._uninstall_rpm(rpm_installed.replace(".rpm", ""))
+            RPMHostInstall.uninstall_rpm(rpm_installed.replace(".rpm", ""))
 
     def prune_ostree_images(self):
         repo = self._get_ostree_repo()
