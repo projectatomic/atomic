@@ -50,9 +50,8 @@ class RPMHostInstall(object):
                         dest_path = os.path.join(prefix or "/", os.path.relpath(rel_dest_path, "/"))
 
                     if os.path.exists(dest_path):
-                        for i in new_installed_files:
-                            os.remove(new_installed_files)
-                        raise ValueError("File %s already exists." % dest_path)
+                        util.write_out("File %s already exists." % dest_path, lf="\n")
+                        continue
 
                     if rel_dest_path in templates_set:
                         with open(src_file, 'r') as src_file_obj:
