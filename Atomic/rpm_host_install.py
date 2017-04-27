@@ -53,6 +53,8 @@ class RPMHostInstall(object):
                         util.write_out("File %s already exists." % dest_path, lf="\n")
                         continue
 
+                    if not os.path.exists(os.path.dirname(dest_path)):
+                        os.makedirs(os.path.dirname(dest_path))
                     if rel_dest_path in templates_set:
                         with open(src_file, 'r') as src_file_obj:
                             data = src_file_obj.read()
