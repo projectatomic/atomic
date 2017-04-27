@@ -8,6 +8,15 @@ RPM_NAME_PREFIX = "atomic-container"
 class RPMHostInstall(object):
 
     @staticmethod
+    def _do_rename_path(path, rename_files):
+        path_split = path.split('/')
+        path = ""
+        for i in path_split[1:]:
+            path = "{}/{}".format(path, i)
+            path = rename_files.get(path, path)
+        return path
+
+    @staticmethod
     def rm_add_files_to_host(old_installed_files, exports, prefix="/", files_template=None, values=None, rename_files=None):
         # if any file was installed on the host delete it
         if old_installed_files:
@@ -36,8 +45,8 @@ class RPMHostInstall(object):
                     rel_dest_path = os.path.join("/", rel_root_path, f)
 
                     # If rename_files is set, rename the destination file
-                    if rename_files and rel_dest_path in rename_files:
-                        rel_dest_path = rename_files.get(rel_dest_path)
+                    if rename_files:
+                        rel_dest_path = RPMHostInstall._do_rename_path(rel_dest_path, rename_files)
                         dest_path = os.path.join(prefix or "/", os.path.relpath(rel_dest_path, "/"))
 
                     if os.path.exists(dest_path):
