@@ -22,11 +22,6 @@
 			"VAR_WITH_NO_DEFAULT=$VAR_WITH_NO_DEFAULT"
 		],
 		"cwd": "/",
-		"capabilities": [
-			"CAP_AUDIT_WRITE",
-			"CAP_KILL",
-			"CAP_NET_BIND_SERVICE"
-			],
 		"rlimits": [
 			{
 				"type": "RLIMIT_NOFILE",
