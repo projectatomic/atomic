@@ -819,7 +819,7 @@ class InstallData(object):
         for installed_image in install_data:
             if install_data[installed_image]['id'] == iid:
                 return install_data[installed_image]
-        raise ValueError("Unable to find {} in installed image data ({}). Re-run command with -i to ignore".format(id, ATOMIC_INSTALL_JSON))
+        raise ValueError("Unable to find {} in installed image data ({}). Re-run command with -i to ignore".format(iid, ATOMIC_INSTALL_JSON))
 
     @classmethod
     def get_install_name_by_id(cls, iid, install_data=None):
@@ -828,7 +828,7 @@ class InstallData(object):
         for installed_image in install_data:
             if install_data[installed_image]['id'] == iid:
                 return installed_image
-        raise ValueError("Unable to find {} in installed image data ({}). Re-run command with -i to ignore".format(id, ATOMIC_INSTALL_JSON))
+        raise ValueError("Unable to find {} in installed image data ({}). Re-run command with -i to ignore".format(iid, ATOMIC_INSTALL_JSON))
 
     @classmethod
     def delete_by_id(cls, iid, ignore=False):
