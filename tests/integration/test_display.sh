@@ -80,3 +80,10 @@ if [[ ${OUTPUT} != ${OUTPUT2} ]]; then
     echo "Failed ${TNAME} 8"
     exit 1
 fi
+
+OUTPUT=`${ATOMIC} uninstall --display atomic-test-1`
+RESULT='/usr/bin/docker run -v /etc/atomic-test-1:/etc -v /var/log/atomic-test-1:/var/log -v /var/lib/atomic-test-1:/var/lib --name atomic-test-1 atomic-test-1 echo I am the uninstall label.'
+if [[ ${OUTPUT} != ${RESULT} ]]; then
+    echo "Uninstall display failed for uninstall-1"
+    exit 1
+fi
