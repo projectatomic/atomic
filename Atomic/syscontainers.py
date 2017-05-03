@@ -286,7 +286,7 @@ class SystemContainers(object):
             image_manifest = self._image_manifest(repo, rev)
             image_id = rev
             if image_manifest:
-                image_id = SystemContainers._get_image_id_from_manifest(manifest) or image_id
+                image_id = SystemContainers._get_image_id_from_manifest(image_manifest) or image_id
 
             self._amend_values(values, manifest, name, image, image_id, base_dir)
 
