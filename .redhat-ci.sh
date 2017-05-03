@@ -20,7 +20,7 @@ if [ -f /run/ostree-booted ]; then
         fi
     fi
 else
-    dnf install -y atomic python3-coverage
+    dnf install -y atomic python3-coverage docker
 fi
 
 # Restarting docker helps with permissions related to above.
