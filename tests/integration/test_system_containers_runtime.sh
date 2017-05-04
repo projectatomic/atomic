@@ -89,10 +89,8 @@ ${ATOMIC} containers list --no-trunc --filter backend=ostree > ${WORK_DIR}/ps.ou
 assert_matches ${NAME} ${WORK_DIR}/ps.out
 ${ATOMIC} containers list --quiet > ${WORK_DIR}/ps.out
 assert_not_matches "CONTAINER ID" ${WORK_DIR}/ps.out
-
-#TODO fix quiet and no-trunc working together
-# ${ATOMIC} containers list --no-trunc --quiet > ${WORK_DIR}/ps.out
-# assert_matches ${NAME} ${WORK_DIR}/ps.out
+${ATOMIC} containers list --no-trunc --quiet > ${WORK_DIR}/ps.out
+assert_matches ${NAME} ${WORK_DIR}/ps.out
 
 ${ATOMIC} containers list -aq --no-trunc --filter container=non-existing-system > ${WORK_DIR}/ps.out
 assert_not_matches "test-system" ${WORK_DIR}/ps.out

@@ -134,21 +134,22 @@ class Containers(Atomic):
 
 
         container_objects = self._ps()
+        if len(container_objects) == 0:
+            return 0
+
         if not any([x.running for x in container_objects]) and not self.args.all:
             return 0
 
+        max_container_id = 12 if self.args.truncate else max([len(x.id) for x in container_objects])
         if self.args.quiet:
             for con_obj in container_objects:
-                util.write_out(con_obj.id[:12])
+                util.write_out(con_obj.id[0:max_container_id])
             return 0
+
         if self.args.json:
             util.output_json(self._to_json(container_objects))
             return 0
 
-        if len(container_objects) == 0:
-            return 0
-
-        max_container_id = 12 if self.args.truncate else max([len(x.id) for x in container_objects])
         max_image_name = 20 if self.args.truncate else max([len(x.image_name) for x in container_objects])
         max_command = 20 if self.args.truncate else max([len(x.command) for x in container_objects])
         col_out = "{0:2} {1:%s} {2:%s} {3:%s} {4:16} {5:10} {6:10} {7:10}" % (max_container_id, max_image_name, max_command)

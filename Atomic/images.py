@@ -185,8 +185,9 @@ class Images(Atomic):
                                           "VIRTUAL SIZE",
                                           "TYPE"))
         for image in _images:
+            _id = image.short_id if self.args.truncate else image.id
             if self.args.quiet:
-                util.write_out(image.id)
+                util.write_out(_id)
 
             else:
                 indicator = ""
@@ -200,10 +201,8 @@ class Images(Atomic):
                         indicator = indicator + self.skull + space
                     else:
                         indicator = indicator + str(self.skull, "utf-8") + space
-                _id = image.short_id if self.args.truncate else image.id
                 util.write_out(col_out.format(indicator, image.repo or "<none>", image.tag or "<none>", _id, image.created[0:16],
                                               image.virtual_size, image.backend.backend))
-        util.write_out("")
         return
 
     def _get_images(self):
