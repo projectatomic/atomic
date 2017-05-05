@@ -751,7 +751,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                                      (str(e)))
                 rename_files[k] = new_v
 
-        missing_bind_paths = self._check_oci_configuration_file(destination_path, remote_path, True)
+        missing_bind_paths = self._check_oci_configuration_file(destination_path, remote_path, False)
 
         # let's check if we can generate an rpm from the /exports directory
         rpm_file = rpm_preinstalled = None
