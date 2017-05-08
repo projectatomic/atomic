@@ -853,6 +853,8 @@ class InstallData(object):
             return True
         if install_data.get(img_object.image, None):
             return True
+        if install_data.get("{}:{}".format(img_object.input_name, img_object.tag), None):
+            return True
         return False
 
 class Decompose(object):
