@@ -52,7 +52,7 @@ from Atomic import update
 from Atomic import verify
 from Atomic.mount import MountError
 from Atomic import images
-from Atomic.util import write_err
+from Atomic.util import write_err, ImageAlreadyExists
 from Atomic.backends._docker_errors import NoDockerDaemon
 
 try:
@@ -205,6 +205,9 @@ if __name__ == '__main__':
                 aparser.print_usage()
                 sys.exit(1)
     except KeyboardInterrupt:
+        sys.exit(0)
+    except ImageAlreadyExists as e:
+        write_err("%s" % str(e))
         sys.exit(0)
     except (ValueError, IOError, docker.errors.DockerException, NoDockerDaemon) as e:
         write_err("%s" % str(e))

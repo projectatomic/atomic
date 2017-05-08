@@ -1010,3 +1010,7 @@ def set_proxy():
     if proxies['https'] and 'HTTPS_PROXY' not in os.environ:
         os.environ['HTTPS_PROXY'] = proxies['https']
     return proxies
+
+class ImageAlreadyExists(Exception):
+    def __init__(self, img):
+        super(ImageAlreadyExists, self).__init__("The latest version of image {} already exists.".format(img))
