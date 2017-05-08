@@ -173,7 +173,7 @@ def call(cmd, env=None, stdin=None, stderr=None, stdout=None):
     if not isinstance(cmd, list):
         cmd = shlex.split(cmd)
     try:
-        return subprocess.call(cmd, env=env, stdin=stdin, stderr=stderr, stdout=stdout, close_fds=True)
+        return subprocess.check(cmd, env=env, stdin=stdin, stderr=stderr, stdout=stdout, close_fds=True)
     except OSError as e:
         if e.args[0] == errno.ENOENT:
             raise FileNotFound("Cannot find file: `{}`".format(cmd[0]))

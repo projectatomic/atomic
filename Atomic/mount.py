@@ -823,7 +823,7 @@ class OSTreeMount(Mount):
             mounted = False
             if not self.user:
                 try:
-                    self.syscontainers.mount_from_storage(identifier, self.mountpoint)
+                    self.syscontainers.mount_from_storage(identifier, self.mountpoint, debug=self.args.debug)
                     typ = "image-storage"
                     mounted = True
                 except (subprocess.CalledProcessError, ValueError):

@@ -1834,7 +1834,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 shutil.rmtree(os.path.join(storage, i))
 
 
-    def mount_from_storage(self, img, destination, upperdir=None, workdir=None):
+    def mount_from_storage(self, img, destination, upperdir=None, workdir=None, debug=False):
         repo = self._get_ostree_repo()
         if not repo:
             raise ValueError("OSTree not supported")
@@ -1843,4 +1843,6 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             cmd = "mount -t overlay overlay -olowerdir={},upperdir={},workdir={} {}".format(":".join(layers_dir), upperdir, workdir, destination)
         else:
             cmd = "mount -t overlay overlay -olowerdir={} {}".format(":".join(layers_dir), destination)
-        return util.call(cmd)
+        if debug:
+            util.write_out(cmd)
+        return util.check_call(cmd)
