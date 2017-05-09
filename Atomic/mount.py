@@ -34,6 +34,7 @@ import shutil
 import subprocess
 from .syscontainers import OSTREE_PRESENT as OSTREE_PRESENT
 from gi.repository import GLib  # pylint: disable=no-name-in-module
+import Atomic.backendutils as backendutils
 
 # Module for mounting and unmounting containerized applications.
 
@@ -125,6 +126,7 @@ class Mount(Atomic):
         self.storage = ""
         self.options = ""
         self.user = util.is_user_mode()
+        self.beu = backendutils.BackendUtils()
 
     def __exit__(self, typ, value, traceback):
         super(Mount, self).__exit__(typ, value, traceback)
@@ -169,9 +171,10 @@ class Mount(Atomic):
     def mount(self, best_mountpoint_for_storage=False):
 
         if not self.storage:
-            if self.is_duplicate_image(self.image):
-                raise ValueError("Found more than one Image with name {}; "
-                                 "please specify with --storage.".format(self.image))
+            if len(self.beu.available_backends) > 1:
+                if self.is_duplicate_image(self.image):
+                    raise ValueError("Found more than one Image with name {}; "
+                                     "please specify with --storage.".format(self.image))
             try:
                 if self._try_ostree_mount(best_mountpoint_for_storage):
                     return

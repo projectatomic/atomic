@@ -9,7 +9,6 @@ from Atomic.backends.backend import Backend
 from Atomic.client import AtomicDocker, no_shaw
 from Atomic.objects.image import Image
 from Atomic.objects.container import Container
-from Atomic.mount import DockerMount, MountContextManager
 from requests import exceptions
 from Atomic.rpm_host_install import RPMHostInstall
 from Atomic.trust import Trust
@@ -52,6 +51,7 @@ def build_rpm_for_docker_backend(image, name, temp_dir, labels):
     :param labels: dict, these labels come from container image
     :return: instance of StandaloneContainerInstallation
     """
+    from Atomic.mount import DockerMount, MountContextManager
     mount_path = os.path.join(temp_dir, "mountpoint")
     destination = os.path.join(temp_dir, "system_rpm")
     os.makedirs(destination)
