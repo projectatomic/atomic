@@ -1845,4 +1845,5 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             cmd = "mount -t overlay overlay -olowerdir={} {}".format(":".join(layers_dir), destination)
         if debug:
             util.write_out(cmd)
-        return util.check_call(cmd)
+        stderr = None if debug else DEVNULL
+        return util.check_call(cmd, stderr=stderr)
