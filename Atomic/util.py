@@ -998,6 +998,7 @@ def get_proxy():
     # Environment variables should override configuration items
     proxies['http'] = get_atomic_config_item(['HTTP_PROXY']) if 'HTTP_PROXY' not in envs else envs['HTTP_PROXY']
     proxies['https'] = get_atomic_config_item(['HTTPS_PROXY']) if 'HTTPS_PROXY' not in envs else envs['HTTPS_PROXY']
+    proxies['no_proxy'] = get_atomic_config_item(['NO_PROXY']) if 'NO_PROXY' not in envs else envs['NO_PROXY']
     return proxies
 
 def set_proxy():
@@ -1009,6 +1010,9 @@ def set_proxy():
         os.environ['HTTP_PROXY'] = proxies['http']
     if proxies['https'] and 'HTTPS_PROXY' not in os.environ:
         os.environ['HTTPS_PROXY'] = proxies['https']
+    if proxies['no_proxy'] and 'NO_PROXY' not in os.environ:
+        os.environ['NO_PROXY'] = proxies['no_proxy']
+
     return proxies
 
 class ImageAlreadyExists(Exception):

@@ -5,6 +5,7 @@ import sys
 from Atomic import util
 from Atomic.backends._docker import DockerBackend
 import time
+import os
 
 no_mock = True
 try:
@@ -130,6 +131,57 @@ class TestAtomicUtil(unittest.TestCase):
             except ValueError:
                 exception_raised = True
             self.assertTrue(exception_raised)
+
+    def test_set_proxy_default(self):
+        # Make the test call
+        proxies = util.set_proxy()
+        # ensure each expected item exists
+        for item in ('http', 'https', 'no_proxy'):
+            self.assertIn(item, proxies.keys())
+
+    def test_set_proxy_with_items(self):
+        orig_environ = os.environ
+        # Set all three
+        for item in ('HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY'):
+            os.environ[item] = item
+
+        # Make the test call
+        proxies = util.set_proxy()
+
+        # Check each is set
+        for key, val in (
+                ('http', 'HTTP_PROXY'),
+                ('https', 'HTTPS_PROXY'),
+                ('no_proxy', 'NO_PROXY')):
+            self.assertEquals(val, proxies[key])
+
+        # Reset environ back to the original
+        os.environ = orig_environ
+
+    def test_get_proxy_defaults(self):
+        proxies = util.get_proxy()
+        # ensure each expected item exists
+        for item in ('http', 'https', 'no_proxy'):
+            self.assertIn(item, proxies.keys())
+
+    def test_get_proxy_with_items(self):
+        orig_environ = os.environ
+        # Set all three
+        for item in ('HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY'):
+            os.environ[item] = item
+
+        # Make the test call
+        proxies = util.get_proxy()
+
+        # Check each is set
+        for key, val in (
+                ('http', 'HTTP_PROXY'),
+                ('https', 'HTTPS_PROXY'),
+                ('no_proxy', 'NO_PROXY')):
+            self.assertEquals(val, proxies[key])
+
+        # Reset environ back to the original
+        os.environ = orig_environ
 
 
 class MockIO(object):
