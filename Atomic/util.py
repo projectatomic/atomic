@@ -40,6 +40,11 @@ BWRAP_OCI_PATH = "/usr/bin/bwrap-oci"
 RUNC_PATH = "/bin/runc"
 SKOPEO_PATH = "/usr/bin/skopeo"
 
+try:
+    from subprocess import DEVNULL  # pylint: disable=no-name-in-module
+except ImportError:
+    DEVNULL = open(os.devnull, 'wb')
+
 def gomtree_available():
     return os.path.exists(GOMTREE_PATH)
 
@@ -63,21 +68,66 @@ def get_docker_conf():
         dconf = c.info()
     return dconf
 
+
+def registries_tool_path():
+    registries_path = get_atomic_config_item(['registries_binary']) or "/usr/libexec/registries"
+    if os.path.exists(registries_path):
+        return registries_path
+    try:
+        return subprocess.check_output(['which', '--skip-alias','registries'], stderr=DEVNULL)
+    except subprocess.CalledProcessError:
+        return None
+
+def load_registries_from_yaml():
+    # Returns in JSON
+    try:
+        return json.loads(check_output([registries_tool_path(), '-j']))
+    except subprocess.CalledProcessError:
+        return json.loads({})
+
 def get_registries():
     registries = []
-    dconf = get_docker_conf()
-    search_regs = [x['Name'] for x in dconf['Registries']]
-    rconf = dconf['RegistryConfig']['IndexConfigs']
-    # docker.io is special
-    if 'docker.io' in rconf:
-        registries.append({'hostname': 'registry-1.docker.io', 'name': 'docker.io', 'search': True, 'secure': True})
-        # remove docker.io
-        del(rconf['docker.io'])
-    for i in rconf:
-        search_bool = True if i in search_regs else False
-        registries.append({'hostname': i, 'name': i, 'search': search_bool, 'secure': rconf[i]['Secure'] })
+    if registries_tool_path() is not None:
+        registries_json = load_registries_from_yaml()
+        # Eliminate any duplicates with set.
+        _registries = list(set(registries_json.get("registries", [])))
+        _insecure_registries = list(set(registries_json.get('insecure_registries', [])))
+        _blocked_registries = list(set(registries_json.get('block_registries', [])))
+        duplicate_secure_insecure = list(set(_registries).intersection(_insecure_registries))
+        if len(duplicate_secure_insecure) > 0:
+            raise ValueError("There are duplicate values for registries and insecure registries.  Please correct "
+                             "in registries.conf.")
+        registries = [{'search': True, 'hostname': x, 'name': x, 'secure': True} for x in _registries if x not in _blocked_registries]
+        registries += [{'search': True, 'hostname': x, 'name': x, 'secure': True} for x in _insecure_registries if x not in _blocked_registries]
+        if 'docker.io' not in _registries and 'docker.io' not in _blocked_registries:  # Always add docker.io unless blocked
+            registries.append({'hostname': 'registry-1.docker.io', 'name': 'docker.io', 'search': True, 'secure': True})
+    elif is_backend_available('docker'):
+        dconf = get_docker_conf()
+        search_regs = [x['Name'] for x in dconf['Registries']]
+        rconf = dconf['RegistryConfig']['IndexConfigs']
+        # docker.io is special
+        if 'docker.io' in rconf:
+            registries.append({'hostname': 'registry-1.docker.io', 'name': 'docker.io', 'search': True, 'secure': True})
+            # remove docker.io
+            del(rconf['docker.io'])
+        for i in rconf:
+            search_bool = True if i in search_regs else False
+            registries.append({'hostname': i, 'name': i, 'search': search_bool, 'secure': rconf[i]['Secure'] })
     return registries
 
+
+def is_backend_available(backend):
+    # Local import to avoid circular imports
+    import Atomic.backendutils as backendutils
+    beu = backendutils.BackendUtils()
+    if backend in [x().backend for x in beu.available_backends]:
+        return True
+    return False
+
+def check_storage_is_available(storage):
+    if not is_backend_available(storage):
+        raise ValueError("The storage backend '{}' is not available.  "
+                         "Try with an alternate storage with --storage if available.".format(storage))
 
 def image_by_name(img_name, images=None):
     # Returns a list of image data for images which match img_name. Will

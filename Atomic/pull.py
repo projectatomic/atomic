@@ -2,7 +2,7 @@ try:
     from . import Atomic
 except ImportError:
     from atomic import Atomic  # pylint: disable=relative-import
-from .util import get_atomic_config, write_out
+from .util import get_atomic_config, write_out, check_storage_is_available
 from Atomic.backendutils import BackendUtils
 
 ATOMIC_CONFIG = get_atomic_config()
@@ -36,6 +36,7 @@ class Pull(Atomic):
     def pull_image(self):
         storage_set = False if self.args.storage is None else True
         storage = _storage if not storage_set else self.args.storage
+        check_storage_is_available(storage)
         if self.args.debug:
             write_out(str(self.args))
 
