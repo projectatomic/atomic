@@ -1,5 +1,7 @@
+import re
 import os
 from . import util
+from . import rpmwriter
 import tempfile
 import shutil
 
@@ -68,53 +70,10 @@ class RPMHostInstall(object):
 
         return new_installed_files
 
-    @staticmethod
-    def _generate_spec_file(destdir, name, summary, license_, image_id, version="1.0", release="1", url=None,
-                            source0=None, requires=None, conflicts=None, provides=None, description=None,
-                            installed_files=None, include_containers_file=True):
-        spec = "%global __requires_exclude_from ^.*$\n"
-        spec = spec + "%global __provides_exclude_from ^.*$\n"
-        spec = spec + "%define _unpackaged_files_terminate_build 0\n"
-
-        fields = {"Name" : "%s-%s" % (RPM_NAME_PREFIX, name), "Version" : version, "Release" : release, "Summary" : summary,
-                  "License" : license_, "URL" : url, "Source0" : source0, "Requires" : requires,
-                  "Provides" : provides, "Conflicts" : conflicts}
-        for k, v in fields.items():
-            if v is not None:
-                spec = spec + "%s:\t%s\n" % (k, v)
-
-        spec = spec + ("\n%%description\nImage ID: %s\n" % image_id)
-        if description:
-            spec = spec + "%s\n" % description
-
-        spec = spec + "\n%files\n"
-        installed_files_in_etc = []
-        for root, _, files in os.walk(os.path.join(destdir, "etc")):
-            rel_path = os.path.relpath(root, destdir)
-            for f in files:
-                p = os.path.join("/", rel_path, f)
-                installed_files_in_etc.append(p)
-                spec += "%%config \"%s\"\n" % p
-
-        if include_containers_file:
-            spec += "/usr/lib/containers/atomic/%s\n" % name
-        for root, _, files in os.walk(os.path.join(destdir, "usr/lib/systemd/system")):
-            for f in files:
-                spec = spec + "/usr/lib/systemd/system/%s\n" % f
-        for root, _, files in os.walk(os.path.join(destdir, "usr/lib/tmpfiles.d")):
-            for f in files:
-                spec = spec + "/usr/lib/tmpfiles.d/%s\n" % f
-        if installed_files:
-            for i in installed_files:
-                if i not in installed_files_in_etc:
-                    spec = spec + "%s\n" % i
-
-        return spec
 
     @staticmethod
     def generate_rpm_from_rootfs(rootfs, temp_dir, name, image_id, labels, include_containers_file, display=False, installed_files=None, defaultversion='1'):
         rpm_content = os.path.join(temp_dir, "rpmroot")
-        spec_file = os.path.join(temp_dir, "container.spec")
 
         included_rpm = os.path.join(rootfs, "rootfs", "exports", "container.rpm")
         if os.path.exists(included_rpm):
@@ -125,39 +84,46 @@ class RPMHostInstall(object):
         release = labels.get("release", image_id)
         license_ = labels.get("license", "GPLv2")
         url = labels.get("url")
-        source0 = labels.get("source0")
         requires = labels.get("requires")
         provides = labels.get("provides")
         conflicts = labels.get("conflicts")
         description = labels.get("description")
 
-        if os.path.exists(os.path.join(rootfs, "rpm.spec")):
-            with open(os.path.join(rootfs, "rpm.spec"), "r") as f:
-                spec_content = f.read()
-        else:
-            spec_content = RPMHostInstall._generate_spec_file(rpm_content, name, summary, license_, image_id, version=version,
-                                                              release=release, url=url, source0=source0, requires=requires,
-                                                              provides=provides, conflicts=conflicts, description=description,
-                                                              installed_files=installed_files, include_containers_file=include_containers_file)
-
-        with open(spec_file, "w") as f:
-            f.write(spec_content)
-
-        cwd = os.getcwd()
         result_dir = os.path.join(temp_dir, "build")
         if not os.path.exists(result_dir):
             os.makedirs(result_dir)
-        cmd = ["rpmbuild", "--noclean", "-bb", spec_file,
-               "--define", "_sourcedir %s" % temp_dir,
-               "--define", "_specdir %s" % temp_dir,
-               "--define", "_builddir %s" % temp_dir,
-               "--define", "_srcrpmdir %s" % cwd,
-               "--define", "_rpmdir %s" % result_dir,
-               "--build-in-place",
-               "--buildroot=%s" % rpm_content]
-        util.write_out(" ".join(cmd))
-        if not display:
-            util.check_call(cmd)
+
+        rpm_name = "atomic-container-%s" % name
+        rpm_out = os.path.join(result_dir, "%s.rpm" % rpm_name)
+        def split_name_version(pkg):
+            r = r"([a-zA-Z0-9_\-\.\+]+)(.*)"
+            s = re.search(r, pkg)
+            return s.group(1), s.group(2)
+
+        files_to_install = installed_files or []
+        if include_containers_file:
+            files_to_install.append("/usr/lib/systemd/system/%s.service" % name)
+            for root, _, files in os.walk(os.path.join(rpm_content, "usr/lib/containers/atomic", name)):
+                rel_path = os.path.relpath(root, rpm_content)
+                for f in files:
+                    p = os.path.join("/", rel_path, f)
+                    files_to_install.append(p)
+
+        with open(rpm_out, "wb") as f, open('/dev/null', 'wb') as devnull:
+            writer = rpmwriter.RpmWriter(f, rpm_content, rpm_name, version, release, summary, description or "", license_=license_ or "", url=url or "", stderr=devnull, whitelist=files_to_install)
+            if requires is not None:
+                for name, version in [split_name_version(i) for i in requires.split(',')]:
+                    writer.add_require(name, version)
+            if conflicts is not None:
+                for name, version in [split_name_version(i) for i in conflicts.split(',')]:
+                    writer.add_conflict(name, version)
+            if provides is not None:
+                for name in provides.split(','):
+                    writer.add_provide(name)
+
+            if not display:
+                writer.generate()
+
         return temp_dir
 
     @staticmethod
