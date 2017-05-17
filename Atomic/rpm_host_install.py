@@ -165,10 +165,10 @@ class RPMHostInstall(object):
             rpm_root = RPMHostInstall.generate_rpm_from_rootfs(destination, temp_dir, name, image_id, labels, include_containers_file=False, installed_files=installed_files, defaultversion=defaultversion)
             rpm_file = RPMHostInstall.find_rpm(rpm_root)
             if rpm_file:
-                dest_path = os.path.join(destination, "container.rpm")
+                orig_name = "atomic-container-{}.rpm".format(name)
+                dest_path = os.path.join(destination, orig_name)
                 if os.path.exists(dest_path):
                     os.unlink(dest_path)
-                orig_name = os.path.basename(rpm_file)
                 shutil.move(rpm_file, dest_path)
         finally:
             shutil.rmtree(temp_dir)

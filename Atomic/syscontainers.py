@@ -1004,10 +1004,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         rpm_installed = None
         with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
             info = json.loads(info_file.read())
-            rpm_installed = info["rpm-installed"] if "rpm-installed" in info else None
+            rpm_installed = info["rpm-installed"] if "rpm-installed" in info else "container.rpm"
 
         if rpm_installed:
-            RPMHostInstall.install_rpm(os.path.join(self._get_system_checkout_path(), name, "container.rpm"))
+            RPMHostInstall.install_rpm(os.path.join(self._get_system_checkout_path(), name, rpm_installed))
 
         if has_container_service:
             self._systemctl_command("daemon-reload")
