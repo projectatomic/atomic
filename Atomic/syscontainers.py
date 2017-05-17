@@ -1498,8 +1498,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 destdir = checkout if os.path.exists(checkout) else None
                 try:
                     temp_dir = tempfile.mkdtemp(prefix=".", dir=destdir)
-                    with tarfile.open(tar, 'r') as t:
-                        t.extractall(temp_dir)
+                    # NOTE: tarfile has an issue with utf8. This works around the problem
+                    # by using the systems tar command.
+                    # Ref: https://bugzilla.redhat.com/show_bug.cgi?id=1194473
+                    subprocess.check_call(['tar', '-xf', tar, '-C', temp_dir])
                     repo.write_directory_to_mtree(Gio.File.new_for_path(temp_dir), mtree, modifier)
                     root = repo.write_mtree(mtree)[1]
                     csum = repo.write_commit(None, "", None, metav, root)[1]
