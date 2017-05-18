@@ -1,6 +1,10 @@
 #!/bin/bash
 set -xe
 
+if test -e /run/ostree-booted; then
+    exit 77
+fi
+
 # uncomment to test locally
 # WORK_DIR=./test-run/
 # mkdir -p $WORK_DIR

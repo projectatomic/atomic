@@ -2,6 +2,10 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+if test -e /run/ostree-booted; then
+    exit 77
+fi
+
 assert_not_reached() {
     echo $@ 1>&2
     exit 1
