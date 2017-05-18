@@ -51,16 +51,16 @@ ${ATOMIC} pull --storage ostree docker:atomic-test-system-hostfs:latest
 
 ${ATOMIC} install --system --system-package=build --set RECEIVER=Venus atomic-test-system-hostfs
 
-rpm -qip atomic-container-atomic-test-system-*.x86_64.rpm > rpm_info
+rpm -qip *-hostfs.rpm > rpm_info
 
 assert_matches "atomic-container-atomic-test-system" rpm_info
 assert_matches "^Version.*:.*1" rpm_info
 
-rpm -qlp atomic-container-atomic-test-system-*.x86_64.rpm > rpm_file_list
+rpm -qlp *-hostfs.rpm > rpm_file_list
 
 assert_matches "/usr/local/lib/secret-message" rpm_file_list
 
-rpm2cpio atomic-container-atomic-test-system-*.x86_64.rpm | cpio -iv --to-stdout ./usr/local/lib/secret-message-template > secret-message-template
+rpm2cpio *-hostfs.rpm | cpio -iv --to-stdout usr/local/lib/secret-message-template > secret-message-template
 assert_matches "Venus" secret-message-template
 
 # A --system-package=build includes also the files for running
