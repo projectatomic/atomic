@@ -30,10 +30,9 @@ assert_equal() {
 OUTPUT=$(/bin/true)
 PYTHON=${PYTHON:-/usr/bin/python}
 
-# Skip the test if OSTree, runc, rpmbuild are not installed, or atomic has not --install --system
+# Skip the test if OSTree, runc are not installed, or atomic has not --install --system
 ostree --version &>/dev/null || exit 77
 runc --version &>/dev/null || exit 77
-rpmbuild --version &>/dev/null || exit 77
 
 if runc --version | grep -q "version 0"; then
     exit 77

@@ -1,9 +1,6 @@
 #!/bin/bash
 set -xe
 
-# skip if there is no rpmbuild
-rpmbuild --version &>/dev/null || exit 77
-
 # uncomment to test locally
 # WORK_DIR=./test-run/
 # mkdir -p $WORK_DIR
