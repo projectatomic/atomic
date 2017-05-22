@@ -81,7 +81,7 @@ def registries_tool_path():
 def load_registries_from_yaml():
     # Returns in JSON
     try:
-        return json.loads(check_output([registries_tool_path(), '-j']))
+        return json.loads(check_output([registries_tool_path(), '-j']).decode('utf-8'))
     except subprocess.CalledProcessError:
         return json.loads({})
 
