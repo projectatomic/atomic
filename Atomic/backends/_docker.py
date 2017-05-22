@@ -467,10 +467,15 @@ class DockerBackend(Backend):
         atomic.display(cmd)
         if args.display:
             return 0
-        if cmd:
-            return util.check_call(cmd, env=atomic.cmd_env())
 
         install_data = util.InstallData.get_install_data_by_id(iobject.id)
+
+        if cmd:
+            result = util.check_call(cmd, env=atomic.cmd_env())
+            if result == 0:
+                util.InstallData.delete_by_id(iobject.id, ignore=ignore)
+            return result
+
         system_package_nvra = install_data.get("system_package_nvra", None)
         if system_package_nvra:
             RPMHostInstall.uninstall_rpm(system_package_nvra)

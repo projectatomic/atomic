@@ -857,8 +857,11 @@ class InstallData(object):
     def write_install_data(cls, new_data):
         install_data = cls.read_install_data()
         with file_lock(ATOMIC_INSTALL_JSON):
-            for x in new_data:
-                install_data[x] = new_data[x]
+            if len(new_data) < 1:
+                install_data = {}
+            else:
+                for x in new_data:
+                    install_data[x] = new_data[x]
             temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False)
             json.dump(install_data, temp_file)
             temp_file.close()
@@ -908,6 +911,12 @@ class InstallData(object):
             return True
         if install_data.get("{}:{}".format(img_object.input_name, img_object.tag), None):
             return True
+        try:
+            from Atomic.discovery import RegistryInspectError
+            if install_data.get(img_object.fq_name, None):
+                return True
+        except RegistryInspectError:
+            pass
         return False
 
 class Decompose(object):
