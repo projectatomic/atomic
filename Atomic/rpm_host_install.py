@@ -79,15 +79,15 @@ class RPMHostInstall(object):
         if os.path.exists(included_rpm):
             return included_rpm
 
-        summary = labels.get('summary', name)
-        version = labels.get("version", defaultversion)
-        release = labels.get("release", image_id)
-        license_ = labels.get("license", "GPLv2")
-        url = labels.get("url")
-        requires = labels.get("requires")
-        provides = labels.get("provides")
-        conflicts = labels.get("conflicts")
-        description = labels.get("description")
+        summary = labels.get('atomic.summary', name)
+        version = labels.get("atomic.version", defaultversion)
+        release = labels.get("atomic.release", image_id)
+        license_ = labels.get("atomic.license", "GPLv2")
+        url = labels.get("atomic.url")
+        requires = labels.get("atomic.requires")
+        provides = labels.get("atomic.provides")
+        conflicts = labels.get("atomic.conflicts")
+        description = labels.get("atomic.description")
 
         result_dir = os.path.join(temp_dir, "build")
         if not os.path.exists(result_dir):
