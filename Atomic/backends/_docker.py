@@ -336,7 +336,7 @@ class DockerBackend(Backend):
         if '@sha256:' in image:
             image = image.replace("@sha256:", ":")
 
-        insecure = True if util.is_insecure_registry(self.d.info()['RegistryConfig'], util.strip_port(registry)) else False
+        insecure = True if util.is_insecure_registry(self.d.info()['RegistryConfig'], registry) else False
         trust = Trust()
         trust.discover_sigstore(fq_name)
         util.write_out("Pulling {} ...".format(fq_name))

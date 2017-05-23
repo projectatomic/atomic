@@ -189,7 +189,7 @@ class Push(Atomic):
             if self.args.insecure:
                 insecure = True
             else:
-                insecure = True if util.is_insecure_registry(self.d.info()['RegistryConfig'], util.strip_port(reg)) else False
+                insecure = True if util.is_insecure_registry(self.d.info()['RegistryConfig'], reg) else False
             # We must push the file to the registry first prior to performing a
             # local signature because the manifest file must be on the registry
             return_code = util.skopeo_copy(local_image, remote_image, debug=self.args.debug,
