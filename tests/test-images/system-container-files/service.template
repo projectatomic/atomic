@@ -2,10 +2,13 @@
 Description=Hello World System Container
 
 [Service]
+ExecStartPre=$EXEC_STARTPRE
 ExecStart=$EXEC_START
 ExecStop=$EXEC_STOP
-Restart=on-failure
+ExecStopPost=$EXEC_STOPPOST
+Restart=on-crash
 WorkingDirectory=$DESTDIR
+PIDFile=$PIDFILE
 
 [Install]
 WantedBy=multi-user.target
