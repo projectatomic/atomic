@@ -306,7 +306,7 @@ class SystemContainers(object):
                     tmpfiles_destination = tmp
 
             # Get the start command for the system container
-            (start_command, _, _, _) = self._generate_systemd_startstop_directives(name)
+            (start_command, _, _, _) = self._generate_systemd_startstop_directives(name, can_detach=False)
             # Move to the base directory to start the system container
             os.chdir(base_dir)
             # ... and run it. We use call() because the actual
@@ -412,7 +412,7 @@ class SystemContainers(object):
         with open(conf_path, 'w') as conf:
             conf.write(json.dumps(configuration, indent=4))
 
-    def _generate_systemd_startstop_directives(self, name):
+    def _generate_systemd_startstop_directives(self, name, pidfile=None, can_detach=False):
         if self.user:
             return ["%s '%s'" % (util.BWRAP_OCI_PATH, name), "", "", ""]
 
@@ -424,8 +424,13 @@ class SystemContainers(object):
         if "version 0" in version:
             raise ValueError("The version of runC is too old.")
 
-        runc_commands = ["run", "kill"]
-        return ["%s --systemd-cgroup %s '%s'" % (util.RUNC_PATH, command, name) for command in runc_commands] + ["", ""]
+        if can_detach:
+            start = "{} --systemd-cgroup run -d --pid-file {} '{}'".format(util.RUNC_PATH, pidfile, name)
+            stoppost = "{} delete '{}'".format(util.RUNC_PATH, name)
+            return [start, "", "", stoppost]
+        else:
+            runc_commands = ["run", "kill"]
+            return ["{} --systemd-cgroup {} '{}'".format(util.RUNC_PATH, command, name) for command in runc_commands] + ["", ""]
 
     def _get_systemd_destination_files(self, name, prefix=None):
         if self.user:
@@ -478,6 +483,10 @@ class SystemContainers(object):
             except OSError:
                 pass
             raise e
+
+    @staticmethod
+    def _template_has_stoppost_and_pidfile(template):
+        return "$EXEC_STOPPOST" in template and "PIDFILE" in template
 
     @staticmethod
     def _get_image_id_from_manifest(image_manifest):
@@ -534,7 +543,7 @@ class SystemContainers(object):
                 return True
         return False
 
-    def _amend_values(self, values, manifest, name, image, image_id, destination, prefix=None):
+    def _amend_values(self, values, manifest, name, image, image_id, destination, prefix=None, unit_file_can_detach=False):
         # When installing a new system container, set values in this order:
         #
         # 1) What comes from manifest.json, if present, as default value.
@@ -564,7 +573,8 @@ class SystemContainers(object):
             values["UUID"] = str(uuid.uuid4())
         values["DESTDIR"] = os.path.join("/", os.path.relpath(destination, prefix)) if prefix else destination
         values["NAME"] = name
-        values["EXEC_START"], values["EXEC_STOP"], values["EXEC_STARTPRE"], values["EXEC_STOPPOST"] = self._generate_systemd_startstop_directives(name)
+        directives = self._generate_systemd_startstop_directives(name, pidfile=values["PIDFILE"], can_detach=unit_file_can_detach)
+        values["EXEC_START"], values["EXEC_STOP"], values["EXEC_STARTPRE"], values["EXEC_STOPPOST"] = directives
         values["HOST_UID"] = os.getuid()
         values["HOST_GID"] = os.getgid()
         values["IMAGE_NAME"] = image
@@ -705,7 +715,13 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             image_manifest = json.loads(image_manifest)
             image_id = SystemContainers._get_image_id_from_manifest(image_manifest) or image_id
 
-        values = self._amend_values(values, manifest, name, img, image_id, destination, prefix)
+        if os.path.exists(unitfile):
+            with open(unitfile, 'r') as infile:
+                systemd_template = infile.read()
+        else:
+            systemd_template = SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE
+
+        values = self._amend_values(values, manifest, name, img, image_id, destination, prefix, unit_file_can_detach=SystemContainers._template_has_stoppost_and_pidfile(systemd_template))
 
         src = os.path.join(exports, "config.json")
         destination_path = os.path.join(destination, "config.json")
@@ -786,12 +802,6 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             for i in new_installed_files:
                 os.remove(os.path.join(prefix or "/", os.path.relpath(i, "/")))
             raise e
-
-        if os.path.exists(unitfile):
-            with open(unitfile, 'r') as infile:
-                systemd_template = infile.read()
-        else:
-            systemd_template = SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE
 
         if os.path.exists(tmpfiles):
             with open(tmpfiles, 'r') as infile:
