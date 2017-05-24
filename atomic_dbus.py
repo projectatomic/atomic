@@ -315,14 +315,14 @@ class atomic_dbus(slip.dbus.service.Object):
         args.satellite = satellite
         args.verify_ssl = verify_ssl
         args.insecure = insecure
-        args.anonymous = anonymous
+        args.anonymous = bool(anonymous)
         args.url = None if not url else url
         args.username = None if not username else username
         args.password = None if not password else password
         args.activation_key = activation_key
         args.repo_id = repo_id
         registry = Decompose(image).registry
-        if registry not in self.atomic.load_local_tokens() and not args.username or not args.password:
+        if (registry not in self.atomic.load_local_tokens() and not args.username or not args.password) and not args.anonymous:
             raise dbus.DBusException("There is no local token and no username/password were provided.  Please try "
                                      "again with a username and password")
         if args.satellite or args.pulp:

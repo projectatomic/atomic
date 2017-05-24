@@ -95,6 +95,13 @@ class AtomicDBus (object):
     def ImagesPrune(self):
         return self.dbus_object.ImagesPrune(dbus_interface="org.atomic")
 
+    @polkit.enable_proxy
+    def ImagePush(self, image, pulp, satellite, verify_ssl, url, username, password, activation_key, repo_id,
+                  registry_type, sign_by, gnupghome, insecure, anonymous):
+        return self.dbus_object.ImagePush(image, pulp, satellite, verify_ssl, url, username, password,
+                                          activation_key, repo_id, registry_type, sign_by, gnupghome,
+                                          insecure, anonymous)
+
     # The ImagesPull method will pull the specified image
     @polkit.enable_proxy
     def ImagePull(self, image, storage="docker", reg_type=""):
