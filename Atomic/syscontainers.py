@@ -59,7 +59,8 @@ WorkingDirectory=$DESTDIR
 WantedBy=multi-user.target
 """
 TEMPLATE_FORCED_VARIABLES = ["DESTDIR", "NAME", "EXEC_START", "EXEC_STOP",
-                             "HOST_UID", "HOST_GID", "IMAGE_ID", "IMAGE_NAME"]
+                             "EXEC_STARTPRE", "EXEC_STOPPOST", "HOST_UID",
+                             "HOST_GID", "IMAGE_ID", "IMAGE_NAME"]
 TEMPLATE_OVERRIDABLE_VARIABLES = ["RUN_DIRECTORY", "STATE_DIRECTORY", "UUID"]
 
 class SystemContainers(object):
@@ -305,7 +306,7 @@ class SystemContainers(object):
                     tmpfiles_destination = tmp
 
             # Get the start command for the system container
-            (start_command, _) = self._generate_systemd_startstop_directives(name)
+            (start_command, _, _, _) = self._generate_systemd_startstop_directives(name)
             # Move to the base directory to start the system container
             os.chdir(base_dir)
             # ... and run it. We use call() because the actual
@@ -413,7 +414,7 @@ class SystemContainers(object):
 
     def _generate_systemd_startstop_directives(self, name):
         if self.user:
-            return ["%s '%s'" % (util.BWRAP_OCI_PATH, name), ""]
+            return ["%s '%s'" % (util.BWRAP_OCI_PATH, name), "", "", ""]
 
         try:
             version = str(util.check_output([util.RUNC_PATH, "--version"], stderr=DEVNULL))
@@ -424,7 +425,7 @@ class SystemContainers(object):
             raise ValueError("The version of runC is too old.")
 
         runc_commands = ["run", "kill"]
-        return ["%s --systemd-cgroup %s '%s'" % (util.RUNC_PATH, command, name) for command in runc_commands]
+        return ["%s --systemd-cgroup %s '%s'" % (util.RUNC_PATH, command, name) for command in runc_commands] + ["", ""]
 
     def _get_systemd_destination_files(self, name, prefix=None):
         if self.user:
@@ -560,7 +561,7 @@ class SystemContainers(object):
             values["UUID"] = str(uuid.uuid4())
         values["DESTDIR"] = os.path.join("/", os.path.relpath(destination, prefix)) if prefix else destination
         values["NAME"] = name
-        values["EXEC_START"], values["EXEC_STOP"] = self._generate_systemd_startstop_directives(name)
+        values["EXEC_START"], values["EXEC_STOP"], values["EXEC_STARTPRE"], values["EXEC_STOPPOST"] = self._generate_systemd_startstop_directives(name)
         values["HOST_UID"] = os.getuid()
         values["HOST_GID"] = os.getgid()
         values["IMAGE_NAME"] = image
