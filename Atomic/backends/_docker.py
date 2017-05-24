@@ -686,5 +686,13 @@ class DockerBackend(Backend):
                     [atomic.docker_binary(), "start", con_obj.name],
                     stderr=DEVNULL)
 
-    def tag_image(self, src, dest):
-        return self.d.tag(src, dest)
+    def tag_image(self, _src, _dest):
+        registry, repo, image, tag, _ = util.Decompose(_dest).all
+        result = registry
+        if repo:
+            result += "/{}".format(repo)
+        result += "/{}".format(image)
+        if result.startswith("/"):
+            result = result[1:]
+        return self.d.tag(_src, result, tag=tag)
+

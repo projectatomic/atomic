@@ -23,10 +23,12 @@ class Tag(Atomic):
         backend = None
         if self.args.storage:
             backend = beu.get_backend_from_string(self.args.storage)
-        else:            
-            backend, _ = beu.get_backend_and_image_obj(self.args.src, required=False)
+            image  = backend.has_image(self.args.src)
 
-        if not backend:
+        else:            
+            backend, image = beu.get_backend_and_image_obj(self.args.src, required=False)
+
+        if not backend or not image:
             raise ValueError("Cannot find image {}.".format(self.args.src))
 
         backend.tag_image(self.args.src, self.args.target)
