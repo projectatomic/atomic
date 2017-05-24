@@ -50,10 +50,13 @@ SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE = """
 Description=$NAME
 
 [Service]
+ExecStartPre=$EXEC_STARTPRE
 ExecStart=$EXEC_START
 ExecStop=$EXEC_STOP
+ExecStop=$EXEC_STOPPOST
 Restart=on-crash
 WorkingDirectory=$DESTDIR
+PIDFile=$PIDFILE
 
 [Install]
 WantedBy=multi-user.target
