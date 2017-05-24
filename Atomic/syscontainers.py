@@ -61,7 +61,7 @@ WantedBy=multi-user.target
 TEMPLATE_FORCED_VARIABLES = ["DESTDIR", "NAME", "EXEC_START", "EXEC_STOP",
                              "EXEC_STARTPRE", "EXEC_STOPPOST", "HOST_UID",
                              "HOST_GID", "IMAGE_ID", "IMAGE_NAME"]
-TEMPLATE_OVERRIDABLE_VARIABLES = ["RUN_DIRECTORY", "STATE_DIRECTORY", "UUID"]
+TEMPLATE_OVERRIDABLE_VARIABLES = ["RUN_DIRECTORY", "STATE_DIRECTORY", "UUID", "PIDFILE"]
 
 class SystemContainers(object):
 
@@ -545,6 +545,9 @@ class SystemContainers(object):
                 values["RUN_DIRECTORY"] = os.environ.get("XDG_RUNTIME_DIR", "/run/user/%s" % (os.getuid()))
             else:
                 values["RUN_DIRECTORY"] = "/run"
+
+        if "PIDFILE" not in values:
+            values["PIDFILE"] = os.path.sep.join([values["RUN_DIRECTORY"], "container-{}.pid".format(name)])
 
         if "STATE_DIRECTORY" not in values:
             if self.user:
