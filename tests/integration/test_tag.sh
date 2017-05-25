@@ -3,8 +3,7 @@ set -euo pipefail
 IFS=$'\n\t'
 
 #
-# 'atomic run --display' and 'atomic install --display' integration tests
-# AUTHOR: Sally O'Malley <somalley at redhat dot com>
+# 'atomic images tag' integration tests
 #
 ATOMIC=${ATOMIC:="/usr/bin/atomic"}
 ATOMIC=$(grep -v -- --debug <<< "$ATOMIC")
@@ -34,6 +33,7 @@ if [[ ${rc} != 1 ]]; then
 fi
 
 rc=0
+
 # Try to tag a docker image to ostree should fail
 NAME="TEST2"
 ${ATOMIC} images tag --storage ostree atomic-test-1:latest at1:latest 1>/dev/null || rc=$?
@@ -48,6 +48,7 @@ NAME="TEST3"
 ${ATOMIC} images tag atomic-test-1:latest at1:latest
 ${DOCKER} inspect at1:latest 1>/dev/null 
 
-# Tag an ostree image
-${ATOMIC} pull --storage ostree docker:atomic-test-1:latest
-${ATOMIC} images tag --storage ostree atomic-test-1:latest at1:latest
+# Check that the tagged image is being displayed
+${ATOMIC} images list | grep "at1"
+${ATOMIC} images list --json | grep "at1"
+${ATOMIC} images list -f repo=at1 | grep "at1"
