@@ -207,7 +207,7 @@ class Image(object):
     def split_repotags(self):
         _repotags = []
         if not self.repotags:
-            return [('<none>', '<none')]
+            return [('<none>', '<none>')]
         for _repotag in self.repotags:
             if ':' in _repotag:
                 repo, tag = _repotag.rsplit(':', 1)

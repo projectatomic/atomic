@@ -129,6 +129,9 @@ def cli(subparser):
     info.cli_version(images_subparser)
 
 class Images(Atomic):
+
+    FILTER_KEYWORDS = ["repo", "repository", "tag", "id", "image", "created", "size", "type", "is_dangling"]
+
     def __init__(self):
         super(Images, self).__init__()
         self.be_utils = backendutils.BackendUtils()
@@ -154,11 +157,9 @@ class Images(Atomic):
             self.be_utils.dump_backends()
 
         _images = self._get_images()
-        for i in _images:
-            i.repo, i.tag = i.split_repotags[0]
 
         if self.args.filter:
-            _images = [x for x in _images if self._filter_include_image(x)]
+            self._check_filter_validity()
 
         if self.args.json:
             util.output_json(self.return_json(_images))
@@ -187,7 +188,10 @@ class Images(Atomic):
         for image in _images:
             _id = image.short_id if self.args.truncate else image.id
             if self.args.quiet:
-                util.write_out(_id)
+                for _repo, _tag in image.split_repotags:
+                    if self.args.filter and not self._filter_include_image(image, _repo, _tag):
+                        continue
+                    util.write_out(_id)
 
             else:
                 indicator = ""
@@ -201,8 +205,12 @@ class Images(Atomic):
                         indicator = indicator + self.skull + space
                     else:
                         indicator = indicator + str(self.skull, "utf-8") + space
-                util.write_out(col_out.format(indicator, image.repo or "<none>", image.tag or "<none>", _id, image.created[0:16],
-                                              image.virtual_size, image.backend.backend))
+
+                for _repo, _tag in image.split_repotags:
+                    if self.args.filter and not self._filter_include_image(image, _repo, _tag):
+                        continue
+                    util.write_out(col_out.format(indicator, _repo or "<none>", _tag or "<none>", _id, image.created[0:16],
+                                                  image.virtual_size, image.backend.backend))
         return
 
     def _get_images(self):
@@ -253,13 +261,22 @@ class Images(Atomic):
                 f.write(r.stdout)
             shutil.rmtree(tmpdir)
 
-    def _filter_include_image(self, image_obj):
-        filterables = ["repo", "tag", "id", "image", "created", "size", "type", "is_dangling"]
+    def _check_filter_validity(self):
         for i in self.args.filter:
             try:
-                var, value = str(i).split("=")
+                var, _ = str(i).split("=")
             except ValueError:
                 raise ValueError("The filter {} is not formatted correctly.  It should be VAR=VALUE".format(i))
+
+            var = var.lower()
+            if var not in self.FILTER_KEYWORDS:
+                raise ValueError("The filter {} is not valid.  "
+                                 "Please choose from {}".format(var, self.FILTER_KEYWORDS))
+
+
+    def _filter_include_image(self, image_obj, repo, tag):
+        for i in self.args.filter:
+            var, value = str(i).split("=")
             var = var.lower()
             if var == "repository":
                 var = "repo"
@@ -267,13 +284,18 @@ class Images(Atomic):
             if var == "image":
                 var = "id"
 
-            if var not in filterables:
-                raise ValueError("The filter {} is not valid.  "
-                                 "Please choose from {}".format(var, filterables))
             if var == "type":
                 var = "str_backend"
 
-            if hasattr(image_obj, var) and value.lower() in str(getattr(image_obj, var)).lower():
+            if var == "repo":
+                if value.lower() in repo:
+                    return True
+
+            elif var == "tag":
+                if value.lower() in tag:
+                    return True
+
+            elif hasattr(image_obj, var) and value.lower() in str(getattr(image_obj, var)).lower():
                 return True
 
         return False
@@ -299,13 +321,19 @@ class Images(Atomic):
         for img_obj in images:
             if not img_obj.repotags:
                 continue
-            img_dict = dict()
-            img_dict['repo'], img_dict['tag'] = img_obj.repo, img_obj.tag
-            for key in keys:
-                img_dict[key] = getattr(img_obj, key, None)
-            img_dict['vuln_info'] = \
-                dict() if not img_obj.vulnerable else all_vuln_info.get(img_obj.id, None) # pylint: disable=no-member
-            all_image_info.append(img_dict)
+
+            for _repo, _tag in img_obj.split_repotags:
+                if self.args.filter and not self._filter_include_image(img_obj, _repo, _tag):
+                    continue
+
+                img_dict = dict()
+                img_dict['repo'], img_dict['tag'] = _repo, _tag
+                for key in keys:
+                    img_dict[key] = getattr(img_obj, key, None)
+                img_dict['vuln_info'] = \
+                    dict() if not img_obj.vulnerable else all_vuln_info.get(img_obj.id, None) # pylint: disable=no-member
+                all_image_info.append(img_dict)
+
         return all_image_info
 
 
