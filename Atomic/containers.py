@@ -143,7 +143,14 @@ class Containers(Atomic):
             if not any([x.running for x in container_objects]) and not self.args.all:
                 return 0
 
-        max_container_id = 12 if self.args.truncate else max([len(x.id) for x in container_objects])
+        # Set to 12 when truncate
+        if self.args.truncate:
+            max_container_id = 12
+        # Otherwise set to the max, falling back to 0
+        else:
+            max_container_id = max([len(x.id) for x in container_objects] or [0])
+
+        # Quiet supersedes json output
         if self.args.quiet:
             for con_obj in container_objects:
                 util.write_out(con_obj.id[0:max_container_id])
