@@ -134,11 +134,14 @@ class Containers(Atomic):
 
 
         container_objects = self._ps()
-        if len(container_objects) == 0:
-            return 0
+        # If we were not asked for json output, return out with no output
+        # when there are no applicable container objects
+        if not self.args.json:
+            if len(container_objects) == 0:
+                return 0
 
-        if not any([x.running for x in container_objects]) and not self.args.all:
-            return 0
+            if not any([x.running for x in container_objects]) and not self.args.all:
+                return 0
 
         max_container_id = 12 if self.args.truncate else max([len(x.id) for x in container_objects])
         if self.args.quiet:

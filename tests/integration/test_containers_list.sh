@@ -24,3 +24,7 @@ diff docker.ps.out atomic.ps.out
 ${ATOMIC} containers list -q -f runtime=Docker | sort > atomic.ps.out
 docker ps -q | sort > docker.ps.out
 diff docker.ps.out atomic.ps.out
+
+# Ensure that when json is requested and no containers are returned we still
+# get valid json ([])
+${ATOMIC} containers list --json -f container=idonotexist | grep "\[\]"
