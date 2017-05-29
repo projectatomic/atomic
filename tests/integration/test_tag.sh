@@ -12,7 +12,6 @@ DOCKER=${DOCKER:="/usr/bin/docker"}
 teardown () {
 	set +e
 	${DOCKER} rmi at1:latest  
-	${ATOMIC} -y images delete --storage ostree at1:latest
 	set -e
 }
 
@@ -47,8 +46,3 @@ fi
 NAME="TEST3"
 ${ATOMIC} images tag atomic-test-1:latest at1:latest
 ${DOCKER} inspect at1:latest 1>/dev/null 
-
-# Check that the tagged image is being displayed
-${ATOMIC} images list | grep "at1"
-${ATOMIC} images list --json | grep "at1"
-${ATOMIC} images list -f repo=at1 | grep "at1"
