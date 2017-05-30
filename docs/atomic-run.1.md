@@ -9,6 +9,7 @@ atomic-run - Execute container image run method
 [**-h**|**--help**]
 [**--display**]
 [**-n**][**--name**[=*NAME*]]
+[**-r**, **--replace**]
 [**--spc**]
 [**--storage**]
 [**--quiet**]
@@ -66,6 +67,9 @@ If --display is not specified the run command will execute.
    Use this name for creating run content for the container.
 NAME will default to the IMAGENAME if it is not specified.
 
+**-r** **--replace**
+   Replaces an existing container by the same name if it exists prior to running.
+   
 **--spc**
   Run container in super privileged container mode.  The image will run with the following command:
 

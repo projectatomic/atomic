@@ -675,6 +675,7 @@ _atomic_run() {
 		--spc
 	       --display
 	--quiet
+	       --replace
 	    --storage
 	"
 

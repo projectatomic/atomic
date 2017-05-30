@@ -45,6 +45,9 @@ def cli(subparser):
     runp.set_defaults(_class=Run, func='run')
     run_group = runp.add_mutually_exclusive_group()
     util.add_opt(runp)
+    runp.add_argument("--replace", "-r", dest="replace", default=False,
+                      action="store_true", help=_("Replaces an existing container by the same name"
+                                                  "if it exists."))
     runp.add_argument("--storage", dest="storage", default=None,
                           help=_("Specify the storage. Default is currently '%s'.  You can"
                                  " change the default by editing /etc/atomic.conf and changing"

@@ -18,6 +18,8 @@ from Atomic import Atomic
 from requests.exceptions import HTTPError
 from Atomic.backends._docker_errors import NoDockerDaemon
 from Atomic.discovery import RegistryInspectError
+from Atomic.atomic import AtomicError
+from subprocess import CalledProcessError
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -516,6 +518,16 @@ class DockerBackend(Backend):
             list_item += value
             return list_item
 
+        def replace_existing_container(_iobject, _requested_image, _args):
+            if _args.debug:
+                util.write_out("Removing the container {} and running with {}".format(_iobject.name,
+                                                                                      requested_image.fq_name))
+            self.delete_container(_iobject.id, force=True)
+            _iobject = _requested_image
+            if _args.command:
+                _iobject.user_command = _args.command
+            return _iobject
+
         atomic = kwargs.get('atomic', None)
         args = kwargs.get('args')
         # atomic must be an instance of Atomic
@@ -537,10 +549,37 @@ class DockerBackend(Backend):
                                "{}s\n\n removes all containers based on an "
                                "image.".format(iobject.name, iobject.image_name, iobject.name, iobject.name,
                                                iobject.image_name, iobject.image_name, iobject.image_name))
+
+            requested_image = self.has_image(args.image)
+            if requested_image is None:
+                requested_image = self.has_image(iobject.image)
+
             if iobject.running:
+                if args.replace:
+                    iobject = replace_existing_container(iobject, requested_image, args)
                 return self._running(iobject, args, atomic)
             else:
-                return self._start(iobject, args, atomic)
+                # Container with the name exists
+                image_id = iobject.image
+                if requested_image.id != image_id:
+                    if args.replace:
+                        iobject = replace_existing_container(iobject, requested_image, args)
+                    else:
+                        try:
+                            requested_image_fq_name = requested_image.fq_name
+                        except RegistryInspectError:
+                            requested_image_fq_name = args.image
+                        raise AtomicError("Warning: container '{}' already points to {}\nRun 'atomic run {}' to run "
+                                          "the existing container.\nRun 'atomic run --replace '{}' to replace "
+                                          "it".format(iobject.name,
+                                                      iobject.original_structure['Config']['Image'],
+                                                      iobject.name,
+                                                      requested_image_fq_name))
+                else:
+                    if args.replace:
+                        iobject = replace_existing_container(iobject, requested_image, args)
+                    else:
+                        return self._start(iobject, args, atomic)
 
         if iobject.get_label('INSTALL') and not args.ignore and not util.InstallData.image_installed(iobject):
             raise ValueError("The image '{}' appears to have not been installed and has an INSTALL label.  You "
@@ -660,15 +699,23 @@ class DockerBackend(Backend):
                     util.write_out("Container is running")
 
     def _start(self, con_obj, args, atomic):
+        exec_error = "Failed to execute the command inside the existing container. In some situations " \
+                     "this can happen because the entry point command of the container only runs for " \
+                     "a short time. You might want to replace the container by executing your " \
+                     "command with --replace. Note any updates to the existing container will be lost"
+
         if con_obj.interactive:
             if args.command:
-                util.check_call(
-                    [atomic.docker_binary(), "start", con_obj.name],
-                    stderr=DEVNULL)
+                util.check_call([atomic.docker_binary(), "start", con_obj.name], stderr=DEVNULL)
                 container_command = args.command if isinstance(args.command, list) else args.command.split()
-                return util.check_call(
-                    [atomic.docker_binary(), "exec", "-t", "-i", con_obj.name] +
-                    container_command)
+                try:
+                    return util.check_call([atomic.docker_binary(), "exec", "-t", "-i", con_obj.name] + container_command)
+                except CalledProcessError as e:
+                    if args.debug:
+                        util.write_out(str(e))
+                    raise AtomicError(exec_error)
+
+
             else:
                 return util.check_call(
                     [atomic.docker_binary(), "start", "-i", "-a", con_obj.name],
@@ -678,9 +725,15 @@ class DockerBackend(Backend):
                 util.check_call(
                     [atomic.docker_binary(), "start", con_obj.name],
                     stderr=DEVNULL)
-                return util.check_call(
-                    [atomic.docker_binary(), "exec", "-t", "-i", con_obj.name] +
-                    con_obj.command)
+                try:
+                    return util.check_call(
+                        [atomic.docker_binary(), "exec", "-t", "-i", con_obj.name] +
+                        con_obj.command)
+                except CalledProcessError as e:
+                    if args.debug:
+                        util.write_out(str(e))
+                    raise AtomicError(exec_error)
+
             else:
                 return util.check_call(
                     [atomic.docker_binary(), "start", con_obj.name],
