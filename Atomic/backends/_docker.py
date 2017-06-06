@@ -511,22 +511,22 @@ class DockerBackend(Backend):
             layers.append(layer)
         return layers
 
+    def replace_existing_container(self, _iobject, _requested_image, _args):
+        if _args.debug:
+            util.write_out("Removing the container {} and running with {}".format(_iobject.name,
+                                                                                  _requested_image.fq_name))
+        self.delete_container(_iobject.id, force=True)
+        _iobject = _requested_image
+        if _args.command:
+            _iobject.user_command = _args.command
+        return _iobject
+
     def run(self, iobject, **kwargs):
         def add_string_or_list_to_list(list_item, value):
             if not isinstance(value, list):
                 value = value.split()
             list_item += value
             return list_item
-
-        def replace_existing_container(_iobject, _requested_image, _args):
-            if _args.debug:
-                util.write_out("Removing the container {} and running with {}".format(_iobject.name,
-                                                                                      requested_image.fq_name))
-            self.delete_container(_iobject.id, force=True)
-            _iobject = _requested_image
-            if _args.command:
-                _iobject.user_command = _args.command
-            return _iobject
 
         atomic = kwargs.get('atomic', None)
         args = kwargs.get('args')
@@ -556,14 +556,15 @@ class DockerBackend(Backend):
 
             if iobject.running:
                 if args.replace:
-                    iobject = replace_existing_container(iobject, requested_image, args)
+                    iobject = self.replace_existing_container(iobject, requested_image, args)
+                    return self.run(iobject, args=args, atomic=atomic)
                 return self._running(iobject, args, atomic)
             else:
                 # Container with the name exists
                 image_id = iobject.image
                 if requested_image.id != image_id:
                     if args.replace:
-                        iobject = replace_existing_container(iobject, requested_image, args)
+                        iobject = self.replace_existing_container(iobject, requested_image, args)
                     else:
                         try:
                             requested_image_fq_name = requested_image.fq_name
@@ -577,7 +578,7 @@ class DockerBackend(Backend):
                                                       requested_image_fq_name))
                 else:
                     if args.replace:
-                        iobject = replace_existing_container(iobject, requested_image, args)
+                        iobject = self.replace_existing_container(iobject, requested_image, args)
                     else:
                         return self._start(iobject, args, atomic)
 
@@ -674,6 +675,15 @@ class DockerBackend(Backend):
                            "'docker run'.\n")
 
     def _running(self, con_obj, args, atomic):
+        requested_image = self.has_image(args.image)
+        if con_obj.image != requested_image.id:
+            requested_image_fq_name = requested_image.fq_name
+            raise AtomicError("Warning: container '{}' already points to {}\nRun 'atomic run {}' to run "
+                                          "the existing container.\nRun 'atomic run --replace '{}' to replace "
+                                          "it".format(con_obj.name,
+                                                      con_obj.original_structure['Config']['Image'],
+                                                      con_obj.name,
+                                                      requested_image_fq_name))
         if con_obj.interactive:
             container_command = con_obj.command if not args.command else args.command
             container_command = container_command if not isinstance(container_command, list) else " ".join(container_command)
