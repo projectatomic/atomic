@@ -157,7 +157,6 @@ class Install(Atomic):
                 rpm_nvra = re.sub(r"\.rpm$", "", installation.original_rpm_name)
                 install_data_content["system_package_nvra"] = rpm_nvra
             install_data = {name: install_data_content}
-            util.InstallData.write_install_data(install_data)
 
         if not install_args:
             return 0
@@ -166,7 +165,14 @@ class Install(Atomic):
         self.display(cmd)
 
         if not self.args.display:
-            return util.check_call(cmd)
+            result = util.check_call(cmd)
+            if result == 0:
+                if installation or install_args:
+                    # Only write the install data if the installation worked.
+                    util.InstallData.write_install_data(install_data)
+            return result
+
+
 
     @staticmethod
     def print_install():

@@ -470,7 +470,6 @@ class DockerBackend(Backend):
         if args.display:
             return 0
 
-        install_data = util.InstallData.get_install_data_by_id(iobject.id)
 
         if cmd:
             result = util.check_call(cmd, env=atomic.cmd_env())
@@ -478,7 +477,10 @@ class DockerBackend(Backend):
                 util.InstallData.delete_by_id(iobject.id, ignore=ignore)
             return result
 
-        system_package_nvra = install_data.get("system_package_nvra", None)
+        system_package_nvra = None
+        if not ignore:
+            install_data = util.InstallData.get_install_data_by_id(iobject.id)
+            system_package_nvra = install_data.get("system_package_nvra", None)
         if system_package_nvra:
             RPMHostInstall.uninstall_rpm(system_package_nvra)
 
