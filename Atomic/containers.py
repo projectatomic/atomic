@@ -161,12 +161,23 @@ class Containers(Atomic):
             return 0
 
         max_image_name = 20 if self.args.truncate else max([len(x.image_name) for x in container_objects])
-        max_command = 20 if self.args.truncate else max([len(x.command) for x in container_objects])
-        col_out = "{0:2} {1:%s} {2:%s} {3:%s} {4:16} {5:10} {6:10} {7:10}" % (max_container_id, max_image_name, max_command)
+        if self.args.truncate:
+            max_command = 10
+        else:
+            _max_command = max([len(x.command) for x in container_objects])
+            max_command = _max_command if _max_command > 9 else 10
+
+        max_container_name = 10 if self.args.truncate else max([len(x.name) for x in container_objects])
+
+        col_out = "{0:2} {1:%s} {2:%s} {3:%s} {4:%s} {5:16} {6:10} {7:10} {8:10}" % (max_container_id,
+                                                                                     max_image_name,
+                                                                                     max_container_name,
+                                                                                     max_command)
         if self.args.heading:
             util.write_out(col_out.format(" ",
                                           "CONTAINER ID",
                                           "IMAGE",
+                                          "NAME",
                                           "COMMAND",
                                           "CREATED",
                                           "STATE",
@@ -182,6 +193,7 @@ class Containers(Atomic):
             util.write_out(col_out.format(indicator,
                                           con_obj.id[0:max_container_id],
                                           con_obj.image_name[0:max_image_name],
+                                          con_obj.name[0:max_container_name],
                                           con_obj.command[0:max_command],
                                           con_obj.created[0:16],
                                           con_obj.state[0:10],
@@ -216,6 +228,7 @@ class Containers(Atomic):
             _con = {'id': con_obj.id,
                     'image_id': con_obj.image,
                     'image_name': con_obj.image_name,
+                    'name': con_obj.name,
                     'command': con_obj.command,
                     'created': con_obj.created,
                     'state': con_obj.state,

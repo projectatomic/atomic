@@ -50,7 +50,6 @@ OUTPUT=$(/bin/true)
 
 setup
 
-
 # 1. Install a system container and start/stop the container with systemctl
 ${ATOMIC} install --name=${NAME} --set=RECEIVER=${SECRET} --system atomic-test-system
 systemctl start ${NAME}.service
@@ -70,7 +69,7 @@ sleep 0.5s
 # 3. Test container list functionality
 systemctl start ${NAME}.service
 ${ATOMIC} containers list > ${WORK_DIR}/ps.out
-assert_matches "/usr/bin/run.sh" ${WORK_DIR}/ps.out
+assert_matches "/usr/bin/r" ${WORK_DIR}/ps.out
 assert_matches "running" ${WORK_DIR}/ps.out
 assert_matches "ostree" ${WORK_DIR}/ps.out
 assert_matches "runc" ${WORK_DIR}/ps.out
