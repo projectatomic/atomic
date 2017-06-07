@@ -253,6 +253,7 @@ _atomic_scan() {
 		--scanner
 		--scan_type
 		--verbose
+		--scanner_args
 	"
 	[ "$command" = "scan" ] && all_options="$all_options"
 

@@ -9,7 +9,11 @@ scans: [
         description: "Performs a CVE scan based on Red Hat relesead CVE OVAL. !WARNING! This CVE is built into container image and it might be out-of-date. Change config.ini to configure the scanner to fetch latest CVE data"},
       { name: standards_compliance,
         args: ['oscapd-evaluate', 'scan', '--targets', 'chroots-in-dir:///scanin',  '--output', '/scanout', '--no-cve-scan', '-j1'],
-        description: "Performs scan with Standard Profile, as present in Scap Security Guide shipped in Red Hat Enterprise Linux"
+        description: "!DEPRECATED! Performs scan with Standard Profile, as present in SCAP Security Guide shipped in Red Hat Enterprise Linux"
+      },
+      { name: configuration_compliance,
+        args: ['oscapd-evaluate', 'scan', '--targets', 'chroots-in-dir:///scanin',  '--output', '/scanout', '--no-cve-scan', '-j1'],
+        description: "Performs a configuration compliance scan according to selected profile from SCAP Security Guide shipped in Red Hat Enterprise Linux."
       }
 ]
     

@@ -38,6 +38,9 @@ Select as scanner other than the default.
 **--scan_type**
 Select a scan_type other than the default.
 
+**--scanner_args**
+  Provide additional arguments for the scanner, for example specify a compliance profile.
+
 **--all**
   Instead of providing image or container names, scan all images (excluding intermediate image layers) and containers
 
