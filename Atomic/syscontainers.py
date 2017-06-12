@@ -1481,6 +1481,18 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         return layers
 
     def _import_layers_into_ostree(self, repo, imagebranch, manifest, layers):
+        def get_directory_size(path):
+            size = 0
+            seen = {}
+            for root, _, files in os.walk(path):
+                for f in files:
+                    s = os.lstat(os.path.join(root, f))
+                    key = "%s-%s" % (s.st_dev, s.st_ino)
+                    if key not in seen:
+                        seen[key] = key
+                        size += s.st_size
+            return GLib.Variant('s', str(size))
+
         repo.prepare_transaction()
         for layer, tar in layers.items():
             mtree = OSTree.MutableTree()
@@ -1496,10 +1508,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
             modifier = OSTree.RepoCommitModifier.new(0, filter_func, None)
 
-            metav = GLib.Variant("a{sv}", {'docker.layer': GLib.Variant('s', layer)})
-
             checkout = self._get_system_checkout_path()
             destdir = checkout if os.path.exists(checkout) else None
+
             try:
                 temp_dir = tempfile.mkdtemp(prefix=".", dir=destdir)
                 # NOTE: tarfile has an issue with utf8. This works around the problem
@@ -1508,6 +1519,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 subprocess.check_call(['tar', '-xf', tar, '-C', temp_dir])
                 repo.write_directory_to_mtree(Gio.File.new_for_path(temp_dir), mtree, modifier)
                 root = repo.write_mtree(mtree)[1]
+
+                metav = GLib.Variant("a{sv}", {'docker.layer': GLib.Variant('s', layer),
+                                               'docker.size': get_directory_size(temp_dir)})
                 csum = repo.write_commit(None, "", None, metav, root)[1]
             finally:
                 shutil.rmtree(temp_dir)
