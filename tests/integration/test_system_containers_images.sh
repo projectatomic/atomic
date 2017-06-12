@@ -98,6 +98,12 @@ ${ATOMIC} pull --storage ostree docker:atomic-test-system:latest
 ${ATOMIC} images list -f type=ostree > ${WORK_DIR}/images.out
 assert_matches "atomic-test-system" ${WORK_DIR}/images.out
 
+
+# 4.1 Check that the virtual size of the imported image is the same as showed for Docker
+${ATOMIC_NO_DEBUG} images list -f repo=atomic-test-system --json > ${WORK_DIR}/images.json
+${PYTHON} -c 'import json; import sys; sizes = [str(i["virtual_size"]) for i in json.load(sys.stdin)]; sys.exit(len([x for x in sizes if x != sizes[0]]))' < ${WORK_DIR}/images.json
+
+
 ${ATOMIC} --assumeyes images delete -f --storage ostree atomic-test-system
 ${ATOMIC} images prune
 ${ATOMIC} images list -f type=ostree > ${WORK_DIR}/images.out

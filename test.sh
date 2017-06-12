@@ -219,6 +219,8 @@ fi
 let failures=0 || true
 printf "\nINTEGRATION TESTS:\n" | tee -a ${LOG}
 
+export ATOMIC_NO_DEBUG="atomic"
+
 export ATOMIC="atomic
 --debug"
 if [[ -x "${COVERAGE_BIN}" ]]; then
