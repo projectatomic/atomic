@@ -1498,35 +1498,20 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
             metav = GLib.Variant("a{sv}", {'docker.layer': GLib.Variant('s', layer)})
 
-            imported = False
+            checkout = self._get_system_checkout_path()
+            destdir = checkout if os.path.exists(checkout) else None
             try:
-                repo.write_archive_to_mtree(Gio.File.new_for_path(tar), mtree, modifier, True)
+                temp_dir = tempfile.mkdtemp(prefix=".", dir=destdir)
+                # NOTE: tarfile has an issue with utf8. This works around the problem
+                # by using the systems tar command.
+                # Ref: https://bugzilla.redhat.com/show_bug.cgi?id=1194473
+                subprocess.check_call(['tar', '-xf', tar, '-C', temp_dir])
+                repo.write_directory_to_mtree(Gio.File.new_for_path(temp_dir), mtree, modifier)
                 root = repo.write_mtree(mtree)[1]
                 csum = repo.write_commit(None, "", None, metav, root)[1]
-                imported = True
-            except GLib.GError as e:  #pylint: disable=catching-non-exception
-                # libarchive which is used internally by OSTree to import a tarball doesn't support correctly
-                # files with xattrs.  If that happens, extract the tarball and import the directory.
-                if e.domain != "g-io-error-quark":  # pylint: disable=no-member
-                    raise e  #pylint: disable=raising-non-exception
+            finally:
+                shutil.rmtree(temp_dir)
 
-            if not imported:
-                checkout = self._get_system_checkout_path()
-                destdir = checkout if os.path.exists(checkout) else None
-                try:
-                    temp_dir = tempfile.mkdtemp(prefix=".", dir=destdir)
-                    # NOTE: tarfile has an issue with utf8. This works around the problem
-                    # by using the systems tar command.
-                    # Ref: https://bugzilla.redhat.com/show_bug.cgi?id=1194473
-                    subprocess.check_call(['tar', '-xf', tar, '-C', temp_dir])
-                    repo.write_directory_to_mtree(Gio.File.new_for_path(temp_dir), mtree, modifier)
-                    root = repo.write_mtree(mtree)[1]
-                    csum = repo.write_commit(None, "", None, metav, root)[1]
-                finally:
-                    shutil.rmtree(temp_dir)
-
-            root = repo.write_mtree(mtree)[1]
-            csum = repo.write_commit(None, "", None, metav, root)[1]
             repo.transaction_set_ref(None, "%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), csum)
 
         # create a $OSTREE_OCIIMAGE_PREFIX$image-$tag branch
