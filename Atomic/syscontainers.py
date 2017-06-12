@@ -1198,8 +1198,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         labels = {}
         manifest = self._image_manifest(repo, commit_rev)
+        virtual_size = None
         if manifest:
             manifest = json.loads(manifest)
+            virtual_size = self._get_virtual_size(repo, manifest)
             if 'Labels' in manifest:
                 labels = manifest['Labels']
             image_id = SystemContainers._get_image_id_from_manifest(manifest) or image_id
@@ -1210,7 +1212,19 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             image_type = "system"
 
         return {'Id' : id_ or image_id, 'Version' : tag, 'ImageId' : image_id, 'RepoTags' : [tag], 'Names' : [],
-                'Created': timestamp, 'ImageType' : image_type, 'Labels' : labels, 'OSTree-rev' : commit_rev}
+                'Created': timestamp, 'ImageType' : image_type, 'Labels' : labels, 'OSTree-rev' : commit_rev,
+                'VirtualSize': virtual_size}
+
+    def _get_virtual_size(self, repo, manifest):
+        total_size = 0
+        for i in SystemContainers.get_layers_from_manifest(manifest):
+            layer = i.replace("sha256:", "")
+            rev = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1]
+            size = self._get_commit_metadata(repo, rev, 'docker.size')
+            if size == None:
+                return None
+            total_size += int(size)
+        return total_size
 
     def get_system_images(self, get_all=False, repo=None):
         if repo is None:

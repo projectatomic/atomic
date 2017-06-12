@@ -60,6 +60,7 @@ class OSTreeBackend(Backend):
         img_obj.repotags = info['RepoTags']
         img_obj.created = info['Created']
         img_obj.size = None
+        img_obj.virtual_size = info.get('VirtualSize', None)
         img_obj.original_structure = info
         img_obj.deep = True
         img_obj.labels = info.get('Labels', None)
