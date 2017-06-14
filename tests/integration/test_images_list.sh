@@ -55,6 +55,9 @@ ${ATOMIC} images list -f type=docker > ${WORK_DIR}/images.out
 assert_matches ${IMAGE} ${WORK_DIR}/images.out
 ${ATOMIC} images list -f repo=non-existing-repo > ${WORK_DIR}/images.out
 assert_not_matches ${IMAGE} ${WORK_DIR}/images.out
+${ATOMIC} images list -f repo=${IMAGE} -f type=docker > ${WORK_DIR}/images.out
+assert_matches ${IMAGE} ${WORK_DIR}/images.out
+assert_not_matches ${IMAGE_SECRET} ${WORK_DIR}/images.out
 
 OUTPUT=$(! ${ATOMIC} images list -f not-a-filter=${IMAGE} 2>&1)
 grep "not valid" <<< $OUTPUT

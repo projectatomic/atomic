@@ -288,17 +288,20 @@ class Images(Atomic):
                 var = "str_backend"
 
             if var == "repo":
-                if value.lower() in repo:
-                    return True
+                if not value.lower() in repo:
+                    return False
 
             elif var == "tag":
-                if value.lower() in tag:
-                    return True
+                if not value.lower() in tag:
+                    return False
 
-            elif hasattr(image_obj, var) and value.lower() in str(getattr(image_obj, var)).lower():
-                return True
+            elif not hasattr(image_obj, var):
+                return False
 
-        return False
+            elif hasattr(image_obj, var) and value.lower() not in str(getattr(image_obj, var)).lower():
+                return False
+
+        return True
 
     def _mark_used(self, images):
         assert isinstance(images, list)
