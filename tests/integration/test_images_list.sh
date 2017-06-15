@@ -7,6 +7,13 @@ IFS=$'\n\t'
 IMAGE="atomic-test-1"
 IMAGE_SECRET="atomic-test-secret"
 TAGGED_IMAGE="local/at1"
+RUNNING_CONTAINER="testContainerOut"
+
+assert_not_reached() {
+    echo $@ 1>&2
+    exit 1
+
+}
 
 assert_matches() {
     if ! grep -q -e $@; then
@@ -28,6 +35,7 @@ setup () {
 
 teardown () {
     set +e
+    ${DOCKER} rm ${RUNNING_CONTAINER}
     ${DOCKER} rmi ${TAGGED_IMAGE}:latest
     set -e
 }
@@ -48,9 +56,14 @@ test $(wc -l < ${WORK_DIR}/images.out) -lt $(wc -l < ${WORK_DIR}/images.all.out)
 assert_matches '<none>' ${WORK_DIR}/images.all.out
 assert_not_matches '<none>' ${WORK_DIR}/images.out
 
-# Testing filters
+# Testing filters and used tag >
 ${ATOMIC} images list -f repo=${IMAGE} > ${WORK_DIR}/images.out
 assert_matches ${IMAGE} ${WORK_DIR}/images.out
+assert_not_matches ">  "${IMAGE} ${WORK_DIR}/images.out
+${DOCKER} run --name=${RUNNING_CONTAINER} ${IMAGE}
+${ATOMIC} images list -f repo=${IMAGE} > ${WORK_DIR}/images.out
+assert_matches ">  "${IMAGE} ${WORK_DIR}/images.out
+
 ${ATOMIC} images list -f type=docker > ${WORK_DIR}/images.out
 assert_matches ${IMAGE} ${WORK_DIR}/images.out
 ${ATOMIC} images list -f repo=non-existing-repo > ${WORK_DIR}/images.out

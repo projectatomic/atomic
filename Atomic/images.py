@@ -305,7 +305,7 @@ class Images(Atomic):
 
     def _mark_used(self, images):
         assert isinstance(images, list)
-        all_containers = [x.id for x in self.be_utils.get_containers()]
+        all_containers = [x.image for x in self.be_utils.get_containers()]
         for image in images:
             if image.id in all_containers:
                 image.used = True

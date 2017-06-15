@@ -20,7 +20,7 @@ setup () {
 
 teardown () {
     set +o pipefail
-
+    ${ATOMIC} -y containers delete busybox  &> /dev/null || true
     # Delete all images from ostree
     ostree --repo=${ATOMIC_OSTREE_REPO} refs --delete ociimage &> /dev/null || true
 }
@@ -52,8 +52,15 @@ assert_matches "ociimage/docker.io_2Fbusybox_3Alatest" ${WORK_DIR}/ostree_refs.o
 # 2. listing local images
 ${ATOMIC} images list > ${WORK_DIR}/images.out
 assert_matches "busybox" ${WORK_DIR}/images.out
+assert_not_matches ">  busybox" ${WORK_DIR}/images.out
 ${ATOMIC} images list -q > ${WORK_DIR}/images.out
 assert_not_matches "busybox" ${WORK_DIR}/images.out
+
+# Testing after installtion the '>' will show up
+${ATOMIC} install --system busybox
+${ATOMIC} images list > ${WORK_DIR}/images.out
+assert_matches ">  busybox" ${WORK_DIR}/images.out
+${ATOMIC} -y containers delete busybox
 
 # Testing filters
 ${ATOMIC} images list -f repo=busybox > ${WORK_DIR}/images.out
