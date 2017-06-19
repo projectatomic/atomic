@@ -814,10 +814,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         if has_container_service:
             util.write_template(unitfile, systemd_template, values, unitfileout)
-            shutil.copyfile(unitfileout, os.path.join(prefix, destination, "%s.service" % name))
+            shutil.copyfile(unitfileout, os.path.join(prefix or "/", destination, "%s.service" % name))
         if (tmpfiles_template):
             util.write_template(unitfile, tmpfiles_template, values, tmpfilesout)
-            shutil.copyfile(tmpfilesout, os.path.join(prefix, destination, "tmpfiles-%s.conf" % name))
+            shutil.copyfile(tmpfilesout, os.path.join(prefix or "/", destination, "tmpfiles-%s.conf" % name))
 
         if not prefix:
             sym = "%s/%s" % (self._get_system_checkout_path(), name)
