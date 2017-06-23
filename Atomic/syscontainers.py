@@ -774,19 +774,18 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         missing_bind_paths = self._check_oci_configuration_file(destination_path, remote_path, False)
 
         # let's check if we can generate an rpm from the /exports directory
-        rpm_file = rpm_preinstalled = None
+        rpm_file = rpm_installed = None
         if system_package == 'yes':
             img_obj = self.inspect_system_image(img)
             image_id = img_obj["ImageId"]
             labels = {k.lower() : v for k, v in img_obj.get('Labels', {}).items()}
-            (rpm_preinstalled, rpm_file, _) = RPMHostInstall.generate_rpm(name, image_id, labels, exports, destination, values=values, installed_files_template=installed_files_template, rename_files=rename_files, defaultversion=deployment)
-        if rpm_preinstalled:
+            (rpm_installed, rpm_file, _) = RPMHostInstall.generate_rpm(name, image_id, labels, exports, destination, values=values, installed_files_template=installed_files_template, rename_files=rename_files, defaultversion=deployment)
+        if rpm_installed:
             new_installed_files = []
         else:
             new_installed_files = RPMHostInstall.rm_add_files_to_host(installed_files, exports, prefix or "/", files_template=installed_files_template, values=values, rename_files=rename_files)
 
         try:
-            rpm_installed = os.path.basename(rpm_preinstalled) if rpm_preinstalled else None
             with open(os.path.join(destination, "info"), 'w') as info_file:
                 info = {"image" : img,
                         "revision" : image_id,
@@ -840,17 +839,13 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             os.unlink(sym)
         os.symlink(destination, sym)
 
-        if rpm_preinstalled:
-            try:
-                RPMHostInstall.install_rpm(rpm_file)
-            except subprocess.CalledProcessError:
-                os.unlink(sym)
-                raise
-        else:
-            for installed_file in new_installed_files:
-                util.write_out("Created file {}".format(installed_file))
-
         try:
+            if rpm_installed:
+                RPMHostInstall.install_rpm(rpm_file)
+            else:
+                for installed_file in new_installed_files:
+                    util.write_out("Created file {}".format(installed_file))
+
             self._systemctl_command("daemon-reload")
             if (tmpfiles_template):
                 self._systemd_tmpfiles("--create", tmpfilesout)
@@ -860,7 +855,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             elif was_service_active:
                 self._systemctl_command("start", name)
         except subprocess.CalledProcessError:
-            if rpm_preinstalled:
+            if rpm_installed:
                 RPMHostInstall.uninstall_rpm(rpm_installed)
             for installed_file in new_installed_files:
                 os.unlink(installed_file)
