@@ -862,6 +862,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         except subprocess.CalledProcessError:
             if rpm_preinstalled:
                 RPMHostInstall.uninstall_rpm(rpm_installed)
+            for installed_file in new_installed_files:
+                os.unlink(installed_file)
             os.unlink(sym)
             raise
 
