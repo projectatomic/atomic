@@ -64,7 +64,7 @@ WantedBy=multi-user.target
 TEMPLATE_FORCED_VARIABLES = ["DESTDIR", "NAME", "EXEC_START", "EXEC_STOP",
                              "EXEC_STARTPRE", "EXEC_STOPPOST", "HOST_UID",
                              "HOST_GID", "IMAGE_ID", "IMAGE_NAME"]
-TEMPLATE_OVERRIDABLE_VARIABLES = ["RUN_DIRECTORY", "STATE_DIRECTORY", "UUID", "PIDFILE"]
+TEMPLATE_OVERRIDABLE_VARIABLES = ["RUN_DIRECTORY", "STATE_DIRECTORY", "CONF_DIRECTORY", "UUID", "PIDFILE"]
 
 class SystemContainers(object):
 
@@ -560,6 +560,12 @@ class SystemContainers(object):
 
         if "PIDFILE" not in values:
             values["PIDFILE"] = os.path.sep.join([values["RUN_DIRECTORY"], "container-{}.pid".format(name)])
+
+        if "CONF_DIRECTORY" not in values:
+            if self.user:
+                values["CONF_DIRECTORY"] = "%s/.config" % HOME
+            else:
+                values["CONF_DIRECTORY"] = "/etc"
 
         if "STATE_DIRECTORY" not in values:
             if self.user:
