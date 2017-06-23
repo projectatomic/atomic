@@ -840,12 +840,15 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             os.unlink(sym)
         os.symlink(destination, sym)
 
-        try:
-            if rpm_preinstalled:
+        if rpm_preinstalled:
+            try:
                 RPMHostInstall.install_rpm(rpm_file)
-        except subprocess.CalledProcessError:
-            os.unlink(sym)
-            raise
+            except subprocess.CalledProcessError:
+                os.unlink(sym)
+                raise
+        else:
+            for installed_file in new_installed_files:
+                util.write_out("Created file {}".format(installed_file))
 
         try:
             self._systemctl_command("daemon-reload")
