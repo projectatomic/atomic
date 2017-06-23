@@ -469,7 +469,7 @@ class SystemContainers(object):
         try:
             return self._do_checkout(repo, name, img, upgrade, deployment, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix, installed_files=installed_files,
                                      system_package=system_package)
-        except (ValueError, OSError, subprocess.CalledProcessError) as e:
+        except (ValueError, OSError, subprocess.CalledProcessError, KeyboardInterrupt) as e:
             try:
                 if not extract_only and not upgrade:
                     shutil.rmtree(destination)
@@ -854,7 +854,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 self._systemctl_command("enable", name)
             elif was_service_active:
                 self._systemctl_command("start", name)
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, KeyboardInterrupt):
             if rpm_installed:
                 RPMHostInstall.uninstall_rpm(rpm_installed)
             for installed_file in new_installed_files:
