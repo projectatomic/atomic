@@ -469,6 +469,7 @@ class Scan(Atomic):
             chroot_scan_dir = os.path.join(self.chroot_dir, bind_dir)
             os.mkdir(chroot_scan_dir)
             mcmd = ['mount', '-o', 'ro,bind', _dir, chroot_scan_dir]
+            self.mount_paths[chroot_scan_dir] = chroot_scan_dir
             util.check_call(mcmd)
             self.rootfs_mappings[_dir] = bind_dir
 
