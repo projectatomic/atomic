@@ -139,15 +139,6 @@ def create_parser(help_text):
                             help=argparse.SUPPRESS)
     subparser = parser.add_subparsers(help=_("commands"))
 
-    # atomic cluster (if commctl.cli is available)
-    try:
-        import commctl.cli
-        clusterp = subparser.add_parser(
-            "cluster", help=_("execute cluster management commands"))
-        commctl.cli.add_cluster_commands(clusterp)
-    except ImportError:
-        pass
-
     containers.cli(subparser)
     diff.cli(subparser)
     Help.cli(subparser,hidden=True)
@@ -168,15 +159,6 @@ def create_parser(help_text):
     storage.cli(subparser)
     top.cli(subparser)
     trust.cli(subparser)
-
-    # atomic rhost (if commctl.cli is available)
-    try:
-        import commctl.cli
-        rhostp = subparser.add_parser(
-            "rhost", help=_("execute cluster host management commands"))
-        commctl.cli.add_host_commands(rhostp)
-    except ImportError:
-        pass
 
     uninstall.cli(subparser)
 
