@@ -1,6 +1,7 @@
 from Atomic.backends._docker import DockerBackend
 from Atomic.backends._docker_errors import NoDockerDaemon
 from Atomic.backends._ostree import OSTreeBackend
+from Atomic.backends._containers_storage import ContainersStorageBackend
 from Atomic.util import write_out, get_atomic_config
 
 ATOMIC_CONFIG = get_atomic_config()
@@ -11,7 +12,7 @@ class BackendUtils(object):
     Given an image, returns the back end that owns that image
     """
 
-    BACKENDS = [DockerBackend, OSTreeBackend]
+    BACKENDS = [DockerBackend, OSTreeBackend, ContainersStorageBackend]
 
     @property
     def available_backends(self):
