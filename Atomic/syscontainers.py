@@ -166,15 +166,6 @@ class SystemContainers(object):
         # Same entrypoint
         return self.install(image, name)
 
-    def _install_rpm(self, rpm_file):
-        # Ensure RPMHostInstall._should_be_installed_rpm is changed as well.
-        if os.path.exists("/run/ostree-booted"):
-            raise ValueError("This doesn't work on Atomic Host yet")
-        elif os.path.exists("/usr/bin/dnf"):
-            util.check_call(["dnf", "install", "-y", rpm_file])
-        else:
-            util.check_call(["yum", "install", "-y", rpm_file])
-
     # Create a checkout and generate an RPM file
     def build_rpm(self, repo, name, image, values, destination):
         installed_files = None
