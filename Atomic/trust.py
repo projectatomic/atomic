@@ -249,7 +249,7 @@ class Trust(Atomic):
                 keydata = r.content
             else:
                 raise ValueError("Could not download public key from %s. Status code %s." % (key_reference, r.status_code))
-        return b64encode(keydata)
+        return b64encode(keydata.encode())
 
     def check_policy(self, policy, sstype):
         """
