@@ -302,7 +302,7 @@ class SystemContainers(object):
                     tmpfiles_destination = tmp
 
             # Get the start command for the system container
-            (start_command, _, _, _) = self._generate_systemd_startstop_directives(name, can_detach=False)
+            (start_command, _, _, _) = self._generate_systemd_startstop_directives(name, unit_file_support_pidfile=False)
             # Move to the base directory to start the system container
             os.chdir(base_dir)
             # ... and run it. We use call() because the actual
@@ -408,10 +408,28 @@ class SystemContainers(object):
         with open(conf_path, 'w') as conf:
             conf.write(json.dumps(configuration, indent=4))
 
-    def _generate_systemd_startstop_directives(self, name, pidfile=None, can_detach=False):
+    def _generate_systemd_startstop_directives(self, name, pidfile=None, unit_file_support_pidfile=False):
         if self.user:
-            return ["%s '%s'" % (util.BWRAP_OCI_PATH, name), "", "", ""]
+            return self._generate_user_systemd_startstop_directives(name, pidfile, unit_file_support_pidfile)
+        else:
+            return self._generate_system_systemd_startstop_directives(name, pidfile, unit_file_support_pidfile)
 
+    # --user case
+    def _generate_user_systemd_startstop_directives(self, name, pidfile=None, unit_file_support_pidfile=False):
+        if unit_file_support_pidfile:
+            has_pidfile_option = False
+            try:
+                has_pidfile_option = "--pid-file" in str(util.check_output([util.BWRAP_OCI_PATH, "--help"], stderr=DEVNULL))
+            except util.FileNotFound:
+                pass
+            if has_pidfile_option:
+                start = "{} --pid-file='{}' --detach run {}".format(util.BWRAP_OCI_PATH, pidfile, name)
+                stoppost = "{} delete '{}'".format(util.BWRAP_OCI_PATH, name)
+                return [start, "", "", stoppost]
+        return ["{}".format(util.BWRAP_OCI_PATH), "", "", ""]
+
+    # --system case
+    def _generate_system_systemd_startstop_directives(self, name, pidfile=None, unit_file_support_pidfile=False):
         try:
             version = str(util.check_output([util.RUNC_PATH, "--version"], stderr=DEVNULL))
         except util.FileNotFound:
@@ -420,7 +438,7 @@ class SystemContainers(object):
         if "version 0" in version:
             raise ValueError("The version of runC is too old.")
 
-        if can_detach:
+        if unit_file_support_pidfile:
             start = "{} --systemd-cgroup run -d --pid-file {} '{}'".format(util.RUNC_PATH, pidfile, name)
             stoppost = "{} delete '{}'".format(util.RUNC_PATH, name)
             return [start, "", "", stoppost]
@@ -481,8 +499,8 @@ class SystemContainers(object):
             raise e
 
     @staticmethod
-    def _template_has_stoppost_and_pidfile(template):
-        return "$EXEC_STOPPOST" in template and "PIDFILE" in template
+    def _template_support_pidfile(template):
+        return "$EXEC_STOPPOST" in template and "$PIDFILE" in template
 
     @staticmethod
     def _get_image_id_from_manifest(image_manifest):
@@ -541,7 +559,7 @@ class SystemContainers(object):
                 return True
         return False
 
-    def _amend_values(self, values, manifest, name, image, image_id, destination, prefix=None, unit_file_can_detach=False):
+    def _amend_values(self, values, manifest, name, image, image_id, destination, prefix=None, unit_file_support_pidfile=False):
         # When installing a new system container, set values in this order:
         #
         # 1) What comes from manifest.json, if present, as default value.
@@ -577,7 +595,7 @@ class SystemContainers(object):
             values["UUID"] = str(uuid.uuid4())
         values["DESTDIR"] = os.path.join("/", os.path.relpath(destination, prefix)) if prefix else destination
         values["NAME"] = name
-        directives = self._generate_systemd_startstop_directives(name, pidfile=values["PIDFILE"], can_detach=unit_file_can_detach)
+        directives = self._generate_systemd_startstop_directives(name, pidfile=values["PIDFILE"], unit_file_support_pidfile=unit_file_support_pidfile)
         values["EXEC_START"], values["EXEC_STOP"], values["EXEC_STARTPRE"], values["EXEC_STOPPOST"] = directives
         values["HOST_UID"] = os.getuid()
         values["HOST_GID"] = os.getgid()
@@ -723,7 +741,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         else:
             systemd_template = SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE
 
-        values = self._amend_values(values, manifest, name, img, image_id, destination, prefix, unit_file_can_detach=SystemContainers._template_has_stoppost_and_pidfile(systemd_template))
+        values = self._amend_values(values, manifest, name, img, image_id, destination, prefix, unit_file_support_pidfile=SystemContainers._template_support_pidfile(systemd_template))
 
         src = os.path.join(exports, "config.json")
         destination_path = os.path.join(destination, "config.json")
