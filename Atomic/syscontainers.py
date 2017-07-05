@@ -647,9 +647,7 @@ class SystemContainers(object):
         if self.display:
             return values
 
-        if self.user:
-            rootfs = os.path.join(destination, "rootfs")
-        elif extract_only:
+        if extract_only:
             rootfs = destination
         elif remote_path:
             rootfs = os.path.join(remote_path, "rootfs")
