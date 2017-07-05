@@ -35,10 +35,10 @@ ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
 ATOMIC_VAR_LIB = os.environ.get('ATOMIC_VAR_LIB', '/var/lib/atomic')
 ATOMIC_INSTALL_JSON = os.environ.get('ATOMIC_INSTALL_JSON', os.path.join(ATOMIC_VAR_LIB, 'install.json'))
 
-GOMTREE_PATH = "/usr/bin/gomtree"
-BWRAP_OCI_PATH = "/usr/bin/bwrap-oci"
-RUNC_PATH = "/bin/runc"
-SKOPEO_PATH = "/usr/bin/skopeo"
+GOMTREE_PATH = os.environ.get("GOMTREE_PATH", "/usr/bin/gomtree")
+BWRAP_OCI_PATH = os.environ.get("BWRAP_OCI", "/usr/bin/bwrap-oci")
+RUNC_PATH = os.environ.get("RUNC", "/bin/runc")
+SKOPEO_PATH = os.environ.get("SKOPEO_PATH", "/usr/bin/skopeo")
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
