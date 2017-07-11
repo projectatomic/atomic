@@ -35,7 +35,7 @@ class AtomicHelp(Atomic):
         # possible filenames for help file inside container
         self.help_file_candidates = (
             # help filename inside image, command to process the help file before displaying
-            ("help.1", (GROFF_BINARY, '-man', '-Tascii')),
+            ("help.1", (GROFF_BINARY, '-t', '-man', '-Tascii')),
             ("README.md", None)
         )
 
