@@ -1548,6 +1548,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 # by using the systems tar command.
                 # Ref: https://bugzilla.redhat.com/show_bug.cgi?id=1194473
                 subprocess.check_call(['tar', '-xf', tar, '-C', temp_dir])
+                if self.user:
+                    SystemContainers._correct_dir_permissions_for_user(temp_dir)
+
                 repo.write_directory_to_mtree(Gio.File.new_for_path(temp_dir), mtree, modifier)
                 root = repo.write_mtree(mtree)[1]
 
@@ -1555,7 +1558,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                                                'docker.size': get_directory_size(temp_dir)})
                 csum = repo.write_commit(None, "", None, metav, root)[1]
             finally:
-                shutil.rmtree(temp_dir)
+                shutil.rmtree(temp_dir, ignore_errors=True)
 
             repo.transaction_set_ref(None, "%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), csum)
 
@@ -1896,3 +1899,19 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             util.write_out(cmd)
         stderr = None if debug else DEVNULL
         return util.check_call(cmd, stderr=stderr)
+
+    @staticmethod
+    def _correct_dir_permissions_for_user(path):
+        os.chmod(path, 0o700)
+        for root, dirs, files in os.walk(path, topdown=False, followlinks=True):
+            if os.path.islink(root):
+                continue
+            for d in dirs:
+                fullpath = os.path.join(root, d)
+                if not os.path.islink(fullpath):
+                    os.chmod(fullpath, 0o700)
+            for f in files:
+                fullpath = os.path.join(root, f)
+                if not os.path.islink(fullpath):
+                    s = os.stat(fullpath)
+                    os.chmod(fullpath, s.st_mode | 0o600)
