@@ -340,9 +340,10 @@ class SystemContainers(object):
             return
 
         image = self._pull_image_to_ostree(repo, image, False)
-        if self.args.system_package == 'auto' and not self.args.system:
-            self.args.system_package = 'no'
-        if self.args.system_package in ['build', 'yes'] and not self.args.system:
+        if self.args.system_package == 'auto' and self.user:
+            self.args.system_package = 'absent'
+
+        if self.args.system_package in ['build'] and not self.args.system:
             raise ValueError("Only --system can generate rpms")
 
         values = {}
@@ -797,7 +798,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             image_id = img_obj["ImageId"]
             labels = {k.lower() : v for k, v in img_obj.get('Labels', {}).items()}
             (rpm_installed, rpm_file, _) = RPMHostInstall.generate_rpm(name, image_id, labels, exports, destination, values=values, installed_files_template=installed_files_template, rename_files=rename_files, defaultversion=deployment)
-        if rpm_installed:
+        if rpm_installed or system_package == 'absent':
             new_installed_files = []
         else:
             new_installed_files = RPMHostInstall.rm_add_files_to_host(installed_files, exports, prefix or "/", files_template=installed_files_template, values=values, rename_files=rename_files)
@@ -814,6 +815,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                         "installed-files-template": installed_files_template,
                         "rename-installed-files" : rename_files,
                         "rpm-installed" : rpm_installed,
+                        "system-package" : system_package,
                         "remote" : remote}
                 info_file.write(json.dumps(info, indent=4))
                 info_file.write("\n")
@@ -955,6 +957,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         revision = info["revision"] if "revision" in info else None
         installed_files = info["installed-files"] if "installed-files" in info else None
         rpm_installed = info["rpm-installed"] if "rpm-installed" in info else None
+        system_package = info["system-package"] if "system-package" in info else None
 
         # Check if the image id or the configuration for the container has
         # changed before upgrading it.
@@ -980,7 +983,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             util.write_out("Latest version already installed.")
             return
 
-        system_package = 'yes' if rpm_installed else 'no'
+        if system_package is None:
+            system_package = 'yes' if rpm_installed else 'no'
         self._checkout(repo, name, image, next_deployment, True, values, remote=self.args.remote, installed_files=installed_files, system_package=system_package)
         return
 
