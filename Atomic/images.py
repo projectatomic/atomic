@@ -320,7 +320,8 @@ class Images(Atomic):
     def return_json(self, images):
         all_image_info = []
         all_vuln_info = self.get_all_vulnerable_info()
-        keys = ['is_dangling', 'used', 'vulnerable', 'id', 'type', 'created', 'virtual_size']
+        keys = ['is_dangling', 'used', 'vulnerable', 'id', 'type', 'created', 'virtual_size', 'str_backend']
+        keys_rename = {"str_backend" : "backend"}
         for img_obj in images:
             if not img_obj.repotags:
                 continue
@@ -332,7 +333,8 @@ class Images(Atomic):
                 img_dict = dict()
                 img_dict['repo'], img_dict['tag'] = _repo, _tag
                 for key in keys:
-                    img_dict[key] = getattr(img_obj, key, None)
+                    key_name = key if key not in keys_rename else keys_rename[key]
+                    img_dict[key_name] = getattr(img_obj, key, None)
                 img_dict['vuln_info'] = \
                     dict() if not img_obj.vulnerable else all_vuln_info.get(img_obj.id, None) # pylint: disable=no-member
                 all_image_info.append(img_dict)
