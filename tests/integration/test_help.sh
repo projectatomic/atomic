@@ -44,6 +44,9 @@ if [ -x /usr/bin/groff ]; then
     fi
 fi
 
+# Test if the table got preprocessed
+if ${ATOMIC} help atomic-test-1 | grep "allbox;"; then false; fi
+
 # Test override label - uppercase help
 ${ATOMIC} help atomic-test-3 | grep "Testing help"
 
