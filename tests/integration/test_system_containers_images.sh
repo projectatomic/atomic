@@ -107,8 +107,26 @@ assert_matches "atomic-test-system" ${WORK_DIR}/images.out
 
 
 # 4.1 Check that the virtual size of the imported image is the same as showed for Docker
-${ATOMIC_NO_DEBUG} images list -f repo=atomic-test-system --json > ${WORK_DIR}/images.json
-${PYTHON} -c 'import json; import sys; sizes = [str(i["virtual_size"]) for i in json.load(sys.stdin)]; sys.exit(len([x for x in sizes if x != sizes[0]]))' < ${WORK_DIR}/images.json
+${ATOMIC_NO_DEBUG} images list --json > ${WORK_DIR}/images.json
+
+cat > test_images_size.py <<EOF
+#!/usr/bin/env python
+import json
+import sys
+def make_number(x):
+    return float(x.replace("MB", "").replace("KB", ""))
+
+def is_different(x, y):
+    x = make_number(x)
+    y = make_number(y)
+    return abs(x - y) > x * 0.01
+
+sizes = [str(i["virtual_size"]) for i in json.load(sys.stdin) if i['repo']=='atomic-test-system']
+
+sys.exit(len([x for x in sizes if is_different(x, sizes[0])]))
+EOF
+
+${PYTHON} test_images_size.py < ${WORK_DIR}/images.json
 
 
 ${ATOMIC} --assumeyes images delete -f --storage ostree atomic-test-system
