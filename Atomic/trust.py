@@ -109,6 +109,10 @@ class Trust(Atomic):
         :param trust_type: string, one of "signedBy", "insecureAcceptAnything", "reject"
         :param sigstore: string, URL of signature server
         """
+
+        def get_pubkey_data(k):
+            return self.get_pubkey_data(k).decode('utf')
+
         if registry is None:
             registry=self.args.registry
         if pubkeys is None:
@@ -129,8 +133,8 @@ class Trust(Atomic):
         mode = "r+" if os.path.exists(self.policy_filename) else "w+"
         with open(self.policy_filename, mode) as policy_file:
             if mode == "r+":
-                policy = json.load(policy_file)
-                policy = self.check_policy(policy, sstype)
+                _policy_json = "".join(policy_file.readlines())
+                policy = self.check_policy(json.loads(_policy_json), sstype)
                 if registry in policy["transports"][sstype]:
                     if not self.args.assumeyes:
                         confirm = util.input("Trust policy already defined for %s:%s\nDo you want to overwrite? (y/N) " % (sigstoretype, registry))
@@ -143,7 +147,7 @@ class Trust(Atomic):
             payload = []
             if pubkeys:
                 for k in pubkeys:
-                    payload.append({ "type": trust_type, "keyType": keytype, "keyData": self.get_pubkey_data(k) })
+                    payload.append({ "type": trust_type, "keyType": keytype, "keyData": get_pubkey_data(k)})
             if pubkeysfile:
                 for f in pubkeysfile:
                     if not os.path.exists(f):
