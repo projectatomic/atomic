@@ -843,7 +843,7 @@ class InstallData(object):
         with file_lock(ATOMIC_INSTALL_JSON):
             try:
                 with open(ATOMIC_INSTALL_JSON, 'r') as f:
-                    # Backwards compatibilty - we previously created an empty file explicitly;
+                    # Backwards compatibility - we previously created an empty file explicitly;
                     # see https://github.com/projectatomic/atomic/pull/966
                     if os.fstat(f.fileno()).st_size == 0:
                         return {}
