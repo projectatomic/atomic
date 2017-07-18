@@ -18,6 +18,8 @@ IMAGE [ARG...]
 container IMAGE, if this field does not exist **atomic uninstall** will just
 uninstall the image.
 
+The image won't be removed if there are containers using it and `--force` is not used.
+
 If the container image has a LABEL UNINSTALL instruction like the following:
 
 `LABEL UNINSTALL /usr/bin/docker run -t -i --rm \${OPT1} --privileged -v /:/host --net=host --ipc=host --pid=host -e HOST=/host -e NAME=${NAME} -e IMAGE=${IMAGE} -e CONFDIR=\/etc/${NAME} -e LOGDIR=/var/log/\${NAME} -e DATADIR=/var/lib/\${NAME} ${IMAGE} \${OPT2} /bin/uninstall.sh \${OPT3}`
@@ -49,7 +51,7 @@ The uninstall command will not execute if --display is specified.
 If --display is not specified the uninstall command will execute.
 
 **-f** **--force**
-  Remove all containers based on this image
+  Remove all containers based on this image before removing the image.
 
 **-h** **--help**
   Print usage statement

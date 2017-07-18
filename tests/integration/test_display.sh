@@ -12,7 +12,7 @@ DOCKER=${DOCKER:="/usr/bin/docker"}
 TNAME="test_display"
 
 teardown () {
-    ${DOCKER} rm TEST3 TEST4 2> /dev/null
+    ${DOCKER} rm TEST3 TEST4 2> /dev/null || return 0
 }
 trap teardown EXIT
 
@@ -81,8 +81,12 @@ if [[ ${OUTPUT} != ${OUTPUT2} ]]; then
     exit 1
 fi
 
+for i in `docker ps --all --filter ancestor=atomic-test-1 --format "{{.ID}}"`; do
+    docker rm -f $i
+done
+
 OUTPUT=`${ATOMIC} uninstall --display atomic-test-1`
-RESULT='/usr/bin/docker run -v /etc/atomic-test-1:/etc -v /var/log/atomic-test-1:/var/log -v /var/lib/atomic-test-1:/var/lib --name atomic-test-1 atomic-test-1 echo I am the uninstall label.'
+RESULT="/usr/bin/docker run -v /etc/atomic-test-1:/etc -v /var/log/atomic-test-1:/var/log -v /var/lib/atomic-test-1:/var/lib --name atomic-test-1 atomic-test-1 echo I am the uninstall label."
 if [[ ${OUTPUT} != ${RESULT} ]]; then
     echo "Uninstall display failed for uninstall-1"
     exit 1

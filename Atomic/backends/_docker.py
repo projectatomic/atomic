@@ -451,6 +451,11 @@ class DockerBackend(Backend):
 
         if args.force:
             self.delete_containers_by_image(iobject, force=True)
+        else:
+            containers_by_image = self.get_containers_by_image(iobject)
+            if len(containers_by_image) > 0:
+                containers_active = ", ".join([i.name for i in containers_by_image])
+                raise ValueError("Containers `%s` are using this image, delete them first or use --force" % containers_active)
 
         uninstall_command = iobject.get_label('UNINSTALL')
         command_line_args = args.args
