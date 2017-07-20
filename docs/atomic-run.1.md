@@ -54,6 +54,16 @@ These defaults are suggested values for your container images.
 **RUN_OPTS**
   Content of file specified by `LABEL RUN_OPTS_FILE`.  During `atomic install`, the `install.sh` can populate the file with any additional options that need to be passed to `docker run`, for example `--hostname=www.example.test` or `--net host`. The file name undergoes environment variable expansion, so for example `LABEL RUN_OPTS_FILE '/var/lib/${NAME}/docker-run-opts'` can be used to store per-container configuration.
 
+Custom environment variables can be provided to the container through the LABEL RUN instruction as follows:
+
+`LABEL RUN /usr/bin/docker run -t -i --rm -e FOO="\${FOO:-bar}" -v \${LOGDIR}:/var/log -v \${DATADIR}:/var/lib --name \${NAME} \${IMAGE}`
+
+`atomic run` will run the following:
+
+`/usr/bin/docker run -t -i --rm -e FOO="${FOO:-bar}"  -v ${LOGDIR}:/var/log -v ${DATADIR}:/var/lib --name ${NAME} ${IMAGE}`
+
+The value of `FOO` can be set explicitly via `FOO=baz atomic run`.
+
 # OPTIONS:
 **-h** **--help**
   Print usage statement
