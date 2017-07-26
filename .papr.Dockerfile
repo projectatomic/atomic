@@ -1,5 +1,4 @@
-FROM fedora:24
-MAINTAINER Jonathan Lebon <jlebon@redhat.com>
+FROM registry.fedoraproject.org/fedora:26
 
 # NB: we also install python2 reqs here (which the builddep
 # does not catch since on F24 we build for py3) so that we
@@ -8,7 +7,7 @@ MAINTAINER Jonathan Lebon <jlebon@redhat.com>
 # two separate images.
 
 RUN dnf install -y \
-	git \
+        git \
         make \
         python3-pylint \
         python3-slip-dbus \

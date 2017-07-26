@@ -4,11 +4,11 @@ branches:
   - try
 
 host:
-  distro: fedora/25/atomic
+  distro: fedora/26/atomic
   specs:
     secondary-disk: 10
 
-context: fedora/25/atomic
+context: fedora/26/atomic
 
 required: true
 
@@ -16,7 +16,7 @@ env:
   ENABLE_DESTRUCTIVE: "1"
 
 tests:
-  - ./.redhat-ci.sh
+  - ./.papr.sh
 
 artifacts:
   - tests.log
@@ -28,9 +28,8 @@ timeout: 30m
 inherit: true
 
 host:
-  distro: centos/7/atomic/continuous
+  distro: centos/7/atomic/alpha
   specs:
-    secondary-disk: 10
     secondary-disk: 10
 
 context: centos/7/atomic
@@ -40,11 +39,11 @@ context: centos/7/atomic
 inherit: true
 
 host:
-  distro: fedora/25/cloud
+  distro: fedora/26/cloud
   specs:
     secondary-disk: 10
 
-context: fedora/25/cloud
+context: fedora/26/cloud
 
 # we install atomic to get the runtime reqs but of course,
 # its files will get overwritten by the containerized build
