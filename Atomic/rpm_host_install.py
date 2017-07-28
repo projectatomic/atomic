@@ -10,6 +10,14 @@ RPM_NAME_PREFIX = "atomic-container"
 class RPMHostInstall(object):
 
     @staticmethod
+    def copyfile(src, dest):
+        if os.path.islink(src):
+            linkto = os.readlink(src)
+            os.symlink(linkto, dest)
+        else:
+            shutil.copy2(src, dest)
+
+    @staticmethod
     def _do_rename_path(path, rename_files):
         path_split = path.split('/')
         path = ""
@@ -63,7 +71,7 @@ class RPMHostInstall(object):
                         util.write_template(src_file, data, values or {}, dest_path)
                         shutil.copystat(src_file, dest_path)
                     else:
-                        shutil.copy2(src_file, dest_path)
+                        RPMHostInstall.copyfile(src_file, dest_path)
 
                     new_installed_files.append(rel_dest_path)
             new_installed_files.sort()  # just for an aesthetic reason in the info file output

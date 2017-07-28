@@ -6,6 +6,7 @@ LABEL "atomic.has_install_files"="yes"
 
 # Add a file that can be handled by the rpm generator
 RUN mkdir -p /exports/hostfs/usr/local/lib
+RUN ln -s /does/not/exist /exports/hostfs/broken-symlink
 ADD message /exports/hostfs/usr/local/lib/secret-message
 ADD message-template /exports/hostfs/usr/local/lib/secret-message-template
 
