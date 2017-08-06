@@ -1,5 +1,4 @@
 import os
-import copy
 import sys
 from . import util
 from . import Atomic
@@ -120,7 +119,7 @@ class Containers(Atomic):
 
         if not self.args.filter:
             return con_objs
-        filtered_objs = copy.deepcopy(con_objs)
+        filtered_objs = con_objs[:]
         for f in self.args.filter:
             cfilter, value = f.split('=', 1)
             cfilter = self.FILTER_KEYWORDS[cfilter]

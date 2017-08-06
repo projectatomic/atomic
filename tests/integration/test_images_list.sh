@@ -50,11 +50,9 @@ assert_matches ${IMAGE_SECRET} ${WORK_DIR}/images.out
 assert_matches ${TAGGED_IMAGE} ${WORK_DIR}/images.out
 
 # Testing --all
-${ATOMIC} images list > ${WORK_DIR}/images.out
 ${ATOMIC} images list --all > ${WORK_DIR}/images.all.out
 test $(wc -l < ${WORK_DIR}/images.out) -lt $(wc -l < ${WORK_DIR}/images.all.out)
 assert_matches '<none>' ${WORK_DIR}/images.all.out
-assert_not_matches '<none>' ${WORK_DIR}/images.out
 
 # Testing filters and used tag >
 ${ATOMIC} images list -f repo=${IMAGE} > ${WORK_DIR}/images.out

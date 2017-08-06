@@ -121,11 +121,13 @@ class TestDBus():
 
     @integration_test
     def test_ImagesDelete(self):
+        self.run_cmd(['docker', 'pull', 'docker.io/projectatomic/atomic-tester:latest'])
         self.run_cmd(['docker', 'tag', 'docker.io/projectatomic/atomic-tester:latest', 'dbus_client_foobar'])
         self.dbus_client.ImagesDelete('dbus_client_foobar')
 
     @integration_test
     def test_ImagesTag(self):
+        self.run_cmd(['docker', 'pull', 'docker.io/projectatomic/atomic-tester:latest'])
         self.dbus_client.ImagesTag('docker.io/projectatomic/atomic-tester:latest', 'dbus_client_foobar')
         TestDBus.add_cleanup_cmd('docker rmi dbus_client_foobar')
 

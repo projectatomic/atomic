@@ -156,6 +156,7 @@ if [ ! -n "${PYTHON+ }" ]; then
         PYTHON='/usr/bin/python'
     fi
 fi
+export PYTHON=$PYTHON
 
 # Add images with INSTALL labels to /var/lib/atomic/install.json
 INSTALL_DATA_FILE="$(pwd)/install.json"

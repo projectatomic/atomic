@@ -114,15 +114,16 @@ cat > test_images_size.py <<EOF
 import json
 import sys
 def make_number(x):
-    return float(x.replace("MB", "").replace("KB", ""))
+    foo = x.replace("MB", "").replace("KB", "").replace(" ","")
+    return float(foo)
 
 def is_different(x, y):
     x = make_number(x)
     y = make_number(y)
     return abs(x - y) > x * 0.01
 
-sizes = [str(i["virtual_size"]) for i in json.load(sys.stdin) if i['repo']=='atomic-test-system']
-
+_sizes = [str(i["virtual_size"]) for i in json.load(sys.stdin) if i['repo']=='atomic-test-system']
+sizes = [x for x in _sizes if x != '']
 sys.exit(len([x for x in sizes if is_different(x, sizes[0])]))
 EOF
 
