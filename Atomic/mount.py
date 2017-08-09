@@ -594,6 +594,19 @@ class DockerMount(Mount):
                              'writeable mounts.')
 
         cid = self._identifier_as_cid(identifier)
+
+        if self.mnt_mkdir:
+            # If the given mount_path is just a parent dir for where
+            # to mount things by cid, then the new mountpoint is the
+            # mount_path plus the first 20 chars of the cid
+            self.mountpoint = os.path.join(self.mountpoint, cid[:20])
+
+            try:
+                if not os.path.exists(self.mountpoint):
+                    os.mkdir(self.mountpoint)
+            except (TypeError, OSError) as e:
+                raise MountError(e)
+
         cinfo = self.d.inspect_container(cid)
 
         ld, ud, wd = '', '', ''
