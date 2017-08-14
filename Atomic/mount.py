@@ -418,6 +418,13 @@ class DockerMount(Mount):
         elif len(images) == 1:
             return self._create_temp_container(images[0])
 
+        # Check if identifier is fully qualified
+        # local import only
+        from Atomic.objects.image import Image
+        _image = Image(identifier)
+        if _image.fully_qualified:
+            return self._create_temp_container(identifier)
+
         # Match image tag.
         images = util.image_by_name(identifier)
         if len(images) > 1:
