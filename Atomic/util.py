@@ -399,7 +399,8 @@ def skopeo_manifest_digest(manifest_file, debug=False):
     cmd = cmd  + ['manifest-digest', manifest_file]
     return check_output(cmd).rstrip().decode()
 
-def skopeo_copy(source, destination, debug=False, sign_by=None, insecure=False, policy_filename=None, username=None, password=None):
+def skopeo_copy(source, destination, debug=False, sign_by=None, insecure=False, policy_filename=None,
+                username=None, password=None, gpghome=None):
 
     cmd = [SKOPEO_PATH]
     if policy_filename:
@@ -423,6 +424,8 @@ def skopeo_copy(source, destination, debug=False, sign_by=None, insecure=False, 
     cmd = cmd + [source, destination]
     if debug:
         write_out("Executing: {}".format(" ".join(cmd)))
+    if gpghome is not None:
+        os.environ['GNUPGHOME'] = gpghome
     return check_call(cmd, env=os.environ)
 
 

@@ -196,7 +196,8 @@ class Push(Atomic):
                                            policy_filename=self.policy_filename,
                                            sign_by=self.args.sign_by if sign else None, insecure=insecure,
                                            username=self.args.username,
-                                           password=self.args.password)
+                                           password=self.args.password,
+                                           gpghome=self.args.gnupghome)
 
             if return_code != 0:
                 raise ValueError("Pushing {} failed.".format(self.image))
