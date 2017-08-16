@@ -683,7 +683,7 @@ class DockerBackend(Backend):
 
     def _running(self, con_obj, args, atomic):
         requested_image = self.has_image(args.image)
-        if con_obj.image != requested_image.id:
+        if requested_image is not None and con_obj.image != requested_image.id:
             requested_image_fq_name = requested_image.fq_name
             raise AtomicError("Warning: container '{}' already points to {}\nRun 'atomic run {}' to run "
                                           "the existing container.\nRun 'atomic run --replace '{}' to replace "
