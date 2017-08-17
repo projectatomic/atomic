@@ -1,3 +1,100 @@
+## 1.19 (2017-08-17)
+    Add configuration compliance scan to "atomic scan"
+    Atomic/backends/_docker.py: Correct NoneType error (BZ #1481967)
+    Atomic/backends/_docker.py: Correct run flow
+    Atomic/containers.py: Add NAME field to container list
+    Atomic/install.py: Don't write the install data if the install fails
+    Atomic/mount.py: Fix duplication with fq image name (BZ #1480325)
+    Atomic/scan.py: Add rootfs to self.mount_paths BZ:1461788
+    Atomic/systemcontainers.py: Set prefix to "/" if None
+    Atomic/trust.py: Fix str/byte encoding for Python3
+    Atomic/trust.py: Python3 throws an exception
+    Fix Python3 issues for F26
+    Fix multiple images filters
+    Fix the _mark_used function to identify image as being used
+    Honor --gnupghome on push
+    Introduction of ContainersStorage backend
+    Remove commissaire integration
+    help: add '-t' argument to groff call to preprocess tables
+    images: include the backend in list --json
+    images: show the virtual size for system containers
+    syscontainers: by default disable copy to the host with --user
+    syscontainers: by default don't install rpm on AH
+    syscontainers: cleanup on Ctrl-C
+    syscontainers: drop import via libarchive
+    syscontainers: fix default template for systemd
+    syscontainers: fix reading image id in run_once
+    syscontainers: introduce CONF_DIRECTORY
+    syscontainers: make sure we can delete dirs/files with --user
+    syscontainers: on error delete temporary copied files
+    syscontainers: print what files are copied to the host
+    syscontainers: refactor a duplicated variable
+    syscontainers: remove self.user condition for extract
+    syscontainers: store the size of an OCI layer
+    syscontainers: support PIDFILE with bwrap-oci
+    uninstall: inhibit UNINSTALL if there are running containers
+    util: allow to override gomtree|bwrap_oci|runc|skopeo paths
+## 1.18 (2017-06-1)
+    Add integrations tests for atomic_dbus_client.py
+    Add test_images_list.sh
+    Allow mount/unmount without active dockerd
+    Atomic/backends/_docker.py: Error prevention with atomic run
+    Atomic/backends/_docker.py: Fix uninstall
+    Atomic/containers.py: Always return json when requested
+    Atomic/containers.py: quiet supersedes json
+    Atomic/rpm_host_install: rename the RPM to the container name
+    Atomic/rpm_host_install: replace rpmbuild with rpmwriter module
+    Atomic/rpmwriter.py: new module for writing an RPM file
+    Atomic/syscontainers.py: Supress Error output
+    Atomic/tag.py: Fix tag to work with dockerd, invalid images BZ #1454656
+    Atomic/util.py: Add logic to install lookup for shortnames
+    Atomic/util.py: Add no_proxy
+    Atomic/util.py: Check install against FQ name
+    Atomic/util.py: decode registries information to utf-8
+    Do not strip port for insecure check
+    Fix container/image filters
+    Fix mount for ostree backends.  Needed to make sure the cmd
+    Fix tagged images not being displayed
+    Fix test_tag.sh
+    Incorporate registries parsing tool
+    Merge pull request #978 from jlebon/pr/rhci-resize-root
+    Prefix RPM labels with atomic.
+    Re-pulling image error should exit 0
+    Refactor system container tests
+    Replace tarfile with tar on ostree import case
+    add manpage for help command
+    atomic.conf: fix syntax error of the YAML format
+    atomic: Fix silent failure from AssertionError
+    bug: Escape %config in rpm_host_install.py
+    correct parameter name for InstallData
+    dbus: Anonymous pushes should not fail on auth
+    docker,uninstall: correct cmd manipulation
+    help: prefer help file over label
+    implement `install --storage=docker --system-package=yes`
+    mount: create context manager for {Docker,OSTree}Mount
+    mount: use system containers storage when possible
+    refactor: move {un,}install_rpm to rpm_host_install
+    resolves #993 fixes file bind mounts
+    rpm_host_install: don't dupe files from /etc
+    rpm_host_install: let build_rpm return installed files
+    syscontainers: add function for mounting from the storage
+    syscontainers: add new test image
+    syscontainers: do not commit special files
+    syscontainers: do not fail if the file already exist on the host
+    syscontainers: do not overwrite main error message
+    syscontainers: drop support for OSTree < 2016.8
+    syscontainers: ensure the parent directory exists on file copy
+    syscontainers: honor ATOMIC_OSTREE_REPO also in user mode
+    syscontainers: introduce EXEC_STARTPRE and EXEC_STOPPOST
+    syscontainers: introduce containers storage
+    syscontainers: introduce variable PIDFILE
+    syscontainers: prune layers from the storage
+    syscontainers: support detached mode for the default config file
+    syscontainers: support detached runC containers
+    syscontainers: support rename of directories
+    syscontainers: use storage for oneshot containers
+    syscontainers: use the correct manifest to read the image id
+    syscontainers: use the correct path for the storage on Atomic Host
 ## 1.17 (2017-04-20)
     Allow anonymous push
     Always use fq names for dest image
