@@ -320,7 +320,7 @@ def skopeo_inspect(image, args=None, return_json=True, newline=False):
     # docker configuration. If so, then use false in the future.  This
     # is complicated by the fact that CIDR notation can be used in the
     # docker conf
-    cmd = [SKOPEO_PATH, '--tls-verify=false', 'inspect'] + args + [image]
+    cmd = [SKOPEO_PATH,  'inspect', '--tls-verify=false']+ args + [image]
     try:
         results = subp(cmd, newline=newline)
     except OSError:
@@ -345,7 +345,7 @@ def skopeo_delete(image, args=None):
     if not args:
         args=[]
 
-    cmd = [SKOPEO_PATH, 'tls-verify=false', 'delete'] + args + [image]
+    cmd = [SKOPEO_PATH, 'delete', '--tls-verify=false'], + args + [image]
     try:
         results = subp(cmd)
     except OSError:
@@ -408,9 +408,9 @@ def skopeo_copy(source, destination, debug=False, sign_by=None, insecure=False, 
 
     if debug:
         cmd = cmd + ['--debug']
-    if insecure:
-        cmd = cmd + ['--tls-verify=false']
     cmd = cmd + ['copy']
+    if insecure:
+        cmd = cmd + ['--src-tls-verify=false', '--dest-tls-verify=false']
     if username:
         # it's ok to send an empty password (think of krb for instance)
         cmd = cmd + [ "--dest-creds=%s%s" % (username, ":%s" % password if password else "") ]
