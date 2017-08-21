@@ -164,7 +164,11 @@ class OSTreeBackend(Backend):
         return self.syscontainers.uninstall(container)
 
     def run(self, iobject, **kwargs):
-        return self.syscontainers.start_service(iobject.name)
+        name = iobject.name
+        args = kwargs.get('args')
+        if len(args.command) == 0:
+            return self.syscontainers.start_service(name)
+        return self.syscontainers.container_exec(name, args.detach, args.command)
 
     def tag_image(self, src, dest):
         return self.syscontainers.tag_image(src, dest)

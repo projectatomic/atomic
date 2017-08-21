@@ -112,14 +112,6 @@ class Run(Atomic):
                 img_object = db.has_image(self.image)
             except RegistryInspectError:
                 raise ValueError("Unable to find image {}".format(self.image))
-        if storage == 'ostree':
-            if img_object is None:
-                be.pull_image(self.args.image, None)
-            # For system containers, the run method really needs a container obj
-            con_obj = be.has_container(self.name)
-            if con_obj is None:
-                be.install(self.image, self.name)
-            img_object = be.has_container(self.name)
         return be.run(img_object, atomic=self, args=self.args)
 
     @staticmethod

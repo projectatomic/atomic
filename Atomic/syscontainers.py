@@ -2149,3 +2149,53 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 if not os.path.islink(fullpath):
                     s = os.stat(fullpath)
                     os.chmod(fullpath, s.st_mode | 0o600)
+
+    def container_exec(self, name, detach, args):
+        is_container_running = self._is_service_active(name)
+
+        tty = os.isatty(0)
+
+        if util.is_user_mode():
+            raise ValueError("Command not supported in user mode")
+
+        if is_container_running:
+            cmd = [util.RUNC_PATH, "exec"]
+            if tty:
+                cmd.extend(["--tty"])
+            if detach:
+                cmd.extend(["--detach"])
+            cmd.extend([name])
+            cmd.extend(args)
+            return util.check_call(cmd, stdin=sys.stdin, stderr=sys.stderr, stdout=sys.stdout)
+        else:
+            checkout = self._canonicalize_location(self.get_checkout(name))
+            if checkout is None:
+                raise ValueError("The container '{}' doesn't exist".format(name))
+            if detach:
+                raise ValueError("Cannot use --detach with not running containers")
+
+            temp_dir = tempfile.mkdtemp()
+            try:
+                orig_config = os.path.sep.join([checkout, 'config.json'])
+                with open(orig_config, 'r') as config_file:
+                    config = json.loads(config_file.read())
+                    new_path = os.path.realpath(os.path.normpath(os.path.join(checkout, config['root']['path'])))
+                    config['root']['path'] = new_path
+                    config['process']['args'] = args
+                    config['process']['terminal'] = tty
+                with open(os.path.sep.join([temp_dir, 'config.json']), 'w') as conf:
+                    conf.write(json.dumps(config, indent=4))
+
+                cmd = [util.RUNC_PATH, "run"]
+                cmd.extend([name])
+                subp = subprocess.Popen(cmd,
+                                        cwd=temp_dir,
+                                        stdin=sys.stdin,
+                                        stdout=sys.stdout,
+                                        stderr=sys.stderr,
+                                        close_fds=True,
+                                        universal_newlines=False,
+                                        env=os.environ)
+                return subp.wait()
+            finally:
+                shutil.rmtree(temp_dir)
