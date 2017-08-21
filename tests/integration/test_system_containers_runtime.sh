@@ -52,7 +52,14 @@ setup
 
 # 1. Install a system container and start/stop the container with systemctl
 ${ATOMIC} install --name=${NAME} --set=RECEIVER=${SECRET} --system atomic-test-system
+${ATOMIC} run --storage ostree ${NAME} echo hello world < /dev/null > ${WORK_DIR}/status.out
+assert_matches "hello world" ${WORK_DIR}/status.out
+
 systemctl start ${NAME}.service
+
+${ATOMIC} run --storage ostree ${NAME} echo hello world again < /dev/null > ${WORK_DIR}/status.out
+assert_matches "hello world again" ${WORK_DIR}/status.out
+
 # Check the service is running
 systemctl status ${NAME}.service > ${WORK_DIR}/status.out
 assert_matches "Active: active (running)" ${WORK_DIR}/status.out
