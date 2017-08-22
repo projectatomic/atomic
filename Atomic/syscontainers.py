@@ -2186,6 +2186,17 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 with open(os.path.sep.join([temp_dir, 'config.json']), 'w') as conf:
                     conf.write(json.dumps(config, indent=4))
 
+                # The runtime directories are usually created by systemd when the
+                # service starts.  Since we are running the container outside of
+                # systemd, ensure that these directories are present on the host.
+                for i in config['mounts']:
+                    if 'type' not in i or i['type'] != 'bind' or 'source' not in i:
+                        continue
+                    src = i['source']
+                    is_runtime = src.startswith('/run/') or src.startswith('/var/run/')
+                    if is_runtime and not os.path.exists(src):
+                        os.makedirs(src)
+
                 cmd = [util.RUNC_PATH, "run"]
                 cmd.extend([name])
                 subp = subprocess.Popen(cmd,
