@@ -119,12 +119,11 @@ class Containers(Atomic):
 
         if not self.args.filter:
             return con_objs
-        filtered_objs = con_objs[:]
         for f in self.args.filter:
             cfilter, value = f.split('=', 1)
             cfilter = self.FILTER_KEYWORDS[cfilter]
-            filtered_objs = _walk(filtered_objs, cfilter, value)
-        return filtered_objs
+            con_objs = _walk(con_objs, cfilter, value)
+        return con_objs
 
     def ps_tty(self):
         if self.args.debug:

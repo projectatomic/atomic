@@ -4,9 +4,9 @@ IFS=$'\n\t'
 
 # Test images listing and filtering functionality
 
-IMAGE="atomic-test-1"
+IMAGE="atomic-test-3"
 IMAGE_SECRET="atomic-test-secret"
-TAGGED_IMAGE="local/at1"
+TAGGED_IMAGE="local/at3"
 RUNNING_CONTAINER="testContainerOut"
 
 assert_not_reached() {

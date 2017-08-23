@@ -128,7 +128,7 @@ class Mount(Atomic):
         self.user = util.is_user_mode()
         self.beu = backendutils.BackendUtils()
 
-    def __exit__(self, typ, value, traceback):
+    def __exit__(self, typ, value, traceback): # pylint: disable=useless-super-delegation
         super(Mount, self).__exit__(typ, value, traceback)
 
     def set_args(self, args):

@@ -43,7 +43,7 @@ def cli(subparser):
                        ))
 
 class Sign(Atomic):
-    def __init__(self):
+    def __init__(self): # pylint: disable=useless-super-delegation
         super(Sign, self).__init__()
 
     def sign(self, in_signature_path=None, images=None):
@@ -152,7 +152,7 @@ class Sign(Atomic):
     @staticmethod
     def make_sig_dirs(sig_path):
         if not os.path.exists(sig_path):
-            # TODO
+            # TODO # pylint: disable=fixme
             # perhaps revisit directory permissions
             # when complete use-cases are known
             os.makedirs(sig_path)

@@ -7,7 +7,7 @@ import tarfile
 from string import Template
 import calendar
 import shutil
-import stat
+import stat # pylint: disable=bad-python3-import
 import subprocess
 import time
 from .client import AtomicDocker

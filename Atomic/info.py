@@ -124,17 +124,17 @@ class Info(Atomic):
                 info_name = img_obj.fq_name
             except RegistryInspectError:
                 info_name = img_obj.input_name
-            buf.write("Image Name: {}\n".format(info_name))
+            buf.write("Image Name: {}\n".format(info_name)) # pylint: disable=no-member
             if img_obj.labels:
-                buf.writelines(sorted(["{}: {}\n".format(k, v) for k,v in list(img_obj.labels.items())]))
+                buf.writelines(sorted(["{}: {}\n".format(k, v) for k,v in list(img_obj.labels.items())])) # pylint: disable=no-member
             if img_obj.template_variables_set:
-                buf.write("\n\nTemplate variables with default value, but overridable with --set:\n")
-                buf.writelines(["{}: {}\n".format(k, v) for k,v in
+                buf.write("\n\nTemplate variables with default value, but overridable with --set:\n") # pylint: disable=no-member
+                buf.writelines(["{}: {}\n".format(k, v) for k,v in   # pylint: disable=no-member
                                 list(sorted(img_obj.template_variables_set.items()))])
             if img_obj.template_variables_unset:
-                buf.write("\n\nTemplate variables that has no default value, and must be set with --set:\n")
-                buf.writelines(["{}: {}\n".format(k, v) for k,v in
+                buf.write("\n\nTemplate variables that has no default value, and must be set with --set:\n") # pylint: disable=no-member
+                buf.writelines(["{}: {}\n".format(k, v) for k,v in   # pylint: disable=no-member
                                 list(sorted(img_obj.template_variables_unset.items()))])
-            return buf.getvalue()
+            return buf.getvalue() # pylint: disable=no-member
 
 

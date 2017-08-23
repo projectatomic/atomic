@@ -1,7 +1,7 @@
 from Atomic.util import output_json
 from Atomic.client import no_shaw
 
-class Layer(object):
+class Layer(object): # pylint: disable=eq-without-hash
     def __init__(self, img_input):
         self.id = None
         self.name = None

@@ -65,7 +65,8 @@ trap teardown EXIT
 
 # If /etc/sysconfig/docker-storage-setup is missing, atomic should create the file.
 
-rm -f /etc/sysconfig/docker-storage-setup
+# for now, do not remove setup options, as it will cause devicemapper/overlay issues
+# rm -f /etc/sysconfig/docker-storage-setup
 
 if [ -n "$VGROUP" ]; then
     cat >>/etc/sysconfig/docker-storage-setup <<EOF

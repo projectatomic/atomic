@@ -81,7 +81,7 @@ class HelpByDefaultArgumentParser(argparse.ArgumentParser):
         write_err("Try '%s --help' for more information." % self.prog)
         sys.exit(2)
 
-    def print_usage(self, message="too few arguments"):
+    def print_usage(self, message="too few arguments"): # pylint: disable=arguments-differ
         self.prog = " ".join(sys.argv)
         self.error(message)
 

@@ -100,4 +100,4 @@ vagrant-check:
 
 .PHONY: install-on-atomicos
 install-on-atomicos:
-	NO_TEST=1 sh ./.redhat-ci.sh
+	NO_TEST=1 sh ./.papr.sh

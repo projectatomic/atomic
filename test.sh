@@ -232,7 +232,7 @@ fi
 
 
 if [ ! -n "${TEST_UNIT+ }" ]; then
-    for tf in `find ./tests/integration/ -name test_*`; do
+    for tf in `find ./tests/integration/ -name 'test_*.sh'`; do
 	bn=$(basename "$tf")
 	extension="${bn##*.}"
 

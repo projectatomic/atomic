@@ -42,7 +42,7 @@ def cli(subparser):
                                    "image uninstall method"))
 
 class Uninstall(Atomic):
-    def __init__(self):
+    def __init__(self): # pylint: disable=useless-super-delegation
         super(Uninstall, self).__init__()
 
     def uninstall(self):

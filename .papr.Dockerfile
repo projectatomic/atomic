@@ -9,6 +9,7 @@ FROM registry.fedoraproject.org/fedora:26
 RUN dnf install -y \
         git \
         make \
+        python2-pylint \
         python3-pylint \
         python3-slip-dbus \
         python-gobject-base \

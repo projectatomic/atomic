@@ -108,7 +108,7 @@ def cli(subparser):
     _add_remainder_arg(p)
 
 class Host(Atomic):
-    def __init__(self):
+    def __init__(self): # pylint: disable=useless-super-delegation
         super(Host, self).__init__()
 
     def host_status(self):

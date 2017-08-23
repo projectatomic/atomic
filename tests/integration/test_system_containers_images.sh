@@ -123,8 +123,8 @@ def is_different(x, y):
     return abs(x - y) > x * 0.01
 
 _sizes = [str(i["virtual_size"]) for i in json.load(sys.stdin) if i['repo']=='atomic-test-system']
-sizes = [x for x in _sizes if x != '']
-sys.exit(len([x for x in sizes if is_different(x, sizes[0])]))
+sizes = [size for size in _sizes if size != '']
+sys.exit(len([size for size in sizes if is_different(size, sizes[0])]))
 EOF
 
 ${PYTHON} test_images_size.py < ${WORK_DIR}/images.json

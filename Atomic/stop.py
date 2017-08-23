@@ -28,7 +28,7 @@ ATOMIC_CONFIG = util.get_atomic_config()
 storage = ATOMIC_CONFIG.get('default_storage', "docker")
 
 class Stop(Atomic):
-    def __init__(self):
+    def __init__(self): # pylint: disable=useless-super-delegation
         super(Stop, self).__init__()
 
     def stop(self):

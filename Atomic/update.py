@@ -30,7 +30,7 @@ def cli(subparser, hidden=False):
     updatep.add_argument("image", help=_("container image"))
 
 class Update(Atomic):
-    def __init__(self):
+    def __init__(self): # pylint: disable=useless-super-delegation
         super(Update, self).__init__()
 
     def update(self):

@@ -149,17 +149,17 @@ class atomic_dbus(slip.dbus.service.Object):
     def Scheduler(self):
         while True:
             current_task = None
-            with self.tasks_lock:
+            with self.tasks_lock: # pylint: disable=not-context-manager
                 if(len(self.tasks) > 0):
                     current_task = self.tasks.pop(0)
             if current_task is not None:
                 result = current_task[1].scan()
-                with self.results_lock:
+                with self.results_lock: # pylint: disable=not-context-manager
                     self.results[current_task[0]] = result
             time.sleep(1)
 
     def AllocateToken(self):
-        with self.tasks_lock:
+        with self.tasks_lock: # pylint: disable=not-context-manager
             self.last_token += 1
             return self.last_token
 
@@ -521,7 +521,7 @@ class atomic_dbus(slip.dbus.service.Object):
     def ScheduleScan(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):
         scan = self._ScanSetup(scan_targets, scanner, scan_type, rootfs, _all, images, containers)
         token = self.AllocateToken()
-        with self.tasks_lock:
+        with self.tasks_lock: # pylint: disable=not-context-manager
             self.tasks.append((token, scan))
         return token
 
@@ -530,7 +530,7 @@ class atomic_dbus(slip.dbus.service.Object):
     @slip.dbus.polkit.require_auth("org.atomic.read")
     @dbus.service.method("org.atomic", in_signature='x', out_signature= 's')
     def GetScanResults(self, token):
-        with self.results_lock:
+        with self.results_lock: # pylint: disable=not-context-manager
             if token in self.results:
                 ret = self.results[token]
                 del self.results[token]

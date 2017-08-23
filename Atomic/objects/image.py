@@ -7,7 +7,7 @@ import math
 import numbers
 
 
-class Image(object):
+class Image(object): # pylint: disable=eq-without-hash
     def __init__(self, input_name, remote=False, backend=None):
 
         # Required

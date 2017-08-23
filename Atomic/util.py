@@ -345,7 +345,7 @@ def skopeo_delete(image, args=None):
     if not args:
         args=[]
 
-    cmd = [SKOPEO_PATH, 'delete', '--tls-verify=false'], + args + [image]
+    cmd = [SKOPEO_PATH, 'delete', '--tls-verify=false'], + args + [image] # pylint: disable=invalid-unary-operand-type
     try:
         results = subp(cmd)
     except OSError:
@@ -579,7 +579,7 @@ def find_remote_image(client, image):
             if x['name'] == image:
                 return '{}/{}'.format(x['registry_name'], x['name'])
     except (ValueError, IOError) as e:
-        if e.args[0].args[0] == errno.ENOENT:
+        if e.args[0].args[0] == errno.ENOENT: # pylint: disable=no-member
             raise ValueError("Image not found")
     return None
 

@@ -78,6 +78,7 @@ teardown () {
     set +o pipefail
     ${ATOMIC} uninstall --storage ostree atomic-test-system-hostfs || true
     rm -rf /etc/systemd/system/atomic-test-system-*.service /etc/tmpfiles.d/atomic-test-system-*.conf
+    ostree --repo=${ATOMIC_OSTREE_REPO} refs --delete ociimage &> /dev/null || true
 }
 trap teardown EXIT
 

@@ -57,4 +57,4 @@ else
     vagrant up ${BOX} 2>&1 | tee ${tee_file}
 fi
 
-vagrant ssh ${BOX} -c "cd /home/vagrant/atomic && sudo sh ./.redhat-ci.sh" 2>&1 | tee -a ${tee_file}
+vagrant ssh ${BOX} -c "cd /home/vagrant/atomic && sudo sh ./.papr.sh" 2>&1 | tee -a ${tee_file}

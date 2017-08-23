@@ -346,8 +346,8 @@ class DockerBackend(Backend):
                          policy_filename=trust.policy_filename)
         return 0
 
-    def delete_container(self, cid, force=False):
-        return self.d.remove_container(cid, force=force)
+    def delete_container(self, container, force=False):
+        return self.d.remove_container(container, force=force)
 
     def delete_containers_by_image(self, img_obj, force=False):
         containers_by_image = self.get_containers_by_image(img_obj)
