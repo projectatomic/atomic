@@ -164,8 +164,12 @@ class OSTreeBackend(Backend):
         return self.syscontainers.uninstall(container)
 
     def run(self, iobject, **kwargs):
-        name = iobject.name
         args = kwargs.get('args')
+        try:
+            name = iobject.name
+        except AttributeError:  # iobject isn't populated
+            raise ValueError('Unable to find an image named {} in {}'.format(
+                args.image, args.storage))
         if len(args.command) == 0:
             return self.syscontainers.start_service(name)
         return self.syscontainers.container_exec(name, args.detach, args.command)
