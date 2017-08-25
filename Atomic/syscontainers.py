@@ -1821,6 +1821,28 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         current_rev = repo.resolve_rev(imagebranch, True)
         if not upgrade and current_rev[1]:
             return False
+
+        can_use_skopeo_copy = util.check_output([util.SKOPEO_PATH, "copy", "--help"]).decode().find("ostree") >= 0
+
+        if can_use_skopeo_copy:
+            return self._check_system_oci_image_skopeo_copy(repo, img)
+        return self._check_system_oci_image_no_skopeo_copy(repo, img, imagebranch)
+
+    def _check_system_oci_image_skopeo_copy(self, repo, img):
+        repo = self.get_ostree_repo_location()
+
+        checkout = self._get_system_checkout_path()
+        destdir = checkout if os.path.exists(checkout) else None
+        temp_dir = tempfile.mkdtemp(prefix=".", dir=destdir)
+
+        destination = "ostree:{}@{}".format(img, repo)
+        try:
+            util.skopeo_copy("docker://" + img, destination, dest_ostree_tmp_dir=temp_dir)
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        return True
+
+    def _check_system_oci_image_no_skopeo_copy(self, repo, img, imagebranch):
         try:
             manifest = self._skopeo_get_manifest(img)
         except ValueError:

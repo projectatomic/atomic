@@ -400,7 +400,7 @@ def skopeo_manifest_digest(manifest_file, debug=False):
     return check_output(cmd).rstrip().decode()
 
 def skopeo_copy(source, destination, debug=False, sign_by=None, insecure=False, policy_filename=None,
-                username=None, password=None, gpghome=None):
+                username=None, password=None, gpghome=None, dest_ostree_tmp_dir=None):
 
     cmd = [SKOPEO_PATH]
     if policy_filename:
@@ -421,6 +421,9 @@ def skopeo_copy(source, destination, debug=False, sign_by=None, insecure=False, 
 
     if sign_by:
         cmd = cmd + ['--sign-by', sign_by]
+
+    if dest_ostree_tmp_dir:
+        cmd = cmd + ['--dest-ostree-tmp-dir', dest_ostree_tmp_dir]
     cmd = cmd + [source, destination]
     if debug:
         write_out("Executing: {}".format(" ".join(cmd)))
