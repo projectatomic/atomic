@@ -192,7 +192,7 @@ class Containers(Atomic):
                                           con_obj.id[0:max_container_id],
                                           con_obj.image_name[0:max_image_name],
                                           con_obj.name[0:max_container_name],
-                                          con_obj.command[0:max_command],
+                                          str(con_obj.command)[0:max_command],
                                           con_obj.created[0:16],
                                           con_obj.state[0:10],
                                           con_obj.backend.backend[0:10],

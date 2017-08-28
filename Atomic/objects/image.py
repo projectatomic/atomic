@@ -317,11 +317,17 @@ class Image(object): # pylint: disable=eq-without-hash
         return False
 
 def convert_size(size):
+    size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
     if size > 0:
-        size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
-        i = int(math.floor(math.log(size, 1000)))
-        p = math.pow(1000, i)
-        s = round(size/p, 2) # pylint: disable=round-builtin,old-division
-        if s > 0:
-            return '%s %s' % (s, size_name[i])
+        try:
+            i = int(math.floor(math.log(size, 1000)))
+            p = math.pow(1000, i)
+            s = round(size/p, 2) # pylint: disable=round-builtin,old-division
+            if s > 0:
+                return '%s %s' % (s, size_name[i])
+        except TypeError:
+            # kpod returns sizes in units already
+            for i in size_name:
+                if i.upper() in size:
+                    return size
     return '0B'

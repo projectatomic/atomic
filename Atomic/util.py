@@ -39,6 +39,7 @@ GOMTREE_PATH = os.environ.get("GOMTREE_PATH", "/usr/bin/gomtree")
 BWRAP_OCI_PATH = os.environ.get("BWRAP_OCI", "/usr/bin/bwrap-oci")
 RUNC_PATH = os.environ.get("RUNC", "/bin/runc")
 SKOPEO_PATH = os.environ.get("SKOPEO_PATH", "/usr/bin/skopeo")
+KPOD_PATH = os.environ.get("KPOD_PATH", "/usr/bin/kpod")
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -1083,3 +1084,15 @@ def set_proxy():
 class ImageAlreadyExists(Exception):
     def __init__(self, img):
         super(ImageAlreadyExists, self).__init__("The latest version of image {} already exists.".format(img))
+
+
+def kpod(cmd, storage=None, debug=None):
+    if not isinstance(cmd, list):
+        cmd = cmd.split()
+    _kpod = KPOD_PATH
+    if storage is not None:
+        _kpod += ["-s", storage]
+    _kpod =+ cmd
+    if debug:
+        write_out(" ".join(cmd))
+    return check_output(_kpod, env=os.environ)

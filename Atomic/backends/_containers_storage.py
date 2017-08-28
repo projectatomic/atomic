@@ -6,6 +6,10 @@ from abc import abstractmethod, ABCMeta, abstractproperty
 from Atomic.objects.image import Image
 from Atomic.objects.container import Container
 import os
+import json
+from dateutil.parser import parse as dateparse
+import datetime as DT
+import time
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -84,12 +88,47 @@ class ContainersStorageBackend(object): #pylint: disable=metaclass-assignment
         """
         raise UnderDevelopment()
 
+    # This needs to be fixed if the notion of dangling becomes real
+    # for containers-image.
+
+    def _make_container(self, container, con_struct, deep=False):
+        con_obj = Container(container, backend=self)
+        con_obj.id = con_struct['id']
+        con_obj.image = con_struct['image_id']
+        con_obj.image_name = con_struct['image']
+        con_obj.created = time.mktime(time.strptime(con_struct['createdAt'].split(".")[0], "%Y-%m-%dT%H:%M:%S"))
+        con_obj.status = con_struct['status']
+        con_obj.state = con_obj.status.split()[0]
+        con_obj.name = con_struct['names']
+        con_obj.labels = con_struct['labels']
+        con_obj.running = True if con_obj.status.lower().startswith("up") else False
+        con_obj.runtime = "runc"
+
+        return con_obj
+
     def get_containers(self):
         """
         Get containers for the backend
         :return: list of container objects
         """
-        raise UnderDevelopment()
+        containers = json.loads(util.kpod(["ps", "-a", "--format", "json"]))
+        container_objects = []
+        for container in containers:
+            container_objects.append(self._make_container(container['id'], container))
+        return container_objects
+
+    def _make_image(self, image, img_struct, deep=False, remote=False):
+        img_obj = Image(image, remote=remote)
+        img_obj.backend = self
+        if not remote:
+            img_obj.id = img_struct['id']
+            img_obj.repotags = img_struct['names']
+            img_obj.created = DT.datetime.strptime(img_struct['created'], "%b %d, %Y %H:%M").strftime("%Y-%m-%d %H:%M")
+            img_obj.size = img_struct['size']
+            img_obj.virtual_size = img_obj.size
+            img_obj.version = img_obj.version
+            img_obj.digest = img_struct['digest']
+        return img_obj
 
     def get_images(self, get_all=False):
         """
@@ -97,7 +136,16 @@ class ContainersStorageBackend(object): #pylint: disable=metaclass-assignment
         :param get_all: bool
         :return:  list of image objects
         """
-        raise UnderDevelopment()
+        images = json.loads(util.kpod(["images", "--format", "json"]))
+        image_objects = []
+        for image in images:
+            image_objects.append(self._make_image(image['id'], image))
+        return image_objects
+
+    def get_dangling_images(self):
+        images = json.loads(util.kpod(["images", "--filter", "dangling=true", "--format", "json"]))
+        return [x['id'] for x in images]
+
 
     def delete_image(self, image, force=False):
         """
