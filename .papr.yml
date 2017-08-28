@@ -52,3 +52,4 @@ packages:
   - python3-coverage
   - rpm-build
   - make
+  - python3-PyYAML
