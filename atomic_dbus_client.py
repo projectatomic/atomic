@@ -198,8 +198,8 @@ class AtomicDBus (object):
         return ret
 
     @polkit.enable_proxy
-    def Verify(self, image):
-        ret = self.dbus_object.Verify(image, dbus_interface="org.atomic")
+    def Verify(self, image, no_validate, verbose, storage):
+        ret = self.dbus_object.Verify(image, no_validate, verbose, storage, dbus_interface="org.atomic")
         return ret
 
     @polkit.enable_proxy
