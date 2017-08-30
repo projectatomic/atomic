@@ -1511,6 +1511,11 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             except subprocess.CalledProcessError:
                 pass
 
+        # rm the systemd service file as first step, so we are sure the service cannot be started again
+        # once we start deleting files.
+        if os.path.exists(unitfileout):
+            os.unlink(unitfileout)
+
         if os.path.exists(tmpfilesout):
             try:
                 self._systemd_tmpfiles("--remove", tmpfilesout)
@@ -1526,17 +1531,21 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if installed_files:
             RPMHostInstall.rm_add_files_to_host(installed_files, None)
 
-        if os.path.lexists("%s/%s" % (checkout, name)):
-            os.unlink("%s/%s" % (checkout, name))
-        for deploy in ["0", "1"]:
-            if os.path.exists("%s/%s.%s" % (checkout, name, deploy)):
-                shutil.rmtree("%s/%s.%s" % (checkout, name, deploy))
-
-        if os.path.exists(unitfileout):
-            os.unlink(unitfileout)
-
         if rpm_installed:
             RPMHostInstall.uninstall_rpm(rpm_installed.replace(".rpm", ""))
+
+        # Until the symlink and the deployment are in place, we can attempt the uninstall again.
+        # So treat as fatal each failure that happens before we rm the symlink.
+        symlink_path = os.path.join(checkout, name)
+        if os.path.lexists(symlink_path):
+            os.unlink(symlink_path)
+
+        # Nothing more left, rm -rf the deployments, if this fails "images prune" will take care
+        # of it.
+        for deploy in ["0", "1"]:
+            deploy_path = os.path.join(checkout, "{}.{}".format(name, deploy))
+            if os.path.exists(deploy_path):
+                shutil.rmtree(deploy_path)
 
     def prune_ostree_images(self):
         """
