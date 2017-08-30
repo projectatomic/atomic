@@ -1550,6 +1550,31 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         refs = {}
         app_refs = []
 
+        # Check for dangling checkouts that couldn't be deleted on uninstall.
+        checkouts = self._get_system_checkout_path()
+        for i in os.listdir(checkouts):
+            if i[0] == '.':
+                continue
+            if i[-2:] not in [".0", ".1"]:
+                continue
+
+            container = i[:-2]
+
+            # Check if the container is still installed.
+            if os.path.lexists(os.path.join(checkouts, container)):
+                continue
+
+            fullpath = os.path.join(checkouts, i)
+            if not os.path.isdir(fullpath):
+                continue
+
+            # If we got here, the deployment is not related to an installed
+            # container, so delete it.
+            try:
+                shutil.rmtree(fullpath)
+            except OSError:
+                util.write_err("Could not remove directory {}".format(fullpath))
+
         for i in repo.list_refs()[1]:
             if i.startswith(OSTREE_OCIIMAGE_PREFIX):
                 if len(i) == len(OSTREE_OCIIMAGE_PREFIX) + 64:
