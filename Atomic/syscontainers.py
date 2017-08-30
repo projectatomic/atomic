@@ -1516,6 +1516,11 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if os.path.exists(unitfileout):
             os.unlink(unitfileout)
 
+        try:
+            self._systemctl_command("daemon-reload")
+        except subprocess.CalledProcessError:
+            pass
+
         if os.path.exists(tmpfilesout):
             try:
                 self._systemd_tmpfiles("--remove", tmpfilesout)
