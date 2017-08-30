@@ -5,6 +5,7 @@ import Atomic.util as util
 from abc import abstractmethod, ABCMeta, abstractproperty
 from Atomic.objects.image import Image
 from Atomic.objects.container import Container
+from Atomic.trust import Trust
 import os
 import json
 from dateutil.parser import parse as dateparse
@@ -19,7 +20,7 @@ except ImportError:
 
 class UnderDevelopment(Exception):
     def __init__(self):
-        super(UnderDevelopment, self).__init__("This function for containers_storage is still under development.")
+        super(UnderDevelopment, self).__init__("This function for containers-storage is still under development.")
 
 
 class ContainersStorageBackend(object): #pylint: disable=metaclass-assignment
@@ -28,7 +29,7 @@ class ContainersStorageBackend(object): #pylint: disable=metaclass-assignment
 
     @property
     def backend(self):
-        return 'containers_storage'
+        return 'containers-storage'
 
     def inspect_image(self, image):
         """
@@ -53,7 +54,26 @@ class ContainersStorageBackend(object): #pylint: disable=metaclass-assignment
         :param pull_args:
         :return:
         """
-        raise UnderDevelopment()
+        debug = kwargs.get('debug', False)
+        fq_name = remote_image_obj.fq_name
+        registry, _, _, tag, _ = util.Decompose(fq_name).all
+        if not image.endswith(tag):
+            image += ":{}".format(tag)
+        if '@sha256:' in image:
+            image = image.replace("@sha256:", ":")
+
+        insecure = False
+        registries_config = util.load_registries_from_yaml()
+        if "insecure_registries" in registries_config:
+            if registry in registries_config['insecure_registries']:
+                insecure = True
+        source = "docker://{}".format(image)
+        dest = "containers-storage:{}".format(image)
+        trust = Trust()
+        trust.discover_sigstore(fq_name)
+        util.write_out("Pulling {} ...".format(fq_name))
+        util.skopeo_copy(source, dest, debug=debug, insecure=insecure, policy_filename=trust.policy_filename)
+        return 0
 
     def install(self, image, name, **kwargs):
         """
@@ -129,6 +149,14 @@ class ContainersStorageBackend(object): #pylint: disable=metaclass-assignment
             img_obj.version = img_obj.version
             img_obj.digest = img_struct['digest']
         return img_obj
+
+    def make_remote_image(self, image):
+        img_obj = self._make_remote_image(image)
+        img_obj.populate_remote_inspect_info()
+        return img_obj
+
+    def _make_remote_image(self, image):
+        return self._make_image(image, None, remote=True)
 
     def get_images(self, get_all=False):
         """

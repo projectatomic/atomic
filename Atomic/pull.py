@@ -49,6 +49,8 @@ class Pull(Atomic):
                 if remote_image_obj.is_system_type and not storage_set:
                     be = be_utils.get_backend_from_string('ostree')
                     be_utils.message_backend_change('docker', 'ostree')
+            elif be.backend == "containers-storage":
+                remote_image_obj = be.make_remote_image(self.args.image)
             else:
                 remote_image_obj = None
             be.pull_image(self.args.image, remote_image_obj, debug=self.args.debug, assumeyes=self.args.assumeyes)
