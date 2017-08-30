@@ -1580,7 +1580,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 ref = OSTree.parse_refspec(k)
                 util.write_out("Deleting %s" % k)
                 repo.set_ref_immediate(ref[1], ref[2], None)
-        repo.prune(OSTree.RepoPruneFlags.NONE, -1)
+        repo.prune(OSTree.RepoPruneFlags.REFS_ONLY, -1)
         self._prune_storage(repo)
 
 
