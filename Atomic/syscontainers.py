@@ -1441,11 +1441,13 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if not self.display:
             util.check_call(cmd)
 
-    def _systemctl_command(self, command, name=None, quiet=False):
+    def _systemctl_command(self, command, name=None, now=False, quiet=False):
         cmd = ["systemctl"]
         if self.user:
             cmd.append("--user")
         cmd.append(command)
+        if now:
+            cmd.append("--now")
         if name:
             cmd.append(name)
         if not quiet:
@@ -1505,11 +1507,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
         if has_container_service:
             try:
-                self._systemctl_command("stop", name)
-            except subprocess.CalledProcessError:
-                pass
-            try:
-                self._systemctl_command("disable", name)
+                self._systemctl_command("disable", name, now=True)
             except subprocess.CalledProcessError:
                 pass
 
