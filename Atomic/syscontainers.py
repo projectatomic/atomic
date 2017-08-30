@@ -521,7 +521,7 @@ class SystemContainers(object):
         return real_path
 
     def _checkout(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False, remote=None, prefix=None, installed_files=None, system_package='no'):
-        destination = destination or "%s/%s.%d" % (self._get_system_checkout_path(), name, deployment)
+        destination = destination or os.path.join(self._get_system_checkout_path(), "{}.{}".format(name, deployment))
         unitfileout, tmpfilesout = self._get_systemd_destination_files(name, prefix)
 
         if not upgrade:
@@ -628,13 +628,13 @@ class SystemContainers(object):
 
         if "CONF_DIRECTORY" not in values:
             if self.user:
-                values["CONF_DIRECTORY"] = "%s/.config" % HOME
+                values["CONF_DIRECTORY"] = os.path.join(HOME, ".config")
             else:
                 values["CONF_DIRECTORY"] = "/etc"
 
         if "STATE_DIRECTORY" not in values:
             if self.user:
-                values["STATE_DIRECTORY"] = "%s/.data" % HOME
+                values["STATE_DIRECTORY"] = os.path.join(HOME, ".data")
             else:
                 values["STATE_DIRECTORY"] = "/var/lib"
 
@@ -888,7 +888,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             shutil.copyfile(tmpfilesout, os.path.join(prefix or "/", destination, "tmpfiles-%s.conf" % name))
 
         if not prefix:
-            sym = "%s/%s" % (self._get_system_checkout_path(), name)
+            sym = os.path.join(self._get_system_checkout_path(), name)
             if os.path.exists(sym):
                 os.unlink(sym)
             os.symlink(destination, sym)
@@ -903,7 +903,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if prefix:
             return values
 
-        sym = "%s/%s" % (self._get_system_checkout_path(), name)
+        sym = os.path.join(self._get_system_checkout_path(), name)
         if os.path.exists(sym):
             os.unlink(sym)
         os.symlink(destination, sym)
@@ -958,7 +958,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             return location
 
         if self.user:
-            return "%s/.containers/repo" % HOME
+            return os.path.join(HOME, ".containers/repo")
 
         return self.get_atomic_config_item(["ostree_repository"]) or "/ostree/repo"
 
@@ -1467,22 +1467,22 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         """
         if len(name) == 0:
             raise ValueError("Invalid container name")
-        path = "%s/%s" % (self._get_system_checkout_path(), name)
+        path = os.path.join(self._get_system_checkout_path(), name)
         if os.path.exists(path):
             return path
 
-        path = "%s/%s" % (self._get_preinstalled_containers_path(), name)
+        path = os.path.join(self._get_preinstalled_containers_path(), name)
         if os.path.exists(path):
             return path
 
         return None
 
     def _is_preinstalled_container(self, name):
-        path = "%s/%s" % (self._get_system_checkout_path(), name)
+        path = os.path.join(self._get_system_checkout_path(), name)
         if os.path.exists(path):
             return False
 
-        path = "%s/%s" % (self._get_preinstalled_containers_path(), name)
+        path = os.path.join(self._get_preinstalled_containers_path(), name)
         return os.path.exists(path)
 
     def uninstall(self, name):
