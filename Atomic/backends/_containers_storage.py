@@ -31,13 +31,19 @@ class ContainersStorageBackend(object): #pylint: disable=metaclass-assignment
     def backend(self):
         return 'containers-storage'
 
+    def _inspect_image(self, image):
+        return json.loads(util.kpod(['inspect', image]))
+
     def inspect_image(self, image):
         """
         Returns the results of an inspected image as an image object
         :param image:
         :return: img_obj
         """
-        raise UnderDevelopment()
+        inspect_data = self._inspect_image(image)
+        if not inspect_data:
+            return None
+        return self._make_image(image, inspect_data, deep=True)
 
     def inspect_container(self, container):
         """
@@ -140,14 +146,44 @@ class ContainersStorageBackend(object): #pylint: disable=metaclass-assignment
     def _make_image(self, image, img_struct, deep=False, remote=False):
         img_obj = Image(image, remote=remote)
         img_obj.backend = self
-        if not remote:
-            img_obj.id = img_struct['id']
-            img_obj.repotags = img_struct['names']
-            img_obj.created = DT.datetime.strptime(img_struct['created'], "%b %d, %Y %H:%M").strftime("%Y-%m-%d %H:%M")
-            img_obj.size = img_struct['size']
+        if not remote and not deep:
             img_obj.virtual_size = img_obj.size
             img_obj.version = img_obj.version
-            img_obj.digest = img_struct['digest']
+            img_obj.repotags = img_struct['names']
+
+        if not remote:
+            try:
+                img_obj.id = img_struct['id']
+            except KeyError:
+                img_obj.id = img_struct['ID']
+            try:
+                img_obj.created = DT.datetime.strptime(img_struct['created'], "%b %d, %Y %H:%M").strftime("%Y-%m-%d %H:%M")
+            except KeyError:
+                img_obj.created = time.mktime(time.strptime(img_struct['Created'].split(".")[0], "%Y-%m-%dT%H:%M:%S"))
+            try:
+                img_obj.size = img_struct['size']
+            except KeyError:
+                img_obj.size = img_struct['Size']
+            try:
+                img_obj.digest = img_struct['digest']
+            except KeyError:
+                img_obj.digest = img_struct['Digest']
+
+        if deep:
+            img_obj.deep = True
+            img_obj.repotags = img_struct['Tags']
+            img_obj.config = img_struct['Config'] or {}
+            img_obj.labels = img_obj.config.get("Labels", None)
+            img_obj.os = img_struct['OS']
+            img_obj.arch = img_struct['Architecture']
+            img_obj.graph_driver = img_struct['GraphDriver']
+            img_obj.version = img_obj.get_label('Version')
+            img_obj.release = img_obj.get_label('Release')
+            # kpod inspect has no Parent right now
+            #img_obj.parent = img_struct['Parent']
+            img_obj.original_structure = img_struct
+            img_obj.cmd = img_obj.original_structure['Config']['Cmd']
+
         return img_obj
 
     def make_remote_image(self, image):
@@ -182,7 +218,12 @@ class ContainersStorageBackend(object): #pylint: disable=metaclass-assignment
         :param force:
         :return:
         """
-        raise UnderDevelopment()
+        assert(image is not None)
+        cmd = ["rmi"]
+        if force:
+            cmd.append("-f")
+        cmd.append(image)
+        util.kpod(cmd)
 
     def delete_container(self, container, force=False):
         raise UnderDevelopment()
@@ -202,7 +243,10 @@ class ContainersStorageBackend(object): #pylint: disable=metaclass-assignment
         :param img:
         :return:  img_obj or None
         """
-        raise UnderDevelopment()
+        img_obj = self.inspect_image(img)
+        if img_obj:
+            return img_obj
+        return None
 
     def has_container(self, container):
         """
