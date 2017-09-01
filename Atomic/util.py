@@ -1089,10 +1089,10 @@ class ImageAlreadyExists(Exception):
 def kpod(cmd, storage=None, debug=None):
     if not isinstance(cmd, list):
         cmd = cmd.split()
-    _kpod = KPOD_PATH
+    _kpod = [KPOD_PATH]
     if storage is not None:
         _kpod += ["-s", storage]
-    _kpod =+ cmd
+    _kpod += cmd
     if debug:
         write_out(" ".join(cmd))
     return check_output(_kpod, env=os.environ)
