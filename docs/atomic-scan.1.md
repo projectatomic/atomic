@@ -54,6 +54,12 @@ Select a scan_type other than the default.
   Rootfs path to scan.  Can provide _--rootfs_ multiple times.
   Note: SELinux separation will be disabled for --rootfs scans, but all other container
   separation will still be in place.
+  
+**--remediate**
+  Allows the scanner to run a remediation script when scanning is complete.  The remediation script is provided
+  by the scanner itself.  
+  
+  **Note:** not all scanners provide remediation scripts.
 
 # EXAMPLES
 List all the scanners atomic knows about and display their default scan types.
@@ -63,6 +69,11 @@ List all the scanners atomic knows about and display their default scan types.
 Scan an image named 'foo1'.
 
     atomic scan foo1
+    
+    
+Scan and remediate an image named 'foo1'.
+
+    atomic scan --remediate foo1
 
 Scan images named 'foo1' and 'foo2' and produce a detailed report.
 

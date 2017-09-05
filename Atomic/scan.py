@@ -20,6 +20,7 @@ def cli(subparser):
     scanp.add_argument("--scanner", choices=[x['scanner_name'] for x in scanners], default=None, help=_("define the intended scanner"))
     scanp.add_argument("--scan_type", default=None, help=_("define the intended scan type"))
     scanp.add_argument("--list", action='store_true', default=False, help=_("List available scanners"))
+    scanp.add_argument("--remediate", action='store_true', default=False, help=_("Perform remediation of scanned object"))
     scanp.add_argument("--scanner_args", default=None, help=_("Specify arguments to be passed to the scanner"))
     disp_group = scanp.add_mutually_exclusive_group()
     disp_group.add_argument("--verbose", action='store_true', default=False, help=_("Show more output from scanning container"))
@@ -123,6 +124,15 @@ class Scan(Atomic):
 
         self.results_dir = os.path.join(self.results, self.scanner, self.cur_time)
 
+        # Get remediation script
+        if self.args.remediate:
+            for i in self.scanners:
+                remediation_script = i.get("remediation_script", None)
+                break
+            if remediation_script is None:
+                raise ValueError("{} has no remediation script.".format(self.scanner))
+
+
         # Create the input directory
         if not os.path.exists(self.chroot_dir):
             os.makedirs(self.chroot_dir)
@@ -193,6 +203,12 @@ class Scan(Atomic):
             json_results = json.load(open(json_file))
             if json_results['Successful'].upper() != 'TRUE':
                 return 1
+
+        # Perform remediation
+        if self.args.remediate:
+            for i in self.scan_list:
+                self.remediate(remediation_script, i.id, self.results_dir)
+
         return 0
 
     def _get_scan_list(self):
@@ -517,3 +533,6 @@ class Scan(Atomic):
 
         with open(summary_file, 'w') as f:
             json.dump(persistent_data, f, indent=4)
+
+    def remediate(self, script, iid, results_dir):
+        util.check_call([sys.executable, script, '--id', iid, '--results_dir', results_dir])

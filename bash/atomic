@@ -250,6 +250,7 @@ _atomic_scan() {
 		--containers
 		--rootfs
 		--list
+		--remediate
 		--scanner
 		--scan_type
 		--verbose
