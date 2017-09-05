@@ -8,10 +8,9 @@ from Atomic.objects.container import Container
 from Atomic.trust import Trust
 import os
 import json
-from dateutil.parser import parse as dateparse
 import datetime as DT
 import time
-
+from Atomic.backends.backend import Backend
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
 except ImportError:
@@ -23,7 +22,7 @@ class UnderDevelopment(Exception):
         super(UnderDevelopment, self).__init__("This function for containers-storage is still under development.")
 
 
-class ContainersStorageBackend(object): #pylint: disable=metaclass-assignment
+class ContainersStorageBackend(Backend): #pylint: disable=metaclass-assignment
     # Mark the class as abstract
     __metaclass__ = ABCMeta
 
@@ -45,13 +44,19 @@ class ContainersStorageBackend(object): #pylint: disable=metaclass-assignment
             return None
         return self._make_image(image, inspect_data, deep=True)
 
+    def _inspect_container(self, container):
+        return json.loads(util.kpod(['inspect', container]))
+
     def inspect_container(self, container):
         """
         Inspect a container
         :param container:
         :return: con_obj
         """
-        raise UnderDevelopment()
+        inspect_data = self._inspect_container(container)
+        if inspect_data:
+            return self._make_container(container, inspect_data, deep=True)
+        return None
 
     def pull_image(self, image, remote_image_obj, **kwargs):
         """
@@ -119,16 +124,28 @@ class ContainersStorageBackend(object): #pylint: disable=metaclass-assignment
 
     def _make_container(self, container, con_struct, deep=False):
         con_obj = Container(container, backend=self)
-        con_obj.id = con_struct['id']
-        con_obj.image = con_struct['image_id']
-        con_obj.image_name = con_struct['image']
-        con_obj.created = time.mktime(time.strptime(con_struct['createdAt'].split(".")[0], "%Y-%m-%dT%H:%M:%S"))
-        con_obj.status = con_struct['status']
-        con_obj.state = con_obj.status.split()[0]
-        con_obj.name = con_struct['names']
-        con_obj.labels = con_struct['labels']
-        con_obj.running = True if con_obj.status.lower().startswith("up") else False
-        con_obj.runtime = "runc"
+        if not deep:
+            con_obj.id = con_struct['id']
+            con_obj.image = con_struct['image_id']
+            con_obj.image_name = con_struct['image']
+            con_obj.created = time.mktime(time.strptime(con_struct['createdAt'].split(".")[0], "%Y-%m-%dT%H:%M:%S"))
+            con_obj.status = con_struct['status']
+            con_obj.state = con_obj.status.split()[0]
+            con_obj.name = con_struct['names']
+            con_obj.labels = con_struct['labels']
+            con_obj.running = True if con_obj.status.lower().startswith("up") else False
+            con_obj.runtime = "runc"
+        else:
+            con_obj.id = con_struct['ID']
+            con_obj.image = con_struct['ImageID']
+            con_obj.image_name = con_struct['Image']
+            con_obj.created = time.mktime(time.strptime(con_struct['State']['created'].split(".")[0], "%Y-%m-%dT%H:%M:%S"))
+            con_obj.command = con_struct['Config']['Cmd']
+            con_obj.state = con_struct['State']['status']
+            con_obj.running = True if con_obj.state.upper() not in ['STOPPED'] else False
+            con_obj.name = con_struct['Name']
+            con_obj.labels = con_struct['Labels']
+            con_obj.original_structure = con_struct
 
         return con_obj
 
@@ -257,7 +274,10 @@ class ContainersStorageBackend(object): #pylint: disable=metaclass-assignment
         :param container:
         :return:
         """
-        raise UnderDevelopment()
+        con_obj = self.inspect_container(container)
+        if con_obj:
+            return con_obj
+        return None
 
     def validate_layer(self, layer):
         raise UnderDevelopment()
