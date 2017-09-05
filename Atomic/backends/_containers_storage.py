@@ -235,7 +235,9 @@ class ContainersStorageBackend(object): #pylint: disable=metaclass-assignment
         raise UnderDevelopment()
 
     def prune(self):
-        raise UnderDevelopment()
+        for iid in self.get_dangling_images():
+            self.delete_image(iid, force=True)
+            util.write_out("Removed dangling Image {}".format(iid))
 
     def has_image(self, img):
         """
