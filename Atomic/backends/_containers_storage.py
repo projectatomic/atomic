@@ -270,5 +270,6 @@ class ContainersStorageBackend(object): #pylint: disable=metaclass-assignment
             return True
         return False
 
-    def tag_image(self, src, dest):
-        raise UnderDevelopment()
+    def tag_image(self, _src, _dest):
+        cmd = ['tag', _src, _dest]
+        return util.kpod(cmd)
