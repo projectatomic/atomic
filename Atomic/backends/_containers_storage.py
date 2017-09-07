@@ -147,6 +147,7 @@ class ContainersStorageBackend(object): #pylint: disable=metaclass-assignment
         img_obj = Image(image, remote=remote)
         img_obj.backend = self
         if not remote and not deep:
+            img_obj.size = img_struct['size']
             img_obj.virtual_size = img_obj.size
             img_obj.version = img_obj.version
             img_obj.repotags = img_struct['names']
