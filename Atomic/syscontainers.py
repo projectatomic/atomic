@@ -1656,7 +1656,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         else:
             return reg, image, "latest"
 
-    def _convert_to_skopeo(self, image):
+    def _solve_image(self, image):
         insecure = "http:" in image
 
         for i in ["oci:", "http:", "https:"]:
@@ -1667,6 +1667,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 image = util.find_remote_image(client, image) or image
         except NoDockerDaemon:
             pass
+        return insecure, image
+
+    def _convert_to_skopeo(self, image):
+        insecure, image = self._solve_image(image)
 
         if insecure:
             return ["--insecure"], "docker://" + image
@@ -1872,9 +1876,11 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         destdir = checkout if os.path.exists(checkout) else None
         temp_dir = tempfile.mkdtemp(prefix=".", dir=destdir)
 
+        insecure, img = self._solve_image(img)
+
         destination = "ostree:{}@{}".format(img, repo)
         try:
-            util.skopeo_copy("docker://" + img, destination, dest_ostree_tmp_dir=temp_dir)
+            util.skopeo_copy("docker://" + img, destination, dest_ostree_tmp_dir=temp_dir, insecure=insecure)
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
         return True
