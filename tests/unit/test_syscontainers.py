@@ -143,5 +143,33 @@ class TestSystemContainers_container_exec(unittest.TestCase):
             shutil.rmtree(tmpd)
 
 
+class TestSystemContainers_get_skopeo_args(unittest.TestCase):
+    """
+    Unit tests for the SystemContainres._get_skopeo_args method.
+    """
+
+    def setUp(self):
+        self.sc = SystemContainers()
+
+    def test_get_skopeo_args(self):
+        """
+        Verify _get_skopeo_args return proper data when passing in different image uris.
+        """
+        for test_image, expected_insecure, expected_image in (
+                # Explicitly insecure
+                ('http:docker.io/busybox:latest', True, 'docker.io/busybox:latest'),
+                # Implicitly secure
+                ('docker.io/busybox:latest', False, 'docker.io/busybox:latest'),
+                ('https:docker.io/busybox:latest', False, 'docker.io/busybox:latest'),
+                ('oci:docker.io/busybox:latest', False, 'docker.io/busybox:latest')):
+            # Make the call
+            insecure, image = self.sc._get_skopeo_args(test_image)
+            # Verify the results
+            self.assertEqual(expected_insecure, insecure)
+            self.assertEqual(expected_image, image)
+
+    # def test_get_skopeo_args_with_full_resolution(self):
+
+
 if __name__ == '__main__':
     unittest.main()
