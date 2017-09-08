@@ -59,7 +59,7 @@ class OSTreeBackend(Backend):
         img_obj.registry, img_obj.repo, img_obj.image, img_obj.tag, _ = Decompose(image).all
         img_obj.repotags = info['RepoTags']
         img_obj.created = info['Created']
-        img_obj.size = None
+        img_obj.size = info.get('VirtualSize', None)
         img_obj.virtual_size = info.get('VirtualSize', None)
         img_obj.original_structure = info
         img_obj.deep = True
