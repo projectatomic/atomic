@@ -1656,21 +1656,22 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         else:
             return reg, image, "latest"
 
-    def _solve_image(self, image):
+    def _get_skopeo_args(self, image, full_resolution=False):
         insecure = "http:" in image
 
         for i in ["oci:", "http:", "https:"]:
             image = image.replace(i, "")
 
-        try:
-            with AtomicDocker() as client:
-                image = util.find_remote_image(client, image) or image
-        except NoDockerDaemon:
-            pass
+        if full_resolution:
+            try:
+                with AtomicDocker() as client:
+                    image = util.find_remote_image(client, image) or image
+            except NoDockerDaemon:
+                pass
         return insecure, image
 
     def _convert_to_skopeo(self, image):
-        insecure, image = self._solve_image(image)
+        insecure, image = self._get_skopeo_args(image, full_resolution=True)
 
         if insecure:
             return ["--insecure"], "docker://" + image
@@ -1876,7 +1877,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         destdir = checkout if os.path.exists(checkout) else None
         temp_dir = tempfile.mkdtemp(prefix=".", dir=destdir)
 
-        insecure, img = self._solve_image(img)
+        # Pass the original name to "skopeo copy" so we don't resolve it in atomic
+        insecure, img = self._get_skopeo_args(img, full_resolution=False)
 
         destination = "ostree:{}@{}".format(img, repo)
         try:
