@@ -54,7 +54,7 @@ ExecStartPre=$EXEC_STARTPRE
 ExecStart=$EXEC_START
 ExecStop=$EXEC_STOP
 ExecStopPost=$EXEC_STOPPOST
-Restart=on-crash
+Restart=on-failure
 WorkingDirectory=$DESTDIR
 PIDFile=$PIDFILE
 
