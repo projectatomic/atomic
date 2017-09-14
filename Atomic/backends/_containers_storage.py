@@ -250,7 +250,10 @@ class ContainersStorageBackend(Backend): #pylint: disable=metaclass-assignment
         raise UnderDevelopment()
 
     def stop_container(self, con_obj, **kwargs):
-        raise UnderDevelopment()
+        # If we plant to honor stop labels here, we will
+        # need to implement that when kpod exec is available.
+        return util.kpod(["stop", con_obj.id])
+
 
     def prune(self):
         for iid in self.get_dangling_images():
