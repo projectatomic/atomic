@@ -262,7 +262,7 @@ class SystemContainers(object):
         if not image.startswith('dockertar:/') and not (image.startswith("docker:") and image.count(':') > 1):
             labels = self.inspect_system_image(image).get('Labels', {})
             # And we have a run-once label
-            if labels.get('atomic.run') == 'once':
+            if labels and labels.get('atomic.run') == 'once':
                 # Execute the _run_once method and set the return_value
                 return_value = self._run_once(image, name)
         # If we don't have a return_value then use the traditional install
