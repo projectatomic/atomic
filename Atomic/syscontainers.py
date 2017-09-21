@@ -324,7 +324,7 @@ class SystemContainers(object):
             image_id = rev
             if image_manifest:
                 image_manifest = json.loads(image_manifest)
-                image_id = SystemContainers._get_image_id_from_manifest(image_manifest) or image_id
+                image_id = SystemContainers._get_image_id(repo, rev, image_manifest) or image_id
 
             self._amend_values(values, manifest, name, image, image_id, base_dir)
 
@@ -555,12 +555,16 @@ class SystemContainers(object):
         return "$EXEC_STOPPOST" in template and "$PIDFILE" in template
 
     @staticmethod
-    def _get_image_id_from_manifest(image_manifest):
+    def _get_image_id(repo, rev, image_manifest):
         # Allow to override the image id read from the manifest so that
         # we can test atomic updates even though the image itself was not
         # changed.  This must be used only for tests.
         if os.environ.get("ATOMIC_OSTREE_TEST_FORCE_IMAGE_ID"):
             return os.environ.get("ATOMIC_OSTREE_TEST_FORCE_IMAGE_ID")
+
+        digest = SystemContainers._get_commit_metadata(repo, rev, "docker.digest")
+        if digest is not None:
+            return SystemContainers._drop_sha256_prefix(digest)
 
         if 'Digest' in image_manifest:
             image_id = image_manifest['Digest']
@@ -784,7 +788,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         image_id = rev
         if image_manifest:
             image_manifest = json.loads(image_manifest)
-            image_id = SystemContainers._get_image_id_from_manifest(image_manifest) or image_id
+            image_id = SystemContainers._get_image_id(repo, rev, image_manifest) or image_id
 
         if os.path.exists(unitfile):
             with open(unitfile, 'r') as infile:
@@ -1339,7 +1343,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             virtual_size = self._get_virtual_size(repo, manifest)
             if 'Labels' in manifest:
                 labels = manifest['Labels']
-            image_id = SystemContainers._get_image_id_from_manifest(manifest) or image_id
+            image_id = SystemContainers._get_image_id(repo, commit_rev, manifest) or image_id
 
         if self.user:
             image_type = "user"
