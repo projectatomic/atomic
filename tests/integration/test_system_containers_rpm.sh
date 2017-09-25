@@ -74,6 +74,8 @@ assert_matches "/usr/lib/containers/atomic/atomic-test-system" rpm_file_list
 # now install the package to the system
 ATOMIC_OSTREE_TEST_FORCE_IMAGE_ID=563246d74eda8a9337a5ad1f019d1c7aaa221c5288f16b975d230644017953b1 ${ATOMIC} install --system --system-package=yes atomic-test-system-hostfs
 
+test -e /usr/local/placeholder-lib
+
 teardown () {
     set +o pipefail
     ${ATOMIC} uninstall --storage ostree atomic-test-system-hostfs || true
@@ -116,10 +118,14 @@ if ${ATOMIC} install --system --system-package=yes --set RECEIVER=Mars --name at
 	assert_not_reached "Conflicting container installation succedeed"
 fi
 
+test -e /usr/local/placeholder-lib
+
 test \! -e /etc/systemd/system/atomic-test-system-broken.service
 test \! -e /etc/tmpfiles.d/atomic-test-system-broken.conf
 
 ${ATOMIC} uninstall --storage ostree atomic-test-system-hostfs
+
+test \! -e /usr/local/placeholder-lib
 
 # check that auto behaves in the same way as yes with this container.
 ${ATOMIC} install --system --system-package=auto --set RECEIVER=Jupiter atomic-test-system-hostfs
@@ -130,6 +136,8 @@ assert_matches "Jupiter" /usr/local/lib/secret-message-template
 rpm -ql $RPM_NAME > rpm_file_list_2
 cmp rpm_file_list rpm_file_list_2
 ${ATOMIC} uninstall --storage ostree atomic-test-system-hostfs
+
+test \! -e /usr/local/placeholder-lib
 
 for i in /usr/local/lib/renamed-atomic-test-system-hostfs /usr/local/lib/secret-message /usr/local/lib/secret-message-template;
 do

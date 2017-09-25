@@ -272,8 +272,8 @@ class RpmWriter(object):
 
     def generate(self):
         self.all_files = []
-        for root, _, files in os.walk(self.root):
-            for f in files:
+        for root, dirs, files in os.walk(self.root):
+            for f in dirs + files:
                 path = os.path.join(root, f)
                 relpath = os.path.relpath(path, self.root)
                 if self.whitelist is None or "/%s" % relpath in self.whitelist:

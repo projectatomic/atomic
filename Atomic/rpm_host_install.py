@@ -11,7 +11,13 @@ class RPMHostInstall(object):
 
     @staticmethod
     def copyfile(src, dest):
-        if os.path.islink(src):
+        if os.path.isdir(src):
+            # add the directory only if it is empty, so we don't create directories that
+            # weren't added by us.  Anyway a non empty directory would be created by
+            # its children.
+            if len(os.listdir(src)) == 0:
+                os.mkdir(dest)
+        elif os.path.islink(src):
             linkto = os.readlink(src)
             os.symlink(linkto, dest)
         else:
@@ -45,11 +51,11 @@ class RPMHostInstall(object):
         hostfs = os.path.join(exports, "hostfs")
         new_installed_files = []
         if os.path.exists(hostfs):
-            for root, _, files in os.walk(hostfs):
+            for root, dirs, files in os.walk(hostfs):
                 rel_root_path = os.path.relpath(root, hostfs)
                 if not os.path.exists(os.path.join(prefix, rel_root_path)):
                     os.makedirs(os.path.join(prefix, rel_root_path))
-                for f in files:
+                for f in dirs + files:
                     src_file = os.path.join(root, f)
                     dest_path = os.path.join(prefix, rel_root_path, f)
                     rel_dest_path = os.path.join("/", rel_root_path, f)
@@ -111,9 +117,9 @@ class RPMHostInstall(object):
         files_to_install = installed_files or []
         if include_containers_file:
             files_to_install.append("/usr/lib/systemd/system/%s.service" % name)
-            for root, _, files in os.walk(os.path.join(rpm_content, "usr/lib/containers/atomic", name)):
+            for root, dirs, files in os.walk(os.path.join(rpm_content, "usr/lib/containers/atomic", name)):
                 rel_path = os.path.relpath(root, rpm_content)
-                for f in files:
+                for f in dirs + files:
                     p = os.path.join("/", rel_path, f)
                     files_to_install.append(p)
 
