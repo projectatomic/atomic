@@ -35,7 +35,9 @@ setup () {
     # Perform setup routines here.
     copy /etc/sysconfig/docker-storage-setup /etc/sysconfig/docker-storage-setup.atomic-tests-backup
     TEST_DEV_1=/dev/vdb
-    findmnt -o SOURCE | grep "^$TEST_DEV_1" | uniq | xargs -r umount
+    if findmnt -o SOURCE | grep "^$TEST_DEV_1"; then
+        findmnt -o SOURCE | grep "^$TEST_DEV_1" | uniq | xargs umount
+    fi
     wipefs -a "$TEST_DEV_1"
     TEST_DEV_1_pvs=${TEST_DEV_1}1
 
