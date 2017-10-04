@@ -673,6 +673,7 @@ class SystemContainers(object):
             pass
         return destination
 
+
     def _do_checkout(self, repo, name, img, upgrade, deployment, values, destination, unitfileout,
                      tmpfilesout, extract_only, remote, prefix=None, installed_files=None, system_package='no'):
         """
@@ -748,7 +749,7 @@ class SystemContainers(object):
                     for layer in layers:
                         rev_layer = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer.replace("sha256:", "")), True)[1]
                         if not rev_layer:
-                            raise ValueError("Layer not found: %s.  Please pull again the image" % layer.replace("sha256:", ""))
+                            raise ValueError("Layer not found: %s.  Please pull the image again" % layer.replace("sha256:", ""))
 
                         self._checkout_layer(repo, rootfs_fd, rootfs, rev_layer)
                 self._do_syncfs(rootfs, rootfs_fd)
@@ -1229,6 +1230,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         for i in layers:
             layer = i.replace("sha256:", "")
             commit = repo.read_commit(repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1])[1]
+            if not commit:
+                raise ValueError("Layer not found: %s.  Please pull the image again" % layer.replace("sha256:", ""))
             exports = commit.get_root().get_child("exports")
             if not exports.query_exists():
                 continue
@@ -1312,6 +1315,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
     def _inspect_system_branch(self, repo, imagebranch):
         if imagebranch.startswith(OSTREE_OCIIMAGE_PREFIX):
             commit_rev = repo.resolve_rev(imagebranch, False)[1]
+            if not commit_rev:
+                raise ValueError("Layer not found: %s.  Please pull the image again" % imagebranch.replace("sha256:", ""))
         else:
             imgs = self._resolve_image(repo, imagebranch, allow_multiple=True)
             if imgs is None:
@@ -1359,6 +1364,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         for i in SystemContainers.get_layers_from_manifest(manifest):
             layer = i.replace("sha256:", "")
             rev = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1]
+            if not rev:
+                return None
+
             size = self._get_commit_metadata(repo, rev, 'docker.size')
             if size == None:
                 return None
@@ -1607,7 +1615,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                         app_refs.append(i)
 
         def visit(rev):
-            manifest = self._image_manifest(repo, repo.resolve_rev(rev, True)[1])
+            commit_rev = repo.resolve_rev(rev, True)[1]
+            if not commit_rev:
+                raise ValueError("Layer not found: %s.  Please pull the image again" % rev.replace("sha256:", ""))
+            manifest = self._image_manifest(repo, commit_rev)
             if not manifest:
                 return
             for layer in SystemContainers.get_layers_from_manifest(json.loads(manifest)):
@@ -1713,6 +1724,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         imagebranch = SystemContainers._get_ostree_image_branch(image)
         commit_rev = repo.resolve_rev(imagebranch, True)
+        if not commit_rev:
+            raise ValueError("Layer not found: %s.  Please pull the image again" % imagebranch.replace("sha256:", ""))
         if not commit_rev[1]:
             return None
         return self._image_manifest(repo, commit_rev[1])
@@ -1857,6 +1870,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
     def _check_system_ostree_image(self, repo, img, upgrade):
         imagebranch = img.replace("ostree:", "", 1)
         current_rev = repo.resolve_rev(imagebranch, True)
+        if not current_rev:
+            raise ValueError("Internal error for image: %s.  Please pull the image again" % imagebranch)
         if not upgrade and current_rev[1]:
             return False
         remote, branch = imagebranch.split(":")
@@ -1865,6 +1880,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
     def _check_system_oci_image(self, repo, img, upgrade):
         imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(img))
         current_rev = repo.resolve_rev(imagebranch, True)
+        if not current_rev:
+            raise ValueError("Internal error for image: %s.  Please pull the image again" % imagebranch)
         if not upgrade and current_rev[1]:
             return False
 
@@ -2095,6 +2112,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                     break
 
         current_rev = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), False)[1]
+        if not current_rev:
+            raise ValueError("Layer not found: %s.  Please pull the image again" % layer.replace("sha256:", ""))
 
         it = OSTree.RepoCommitTraverseIter()
         it.init_commit(repo, repo.load_commit(current_rev)[1], OSTree.RepoCommitTraverseFlags.REPO_COMMIT_TRAVERSE_FLAG_NONE)
@@ -2115,7 +2134,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             return "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(img))
 
         repo = self._get_ostree_repo()
-        rev = repo.resolve_rev(get_image_branch(src), True)[1]
+        img_branch = get_image_branch(src)
+        rev = repo.resolve_rev(img_branch, True)[1]
+        if not rev:
+            raise ValueError("Internal error for image: %s.  Please pull the image again" % img_branch)
         repo.prepare_transaction()
         repo.transaction_set_ref(None, get_image_branch(dest), rev)
         repo.commit_transaction(None)
@@ -2156,7 +2178,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 branch = "{}{}".format(OSTREE_OCIIMAGE_PREFIX, SystemContainers._drop_sha256_prefix(layer))
                 rev_layer = repo.resolve_rev(branch, True)[1]
                 if not rev_layer:
-                    raise ValueError("Layer not found: %s.  Please pull again the image" % layer.replace("sha256:", ""))
+                    raise ValueError("Layer not found: %s.  Please pull the image again" % layer.replace("sha256:", ""))
 
                 self._checkout_layer(repo, rootfs_fd, rootfs, rev_layer)
             finally:
