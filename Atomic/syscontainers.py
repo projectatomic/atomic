@@ -1883,7 +1883,16 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if not current_rev:
             raise ValueError("Internal error for image: %s.  Please pull the image again" % imagebranch)
         if not upgrade and current_rev[1]:
-            return False
+            manifest = self._image_manifest(repo, current_rev[1])
+            layers = SystemContainers.get_layers_from_manifest(json.loads(manifest))
+            missing_layers = False
+            for layer in layers:
+                rev_layer = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer.replace("sha256:", "")), True)[1]
+                if not rev_layer:
+                    missing_layers = True
+                    break
+            if not missing_layers:
+                return False
 
         can_use_skopeo_copy = util.check_output([util.SKOPEO_PATH, "copy", "--help"]).decode().find("ostree") >= 0
 
