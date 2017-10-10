@@ -149,6 +149,7 @@ def image_by_name(img_name, images=None):
             images = c.images(all=False)
 
     valid_images = []
+    possible_images = []
     for i in images:
         if not i["RepoTags"]:
             continue
@@ -162,10 +163,18 @@ def image_by_name(img_name, images=None):
                     and matches(d_image, i_img):
                 valid_images.append(i)
                 break
-            if matches(i_img, d_image) and matches(i_tag, tag):
+            if matches(i_img, d_image) and matches(i_tag, tag) and reg == "":
                 valid_images.append(i)
                 break
-    return valid_images
+            if matches(i_img, d_image) and matches(i_tag, tag):
+                possible_images.append(i)
+                break
+
+    if len(valid_images) > 0:
+        return valid_images
+    if len(possible_images) == 1:
+        return possible_images
+    return []
 
 
 def subp(cmd, cwd=None, newline=False):
