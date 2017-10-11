@@ -668,7 +668,18 @@ class SystemContainers(object):
             sysroot = OSTree.Sysroot()
             sysroot.load()
             osname = sysroot.get_booted_deployment().get_osname()
-            destination = os.path.realpath(os.path.join("/ostree/deploy/", osname, os.path.relpath(destination, "/")))
+            ostree_destination = os.path.realpath(
+                os.path.join("/ostree/deploy/", osname, os.path.relpath(
+                    destination, "/")))
+
+            # Verify that content under the ostree destination shows up on destination.
+            # If it does, we use the ostree destination.
+            os.makedirs(os.path.dirname(destination))
+            dest_stat = os.stat(os.path.dirname(destination))
+            ostree_stat = os.stat(os.path.dirname(ostree_destination))
+            if dest_stat.st_dev == ostree_stat.st_dev and dest_stat.st_ino == ostree_stat.st_ino:
+                destination = ostree_destination
+
         except: #pylint: disable=bare-except
             pass
         return destination
