@@ -532,7 +532,7 @@ class SystemContainers(object):
         try:
             return self._do_checkout(repo, name, img, upgrade, deployment, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix, installed_files=installed_files,
                                      system_package=system_package)
-        except (ValueError, OSError, subprocess.CalledProcessError, KeyboardInterrupt) as e:
+        except (GLib.Error, ValueError, OSError, subprocess.CalledProcessError, KeyboardInterrupt) as e:
             try:
                 if not extract_only and not upgrade:
                     shutil.rmtree(destination)
