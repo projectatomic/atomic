@@ -659,6 +659,12 @@ class SystemContainers(object):
         values["IMAGE_ID"] = image_id
         return values
 
+    @staticmethod
+    def _are_on_the_same_filesystem(a, b):
+        a_stat = os.stat(a)
+        b_stat = os.stat(b)
+        return a_stat.st_dev == b_stat.st_dev and a_stat.st_ino == b_stat.st_ino
+
     def _canonicalize_location(self, destination):
         # Under Atomic, get the real deployment location if we're using the
         # system repo. It is needed to create the hard links.
@@ -674,10 +680,10 @@ class SystemContainers(object):
 
             # Verify that content under the ostree destination shows up on destination.
             # If it does, we use the ostree destination.
-            os.makedirs(os.path.dirname(destination))
-            dest_stat = os.stat(os.path.dirname(destination))
-            ostree_stat = os.stat(os.path.dirname(ostree_destination))
-            if dest_stat.st_dev == ostree_stat.st_dev and dest_stat.st_ino == ostree_stat.st_ino:
+            if not os.path.exists(os.path.dirname(destination)):
+                os.makedirs(os.path.dirname(destination))
+            if SystemContainers._are_on_the_same_filesystem(os.path.dirname(destination),
+                                                            os.path.dirname(ostree_destination)):
                 destination = ostree_destination
 
         except: #pylint: disable=bare-except
