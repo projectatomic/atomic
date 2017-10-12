@@ -260,6 +260,7 @@ class SystemContainers(object):
         return_value = None
         # If we don't have a dockertar file or a reference to a docker engine image
         if not image.startswith('dockertar:/') and not (image.startswith("docker:") and image.count(':') > 1):
+            image = util.remove_skopeo_prefixes(image)
             labels = self.inspect_system_image(image).get('Labels', {})
             # And we have a run-once label
             if labels and labels.get('atomic.run') == 'once':
