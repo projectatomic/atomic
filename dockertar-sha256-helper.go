@@ -14,6 +14,8 @@ func main() {
 		panic("One positional argument is required")
 	}
 	reader, err := os.Open(os.Args[1])
+	// Close the input file at the end of the function
+	defer reader.Close()
 	if err != nil {
 		os.Exit(1)
 	}
@@ -33,7 +35,8 @@ func main() {
 			panic(err)
 		}
 	}
+	// We must explicitly close before executing the sum
+	// as defer will cause an incorrect result
 	w.Close()
-
 	fmt.Printf("%x\n", sha_256.Sum(nil))
 }
