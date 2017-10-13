@@ -1,14 +1,18 @@
 package main
 
 import (
-	"fmt"
 	"compress/gzip"
-	"os"
-	"io"
 	"crypto/sha256"
+	"fmt"
+	"io"
+	"os"
 )
 
 func main() {
+	// Require one positional argument
+	if len(os.Args) != 2 {
+		panic("One positional argument is required")
+	}
 	reader, err := os.Open(os.Args[1])
 	if err != nil {
 		os.Exit(1)
