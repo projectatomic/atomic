@@ -1703,18 +1703,27 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             return reg, image, "latest"
 
     def _get_skopeo_args(self, image, full_resolution=False):
-        insecure = "http:" in image
+        """
+        Finds the real image name and if the registry is secure or not.
 
-        for i in ["oci:", "http:", "https:"]:
-            image = image.replace(i, "")
+        :param image: The image as given by the user.
+        :type image: str
+        :param full_resolution: If the image should be remotely resolved
+        :type full_resolution: bool
+        :returns: If the registry is secure and the real image name
+        :rtype: tuple(bool, str)
+        """
+        # Remove prefixes which we use to map to skopeo args
+        real_image = util.remove_skopeo_prefixes(image)
 
         if full_resolution:
             try:
                 with AtomicDocker() as client:
-                    image = util.find_remote_image(client, image) or image
+                    real_image = util.find_remote_image(client, real_image) or real_image
             except NoDockerDaemon:
                 pass
-        return insecure, image
+
+        return "http:" in image, real_image
 
     def _convert_to_skopeo(self, image):
         insecure, image = self._get_skopeo_args(image, full_resolution=True)
