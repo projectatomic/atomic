@@ -1217,9 +1217,12 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 created = info["created"] if "created" in info else 0
                 image = info["image"] if "image" in info else ""
 
-            with open(os.path.join(fullpath, "config.json"), "r") as config_file:
-                config = json.load(config_file)
-                command = u' '.join(config["process"]["args"])
+            command = ""
+            config_json = os.path.join(fullpath, "config.json")
+            if os.path.exists(config_json):
+                with open(config_json, "r") as config_file:
+                    config = json.load(config_file)
+                    command = u' '.join(config["process"]["args"])
 
             runtime = "bwrap-oci" if self.user else "runc"
             container = {'Image' : image, 'ImageID' : revision, 'Id' : x, 'Created' : created, 'Names' : [x],
