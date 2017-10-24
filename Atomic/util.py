@@ -40,6 +40,7 @@ BWRAP_OCI_PATH = os.environ.get("BWRAP_OCI", "/usr/bin/bwrap-oci")
 RUNC_PATH = os.environ.get("RUNC", "/bin/runc")
 SKOPEO_PATH = os.environ.get("SKOPEO_PATH", "/usr/bin/skopeo")
 KPOD_PATH = os.environ.get("KPOD_PATH", "/usr/bin/kpod")
+CAPSH_PATH = os.environ.get("CAPSH_PATH", "/usr/sbin/capsh")
 
 try:
     from subprocess import DEVNULL  # pylint: disable=no-name-in-module
@@ -1115,3 +1116,26 @@ def remove_skopeo_prefixes(image):
         if image.startswith(remove):
             image = image.replace(remove, '')
     return image
+
+def get_all_known_process_capabilities():
+    """
+    Get all the known process capabilities
+
+    :returns: The list of known capabilities
+    :rtype: list
+    """
+
+    with open("/proc/sys/kernel/cap_last_cap", 'r') as f:
+        last_cap = int(f.read())
+
+    mask = hex((1 << (last_cap + 1)) - 1)
+
+    out = subprocess.check_output([CAPSH_PATH, '--decode={}'.format(mask)], stderr=DEVNULL)
+
+    # The output looks like 0x0000003fffffffff=cap_chown,cap_dac_override,...
+    # so take only the part after the '='
+    caps = str(out.decode().split("=")[1].strip())
+
+    caps_list = [i.upper() for i in caps.split(',')]
+
+    return [i for i in caps_list if not i[0].isdigit()]

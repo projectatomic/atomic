@@ -6,6 +6,7 @@ from Atomic import util
 from Atomic.backends._docker import DockerBackend
 import time
 import os
+import re
 
 no_mock = True
 try:
@@ -182,6 +183,21 @@ class TestAtomicUtil(unittest.TestCase):
 
         # Reset environ back to the original
         os.environ = orig_environ
+
+    def test_get_all_known_process_capabilities(self):
+        capabilities = util.get_all_known_process_capabilities()
+        for item in ['CAP_CHOWN', 'CAP_SYS_ADMIN', 'CAP_MKNOD']:
+            self.assertIn(item, capabilities)
+
+        # Check that all the capabilities held by PID 1 are known.
+        with open('/proc/1/status', 'r') as f:
+            content = f.read()
+            bounding_set = re.search( r'CapBnd:\t(.*)\n', content, re.M|re.I).group(1)
+            out = util.check_output(['capsh', '--decode=%s' % bounding_set]).decode()
+            out = str(out.split("=")[1])
+            for i in out.strip().split(','):
+                if not i[0].isdigit():
+                    self.assertIn(i.upper(), capabilities)
 
 
 class MockIO(object):
