@@ -1583,7 +1583,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             RPMHostInstall.rm_add_files_to_host(installed_files, None)
 
         if rpm_installed:
-            RPMHostInstall.uninstall_rpm(rpm_installed.replace(".rpm", ""))
+            try:
+                RPMHostInstall.uninstall_rpm(rpm_installed.replace(".rpm", ""))
+            except subprocess.CalledProcessError:
+                pass
 
         # Until the symlink and the deployment are in place, we can attempt the uninstall again.
         # So treat as fatal each failure that happens before we rm the symlink.
