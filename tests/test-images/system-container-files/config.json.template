@@ -114,11 +114,9 @@
 	],
 	"hooks": {},
 	"linux": {
-		"capabilities": [
-			"CAP_AUDIT_WRITE",
-			"CAP_KILL",
-			"CAP_NET_BIND_SERVICE"
-		],
+	         "capabilities": {
+			"bounding": [${ALL_PROCESS_CAPABILITIES}]
+                },
 		"rlimits": [
 			{
 				"type": "RLIMIT_NOFILE",

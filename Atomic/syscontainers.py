@@ -64,7 +64,8 @@ WantedBy=multi-user.target
 TEMPLATE_FORCED_VARIABLES = ["DESTDIR", "NAME", "EXEC_START", "EXEC_STOP",
                              "EXEC_STARTPRE", "EXEC_STOPPOST", "HOST_UID",
                              "HOST_GID", "IMAGE_ID", "IMAGE_NAME"]
-TEMPLATE_OVERRIDABLE_VARIABLES = ["RUN_DIRECTORY", "STATE_DIRECTORY", "CONF_DIRECTORY", "UUID", "PIDFILE"]
+TEMPLATE_OVERRIDABLE_VARIABLES = ["RUN_DIRECTORY", "STATE_DIRECTORY", "CONF_DIRECTORY", "UUID", "PIDFILE",
+                                  "ALL_PROCESS_CAPABILITIES"]
 
 
 class SystemContainers(object):
@@ -616,6 +617,12 @@ class SystemContainers(object):
                 return True
         return False
 
+
+    @staticmethod
+    def _get_all_capabilities():
+        all_caps = util.get_all_known_process_capabilities()
+        return ",\n".join(['"%s"' % i for i in all_caps]) + "\n"
+
     def _amend_values(self, values, manifest, name, image, image_id, destination, prefix=None, unit_file_support_pidfile=False):
         # When installing a new system container, set values in this order:
         #
@@ -642,6 +649,9 @@ class SystemContainers(object):
                 values["STATE_DIRECTORY"] = os.path.join(HOME, ".data")
             else:
                 values["STATE_DIRECTORY"] = "/var/lib"
+
+        if "ALL_PROCESS_CAPABILITIES" not in values:
+            values["ALL_PROCESS_CAPABILITIES"] = SystemContainers._get_all_capabilities()
 
         if manifest is not None and "defaultValues" in manifest:
             for key, val in manifest["defaultValues"].items():
