@@ -390,6 +390,7 @@ _atomic_images_version() {
 _atomic_pull() {
 	local options_with_args="
 	      -t --type
+	      --src-creds
 	      --storage
 	"
 	local all_options="$options_with_args

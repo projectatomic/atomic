@@ -19,6 +19,8 @@ def cli(subparser):
                        help=_("Specify the storage. Default is currently '%s'.  You can"
                               " change the default by editing /etc/atomic.conf and changing"
                               " the 'default_storage' field." % _storage))
+    pullp.add_argument("--src-creds", dest="src_creds", default=None,
+                       help=_("Use USERNAME[:PASSWORD] for accessing the source registry."))
     pullp.add_argument("-t", "--type", dest="reg_type", default=None,
                        help=_("Pull from an alternative registry type."))
     pullp.add_argument("image", help=_("image id"))
@@ -40,6 +42,10 @@ class Pull(Atomic):
         if self.args.debug:
             write_out(str(self.args))
 
+        src_creds = getattr(self.args, 'src_creds', None)
+        if src_creds == "":
+            src_creds = None
+
         be_utils = BackendUtils()
         be = be_utils.get_backend_from_string(storage)
         self.args.policy_filename = self.policy_filename
@@ -53,7 +59,7 @@ class Pull(Atomic):
                 remote_image_obj = be.make_remote_image(self.args.image)
             else:
                 remote_image_obj = None
-            be.pull_image(self.args.image, remote_image_obj, debug=self.args.debug, assumeyes=self.args.assumeyes)
+            be.pull_image(self.args.image, remote_image_obj, debug=self.args.debug, assumeyes=self.args.assumeyes, src_creds=src_creds)
         except ValueError as e:
             raise ValueError("Failed: {}".format(e))
         return 0

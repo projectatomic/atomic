@@ -78,6 +78,9 @@ pulling from an atomic registry could be:
 **-h** **--help**
 Print usage statement
 
+**--src-creds=USERNAME[:PASSWORD]**
+Define the credentials to use with the source registry.
+
 **--storage=[ostree|docker]**
 Define the destination storage for the pulled image.
 
