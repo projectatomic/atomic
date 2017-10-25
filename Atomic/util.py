@@ -402,7 +402,7 @@ def skopeo_manifest_digest(manifest_file, debug=False):
     return check_output(cmd).rstrip().decode()
 
 def skopeo_copy(source, destination, debug=False, sign_by=None, insecure=False, policy_filename=None,
-                username=None, password=None, gpghome=None, dest_ostree_tmp_dir=None):
+                username=None, password=None, gpghome=None, dest_ostree_tmp_dir=None, src_creds=None):
 
     cmd = [SKOPEO_PATH]
     if policy_filename:
@@ -420,6 +420,9 @@ def skopeo_copy(source, destination, debug=False, sign_by=None, insecure=False, 
         cmd = cmd + ['--remove-signatures']
     elif destination.startswith("atomic") and not sign_by:
         cmd = cmd + ['--remove-signatures']
+
+    if src_creds:
+        cmd = cmd + ['--src-creds', src_creds]
 
     if sign_by:
         cmd = cmd + ['--sign-by', sign_by]
