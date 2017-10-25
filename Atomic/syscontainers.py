@@ -158,7 +158,7 @@ class SystemContainers(object):
             values[key] = val
         return values
 
-    def _pull_image_to_ostree(self, repo, image, upgrade):
+    def _pull_image_to_ostree(self, repo, image, upgrade, src_creds=None):
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
         if image.startswith("ostree:") and image.count(':') > 1:
@@ -169,17 +169,21 @@ class SystemContainers(object):
             tarpath = image.replace("dockertar:/", "", 1)
             image = self._pull_docker_tar(repo, tarpath, os.path.basename(tarpath).replace(".tar", ""))
         else: # Assume "oci:"
-            self._check_system_oci_image(repo, image, upgrade)
+            self._check_system_oci_image(repo, image, upgrade, src_creds=src_creds)
         return image
 
-    def pull_image(self, image=None):
+    def pull_image(self, image=None, **kwargs):
         """
         Public method for pulling an image from an external location into ostree.
 
         :param image: Name of the image to pull. If not provided self.args.image is used.
         :type image: str or None
+
+        :param kwargs: Arguments to pass to the pull
+        :type kwargs: dict or None
         """
-        self._pull_image_to_ostree(self._get_ostree_repo(), image or self.args.image, True)
+        src_creds = kwargs.get('src_creds')
+        self._pull_image_to_ostree(self._get_ostree_repo(), image or self.args.image, True, src_creds=src_creds)
 
     def install_user_container(self, image, name):
         """
@@ -1933,7 +1937,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         remote, branch = imagebranch.split(":")
         return repo.pull(remote, [branch], 0, None)
 
-    def _check_system_oci_image(self, repo, img, upgrade):
+    def _check_system_oci_image(self, repo, img, upgrade, src_creds=None):
         imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(img))
         current_rev = repo.resolve_rev(imagebranch, True)
         if not current_rev:
@@ -1953,10 +1957,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         can_use_skopeo_copy = util.check_output([util.SKOPEO_PATH, "copy", "--help"]).decode().find("ostree") >= 0
 
         if can_use_skopeo_copy:
-            return self._check_system_oci_image_skopeo_copy(repo, img)
+            return self._check_system_oci_image_skopeo_copy(repo, img, src_creds=src_creds)
         return self._check_system_oci_image_no_skopeo_copy(repo, img, imagebranch)
 
-    def _check_system_oci_image_skopeo_copy(self, repo, img):
+    def _check_system_oci_image_skopeo_copy(self, repo, img, src_creds=None):
         repo = self.get_ostree_repo_location()
 
         checkout = self._get_system_checkout_path()
@@ -1968,7 +1972,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         destination = "ostree:{}@{}".format(img, repo)
         try:
-            util.skopeo_copy("docker://" + img, destination, dest_ostree_tmp_dir=temp_dir, insecure=insecure)
+            util.skopeo_copy("docker://" + img, destination, dest_ostree_tmp_dir=temp_dir, insecure=insecure, src_creds=src_creds)
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
         return True

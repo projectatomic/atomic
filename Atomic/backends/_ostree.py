@@ -110,7 +110,7 @@ class OSTreeBackend(Backend):
         return [self._make_container(x) for x in self.syscontainers.get_containers()]
 
     def pull_image(self, image, remote_image_obj=None, **kwargs):
-        return self.syscontainers.pull_image(image)
+        return self.syscontainers.pull_image(image, **kwargs)
 
     def delete_image(self, image, force=False):
         return self.syscontainers.delete_image(image)
