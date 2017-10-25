@@ -338,12 +338,13 @@ class DockerBackend(Backend):
         if '@sha256:' in image:
             image = image.replace("@sha256:", ":")
 
+        src_creds = kwargs.get('src_creds')
         insecure = True if util.is_insecure_registry(self.d.info()['RegistryConfig'], registry) else False
         trust = Trust()
         trust.discover_sigstore(fq_name)
         util.write_out("Pulling {} ...".format(fq_name))
         util.skopeo_copy("docker://{}".format(fq_name), image, debug=debug, insecure=insecure,
-                         policy_filename=trust.policy_filename)
+                         policy_filename=trust.policy_filename, src_creds=src_creds)
         return 0
 
     def delete_container(self, container, force=False):
