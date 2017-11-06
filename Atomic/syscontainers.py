@@ -1959,6 +1959,15 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             if not missing_layers:
                 return False
 
+        try:
+            d = util.Decompose(img)
+            if d.registry == "":
+                util.write_err("The image `{}` is not fully qualified.  The default registry configured for Skopeo will be used.".format(img))
+        except:  # pylint: disable=bare-except
+            # This is used only to raise a warning to the user, so catch any exception
+            # and never let it fail.
+            pass
+
         can_use_skopeo_copy = util.check_output([util.SKOPEO_PATH, "copy", "--help"]).decode().find("ostree") >= 0
 
         if can_use_skopeo_copy:
