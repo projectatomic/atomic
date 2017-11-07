@@ -154,6 +154,10 @@ class SystemContainers(object):
         except (NameError, AttributeError):
             pass
 
+        if not self.user and not self.runtime:
+            self.runtime = self.get_atomic_config_item(["runtime"])
+
+
     @staticmethod
     def _split_set_args(setvalues):
         values = {}
