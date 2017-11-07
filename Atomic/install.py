@@ -67,6 +67,8 @@ def cli(subparser):
                                      help=_('install a system container'))
         installp.add_argument("--system-package", dest="system_package", default="auto",
                               help=_('control how to install the package.  It accepts `auto`, `yes`, `no`, `build`'))
+        installp.add_argument("--runtime", dest="runtime", default=None,
+                              help=_('specify the OCI runtime to use for system and user containers'))
         installp.add_argument("--rootfs", dest="remote",
                               help=_("choose an existing exploded container/image to use "
                                      "its rootfs as a remote, read-only rootfs for the "

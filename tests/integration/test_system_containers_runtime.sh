@@ -15,6 +15,7 @@ IFS=$'\n\t'
 # 8. Repeated updates/rollbacks
 # 9. Update --rebase
 # 10. Updating/rolling back a container with a remote rootfs
+# 11. Verify --runtime is honored
 
 setup () {
     ${ATOMIC} pull --storage ostree docker:atomic-test-system:latest
@@ -229,3 +230,8 @@ assert_matches "new-receiver" ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}-new/config.
 
 ${ATOMIC} containers rollback ${NAME}-new
 assert_matches ${SECRET} ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}-new/config.json
+
+# 11. Test --runtime
+${ATOMIC} uninstall ${NAME}-new
+${ATOMIC} install --name=${NAME}-new --runtime=/bin/ls --set=RECEIVER=${SECRET} --system atomic-test-system
+assert_matches /bin/ls /etc/systemd/system/${NAME}-new.service

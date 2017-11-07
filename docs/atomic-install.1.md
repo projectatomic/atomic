@@ -70,6 +70,12 @@ root filesystem. The existing rootfs will be used as the new
 system container's rootfs (read only), and thus the new container
 will only contain config and info files.
 
+**--runtime=PATH**
+Change the OCI runtime used by the systemd service file for running
+system containers and user containers.  The default **/bin/runc** is
+used for system containers.  Conversely, for user containers the
+default value is **/bin/bwrap-oci**.
+
 **--set=NAME=VALUE**
 Set a value that is going to be used by a system container for its
 configuration and can be specified multiple times.  It is used only

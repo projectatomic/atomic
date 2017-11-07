@@ -83,7 +83,8 @@ class SystemContainers(object):
         self.args = None
         self.setvalues = None
         self.display = False
-        self._runtime = None
+        self.runtime = None
+        self._runtime_from_info_file = None
 
     def get_atomic_config_item(self, config_item):
         """
@@ -145,6 +146,11 @@ class SystemContainers(object):
 
         try:
             self.setvalues = args.setvalues
+        except (NameError, AttributeError):
+            pass
+
+        try:
+            self.runtime = self.args.runtime
         except (NameError, AttributeError):
             pass
 
@@ -468,8 +474,11 @@ class SystemContainers(object):
             conf.write(json.dumps(configuration, indent=4))
 
     def _get_oci_runtime(self):
-        if self._runtime:
-            return self._runtime
+        if self.runtime:
+            return self.runtime
+
+        if self._runtime_from_info_file:
+            return self._runtime_from_info_file
 
         if self.user:
             return util.BWRAP_OCI_PATH
@@ -1094,7 +1103,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             return
 
         if runtime is not None:
-            self._runtime = runtime
+            self._runtime_from_info_file = runtime
         if system_package is None:
             system_package = 'yes' if rpm_installed else 'no'
         self._checkout(repo, name, image, next_deployment, True, values, remote=self.args.remote, installed_files=installed_files, system_package=system_package)
