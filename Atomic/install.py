@@ -89,7 +89,7 @@ class Install(Atomic):
         storage_set = False if self.args.storage is None else True
         storage = _storage if not storage_set else self.args.storage
         args_system = getattr(self.args, 'system', None)
-        args_user= getattr(self.args, 'user', None)
+        args_user = getattr(self.args, 'user', None)
         if (args_system or args_user) and storage != 'ostree' and storage_set:
             raise ValueError("The --system and --user options are only available for the 'ostree' storage.")
         be_utils = BackendUtils()
