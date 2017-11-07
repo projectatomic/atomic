@@ -83,6 +83,7 @@ class SystemContainers(object):
         self.args = None
         self.setvalues = None
         self.display = False
+        self._runtime = None
 
     def get_atomic_config_item(self, config_item):
         """
@@ -455,7 +456,7 @@ class SystemContainers(object):
                 conf.write('{}')
             return
 
-        args = [util.RUNC_PATH, 'spec']
+        args = [self._get_oci_runtime(), 'spec']
         util.subp(args, cwd=destination)
         with open(conf_path, 'r') as conf:
             configuration = json.loads(conf.read())
@@ -466,43 +467,29 @@ class SystemContainers(object):
         with open(conf_path, 'w') as conf:
             conf.write(json.dumps(configuration, indent=4))
 
-    def _generate_systemd_startstop_directives(self, name, pidfile=None, unit_file_support_pidfile=False):
+    def _get_oci_runtime(self):
+        if self._runtime:
+            return self._runtime
+
         if self.user:
-            return self._generate_user_systemd_startstop_directives(name, pidfile, unit_file_support_pidfile)
-        else:
-            return self._generate_system_systemd_startstop_directives(name, pidfile, unit_file_support_pidfile)
+            return util.BWRAP_OCI_PATH
+        return util.RUNC_PATH
 
-    # --user case
-    def _generate_user_systemd_startstop_directives(self, name, pidfile=None, unit_file_support_pidfile=False):
-        if unit_file_support_pidfile:
-            has_pidfile_option = False
-            try:
-                has_pidfile_option = "--pid-file" in str(util.check_output([util.BWRAP_OCI_PATH, "--help"], stderr=DEVNULL))
-            except util.FileNotFound:
-                pass
-            if has_pidfile_option:
-                start = "{} --pid-file='{}' --detach run {}".format(util.BWRAP_OCI_PATH, pidfile, name)
-                stoppost = "{} delete '{}'".format(util.BWRAP_OCI_PATH, name)
-                return [start, "", "", stoppost]
-        return ["{}".format(util.BWRAP_OCI_PATH), "", "", ""]
+    def _generate_systemd_startstop_directives(self, name, pidfile=None, unit_file_support_pidfile=False):
+        runtime = self._get_oci_runtime()
+        return self._generate_systemd_runtime_startstop_directives(name, runtime, pidfile=pidfile, unit_file_support_pidfile=unit_file_support_pidfile)
 
-    # --system case
-    def _generate_system_systemd_startstop_directives(self, name, pidfile=None, unit_file_support_pidfile=False):
-        try:
-            version = str(util.check_output([util.RUNC_PATH, "--version"], stderr=DEVNULL))
-        except util.FileNotFound:
-            version = ""
+    def _generate_systemd_runtime_startstop_directives(self, name, runtime, pidfile=None, unit_file_support_pidfile=False):
+        runtime_has_pidfile = "--pid-file" in str(util.check_output([runtime, "run", "--help"], stderr=DEVNULL))
+        systemd_cgroup = " --systemd-cgroup" if "--systemd-cgroup" in str(util.check_output([runtime, "--help"], stderr=DEVNULL)) else ""
 
-        if "version 0" in version:
-            raise ValueError("The version of runC is too old.")
-
-        if unit_file_support_pidfile:
-            start = "{} --systemd-cgroup run -d --pid-file {} '{}'".format(util.RUNC_PATH, pidfile, name)
-            stoppost = "{} delete '{}'".format(util.RUNC_PATH, name)
+        if unit_file_support_pidfile and runtime_has_pidfile:
+            start = "{} {} run -d --pid-file {} '{}'".format(runtime, systemd_cgroup, pidfile, name)
+            stoppost = "{} delete '{}'".format(runtime, name)
             return [start, "", "", stoppost]
         else:
             runc_commands = ["run", "kill"]
-            return ["{} --systemd-cgroup {} '{}'".format(util.RUNC_PATH, command, name) for command in runc_commands] + ["", ""]
+            return ["{}{} {} '{}'".format(runtime, systemd_cgroup, command, name) for command in runc_commands] + ["", ""]
 
     def _get_systemd_destination_files(self, name, prefix=None):
         if self.user:
@@ -903,7 +890,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                         "rename-installed-files" : rename_files,
                         "rpm-installed" : rpm_installed,
                         "system-package" : system_package,
-                        "remote" : remote}
+                        "remote" : remote,
+                        "runtime" : self._get_oci_runtime()}
                 info_file.write(json.dumps(info, indent=4))
                 info_file.write("\n")
         except (NameError, AttributeError, OSError) as e:
@@ -1079,6 +1067,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         installed_files = info["installed-files"] if "installed-files" in info else None
         rpm_installed = info["rpm-installed"] if "rpm-installed" in info else None
         system_package = info["system-package"] if "system-package" in info else None
+        runtime = info["runtime"] if "runtime" in info else None
 
         # Check if the image id or the configuration for the container has
         # changed before upgrading it.
@@ -1104,6 +1093,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             util.write_out("Latest version already installed.")
             return
 
+        if runtime is not None:
+            self._runtime = runtime
         if system_package is None:
             system_package = 'yes' if rpm_installed else 'no'
         self._checkout(repo, name, image, next_deployment, True, values, remote=self.args.remote, installed_files=installed_files, system_package=system_package)
@@ -1225,11 +1216,13 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             if fullpath.endswith(".0") or fullpath.endswith(".1"):
                 continue
 
+            runtime = "bwrap-oci" if self.user else "runc"
             with open(os.path.join(fullpath, "info"), "r") as info_file:
                 info = json.load(info_file)
                 revision = info["revision"] if "revision" in info else ""
                 created = info["created"] if "created" in info else 0
                 image = info["image"] if "image" in info else ""
+                runtime = info["runtime"] if "runtime" in info else ""
 
             command = ""
             config_json = os.path.join(fullpath, "config.json")
@@ -1238,7 +1231,6 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                     config = json.load(config_file)
                     command = u' '.join(config["process"]["args"])
 
-            runtime = "bwrap-oci" if self.user else "runc"
             container = {'Image' : image, 'ImageID' : revision, 'Id' : x, 'Created' : created, 'Names' : [x],
                          'Command' : command, 'Type' : 'system', 'Runtime' : runtime, "Preinstalled" : are_preinstalled}
             ret.append(container)
