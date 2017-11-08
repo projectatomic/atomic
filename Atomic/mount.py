@@ -196,8 +196,11 @@ class Mount(Atomic):
 
         elif self.storage.lower() == "ostree":
             try:
-                if self._try_ostree_mount(best_mountpoint_for_storage):
-                    return
+                res = self._try_ostree_mount(best_mountpoint_for_storage)
+                # If ostree storage was explicitely requested, then we have to
+                # error out if the container/image could not be mounted.
+                if res == False:
+                    raise ValueError("Could not mount {}".format(self.image))
             except GLib.Error: # pylint: disable=catching-non-exception
                 self._no_such_image()
 
