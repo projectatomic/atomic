@@ -65,7 +65,7 @@ OUTPUT=$(! ${ATOMIC} mount --live ${NAME} ${WORK_DIR}/mount 2>&1)
 grep "do not support --live" <<< $OUTPUT
 
 
-# 4. Check that --shared works
-${ATOMIC} mount --shared ${NAME} ${WORK_DIR}/mount
+# 4. Check that --shared works and that 'http:' is dropped
+${ATOMIC} mount --shared http:${NAME} ${WORK_DIR}/mount
 test -e ${WORK_DIR}/mount/usr/bin/greet.sh
 ${ATOMIC} umount ${WORK_DIR}/mount

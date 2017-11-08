@@ -827,6 +827,8 @@ class OSTreeMount(Mount):
         if not OSTREE_PRESENT:
             return False
 
+        identifier = util.remove_skopeo_prefixes(identifier)
+
         options = ['remount', 'ro', 'nosuid', 'nodev']
         has_container = self.has_container(identifier)
         has_image = self.has_image(identifier)
