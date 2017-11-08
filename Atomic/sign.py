@@ -134,16 +134,17 @@ class Sign(Atomic):
                                      "overwrite it, please delete this file first")
 
                 util.skopeo_standalone_sign(expanded_image_name, manifest_file.name,
-                                            self.get_fingerprint(signer), fq_sig_path, debug=self.args.debug)
+                                            self.get_fingerprint(signer, self.args.debug), fq_sig_path, debug=self.args.debug)
                 util.write_out("Created: {}".format(fq_sig_path))
 
             finally:
                 os.remove(manifest_file.name)
 
     @staticmethod
-    def get_fingerprint(signer):
+    def get_fingerprint(signer, debug):
         cmd = ['gpg2', '--no-permission-warning', '--with-colons', '--fingerprint', signer]
-        stdout = util.check_output(cmd)
+        stderr = None if debug else util.DEVNULL
+        stdout = util.check_output(cmd, stderr=stderr)
         for line in stdout.splitlines():
             _line = line.decode('utf-8')
             if _line.startswith('fpr:'):

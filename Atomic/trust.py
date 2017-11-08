@@ -227,7 +227,8 @@ class Trust(Atomic):
         if not token.scheme or not token.netloc:
             if not os.path.exists(key_reference):
                 cmd = ["gpg2", "--armor", "--export", key_reference]
-                keydata = util.check_output(cmd)
+                stderr = None if self.args.debug else util.DEVNULL
+                keydata = util.check_output(cmd, stderr=stderr)
                 if not keydata:
                     raise ValueError("The public key reference '%s' was not "
                                      "found as a file or in the user's GPG "
@@ -502,7 +503,8 @@ class Trust(Atomic):
                 key = tmpkey.name
             cmd = ["gpg2", "--with-colons", key]
             try:
-                results = util.check_output(cmd).decode('utf-8')
+                stderr = None if self.args.debug else util.DEVNULL
+                results = util.check_output(cmd, stderr=stderr).decode('utf-8')
             except util.FileNotFound:
                 results = ""
             if tmpkey:
