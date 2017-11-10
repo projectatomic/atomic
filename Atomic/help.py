@@ -53,7 +53,7 @@ class AtomicHelp(Atomic):
         else:
             # Call the pager
             os.environ['PAGER'] = '/usr/bin/less -R'
-            pager(result)
+            pager(result.decode(self.enc))
 
     def help(self):
         """
