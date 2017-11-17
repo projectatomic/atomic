@@ -4,6 +4,7 @@ from . import util
 from . import rpmwriter
 import tempfile
 import shutil
+import hashlib
 
 RPM_NAME_PREFIX = "atomic-container"
 
@@ -12,16 +13,20 @@ class RPMHostInstall(object):
     @staticmethod
     def copyfile(src, dest):
         if os.path.isdir(src):
-            # add the directory only if it is empty, so we don't create directories that
+            # add the directory only if it is empty, so we don't delete directories that
             # weren't added by us.  Anyway a non empty directory would be created by
             # its children.
             if len(os.listdir(src)) == 0:
                 os.mkdir(dest)
+                return True
         elif os.path.islink(src):
             linkto = os.readlink(src)
             os.symlink(linkto, dest)
+            return True
         else:
             shutil.copy2(src, dest)
+            return True
+        return False
 
     @staticmethod
     def _do_rename_path(path, rename_files):
@@ -33,12 +38,31 @@ class RPMHostInstall(object):
         return path
 
     @staticmethod
-    def rm_add_files_to_host(old_installed_files, exports, prefix="/", files_template=None, values=None, rename_files=None):
+    def file_checksum(path, blocksize=(1<<20)):
+        if not os.path.exists(path) or os.path.isdir(path):
+            return "0"
+
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            while True:
+                chunk = f.read(blocksize)
+                if chunk == None or len(chunk) == 0:
+                    break
+                h.update(chunk)
+        return h.hexdigest()
+
+    @staticmethod
+    def rm_add_files_to_host(old_installed_files_checksum, exports, prefix="/", files_template=None, values=None, rename_files=None):
         # if any file was installed on the host delete it
-        if old_installed_files:
-            for i in old_installed_files:
+        if old_installed_files_checksum:
+            for path, checksum in old_installed_files_checksum.items():
+                new_checksum = RPMHostInstall.file_checksum(path)
+                if new_checksum != checksum:
+                    # Do not delete the file if it was modified.
+                    util.write_out("Will not delete %s as it was manually modified." % path, lf="\n")
+                    continue
                 try:
-                    os.remove(i)
+                    os.remove(path)
                 except OSError:
                     pass
 
@@ -49,7 +73,7 @@ class RPMHostInstall(object):
 
         # if there is a directory hostfs/ under exports, copy these files to the host file system.
         hostfs = os.path.join(exports, "hostfs")
-        new_installed_files = []
+        new_installed_files_checksum = {}
         if os.path.exists(hostfs):
             for root, dirs, files in os.walk(hostfs):
                 rel_root_path = os.path.relpath(root, hostfs)
@@ -71,18 +95,21 @@ class RPMHostInstall(object):
 
                     if not os.path.exists(os.path.dirname(dest_path)):
                         os.makedirs(os.path.dirname(dest_path))
+
+                    created = False
                     if rel_dest_path in templates_set:
                         with open(src_file, 'r') as src_file_obj:
                             data = src_file_obj.read()
                         util.write_template(src_file, data, values or {}, dest_path)
                         shutil.copystat(src_file, dest_path)
+                        created = True
                     else:
-                        RPMHostInstall.copyfile(src_file, dest_path)
+                        created = RPMHostInstall.copyfile(src_file, dest_path)
 
-                    new_installed_files.append(rel_dest_path)
-            new_installed_files.sort()  # just for an aesthetic reason in the info file output
+                    if created:
+                        new_installed_files_checksum[rel_dest_path] = RPMHostInstall.file_checksum(dest_path)
 
-        return new_installed_files
+        return new_installed_files_checksum
 
 
     @staticmethod
@@ -175,7 +202,8 @@ class RPMHostInstall(object):
             rootfs = os.path.join(rpm_content, "usr/lib/containers/atomic", name)
             os.makedirs(rootfs)
             if installed_files is None:
-                installed_files = RPMHostInstall.rm_add_files_to_host(None, exports, rpm_content, files_template=installed_files_template, values=values, rename_files=rename_files)
+                checksums = RPMHostInstall.rm_add_files_to_host(None, exports, rpm_content, files_template=installed_files_template, values=values, rename_files=rename_files)
+                installed_files = checksums.keys()
             rpm_root = RPMHostInstall.generate_rpm_from_rootfs(destination, temp_dir, name, image_id, labels, include_containers_file=False, installed_files=installed_files, defaultversion=defaultversion)
             rpm_file = RPMHostInstall.find_rpm(rpm_root)
             if rpm_file:

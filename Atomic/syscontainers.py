@@ -529,7 +529,7 @@ class SystemContainers(object):
             raise ValueError("The container's rootfs is set to remote, but the remote rootfs does not exist")
         return real_path
 
-    def _checkout(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False, remote=None, prefix=None, installed_files=None, system_package='no'):
+    def _checkout(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False, remote=None, prefix=None, installed_files_checksum=None, system_package='no'):
         destination = destination or os.path.join(self._get_system_checkout_path(), "{}.{}".format(name, deployment))
         unitfileout, tmpfilesout = self._get_systemd_destination_files(name, prefix)
 
@@ -539,8 +539,8 @@ class SystemContainers(object):
                     raise ValueError("The file %s already exists." % f)
 
         try:
-            return self._do_checkout(repo, name, img, upgrade, deployment, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix, installed_files=installed_files,
-                                     system_package=system_package)
+            return self._do_checkout(repo, name, img, upgrade, deployment, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix,
+                                     installed_files_checksum=installed_files_checksum, system_package=system_package)
         except (GLib.Error, ValueError, OSError, subprocess.CalledProcessError, KeyboardInterrupt) as e:
             try:
                 if not extract_only and not upgrade:
@@ -747,7 +747,7 @@ class SystemContainers(object):
 
 
     def _do_checkout(self, repo, name, img, upgrade, deployment, values, destination, unitfileout,
-                     tmpfilesout, extract_only, remote, prefix=None, installed_files=None, system_package='no'):
+                     tmpfilesout, extract_only, remote, prefix=None, installed_files_checksum=None, system_package='no'):
         """
         Actually do the checkout.
 
@@ -926,10 +926,11 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             labels = {k.lower() : v for k, v in img_obj.get('Labels', {}).items()}
             (rpm_installed, rpm_file, _) = RPMHostInstall.generate_rpm(name, image_id, labels, exports, destination, values=values, installed_files_template=installed_files_template, rename_files=rename_files, defaultversion=deployment)
         if rpm_installed or system_package == 'absent':
-            new_installed_files = []
+            new_installed_files_checksum = {}
         else:
-            new_installed_files = RPMHostInstall.rm_add_files_to_host(installed_files, exports, prefix or "/", files_template=installed_files_template, values=values, rename_files=rename_files)
+            new_installed_files_checksum = RPMHostInstall.rm_add_files_to_host(installed_files_checksum, exports, prefix or "/", files_template=installed_files_template, values=values, rename_files=rename_files)
 
+        new_installed_files = list(new_installed_files_checksum.keys())
         try:
             with open(os.path.join(destination, "info"), 'w') as info_file:
                 info = {"image" : img,
@@ -939,6 +940,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                         "values" : values,
                         "has-container-service" : has_container_service,
                         "installed-files": new_installed_files,
+                        "installed-files-checksum": new_installed_files_checksum,
                         "installed-files-template": installed_files_template,
                         "rename-installed-files" : rename_files,
                         "rpm-installed" : rpm_installed,
@@ -1126,7 +1128,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         image = rebase or info["image"]
         values = info["values"]
         revision = info["revision"] if "revision" in info else None
-        installed_files = info["installed-files"] if "installed-files" in info else None
+        installed_files_checksum = info["installed-files-checksum"] if "installed-files-checksum" in info else None
+        if installed_files_checksum is None:
+            installed_files = info["installed-files"] if "installed-files" in info else None
+            installed_files_checksum = {k : "" for k in installed_files}
         rpm_installed = info["rpm-installed"] if "rpm-installed" in info else None
         system_package = info["system-package"] if "system-package" in info else None
         runtime = info["runtime"] if "runtime" in info else None
@@ -1159,7 +1164,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             self._runtime_from_info_file = runtime
         if system_package is None:
             system_package = 'yes' if rpm_installed else 'no'
-        self._checkout(repo, name, image, next_deployment, True, values, remote=self.args.remote, installed_files=installed_files, system_package=system_package)
+        self._checkout(repo, name, image, next_deployment, True, values, remote=self.args.remote,
+                       installed_files_checksum=installed_files_checksum, system_package=system_package)
         return
 
     def rollback(self, name):
@@ -1180,7 +1186,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         with open(os.path.join(self._get_system_checkout_path(), name, "info"), "r") as info_file:
             info = json.loads(info_file.read())
             rpm_installed = info["rpm-installed"] if "rpm-installed" in info else None
-            installed_files = info["installed-files"] if "installed-files" in info and rpm_installed is None else None
+            installed_files_checksum = info["installed-files-checksum"] if "installed-files-checksum" in info else None
+            if installed_files_checksum is None:
+                installed_files = info["installed-files"] if "installed-files" in info else None
+                installed_files_checksum = {k : "" for k in installed_files}
             installed_files_template = info["installed-files-template"] if "installed-files-template" in info and rpm_installed is None else None
             has_container_service = info["has-container-service"] if "has-container-service" in info else True
             rename_files = info["rename-installed-files"] if "rename-installed-files" in info else None
@@ -1213,8 +1222,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if (os.path.exists(tmpfiles)):
             shutil.copyfile(tmpfiles, tmpfilesout)
 
-        if installed_files:
-            RPMHostInstall.rm_add_files_to_host(installed_files, os.path.join(destination, "rootfs/exports"), files_template=installed_files_template, rename_files=rename_files)
+        if installed_files_checksum:
+            RPMHostInstall.rm_add_files_to_host(installed_files_checksum, os.path.join(destination, "rootfs/exports"), files_template=installed_files_template, rename_files=rename_files)
 
         os.unlink(path)
         os.symlink(destination, path)
@@ -1646,9 +1655,12 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         installed_files = None
         with open(os.path.join(checkout, name,  "info"), 'r') as info_file:
             info = json.loads(info_file.read())
-            installed_files = info["installed-files"] if "installed-files" in info else None
-        if installed_files:
-            RPMHostInstall.rm_add_files_to_host(installed_files, None)
+            installed_files_checksum = info["installed-files-checksum"] if "installed-files-checksum" in info else None
+            installed_files = info["installed-files"] if "installed-files" in info else []
+            if installed_files_checksum == None:
+                installed_files_checksum = {k: "" for k in installed_files}
+        if installed_files_checksum:
+            RPMHostInstall.rm_add_files_to_host(installed_files_checksum, None)
 
         if rpm_installed:
             try:

@@ -81,6 +81,7 @@ teardown () {
     ${ATOMIC} uninstall --storage ostree atomic-test-system-hostfs || true
     rm -rf /etc/systemd/system/atomic-test-system-*.service /etc/tmpfiles.d/atomic-test-system-*.conf
     ostree --repo=${ATOMIC_OSTREE_REPO} refs --delete ociimage &> /dev/null || true
+    rm -f /usr/local/lib/secret-message
 }
 trap teardown EXIT
 
@@ -149,3 +150,11 @@ for i in /usr/local/lib/renamed-atomic-test-system-hostfs /usr/local/lib/secret-
 do
     test -e $i
 done
+
+echo "This message will not be deleted" > /usr/local/lib/secret-message
+
+ATOMIC_OSTREE_TEST_FORCE_IMAGE_ID=NEW-ID ${ATOMIC} containers update atomic-test-system-hostfs
+
+test -e /usr/local/lib/secret-message
+
+assert_matches "This message will not be deleted" /usr/local/lib/secret-message
