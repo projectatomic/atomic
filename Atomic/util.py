@@ -1136,6 +1136,45 @@ def remove_skopeo_prefixes(image):
             image = image.replace(remove, '')
     return image
 
+KNOWN_CAPS = ['CAP_CHOWN',
+              'CAP_DAC_OVERRIDE',
+              'CAP_DAC_READ_SEARCH',
+              'CAP_FOWNER',
+              'CAP_FSETID',
+              'CAP_KILL',
+              'CAP_SETGID',
+              'CAP_SETUID',
+              'CAP_SETPCAP',
+              'CAP_LINUX_IMMUTABLE',
+              'CAP_NET_BIND_SERVICE',
+              'CAP_NET_BROADCAST',
+              'CAP_NET_ADMIN',
+              'CAP_NET_RAW',
+              'CAP_IPC_LOCK',
+              'CAP_IPC_OWNER',
+              'CAP_SYS_MODULE',
+              'CAP_SYS_RAWIO',
+              'CAP_SYS_CHROOT',
+              'CAP_SYS_PTRACE',
+              'CAP_SYS_PACCT',
+              'CAP_SYS_ADMIN',
+              'CAP_SYS_BOOT',
+              'CAP_SYS_NICE',
+              'CAP_SYS_RESOURCE',
+              'CAP_SYS_TIME',
+              'CAP_SYS_TTY_CONFIG',
+              'CAP_MKNOD',
+              'CAP_LEASE',
+              'CAP_AUDIT_WRITE',
+              'CAP_AUDIT_CONTROL',
+              'CAP_SETFCAP',
+              'CAP_MAC_OVERRIDE',
+              'CAP_MAC_ADMIN',
+              'CAP_SYSLOG',
+              'CAP_WAKE_ALARM',
+              'CAP_BLOCK_SUSPEND',
+              'CAP_AUDIT_READ']
+
 def get_all_known_process_capabilities():
     """
     Get all the known process capabilities
@@ -1147,14 +1186,16 @@ def get_all_known_process_capabilities():
     with open("/proc/sys/kernel/cap_last_cap", 'r') as f:
         last_cap = int(f.read())
 
-    mask = hex((1 << (last_cap + 1)) - 1)
+    if last_cap < len(KNOWN_CAPS):
+        caps = KNOWN_CAPS[:last_cap+1]
+    else:
+        mask = hex((1 << (last_cap + 1)) - 1)
+        out = subprocess.check_output([CAPSH_PATH, '--decode={}'.format(mask)], stderr=DEVNULL)
 
-    out = subprocess.check_output([CAPSH_PATH, '--decode={}'.format(mask)], stderr=DEVNULL)
+        # The output looks like 0x0000003fffffffff=cap_chown,cap_dac_override,...
+        # so take only the part after the '='
+        caps = str(out.decode().split("=")[1].strip()).split(',')
 
-    # The output looks like 0x0000003fffffffff=cap_chown,cap_dac_override,...
-    # so take only the part after the '='
-    caps = str(out.decode().split("=")[1].strip())
-
-    caps_list = [i.upper() for i in caps.split(',')]
+    caps_list = [i.upper() for i in caps]
 
     return [i for i in caps_list if not i[0].isdigit()]
