@@ -90,7 +90,8 @@ class RPMHostInstall(object):
                         dest_path = os.path.join(prefix or "/", os.path.relpath(rel_dest_path, "/"))
 
                     if os.path.exists(dest_path):
-                        util.write_out("File %s already exists." % dest_path, lf="\n")
+                        if os.path.isfile(dest_path):
+                            util.write_out("File %s already exists" % os.path.normpath(dest_path), lf="\n")
                         continue
 
                     if not os.path.exists(os.path.dirname(dest_path)):
