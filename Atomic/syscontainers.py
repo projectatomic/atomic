@@ -119,6 +119,7 @@ class SystemContainers(object):
         options.overwrite_mode = OSTree.RepoCheckoutOverwriteMode.UNION_FILES
         options.process_whiteouts = True
         options.disable_fsync = True
+        options.no_copy_fallback = True
         if self.user:
             options.mode = OSTree.RepoCheckoutMode.USER
         repo.checkout_at(options, rootfs_fd, rootfs, rev)
