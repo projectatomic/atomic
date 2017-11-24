@@ -10,6 +10,7 @@ import shutil
 import stat # pylint: disable=bad-python3-import
 import subprocess
 import time
+import errno
 from .client import AtomicDocker
 from Atomic.backends._docker_errors import NoDockerDaemon
 from ctypes import cdll, CDLL
@@ -84,6 +85,7 @@ class SystemContainers(object):
         self.setvalues = None
         self.display = False
         self.runtime = None
+        self._repo_location = None
         self._runtime_from_info_file = None
 
     def get_atomic_config_item(self, config_item):
@@ -676,7 +678,45 @@ class SystemContainers(object):
         return values
 
     @staticmethod
-    def _are_on_the_same_filesystem(a, b):
+    def _is_repo_on_the_same_filesystem(repo, destdir):
+        """
+        :param repo: Existing ostree repository.
+        :type repo: str
+
+        :param destdir: path to check.  It is created if it doesn't exist.  It must be
+        writeable as we create a temporary file there.
+        :type destdir: str
+        """
+        repo_stat = os.stat(repo)
+        destdir_stat = os.stat(destdir)
+        # Simple case: st_dev is different
+        if repo_stat.st_dev != destdir_stat.st_dev:
+            return False
+
+        try:
+            os.makedirs(destdir)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
+
+        src_file = os.path.join(repo, "config")
+        dest_file = os.path.join(destdir, "samefs-check-{}".format(os.getpid()))
+        # Try to create a link, check if it fails with EXDEV
+        try:
+            os.link(src_file, dest_file)
+        except OSError as e:
+            if e.errno == errno.EXDEV:
+                return False
+            raise
+        finally:
+            try:
+                os.unlink(dest_file)
+            except OSError:
+                pass
+        return True
+
+    @staticmethod
+    def _are_same_file(a, b):
         a_stat = os.stat(a)
         b_stat = os.stat(b)
         return a_stat.st_dev == b_stat.st_dev and a_stat.st_ino == b_stat.st_ino
@@ -698,8 +738,7 @@ class SystemContainers(object):
             # If it does, we use the ostree destination.
             if not os.path.exists(os.path.dirname(destination)):
                 os.makedirs(os.path.dirname(destination))
-            if SystemContainers._are_on_the_same_filesystem(os.path.dirname(destination),
-                                                            os.path.dirname(ostree_destination)):
+            if SystemContainers._are_same_file(os.path.dirname(destination), os.path.dirname(ostree_destination)):
                 destination = ostree_destination
 
         except: #pylint: disable=bare-except
@@ -992,6 +1031,11 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         :returns: Path to the ostree repository.
         :rtype: str
         """
+        if self._repo_location is None:
+            self._repo_location = self._find_ostree_repo_location()
+        return self._repo_location
+
+    def _find_ostree_repo_location(self):
         location = os.environ.get("ATOMIC_OSTREE_REPO")
         if location is not None:
             return location
@@ -1008,11 +1052,15 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         checkouts = self._get_system_checkout_path()
         if not os.path.exists(checkouts):
             os.makedirs(checkouts)
-        rootdir = "/ostree/repo" if os.path.exists("/ostree/repo") else "/"
-        if not SystemContainers._are_on_the_same_filesystem(rootdir, checkouts):
-            return os.path.join(self.get_storage_path(skip_canonicalize=True), "ostree")
 
-        return "/ostree/repo"
+        storage_path = self.get_storage_path(skip_canonicalize=True)
+
+        # Use /ostree/repo if it already exists and it is on the same filesystem
+        # as the checkout directory.
+        if os.path.exists("/ostree/repo/config"):
+            if SystemContainers._is_repo_on_the_same_filesystem("/ostree/repo", storage_path):
+                return "/ostree/repo"
+        return os.path.join(storage_path, "ostree")
 
     def _get_ostree_repo(self):
         if not OSTREE_PRESENT:
