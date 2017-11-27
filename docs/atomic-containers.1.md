@@ -90,6 +90,9 @@ Can use --set to update environment variables.
 **--rebase=IMAGE**
   Rebase to a different image.  If not specified, the same image used to install the container will be used.
 
+**-a** **--all**
+  Update all the installed containers.  If any update fails, then it rollbacks automatically to the working version of the container.
+
 **--set=NAME=VALUE**
   Set a value that is going to be used by a system container for its configuration and can be specified multiple times.  OSTree is required for this feature to be available.
 

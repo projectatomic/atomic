@@ -192,6 +192,10 @@ assert_matches ${NAME}.0 ${WORK_DIR}/link.out
 ${ATOMIC} containers list --all --no-trunc | grep ${NAME} > ${WORK_DIR}/ps.out
 assert_matches "running" ${WORK_DIR}/ps.out
 
+${ATOMIC} images update --storage=ostree --all 2> ${WORK_DIR}/update_all_images.out
+assert_matches "skipping" ${WORK_DIR}/update_all_images.out
+${ATOMIC} containers update --all
+
 
 # 9. Update --rebase
 # rebasing to the same image fails

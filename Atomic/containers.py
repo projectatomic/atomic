@@ -70,10 +70,11 @@ def cli(subparser):
                                               help=_("update a container"),
                                               epilog="Update the container to use a newer image.")
     updatep.set_defaults(_class=Containers, func='update')
-    updatep.add_argument("container",
+    updatep.add_argument("container", nargs='?',
                          help=_("Specify one or more containers. Must be final arguments."))
     updatep.add_argument("--rebase", dest="rebase", default=None,
                          help=_("Rebase to a different image (useful for upgrading to a different tag)"))
+    updatep.add_argument("-a", "--all", action='store_true', dest="all", default=False, help=_("Update all containers"))
     if OSTREE_PRESENT:
         updatep.add_argument("--set", dest="setvalues",
                              action='append',
@@ -289,7 +290,75 @@ class Containers(Atomic):
             if con.id in vulnerable_uuids:
                 con.vulnerable = True
 
+    def update_all_containers(self):
+        preupdate_containers = self.syscontainers.get_containers()
+        could_not_update = {}
+        for i in preupdate_containers:
+            name = i['Names'][0]
+            util.write_out("Checking container {}...".format(name))
+            try:
+                self.syscontainers.update_container(name, controlled=True)
+            except:  # pylint: disable=bare-except
+                could_not_update[name] = True
+
+        postupdate_containers = self.syscontainers.get_containers()
+
+        images_by_name = {i['RepoTags'][0] : i for i in self.syscontainers.get_system_images()}
+        preupdate_containers_by_name = {i['Names'][0] : i for i in preupdate_containers}
+        postupdate_containers_by_name = {i['Names'][0] : i for i in postupdate_containers}
+
+        def get_image_id(c): return c['ImageId'] if 'ImageId' in c else c['ImageID']
+
+        def colored(line, color):
+            if sys.stdout.isatty():
+                return "\x1b[1;%dm%s\x1b[0m" % (color, line)
+            else:
+                return line
+
+        def get_status(container_name, pre_id, post_id, image_id):
+            COLOR_RED = 31
+            COLOR_GREEN = 32
+            COLOR_YELLOW = 33
+
+            if container_name in could_not_update:
+                return "Failed", COLOR_RED
+            if image_id == None:
+                return "Unknown", COLOR_YELLOW
+            if post_id == image_id and image_id != pre_id:
+                return "Updated now", COLOR_GREEN
+            if post_id == image_id and image_id == pre_id:
+                return "Updated", COLOR_GREEN
+            return "Not updated", COLOR_RED
+
+        cols = "{0:15} {1:32} {2:32} {3:32} {4:15}"
+
+        util.write_out("\nSUMMARY\n")
+        util.write_out(cols.format("Container", "Image ID before update", "Image ID after update", "Latest image ID", "Status"))
+        for cnt in preupdate_containers_by_name.keys():
+            pre_version = get_image_id(preupdate_containers_by_name[cnt])
+            post_version = get_image_id(postupdate_containers_by_name[cnt])
+            img_name = img_id = None
+            try:
+                img_name = preupdate_containers_by_name[cnt]['Image']
+                img_id = get_image_id(images_by_name[img_name])
+            except KeyError:
+                pass
+            status, color = get_status(cnt, pre_version, post_version, img_id)
+            colored_status = colored(status[:15], color)
+            util.write_out(cols.format(cnt[:15], pre_version[:32], post_version[:32], (img_id or "<NOT FOUND>")[:32], colored_status))
+
     def update(self):
+        if self.args.all:
+            if self.args.container is not None:
+                raise ValueError("Incompatible options specified.  --all doesn't support a container name")
+            if self.args.setvalues or self.args.rebase:
+                raise ValueError("Incompatible options specified.  --all doesn't support --set or --rebase")
+
+            return self.update_all_containers()
+
+        if self.args.container is None:
+            raise ValueError("Too few arguments.  Please specify the container")
+
         if self.syscontainers.get_checkout(self.args.container):
             return self.syscontainers.update_container(self.args.container, self.args.setvalues, self.args.rebase)
         raise ValueError("System container '%s' is not installed" % self.args.container)

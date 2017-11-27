@@ -583,7 +583,7 @@ _atomic_containers_trim() {
 _atomic_containers_update() {
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "--help --set --rebase" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "--help --set --rebase --all" -- "$cur" ) )
 			;;
 		*)
 		    __atomic_system_containers_containers
