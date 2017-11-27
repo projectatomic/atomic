@@ -72,7 +72,7 @@ TEMPLATE_OVERRIDABLE_VARIABLES = ["RUN_DIRECTORY", "STATE_DIRECTORY", "CONF_DIRE
 
 class SystemContainers(object):
 
-    (CHECKOUT_MODE_INSTALL, CHECKOUT_MODE_UPGRADE) = range(2)
+    (CHECKOUT_MODE_INSTALL, CHECKOUT_MODE_UPGRADE, CHECKOUT_MODE_UPGRADE_CONTROLLED) = range(3)
 
     """
     Provides an interface for manipulating system containers.
@@ -1085,7 +1085,19 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             if mode == SystemContainers.CHECKOUT_MODE_INSTALL:
                 self._systemctl_command("enable", name)
             elif was_service_active:
-                self._systemctl_command("start", name)
+                if mode == SystemContainers.CHECKOUT_MODE_UPGRADE_CONTROLLED:
+                    must_rollback = False
+                    try:
+                        self._systemctl_command("start", name)
+                    except subprocess.CalledProcessError:
+                        must_rollback = True
+                    if must_rollback:
+                        util.write_err("Could not restart {}.  Attempt automatic rollback".format(name))
+                        self.rollback(name)
+                        self._systemctl_command("start", name)
+                        return {}
+                else:
+                    self._systemctl_command("start", name)
         except (subprocess.CalledProcessError, KeyboardInterrupt):
             if rpm_installed:
                 RPMHostInstall.uninstall_rpm(rpm_installed)
@@ -1176,7 +1188,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             return [image_inspect]
         return None
 
-    def update_container(self, name, setvalues=None, rebase=None):
+    def update_container(self, name, setvalues=None, rebase=None, controlled=False):
         """
         Updates a container to a new version.
 
@@ -1242,9 +1254,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             self._runtime_from_info_file = runtime
         if system_package is None:
             system_package = 'yes' if rpm_installed else 'no'
-        self._checkout(repo, name, image, next_deployment, CHECKOUT_MODE_UPGRADE, values, remote=self.args.remote,
+
+        mode = SystemContainers.CHECKOUT_MODE_UPGRADE_CONTROLLED if controlled else SystemContainers.CHECKOUT_MODE_UPGRADE
+        self._checkout(repo, name, image, next_deployment, mode, values, remote=self.args.remote,
                        installed_files_checksum=installed_files_checksum, system_package=system_package)
-        return
 
     def rollback(self, name):
         """
