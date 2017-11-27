@@ -71,6 +71,9 @@ TEMPLATE_OVERRIDABLE_VARIABLES = ["RUN_DIRECTORY", "STATE_DIRECTORY", "CONF_DIRE
 
 
 class SystemContainers(object):
+
+    (CHECKOUT_MODE_INSTALL, CHECKOUT_MODE_UPGRADE) = range(2)
+
     """
     Provides an interface for manipulating system containers.
     """
@@ -246,7 +249,7 @@ class SystemContainers(object):
         rootfs = os.path.join(rpm_content, "usr/lib/containers/atomic", name)
         os.makedirs(rootfs)
         try:
-            self._checkout(repo, name, image, 0, False, values=values, destination=rootfs, prefix=rpm_content)
+            self._checkout(repo, name, image, 0, SystemContainers.CHECKOUT_MODE_INSTALL, values=values, destination=rootfs, prefix=rpm_content)
             if self.display:
                 return None
             img = self.inspect_system_image(image)
@@ -529,7 +532,7 @@ class SystemContainers(object):
                 util.write_out("Generated rpm %s" % destination)
             return False
 
-        self._checkout(repo, name, image, 0, False, values=values, remote=self.args.remote, system_package=self.args.system_package)
+        self._checkout(repo, name, image, 0, SystemContainers.CHECKOUT_MODE_INSTALL, values=values, remote=self.args.remote, system_package=self.args.system_package)
 
     def _check_oci_configuration_file(self, conf_path, remote=None, include_all=False):
         with open(conf_path, 'r') as conf:
@@ -622,31 +625,40 @@ class SystemContainers(object):
                 tmpfilesout = os.path.join(SYSTEMD_TMPFILES_DEST, "%s.conf" % name)
         return unitfileout, tmpfilesout
 
-    def _checkout(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False, remote=None, prefix=None, installed_files_checksum=None, system_package='no'):
+    def _resolve_remote_path(self, remote_path):
+        if not remote_path:
+            return None
+
+        real_path = os.path.realpath(remote_path)
+        if not os.path.exists(real_path):
+            raise ValueError("The container's rootfs is set to remote, but the remote rootfs does not exist")
+        return real_path
+
+    def _checkout(self, repo, name, img, deployment, mode, values=None, destination=None, extract_only=False, remote=None, prefix=None, installed_files_checksum=None, system_package='no'):
         destination = destination or os.path.join(self._get_system_checkout_path(), "{}.{}".format(name, deployment))
         unitfileout, tmpfilesout = self._get_systemd_destination_files(name, prefix)
 
-        if not upgrade:
+        if mode == SystemContainers.CHECKOUT_MODE_INSTALL:
             for f in [unitfileout, tmpfilesout]:
                 if os.path.exists(f):
                     raise ValueError("The file %s already exists." % f)
 
         try:
-            return self._do_checkout(repo, name, img, upgrade, deployment, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix,
+            return self._do_checkout(repo, name, img, mode, deployment, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix,
                                      installed_files_checksum=installed_files_checksum, system_package=system_package)
         except (GLib.Error, ValueError, OSError, subprocess.CalledProcessError, KeyboardInterrupt) as e:
             try:
-                if not extract_only and not upgrade:
+                if not extract_only and mode == SystemContainers.CHECKOUT_MODE_INSTALL:
                     shutil.rmtree(destination)
             except OSError:
                 pass
             try:
-                if not extract_only and not upgrade:
+                if not extract_only and mode == SystemContainers.CHECKOUT_MODE_INSTALL:
                     os.unlink(unitfileout)
             except OSError:
                 pass
             try:
-                if not extract_only and not upgrade:
+                if not extract_only and mode == SystemContainers.CHECKOUT_MODE_INSTALL:
                     os.unlink(tmpfilesout)
             except OSError:
                 pass
@@ -848,7 +860,7 @@ class SystemContainers(object):
         return destination
 
 
-    def _do_checkout(self, repo, name, img, upgrade, deployment, values, destination, unitfileout,
+    def _do_checkout(self, repo, name, img, mode, deployment, values, destination, unitfileout,
                      tmpfilesout, extract_only, remote, prefix=None, installed_files_checksum=None, system_package='no'):
         """
         Actually do the checkout.
@@ -967,7 +979,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         # When upgrading, stop the service and remove previously installed
         # tmpfiles, before restarting the service.
-        if has_container_service and upgrade:
+        if has_container_service and mode != SystemContainers.CHECKOUT_MODE_INSTALL:
             if was_service_active:
                 self._systemctl_command("stop", name)
             if os.path.exists(tmpfilesout):
@@ -1070,7 +1082,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             if (tmpfiles_template):
                 self._systemd_tmpfiles("--create", tmpfilesout)
 
-            if not upgrade:
+            if mode == SystemContainers.CHECKOUT_MODE_INSTALL:
                 self._systemctl_command("enable", name)
             elif was_service_active:
                 self._systemctl_command("start", name)
@@ -1230,7 +1242,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             self._runtime_from_info_file = runtime
         if system_package is None:
             system_package = 'yes' if rpm_installed else 'no'
-        self._checkout(repo, name, image, next_deployment, True, values, remote=self.args.remote,
+        self._checkout(repo, name, image, next_deployment, CHECKOUT_MODE_UPGRADE, values, remote=self.args.remote,
                        installed_files_checksum=installed_files_checksum, system_package=system_package)
         return
 
@@ -2168,7 +2180,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         repo = self._get_ostree_repo()
         if not repo:
             return False
-        self._checkout(repo, img, img, 0, False, destination=destination, extract_only=True)
+        self._checkout(repo, img, img, 0, SystemContainers.CHECKOUT_MODE_INSTALL, destination=destination, extract_only=True)
 
     @staticmethod
     def _encode_to_ostree_ref(name):
