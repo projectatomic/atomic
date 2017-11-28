@@ -1386,6 +1386,12 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                     config = json.load(config_file)
                     command = u' '.join(config["process"]["args"])
 
+            registry, image, tag = SystemContainers._parse_imagename(image)
+            if registry:
+                image = "%s/%s:%s" % (registry, image, tag)
+            else:
+                image = "%s:%s" % (image, tag)
+
             container = {'Image' : image, 'ImageID' : revision, 'Id' : x, 'Created' : created, 'Names' : [x],
                          'Command' : command, 'Type' : 'system', 'Runtime' : runtime, "Preinstalled" : are_preinstalled}
             ret.append(container)
