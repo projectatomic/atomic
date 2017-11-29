@@ -92,9 +92,16 @@ def get_registries():
     if registries_tool_path() is not None:
         registries_json = load_registries_from_yaml()
         # Eliminate any duplicates with set.
-        _registries = list(set(registries_json.get("registries", [])))
-        _insecure_registries = list(set(registries_json.get('insecure_registries', [])))
-        _blocked_registries = list(set(registries_json.get('block_registries', [])))
+        if "registries.search" in registries_json:
+            # We are dealing with toml
+            _registries = list(set(registries_json.get("registries.search", []).get("registries", [])))
+            _insecure_registries = list(set(registries_json.get("registries.insecure", []).get("registries", [])))
+            _blocked_registries= list(set(registries_json.get("registries.block", []).get("registries", [])))
+        else:
+            # We are dealing with yaml
+            _registries = list(set(registries_json.get("registries", [])))
+            _insecure_registries = list(set(registries_json.get('insecure_registries', [])))
+            _blocked_registries = list(set(registries_json.get('block_registries', [])))
         duplicate_secure_insecure = list(set(_registries).intersection(_insecure_registries))
         if len(duplicate_secure_insecure) > 0:
             raise ValueError("There are duplicate values for registries and insecure registries.  Please correct "
