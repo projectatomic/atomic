@@ -690,6 +690,7 @@ class SystemContainers(object):
 
     # Accept both name and version Id, and return the ostree rev
     def _resolve_image(self, repo, img, allow_multiple=False):
+        img = util.remove_skopeo_prefixes(img)
         imagebranch = SystemContainers._get_ostree_image_branch(img)
         rev = repo.resolve_rev(imagebranch, True)[1]
         if rev:
@@ -2089,7 +2090,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         return repo.pull(remote, [branch], 0, None)
 
     def _check_system_oci_image(self, repo, img, upgrade, src_creds=None):
-        imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(img))
+        no_prefix_img = util.remove_skopeo_prefixes(img)
+        imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(no_prefix_img))
         current_rev = repo.resolve_rev(imagebranch, True)
         if not current_rev:
             raise ValueError("Internal error for image: %s.  Please pull the image again" % imagebranch)
