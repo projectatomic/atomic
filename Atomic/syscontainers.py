@@ -688,16 +688,19 @@ class SystemContainers(object):
         :type destdir: str
         """
         repo_stat = os.stat(repo)
-        destdir_stat = os.stat(destdir)
+        try:
+            destdir_stat = os.stat(destdir)
+        except OSError as e:
+            if e.errno == errno.ENOENT:
+                # The directory doesn't exist
+                os.makedirs(destdir)
+                destdir_stat = os.stat(destdir)
+            else:
+                raise e
+
         # Simple case: st_dev is different
         if repo_stat.st_dev != destdir_stat.st_dev:
             return False
-
-        try:
-            os.makedirs(destdir)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
 
         src_file = os.path.join(repo, "config")
         dest_file = os.path.join(destdir, "samefs-check-{}".format(os.getpid()))
