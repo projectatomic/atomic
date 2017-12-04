@@ -513,8 +513,8 @@ class SystemContainers(object):
             stoppost = "{} delete '{}'".format(runtime, name)
             return [start, "", "", stoppost]
         else:
-            runc_commands = ["run", "kill"]
-            return ["{}{} {} '{}'".format(runtime, systemd_cgroup, command, name) for command in runc_commands] + ["", ""]
+            commands = ["run", "kill"]
+            return ["{}{} {} '{}'".format(runtime, systemd_cgroup, command, name) for command in commands] + ["", ""]
 
     def _get_systemd_destination_files(self, name, prefix=None):
         if self.user:
@@ -2417,7 +2417,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             raise ValueError("Command not supported in user mode")
 
         if is_container_running:
-            cmd = [util.RUNC_PATH, "exec"]
+            cmd = [self._get_oci_runtime(), "exec"]
             if tty:
                 cmd.extend(["--tty"])
             if detach:
@@ -2455,7 +2455,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                     if is_runtime and not os.path.exists(src):
                         os.makedirs(src)
 
-                cmd = [util.RUNC_PATH, "run"]
+                cmd = [self._get_oci_runtime(), "run"]
                 cmd.extend([name])
                 subp = subprocess.Popen(cmd,
                                         cwd=temp_dir,
