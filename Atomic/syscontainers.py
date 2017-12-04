@@ -16,6 +16,7 @@ from Atomic.backends._docker_errors import NoDockerDaemon
 from ctypes import cdll, CDLL
 import uuid
 from .rpm_host_install import RPMHostInstall, RPM_NAME_PREFIX
+import __main__
 
 try:
     import gi
@@ -670,6 +671,9 @@ class SystemContainers(object):
 
         if 'RUNTIME' not in values:
             values["RUNTIME"] = self._get_oci_runtime()
+
+        if 'ATOMIC' not in values:
+            values["ATOMIC"] = os.path.abspath(__main__.__file__)
 
         if manifest is not None and "defaultValues" in manifest:
             for key, val in manifest["defaultValues"].items():

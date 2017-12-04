@@ -201,6 +201,8 @@ the host, $XDG_RUNTIME_DIR for user containers).
 
 **$RUNTIME** The runtime used to execute the containers.
 
+**$ATOMIC** Path to the atomic executable that is installing the container.
+
 **--system-package=auto|build|no|yes**
 Control how the container will be installed to the system.
 
