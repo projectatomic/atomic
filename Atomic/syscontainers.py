@@ -2415,9 +2415,6 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         tty = os.isatty(0)
 
-        if util.is_user_mode():
-            raise ValueError("Command not supported in user mode")
-
         if is_container_running:
             cmd = [self._get_oci_runtime(), "exec"]
             if tty:
