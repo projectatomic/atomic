@@ -468,26 +468,28 @@ class SystemContainers(object):
                         missing_source_paths.append(source)
         return missing_source_paths
 
+
     def _generate_default_oci_configuration(self, destination):
         conf_path = os.path.join(destination, "config.json")
-
-        # If runc is not installed we are not able to generate the default configuration,
-        # write an empty JSON file
-        if not util.runc_available():
+        try:
+            # Try to use $RUNTIME spec to generate a default configuration file.
+            args = [self._get_oci_runtime(), 'spec']
+            util.subp(args, cwd=destination)
+            with open(conf_path, 'r') as conf:
+                configuration = json.loads(conf.read())
+            configuration['root']['readonly'] = True
+            configuration['root']['path'] = 'rootfs'
+            configuration['process']['terminal'] = False
+            configuration['process']['args'] = ['run.sh']
             with open(conf_path, 'w') as conf:
-                conf.write('{}')
+                conf.write(json.dumps(configuration, indent=4))
             return
-
-        args = [self._get_oci_runtime(), 'spec']
-        util.subp(args, cwd=destination)
-        with open(conf_path, 'r') as conf:
-            configuration = json.loads(conf.read())
-        configuration['root']['readonly'] = True
-        configuration['root']['path'] = 'rootfs'
-        configuration['process']['terminal'] = False
-        configuration['process']['args'] = ['run.sh']
+        except:  #pylint: disable=bare-except
+            pass
+        # If we got here it means an error happened before, so create an empty file.
         with open(conf_path, 'w') as conf:
-            conf.write(json.dumps(configuration, indent=4))
+            conf.write('{}')
+
 
     def _get_oci_runtime(self):
         if self.runtime:
@@ -759,7 +761,7 @@ class SystemContainers(object):
             if SystemContainers._are_same_file(os.path.dirname(destination), os.path.dirname(ostree_destination)):
                 destination = ostree_destination
 
-        except: #pylint: disable=bare-except
+        except:  #pylint: disable=bare-except
             pass
         return destination
 
