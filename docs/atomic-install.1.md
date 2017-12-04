@@ -199,6 +199,8 @@ the host, $XDG_RUNTIME_DIR for user containers).
 
 **$UUID** UUID generated for this container.
 
+**$RUNTIME** The runtime used to execute the containers.
+
 **--system-package=auto|build|no|yes**
 Control how the container will be installed to the system.
 

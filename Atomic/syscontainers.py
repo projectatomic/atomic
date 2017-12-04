@@ -660,6 +660,9 @@ class SystemContainers(object):
         if "ALL_PROCESS_CAPABILITIES" not in values:
             values["ALL_PROCESS_CAPABILITIES"] = SystemContainers._get_all_capabilities()
 
+        if 'RUNTIME' not in values:
+            values["RUNTIME"] = self._get_oci_runtime()
+
         if manifest is not None and "defaultValues" in manifest:
             for key, val in manifest["defaultValues"].items():
                 if key not in values:
@@ -1290,13 +1293,12 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             if fullpath.endswith(".0") or fullpath.endswith(".1"):
                 continue
 
-            runtime = "bwrap-oci" if self.user else "runc"
             with open(os.path.join(fullpath, "info"), "r") as info_file:
                 info = json.load(info_file)
                 revision = info["revision"] if "revision" in info else ""
                 created = info["created"] if "created" in info else 0
                 image = info["image"] if "image" in info else ""
-                runtime = info["runtime"] if "runtime" in info else ""
+                runtime = info["runtime"] if "runtime" in info else self._get_oci_runtime()
 
             command = ""
             config_json = os.path.join(fullpath, "config.json")
