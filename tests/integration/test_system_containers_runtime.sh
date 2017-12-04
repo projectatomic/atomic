@@ -235,3 +235,7 @@ assert_matches ${SECRET} ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}-new/config.json
 ${ATOMIC} uninstall ${NAME}-new
 ${ATOMIC} install --name=${NAME}-new --runtime=/bin/ls --set=RECEIVER=${SECRET} --system atomic-test-system
 assert_matches /bin/ls /etc/systemd/system/${NAME}-new.service
+
+${ATOMIC} uninstall ${NAME}-new
+OUTPUT=$(! ${ATOMIC} install --name=${NAME}-new --runtime=/does/not/exist --set=RECEIVER=${SECRET} --system atomic-test-system 2>&1)
+grep "is not installed" <<< $OUTPUT

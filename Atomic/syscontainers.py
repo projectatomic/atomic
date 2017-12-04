@@ -211,9 +211,10 @@ class SystemContainers(object):
         :rtype: int
         """
         try:
-            util.check_call([util.BWRAP_OCI_PATH, "--version"], stdout=DEVNULL)
+            runtime = self._get_oci_runtime()
+            util.check_call([runtime, "--version"], stdout=DEVNULL)
         except util.FileNotFound:
-            raise ValueError("Cannot install the container: bwrap-oci is needed to run user containers")
+            raise ValueError("Cannot install the container: the runtime {} is not installed".format(runtime))
 
         if not "--user" in str(util.check_output(["systemctl", "--help"], stdin=DEVNULL, stderr=DEVNULL)):
             raise ValueError("Cannot install the container: systemctl does not support --user")
@@ -277,6 +278,13 @@ class SystemContainers(object):
         :rtype: int
         """
         return_value = None
+
+        try:
+            runtime = self._get_oci_runtime()
+            util.check_call([runtime, "--version"], stdout=DEVNULL)
+        except util.FileNotFound:
+            raise ValueError("Cannot install the container: the runtime {} is not installed".format(runtime))
+
         # If we don't have a dockertar file or a reference to a docker engine image
         if not image.startswith('dockertar:/') and not (image.startswith("docker:") and image.count(':') > 1):
             image = util.remove_skopeo_prefixes(image)
