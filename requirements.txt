@@ -7,3 +7,4 @@ xattr
 python-dateutil
 PyYAML
 urllib3
+pylint
