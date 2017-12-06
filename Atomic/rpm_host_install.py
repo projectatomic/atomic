@@ -5,13 +5,25 @@ from . import rpmwriter
 import tempfile
 import shutil
 import hashlib
+import selinux
 
 RPM_NAME_PREFIX = "atomic-container"
 
 class RPMHostInstall(object):
 
     @staticmethod
-    def copyfile(src, dest):
+    def _copyfile(selinux_hnd, src, dest):
+
+        if selinux_hnd is not None:
+            mode = 0o755
+            try:
+                mode = os.stat(src).st_mode
+            except OSError:
+                pass
+
+            ctx = selinux.selabel_lookup_raw(selinux_hnd, dest, mode)
+            selinux.setfscreatecon_raw(ctx[1])
+
         if os.path.isdir(src):
             # add the directory only if it is empty, so we don't delete directories that
             # weren't added by us.  Anyway a non empty directory would be created by
@@ -24,7 +36,10 @@ class RPMHostInstall(object):
             os.symlink(linkto, dest)
             return True
         else:
-            shutil.copy2(src, dest)
+            # we cannot use shutil.copy2() or shutil.copystat() here as it would override the
+            # security.selinux xattr.
+            shutil.copy(src, dest)
+            shutil.copymode(src, dest)
             return True
         return False
 
@@ -74,7 +89,14 @@ class RPMHostInstall(object):
         # if there is a directory hostfs/ under exports, copy these files to the host file system.
         hostfs = os.path.join(exports, "hostfs")
         new_installed_files_checksum = {}
-        if os.path.exists(hostfs):
+        if not os.path.exists(hostfs):
+            return new_installed_files_checksum
+
+        selinux_hnd = None
+        try:
+            if os.getuid() == 0 and selinux.is_selinux_enabled() != 0:
+                selinux_hnd = selinux.selabel_open(selinux.SELABEL_CTX_FILE, None, 0)
+
             for root, dirs, files in os.walk(hostfs):
                 rel_root_path = os.path.relpath(root, hostfs)
                 if not os.path.exists(os.path.join(prefix, rel_root_path)):
@@ -101,14 +123,22 @@ class RPMHostInstall(object):
                     if rel_dest_path in templates_set:
                         with open(src_file, 'r') as src_file_obj:
                             data = src_file_obj.read()
+
+                        if selinux_hnd is not None:
+                            ctx = selinux.selabel_lookup_raw(selinux_hnd, dest_path, os.stat(src_file).st_mode)
+                            selinux.setfscreatecon_raw(ctx[1])
+
                         util.write_template(src_file, data, values or {}, dest_path)
                         shutil.copystat(src_file, dest_path)
                         created = True
                     else:
-                        created = RPMHostInstall.copyfile(src_file, dest_path)
+                        created = RPMHostInstall._copyfile(selinux_hnd, src_file, dest_path)
 
                     if created:
                         new_installed_files_checksum[rel_dest_path] = RPMHostInstall.file_checksum(dest_path)
+        finally:
+            if selinux_hnd is not None:
+                selinux.setfscreatecon_raw(None)
 
         return new_installed_files_checksum
 
