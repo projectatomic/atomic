@@ -2,12 +2,14 @@
 `atomic` can be installed through below methods
 
 ##Make
-On Debian, You will need to install the required build dependencies to build `atomic`
+On Debian, You will need to install the required build dependencies to build `atomic`.
+
+[Docker](https://docs.docker.com/engine/installation/linux/docker-ce/debian/) and [Golang](https://golang.org) are required to build `atomic`.
 
 "rpm" is required in order to `diff` two Docker images.
 
 ```
-apt-get install go-md2man rpm python-selinux python-rpm python-dbus python-pylint
+apt-get install go-md2man rpm python-selinux python-rpm python-dbus python-slip python-slip-dbus python-gobject
 ```
 
 Get the code
