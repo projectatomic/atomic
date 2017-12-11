@@ -96,6 +96,7 @@ for i in /usr/local/lib/renamed-atomic-test-system-hostfs /usr/local/lib/secret-
 do
     assert_matches $i rpm_file_list
     test -e $i
+    matchpathcon -V $i
 done
 
 # This is not a template file, the $RECEIVER is not replaced
