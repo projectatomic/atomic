@@ -126,6 +126,9 @@ Atomic --assumeyes option can be used
 [**-h**|**--help**]
   Print usage statement
 
+[**-a|--all**]
+  Update all the images in a storage.
+
 [**--storage=[ostree|docker]**]
   Optionally specify the storage of the image. Defaults to docker.
 
