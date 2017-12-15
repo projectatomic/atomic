@@ -52,7 +52,7 @@ class Verify(Atomic):
     def verify(self):
         if self.args.debug:
             util.write_out(str(self.args))
-        local_layers, remote_layers = self._verify()
+        be, local_layers, remote_layers = self._verify()
         if not self._layers_match(local_layers, remote_layers) or self.args.verbose:
             col = "{0:30} {1:20} {2:20} {3:1}"
             util.write_out("\n{} contains the following images:\n".format(self.image))
@@ -63,10 +63,12 @@ class Verify(Atomic):
                                           local_layers[layer_int].long_version[:20],
                                           remote_layers[layer_int].long_version[:20],
                                           differs))
-            util.write_out("\n")
+                util.write_out("\n")
+        if not self.args.no_validate:
+            be.validate_layer(self.image)
 
     def verify_dbus(self):
-        local_layers, remote_layers = self._verify()
+        _, local_layers, remote_layers = self._verify()
         layers = []
         for layer_int in range(len(local_layers)):
             layer = {}
@@ -81,7 +83,7 @@ class Verify(Atomic):
         be, img_obj = self.backend_utils.get_backend_and_image_obj(self.image, str_preferred_backend=self.args.storage or storage, required=True if self.args.storage else False)
         remote_img_name  = "{}:latest".format(util.Decompose(img_obj.fq_name).no_tag)
         remote_img_obj = be.make_remote_image(remote_img_name)
-        return img_obj.layers, remote_img_obj.layers
+        return be, img_obj.layers, remote_img_obj.layers
 
     def get_tagged_images(self, names, layers):
         """
