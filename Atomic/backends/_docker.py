@@ -5,7 +5,6 @@ import tempfile
 from docker import errors
 
 import Atomic.util as util
-from Atomic.mount import Mount
 from Atomic.backends.backend import Backend
 from Atomic.client import AtomicDocker, no_shaw
 from Atomic.objects.image import Image
@@ -495,9 +494,6 @@ class DockerBackend(Backend):
         util.InstallData.delete_by_id(iobject.id, ignore=ignore)
         return self.delete_image(iobject.image, force=args.force)
 
-    def validate_layer(self, layer):
-        pass
-
     def version(self, image):
         return self.get_layers(image)
 
@@ -768,7 +764,7 @@ class DockerBackend(Backend):
             result = result[1:]
         return self.d.tag(_src, result, tag=tag)
 
-    def validate_image_manifest(self):
+    def validate_layer(self, layer):
         """
         Validates a docker image by mounting the image on a rootfs and validate that
         rootfs against the manifests that were created. Note that it won't be validated
@@ -776,21 +772,31 @@ class DockerBackend(Backend):
         :param:
         :return: None
         """
-        iid = self._is_image(self.image)
+        inspect = self._inspect_image(image=layer)
+        if inspect is None:
+            return None
+
+        iid = inspect['RepoTags'][0]
         manifestname = os.path.join(util.ATOMIC_VAR_LIB, "gomtree-manifests/%s.mtree" % iid)
         if not os.path.exists(manifestname):
             return
         tmpdir = tempfile.mkdtemp()
-        m = Mount()
-        m.args = []
-        m.image = self.image
-        m.mountpoint = tmpdir
-        m.mount()
-        r = util.validate_manifest(manifestname, img_rootfs=tmpdir, keywords="type,uid,gid,mode,size,sha256digest")
-        m.unmount()
-        if r.return_code != 0:
-            util.write_err(r.stdout)
-        shutil.rmtree(tmpdir)
+        try:
+            from Atomic.mount import Mount
+            m = Mount()
+            m.args = []
+            m.image = iid
+            m.storage = "docker"
+            m.mountpoint = tmpdir
+            m.mount()
+            try:
+                r = util.validate_manifest(manifestname, img_rootfs=tmpdir, keywords="type,uid,gid,mode,size,sha256digest")
+                if r.return_code != 0:
+                    util.write_err(r.stdout)
+            finally:
+                m.unmount()
+        finally:
+            shutil.rmtree(tmpdir)
 
     @staticmethod
     def get_gomtree_manifest(layer, root=os.path.join(util.ATOMIC_VAR_LIB, "gomtree-manifests")):
