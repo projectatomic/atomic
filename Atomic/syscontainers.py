@@ -1550,6 +1550,12 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             virtual_size = self._get_virtual_size(repo, manifest)
             if 'Labels' in manifest:
                 labels = manifest['Labels']
+            else:
+                config = self._image_config(repo, manifest)
+                if config:
+                    config = json.loads(config)
+                    if 'config' in config and 'Labels' in config['config']:
+                        labels = config['config']['Labels']
             image_id = SystemContainers._get_image_id(repo, commit_rev, manifest) or image_id
 
         if self.user:
@@ -1916,6 +1922,17 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
     def _image_manifest(self, repo, rev):
         return SystemContainers._get_commit_metadata(repo, rev, "docker.manifest")
 
+    def _image_config(self, repo, manifest):
+        if 'config' not in manifest:
+            return None
+
+        layer = SystemContainers._drop_sha256_prefix(manifest['config']['digest'])
+
+        rev = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1]
+        if rev is None:
+            return None
+        return SystemContainers._read_commit_file(repo, rev, "/content")
+
     def get_manifest(self, image, remote=False):
         """
         Returns the manifest for an image.
@@ -2186,6 +2203,19 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if key not in metadata.keys():
             return None
         return metadata[key]
+
+    @staticmethod
+    def _read_commit_file(repo, rev, path):
+        commit = repo.read_commit(rev)[1]
+        if not commit:
+            return None
+        content = commit.get_root().get_child(path)
+        if not content.query_exists():
+            return None
+        istream = content.read()
+        with os.fdopen(istream.get_fd()) as f:
+            data = f.read()
+        return data
 
     def extract(self, img, destination):
         """
