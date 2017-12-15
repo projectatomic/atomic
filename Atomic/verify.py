@@ -2,16 +2,12 @@ from . import util
 from . import Atomic
 import os
 from operator import itemgetter
-from .syscontainers import SystemContainers
 from .mount import Mount
 import argparse
 import shutil
-import itertools
 import tempfile
-import subprocess
 from .discovery import  RegistryInspect
 from .client import no_shaw
-import json
 from Atomic.backendutils import BackendUtils
 
 
@@ -152,58 +148,6 @@ class Verify(Atomic):
             for _image in base_images:
                 util.write_out(col.format(_image['Name'][:30], _image['Version'][:20], _image['Remote Version'][:20], Verify._mismatch(_image)))
             util.write_out("\n")
-
-    def verify_system_image(self):
-        manifest = self.syscontainers.get_manifest(self.image)
-        name = json.loads(manifest).get('Name', self.image)
-        if manifest:
-            layers = SystemContainers.get_layers_from_manifest(manifest)
-        else:
-            layers = [self.image]
-        if not getattr(self.args,"no_validate", False):
-            self.validate_system_image_manifests(layers)
-
-        if not manifest:
-            return
-        remote = True
-        try:
-            remote_manifest = self.syscontainers.get_manifest(self.image, remote=True)
-            remote_layers = SystemContainers.get_layers_from_manifest(remote_manifest)
-        except subprocess.CalledProcessError:
-            remote_layers = []
-            remote = False
-
-        if hasattr(itertools, 'izip_longest'):
-            zip_longest = getattr(itertools, 'izip_longest')
-        else:
-            zip_longest = getattr(itertools, 'zip_longest')
-
-        images = []
-        for local, remote in zip_longest(layers, remote_layers):
-            images.append({'Name': name,
-                           'Version': no_shaw(local),
-                           'Id': no_shaw(local),
-                           'Remote Version': no_shaw(remote),
-                           'remote': remote,
-                           'no_version' : True,
-                           'Repo Tags': self.image,
-            })
-
-        self.print_verify(images, self.image, verbose=self.args.verbose)
-
-    def validate_system_image_manifests(self,layers):
-        """
-        Validate a system image's layers against the the associated validation manifests
-        created from those image layers on atomic pull.
-        :param layers: list of the names of the layers to validate
-        :return: None
-        """
-        for layer in layers:
-            mismatches = self.syscontainers.validate_layer(layer)
-            if len(mismatches) > 0:
-                util.write_out("modifications in layer %s layer:\n" % layer)
-                for m in mismatches:
-                    util.write_out("file '%s' changed checksum from '%s' to '%s'" % (m["name"], m["old-checksum"], m["new-checksum"]))
 
     def validate_image_manifest(self):
         """
