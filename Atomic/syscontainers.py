@@ -2372,7 +2372,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 elif res == OSTree.RepoCommitIterResult.END:
                     break
 
-        current_rev = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), False)[1]
+        imagebranch = SystemContainers._get_ostree_image_branch(layer)
+        current_rev = repo.resolve_rev(imagebranch, True)[1]
         if not current_rev:
             raise ValueError("Layer not found: %s.  Please pull the image again" % layer.replace("sha256:", ""))
 
