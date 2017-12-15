@@ -1,11 +1,7 @@
 from . import util
 from . import Atomic
-import os
 from operator import itemgetter
-from .mount import Mount
 import argparse
-import shutil
-import tempfile
 from .discovery import  RegistryInspect
 from .client import no_shaw
 from Atomic.backendutils import BackendUtils
@@ -148,35 +144,3 @@ class Verify(Atomic):
             for _image in base_images:
                 util.write_out(col.format(_image['Name'][:30], _image['Version'][:20], _image['Remote Version'][:20], Verify._mismatch(_image)))
             util.write_out("\n")
-
-    def validate_image_manifest(self):
-        """
-        Validates a docker image by mounting the image on a rootfs and validate that
-        rootfs against the manifests that were created. Note that it won't be validated
-        layer by layer.
-        :param:
-        :return: None
-        """
-        iid = self._is_image(self.image)
-        manifestname = os.path.join(util.ATOMIC_VAR_LIB, "gomtree-manifests/%s.mtree" % iid)
-        if not os.path.exists(manifestname):
-            return
-        tmpdir = tempfile.mkdtemp()
-        m = Mount()
-        m.args = []
-        m.image = self.image
-        m.mountpoint = tmpdir
-        m.mount()
-        r = util.validate_manifest(manifestname, img_rootfs=tmpdir, keywords="type,uid,gid,mode,size,sha256digest")
-        m.unmount()
-        if r.return_code != 0:
-            util.write_err(r.stdout)
-        shutil.rmtree(tmpdir)
-
-    @staticmethod
-    def get_gomtree_manifest(layer, root=os.path.join(util.ATOMIC_VAR_LIB, "gomtree-manifests")):
-        manifestpath = os.path.join(root,"%s.mtree" % layer)
-        if os.path.isfile(manifestpath):
-            return manifestpath
-        return None
-
