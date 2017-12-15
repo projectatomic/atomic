@@ -145,6 +145,9 @@ Atomic --assumeyes option can be used
 [**-v|--verbose**]
    Will output the status of each base image that makes up the image being verified.
 
+[**-a|--all**]
+   Will verify all images in a storage.
+
 # version OPTIONS
 [**-h|--help**]
   Print usage statement

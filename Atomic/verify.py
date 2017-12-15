@@ -21,7 +21,10 @@ def cli(subparser, hidden=False):
             "available and scans through all layers to see if any of "
             "the sublayers have a new version available")
     verifyp.set_defaults(_class=Verify, func='verify')
-    verifyp.add_argument("image", help=_("container image"))
+    verifyp.add_argument("image", nargs='?', help=_("container image"))
+    verifyp.add_argument("-a", "--all", default=False, dest="all",
+                                action="store_true",
+                                help=_("verify all images in a storage"))
     verifyp.add_argument("--no-validate", default=False, dest="no_validate",
                                 action="store_true",
                                 help=_("disable validating system images"))
@@ -50,12 +53,37 @@ class Verify(Atomic):
         return all(_match)
 
     def verify(self):
+        if self.args.image and self.args.all:
+            raise ValueError("Incompatible options specified.  --all doesn't support an image name")
+        if not self.args.all and not self.args.image:
+            raise ValueError("Please specify the image name")
+        if self.args.all and not self.args.storage:
+            raise ValueError("Please specify --storage")
+
+        if self.args.all:
+            be = BackendUtils().get_backend_from_string(self.args.storage)
+            images = be.get_images()
+            for i in images:
+                if i.repotags is None:
+                    continue
+                img_name = i.repotags[0]
+
+                d = util.Decompose(img_name)
+                if d.registry == "":
+                    util.write_err("Image {} not fully qualified: skipping".format(img_name))
+                    continue
+
+                self._verify_one_image(img_name)
+        else:
+            return self._verify_one_image(self.args.image)
+
+    def _verify_one_image(self, image):
         if self.args.debug:
             util.write_out(str(self.args))
-        be, local_layers, remote_layers = self._verify()
+        be, local_layers, remote_layers = self._verify(image)
         if not self._layers_match(local_layers, remote_layers) or self.args.verbose:
             col = "{0:30} {1:20} {2:20} {3:1}"
-            util.write_out("\n{} contains the following images:\n".format(self.image))
+            util.write_out("\n{} contains the following images:\n".format(image))
             util.write_out(col.format("NAME", "LOCAL VERSION", "REMOTE VERSION", "DIFFERS"))
             for layer_int in range(len(local_layers)):
                 differs = 'NO' if remote_layers[layer_int] == local_layers[layer_int] else 'YES'
@@ -65,10 +93,10 @@ class Verify(Atomic):
                                           differs))
                 util.write_out("\n")
         if not self.args.no_validate:
-            be.validate_layer(self.image)
+            be.validate_layer(image)
 
     def verify_dbus(self):
-        _, local_layers, remote_layers = self._verify()
+        _, local_layers, remote_layers = self._verify(self.args.image)
         layers = []
         for layer_int in range(len(local_layers)):
             layer = {}
@@ -79,8 +107,8 @@ class Verify(Atomic):
             layers.append(layer)
         return layers
 
-    def _verify(self):
-        be, img_obj = self.backend_utils.get_backend_and_image_obj(self.image, str_preferred_backend=self.args.storage or storage, required=True if self.args.storage else False)
+    def _verify(self, image):
+        be, img_obj = self.backend_utils.get_backend_and_image_obj(image, str_preferred_backend=self.args.storage or storage, required=True if self.args.storage else False)
         remote_img_name  = "{}:latest".format(util.Decompose(img_obj.fq_name).no_tag)
         remote_img_obj = be.make_remote_image(remote_img_name)
         return be, img_obj.layers, remote_img_obj.layers

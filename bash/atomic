@@ -340,6 +340,7 @@ _atomic_images_verify() {
 	"
 	local all_options="$options_with_args
 		-h --help
+		-a --all
 		--no-validate
 	"
 
