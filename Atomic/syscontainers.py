@@ -286,6 +286,24 @@ class SystemContainers(object):
 
         return info, rpm_installed, installed_files_checksum
 
+    def _get_remote_location(self, remote_input):
+        """
+        Parse the remote input and return actual remote path
+
+        :param remote_input: input path from user
+        :returns: the parsed remote location
+        """
+        remote_path = self._resolve_remote_path(remote_input)
+        if remote_path:
+            remote_rootfs = os.path.sep.join([remote_path, "rootfs"])
+            if os.path.exists(remote_rootfs):
+                util.write_out("The remote rootfs for this container is set to be {}".format(remote_rootfs))
+            elif os.path.exists(os.path.sep.join([remote_path, "usr"])):  # Assume that the user directly gave the location of the rootfs
+                remote_path = os.path.dirname(remote_path)  # Use the parent directory as the "container location"
+            else:
+                raise ValueError("--remote was specified but the given location does not contain a rootfs")
+        return remote_path
+
     def install(self, image, name):
         """
         External container install logic.
@@ -806,17 +824,8 @@ class SystemContainers(object):
         except (IndexError, TypeError):
             raise ValueError("Image {} not found".format(img))
 
-        remote_path = self._resolve_remote_path(remote)
-
+        remote_path = self._get_remote_location(remote)
         if remote_path:
-            remote_rootfs = os.path.sep.join([remote_path, "rootfs"])
-            if os.path.exists(remote_rootfs):
-                util.write_out("The remote rootfs for this container is set to be {}".format(remote_rootfs))
-            elif os.path.exists(os.path.sep.join([remote, "usr"])):  # Assume that the user directly gave the location of the rootfs
-                remote_rootfs = remote
-                remote_path = os.path.dirname(remote_path)  # Use the parent directory as the "container location"
-            else:
-                raise ValueError("--remote was specified but the given location does not contain a rootfs")
             exports = os.path.join(remote_path, "rootfs/exports")
         else:
             exports = os.path.join(destination, "rootfs/exports")
@@ -926,12 +935,12 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                     config = json.loads(config_file.read())
                 except ValueError:
                     raise ValueError("Invalid config.json file in given remote location: {}.".format(destination_path))
-                config['root']['path'] = remote_rootfs
+                config['root']['path'] = rootfs
             with open(destination_path, 'w') as config_file:
                 config_file.write(json.dumps(config, indent=4))
             # create a symlink to the real rootfs, so that it is possible
             # to access the rootfs in the same way as in the not --remote case.
-            os.symlink(remote_rootfs, os.path.join(destination, "rootfs"))
+            os.symlink(rootfs, os.path.join(destination, "rootfs"))
 
         # When upgrading, stop the service and remove previously installed
         # tmpfiles, before restarting the service.
