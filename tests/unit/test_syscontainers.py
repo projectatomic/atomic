@@ -35,6 +35,43 @@ if no_mock:
 
     patch = fake_patch
 
+@unittest.skipIf(no_mock, "Mock not found")
+class TestSystemContainers_do_checkout(unittest.TestCase):
+    """
+    Unit tests for refactored function from SystemContainers.do_checkout method.
+    """
+    def test_get_remote_location(self):
+        """
+        This function checks for 4 different cases _get_remote_location
+        1: when the remote is given as /xx and /xx/rootfs exist
+        2: when the remote is given as /xx/rootfs and /xx/rootfs/usr exist
+        3: when the remote input does not contain a rootfs
+        4: when the remote input path does not exist
+        """
+        try:
+            tmpdir = tempfile.mkdtemp()
+            rootfs_location = os.path.sep.join([tmpdir, "rootfs"])
+            not_valid_location = os.path.sep.join([tmpdir, "not-valid-test"])
+            non_existant_location = os.path.sep.join([tmpdir, "non-existant-path"])
+
+            os.makedirs(os.path.sep.join([rootfs_location, "usr"]))
+            os.mkdir(not_valid_location)
+
+            # Here: we check for 4 different cases _get_remote_location verifies
+            sc = SystemContainers()
+            self.assertRaises(ValueError, sc._get_remote_location, non_existant_location)
+
+            remote_path_one = sc._get_remote_location(tmpdir)
+            # we default to real path here because on AH, / sometimes actually refer to /sysroot
+            self.assertEqual(remote_path_one, os.path.realpath(tmpdir))
+
+            remote_path_two = sc._get_remote_location(rootfs_location)
+            self.assertEqual(remote_path_two, os.path.realpath(tmpdir))
+
+            self.assertRaises(ValueError, sc._get_remote_location, not_valid_location)
+        finally:
+            # We then remove the directories to keep the user's fs clean
+            shutil.rmtree(tmpdir)
 
 @unittest.skipIf(no_mock, "Mock not found")
 class TestSystemContainers_container_exec(unittest.TestCase):
