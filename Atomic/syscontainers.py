@@ -293,15 +293,22 @@ class SystemContainers(object):
         :param remote_input: input path from user
         :returns: the parsed remote location
         """
-        remote_path = self._resolve_remote_path(remote_input)
-        if remote_path:
-            remote_rootfs = os.path.sep.join([remote_path, "rootfs"])
-            if os.path.exists(remote_rootfs):
-                util.write_out("The remote rootfs for this container is set to be {}".format(remote_rootfs))
-            elif os.path.exists(os.path.sep.join([remote_path, "usr"])):  # Assume that the user directly gave the location of the rootfs
-                remote_path = os.path.dirname(remote_path)  # Use the parent directory as the "container location"
-            else:
-                raise ValueError("--remote was specified but the given location does not contain a rootfs")
+
+        if not remote_input:
+            return None
+
+        remote_path = os.path.realpath(remote_input)
+        if not os.path.exists(remote_path):
+            raise ValueError("The container's rootfs is set to remote, but the remote rootfs does not exist")
+
+        # Here we know remote path does exist on the fs
+        remote_rootfs = os.path.sep.join([remote_path, "rootfs"])
+        if os.path.exists(remote_rootfs):
+            util.write_out("The remote rootfs for this container is set to be {}".format(remote_rootfs))
+        elif os.path.exists(os.path.sep.join([remote_path, "usr"])):  # Assume that the user directly gave the location of the rootfs
+            remote_path = os.path.dirname(remote_path)  # Use the parent directory as the "container location"
+        else:
+            raise ValueError("--remote was specified but the given location does not contain a rootfs")
         return remote_path
 
     def install(self, image, name):
@@ -567,15 +574,6 @@ class SystemContainers(object):
                 unitfileout = os.path.join(SYSTEMD_UNIT_FILES_DEST, "%s.service" % name)
                 tmpfilesout = os.path.join(SYSTEMD_TMPFILES_DEST, "%s.conf" % name)
         return unitfileout, tmpfilesout
-
-    def _resolve_remote_path(self, remote_path):
-        if not remote_path:
-            return None
-
-        real_path = os.path.realpath(remote_path)
-        if not os.path.exists(real_path):
-            raise ValueError("The container's rootfs is set to remote, but the remote rootfs does not exist")
-        return real_path
 
     def _checkout(self, repo, name, img, deployment, upgrade, values=None, destination=None, extract_only=False, remote=None, prefix=None, installed_files_checksum=None, system_package='no'):
         destination = destination or os.path.join(self._get_system_checkout_path(), "{}.{}".format(name, deployment))
