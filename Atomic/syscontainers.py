@@ -311,6 +311,27 @@ class SystemContainers(object):
             raise ValueError("--remote was specified but the given location does not contain a rootfs")
         return remote_path
 
+    @staticmethod
+    def _rewrite_rootfs(destination, remote_rootfs):
+        """
+        When remote rootfs is specified, we rewrite the ['root']['path']
+
+        :param destination: the destination of the container
+        :param remote_rootfs: remote rootfs location
+        """
+        destination_path = os.path.join(destination, "config.json")
+        with open(destination_path, 'r') as config_file:
+            try:
+                config = json.loads(config_file.read())
+            except ValueError:
+                raise ValueError("Invalid config.json file in given remote location: {}.".format(destination_path))
+            config['root']['path'] = remote_rootfs
+        with open(destination_path, 'w') as config_file:
+            config_file.write(json.dumps(config, indent=4))
+        # create a symlink to the real rootfs, so that it is possible
+        # to access the rootfs in the same way as in the not --remote case.
+        os.symlink(remote_rootfs, os.path.join(destination, "rootfs"))
+
     def install(self, image, name):
         """
         External container install logic.
@@ -928,17 +949,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             self._generate_default_oci_configuration(destination)
 
         if remote_path:
-            with open(destination_path, 'r') as config_file:
-                try:
-                    config = json.loads(config_file.read())
-                except ValueError:
-                    raise ValueError("Invalid config.json file in given remote location: {}.".format(destination_path))
-                config['root']['path'] = rootfs
-            with open(destination_path, 'w') as config_file:
-                config_file.write(json.dumps(config, indent=4))
-            # create a symlink to the real rootfs, so that it is possible
-            # to access the rootfs in the same way as in the not --remote case.
-            os.symlink(rootfs, os.path.join(destination, "rootfs"))
+            SystemContainers._rewrite_rootfs(destination, rootfs)
 
         # When upgrading, stop the service and remove previously installed
         # tmpfiles, before restarting the service.
