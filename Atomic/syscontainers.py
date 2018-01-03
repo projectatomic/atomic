@@ -286,7 +286,8 @@ class SystemContainers(object):
 
         return info, rpm_installed, installed_files_checksum
 
-    def _get_remote_location(self, remote_input):
+    @staticmethod
+    def _get_remote_location(remote_input):
         """
         Parse the remote input and return actual remote path
 
@@ -843,7 +844,7 @@ class SystemContainers(object):
         except (IndexError, TypeError):
             raise ValueError("Image {} not found".format(img))
 
-        remote_path = self._get_remote_location(remote)
+        remote_path = SystemContainers._get_remote_location(remote)
         if remote_path:
             exports = os.path.join(remote_path, "rootfs/exports")
         else:

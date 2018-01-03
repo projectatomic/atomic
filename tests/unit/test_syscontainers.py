@@ -42,7 +42,7 @@ class TestSystemContainers_do_checkout(unittest.TestCase):
     """
     def test_get_remote_location(self):
         """
-        This function checks for 4 different cases _get_remote_location
+        This function checks for 4 different cases of _get_remote_location function
         1: when the remote is given as /xx and /xx/rootfs exist
         2: when the remote is given as /xx/rootfs and /xx/rootfs/usr exist
         3: when the remote input does not contain a rootfs
@@ -58,17 +58,16 @@ class TestSystemContainers_do_checkout(unittest.TestCase):
             os.mkdir(not_valid_location)
 
             # Here: we check for 4 different cases _get_remote_location verifies
-            sc = SystemContainers()
-            self.assertRaises(ValueError, sc._get_remote_location, non_existant_location)
+            self.assertRaises(ValueError, SystemContainers._get_remote_location, non_existant_location)
 
-            remote_path_one = sc._get_remote_location(tmpdir)
+            remote_path_one = SystemContainers._get_remote_location(tmpdir)
             # we default to real path here because on AH, / sometimes actually refer to /sysroot
             self.assertEqual(remote_path_one, os.path.realpath(tmpdir))
 
-            remote_path_two = sc._get_remote_location(rootfs_location)
+            remote_path_two = SystemContainers._get_remote_location(rootfs_location)
             self.assertEqual(remote_path_two, os.path.realpath(tmpdir))
 
-            self.assertRaises(ValueError, sc._get_remote_location, not_valid_location)
+            self.assertRaises(ValueError, SystemContainers._get_remote_location, not_valid_location)
         finally:
             # We then remove the directories to keep the user's fs clean
             shutil.rmtree(tmpdir)
