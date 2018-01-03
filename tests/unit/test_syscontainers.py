@@ -72,6 +72,46 @@ class TestSystemContainers_do_checkout(unittest.TestCase):
             # We then remove the directories to keep the user's fs clean
             shutil.rmtree(tmpdir)
 
+    def test_prepare_rootfs_dirs(self):
+        """
+        This function checks for 3 different cases for function '_prepare_rootfs_dirs'
+        1: extract specified with either destination/remote_path
+        2: remote_path and destination specified
+        3: only destination specified
+        """
+
+        try:
+            # Prepare the temp location for verifying
+            tmpdir = tempfile.mkdtemp()
+            extract_location = os.path.sep.join([tmpdir, "extract"])
+            remote_location  = os.path.sep.join([tmpdir, "remote"])
+            remote_destination_case = os.path.sep.join([tmpdir, "dest_one"])
+            destination_location = os.path.sep.join([tmpdir, "dest_two"])
+
+            sc = SystemContainers()
+
+            # Create expected rootfs for future comparison
+            expected_remote_rootfs = os.path.join(remote_location, "rootfs")
+            expected_dest_rootfs = os.path.join(destination_location, "rootfs")
+
+            # Here, we begin testing 3 different cases mentioned above
+            extract_rootfs = sc._prepare_rootfs_dirs(None, extract_location, extract_only=True)
+            self.assertTrue(os.path.exists(extract_rootfs), True)
+            self.assertEqual(extract_rootfs, extract_location)
+
+            remote_rootfs = sc._prepare_rootfs_dirs(remote_location, remote_destination_case)
+            self.assertEqual(remote_rootfs, expected_remote_rootfs)
+            self.assertTrue(os.path.exists(remote_destination_case), True)
+
+            # Note: since the location passed in is not in /var/xx format, canonicalize location
+            # should not have an effect, thus we don't worry about it here
+            destination_rootfs = sc._prepare_rootfs_dirs(None, destination_location)
+            self.assertEqual(destination_rootfs, expected_dest_rootfs)
+            self.assertTrue(os.path.exists(expected_dest_rootfs), True)
+
+        finally:
+            shutil.rmtree(tmpdir)
+
 @unittest.skipIf(no_mock, "Mock not found")
 class TestSystemContainers_container_exec(unittest.TestCase):
     """

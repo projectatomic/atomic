@@ -333,6 +333,31 @@ class SystemContainers(object):
         # to access the rootfs in the same way as in the not --remote case.
         os.symlink(remote_rootfs, os.path.join(destination, "rootfs"))
 
+    def _prepare_rootfs_dirs(self, remote_path, destination, extract_only=False):
+        """
+        Generate rootfs path based on user inputs and make directories accordingly
+
+        :param remote_path: path for remote
+        :param destination: the destination location for a container
+        :param extract_only: if specified, only image layers will be checked out to destination
+        """
+
+        if extract_only:
+            rootfs = destination
+        elif remote_path:
+            rootfs = os.path.join(remote_path, "rootfs")
+        else:
+            destination = self._canonicalize_location(destination)
+            rootfs = os.path.join(destination, "rootfs")
+
+        if remote_path:
+            if not os.path.exists(destination):
+                os.makedirs(destination)
+        else:
+            if not os.path.exists(rootfs):
+                os.makedirs(rootfs)
+        return rootfs
+
     def install(self, image, name):
         """
         External container install logic.
@@ -861,23 +886,11 @@ class SystemContainers(object):
         if self.display:
             return values
 
-        if extract_only:
-            rootfs = destination
-        elif remote_path:
-            rootfs = os.path.join(remote_path, "rootfs")
-        else:
-            destination = self._canonicalize_location(destination)
-            rootfs = os.path.join(destination, "rootfs")
-
-        if remote_path:
-            if not os.path.exists(destination):
-                os.makedirs(destination)
-        else:
-            if not os.path.exists(rootfs):
-                os.makedirs(rootfs)
+        rootfs = self._prepare_rootfs_dirs(remote_path, destination, extract_only=extract_only)
 
         manifest = self._image_manifest(repo, rev)
 
+        # todo: The "missing layer" check logic here can be refactored once we migrate to use skopeo only
         if not remote_path:
             rootfs_fd = None
             try:
