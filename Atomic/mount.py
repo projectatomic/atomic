@@ -181,19 +181,15 @@ class Mount(Atomic):
                     return
             except GLib.Error: # pylint: disable=catching-non-exception
                 pass
-            try:
-                d = DockerMount(self.mountpoint, self.live)
-                d.shared = self.shared
-                d.mount(self.image, self.options)
+            d = DockerMount(self.mountpoint, self.live)
+            d.shared = self.shared
+            d.mount(self.image, self.options)
 
-                # only need to bind-mount on the devicemapper driver
-                if self._info()['Driver'] == 'devicemapper':
-                    Mount.mount_path(os.path.join(self.mountpoint, "rootfs"),
-                                     self.mountpoint,
-                                     bind=True)
-
-            except (MountError, NoDockerDaemon) as dme:
-                raise ValueError(dme)
+            # only need to bind-mount on the devicemapper driver
+            if self._info()['Driver'] == 'devicemapper':
+                Mount.mount_path(os.path.join(self.mountpoint, "rootfs"),
+                                 self.mountpoint,
+                                 bind=True)
 
         elif self.storage.lower() == "ostree":
             try:
@@ -206,40 +202,31 @@ class Mount(Atomic):
                 self._no_such_image()
 
         elif self.storage.lower() == "docker":
-            try:
-                d = DockerMount(self.mountpoint, self.live)
-                d.shared = self.shared
-                d.mount(self.image, self.options)
+            d = DockerMount(self.mountpoint, self.live)
+            d.shared = self.shared
+            d.mount(self.image, self.options)
 
-                # only need to bind-mount on the devicemapper driver
-                if self._info()['Driver'] == 'devicemapper':
-                    Mount.mount_path(os.path.join(self.mountpoint, "rootfs"),
-                                     self.mountpoint,
-                                     bind=True)
-
-            except (MountError, NoDockerDaemon) as dme:
-                raise ValueError(dme)
+            # only need to bind-mount on the devicemapper driver
+            if self._info()['Driver'] == 'devicemapper':
+                Mount.mount_path(os.path.join(self.mountpoint, "rootfs"),
+                                 self.mountpoint,
+                                 bind=True)
 
         else:
             raise ValueError("{} is not a valid storage".format(self.storage))
 
     def unmount(self):
+        if OSTreeMount(self.args, self.mountpoint).unmount():
+            return
 
-        try:
-            if OSTreeMount(self.args, self.mountpoint).unmount():
-                return
+        dev = Mount.get_dev_at_mountpoint(self.mountpoint)
 
-            dev = Mount.get_dev_at_mountpoint(self.mountpoint)
+        # If there's a bind-mount over the directory, unbind it.
+        if dev.rsplit('[', 1)[-1].strip(']') == '/rootfs' \
+                and self.d.info()['Driver'] == 'devicemapper':
+            Mount.unmount_path(self.mountpoint)
 
-            # If there's a bind-mount over the directory, unbind it.
-            if dev.rsplit('[', 1)[-1].strip(']') == '/rootfs' \
-                    and self.d.info()['Driver'] == 'devicemapper':
-                Mount.unmount_path(self.mountpoint)
-
-            return DockerMount(self.mountpoint).unmount()
-
-        except MountError as dme:
-            raise ValueError(dme)
+        return DockerMount(self.mountpoint).unmount()
 
     # LVM DeviceMapper Utility Methods
     @staticmethod
