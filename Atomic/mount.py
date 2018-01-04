@@ -300,12 +300,11 @@ class Mount(Atomic):
         Retrieves the device mounted at mntpoint, or raises
         MountError if none.
         """
-        results = util.subp(['findmnt', '-o', 'SOURCE', mntpoint])
+        results = util.subp(['findmnt', '-o', 'SOURCE', '-n', mntpoint])
         if results.return_code != 0:
             raise MountError('No device mounted at %s' % mntpoint)
-
         stdout = results.stdout.decode(sys.getdefaultencoding())
-        return stdout.replace('SOURCE\n', '').strip().split('\n')[-1]
+        return stdout.strip()
 
     @staticmethod
     def unmount_path(path, timeout=10):
