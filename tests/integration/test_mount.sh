@@ -3,7 +3,7 @@ set -euo pipefail
 IFS=$'\n\t'
 
 #
-# 'atomic mount' integration tests (non-live)
+# 'atomic mount' integration tests
 # AUTHOR: William Temple <wtemple at redhat dot com>
 #
 
@@ -39,6 +39,13 @@ trap cleanup_container EXIT
 ${ATOMIC} mount ${id} ${MNT_WORK}/container
 ${ATOMIC} mount ${INAME} ${MNT_WORK}/image
 
+cleanup_mount () {
+    ${ATOMIC} unmount ${MNT_WORK}/container
+    ${ATOMIC} unmount ${MNT_WORK}/image
+    cleanup_container
+}
+trap cleanup_mount EXIT
+
 # Expect failure
 set +e
 ${ATOMIC} mount ${id} --live ${MNT_WORK}/container
@@ -50,26 +57,10 @@ if [ "$?" -eq "0" ]; then
     exit 1
 fi
 
-cleanup_mount () {
-    ${ATOMIC} unmount ${MNT_WORK}/container
-    cleanup_container
-}
-trap cleanup_container_mount EXIT
-
-${ATOMIC} unmount ${MNT_WORK}/container
-${ATOMIC} mount ${id} --live ${MNT_WORK}/container
+set -e
 
 ${ATOMIC} unmount ${MNT_WORK}/container
 ${ATOMIC} mount ${id} --shared ${MNT_WORK}/container
-
-set -e
-
-cleanup_mount () {
-    ${ATOMIC} unmount ${MNT_WORK}/container
-    ${ATOMIC} unmount ${MNT_WORK}/image
-    cleanup_container
-}
-trap cleanup_mount EXIT
 
 if [[ "`cat "${MNT_WORK}/container/secret"`" !=  "${SECRET}" ]]; then
     exit 1
@@ -77,3 +68,17 @@ fi
 if [[ "`cat "${MNT_WORK}/image/secret"`" != "${SECRET}" ]]; then
     exit 1
 fi
+
+running_cont=$(${DOCKER} run -d centos sleep infinity)
+
+cleanup_working_cont () {
+    cleanup_mount
+    ${DOCKER} rm -f ${running_cont}
+}
+trap cleanup_working_cont EXIT
+
+${ATOMIC} unmount ${MNT_WORK}/container
+${ATOMIC} mount ${running_cont} --live ${MNT_WORK}/container
+
+touch ${MNT_WORK}/container/we_can_write_here
+${DOCKER} cp ${running_cont}:/we_can_write_here ${MNT_WORK}/

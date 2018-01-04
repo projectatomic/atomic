@@ -87,6 +87,7 @@ def cli(subparser):
     mountp.add_argument("mountpoint", help=_("filesystem location to mount "
                                              "the image/container"))
 
+
 class MountError(Exception):
 
     """Generic error mounting a candidate container."""
@@ -451,7 +452,7 @@ class DockerMount(Mount):
         ld_metafile = open(os.path.join(prefix, 'lower-id'))
         ld_loc = os.path.join(util.default_docker_lib() % driver, ld_metafile.read())
         return (os.path.join(ld_loc, 'root'), os.path.join(prefix, 'upper'),
-                os.path.join(prefix, 'work'))
+                os.path.join(prefix, 'work'), os.path.join(prefix, 'merged'))
 
     def mount(self, identifier, options=None): # pylint: disable=arguments-differ
         """
@@ -589,13 +590,6 @@ class DockerMount(Mount):
         """
         OverlayFS mount backend.
         """
-        if self.live:
-            raise MountError('The OverlayFS backend does not support live '
-                             'mounts.')
-        elif 'rw' in options:
-            raise MountError('The OverlayFS backend does not support '
-                             'writeable mounts.')
-
         cid = self._identifier_as_cid(identifier)
 
         if self.mnt_mkdir:
@@ -617,13 +611,30 @@ class DockerMount(Mount):
             ld = cinfo['GraphDriver']['Data']['LowerDir']
             ud = cinfo['GraphDriver']['Data']['UpperDir']
             wd = cinfo['GraphDriver']['Data']['WorkDir']
+            md = cinfo['GraphDriver']['Data']['MergedDir']
         except KeyError:
-            ld, ud, wd = DockerMount._no_gd_api_overlay(cid, driver)
+            ld, ud, wd, md = DockerMount._no_gd_api_overlay(cid, driver)
 
-        options += ['ro', 'lowerdir=' + ld, 'upperdir=' + ud, 'workdir=' + wd]
-        optstring = ','.join(options)
-        cmd = [MOUNT_PATH, '-t', 'overlay', '-o', optstring, 'overlay',
-               self.mountpoint]
+        if self.live:
+            # when not running, mounts are not set up yet
+            if not cinfo['State']['Running']:
+                raise MountError("Container needs to be running when doing live mount for "
+                                 "overlay backend.")
+            try:
+                dev_type = Mount.get_dev_at_mountpoint(self.mountpoint)
+            except MountError:
+                # nothing mounted, good
+                pass
+            else:
+                if dev_type == 'overlay':
+                    # seems like we already mounted here; user error?
+                    raise MountError("Path %s is already used as a mountpoint." % self.mountpoint)
+            cmd = [MOUNT_PATH, "--bind", md, self.mountpoint]
+        else:
+            options += ['ro', 'lowerdir=' + ld, 'upperdir=' + ud, 'workdir=' + wd]
+            optstring = ','.join(options)
+            cmd = [MOUNT_PATH, '-t', 'overlay', '-o', optstring, 'overlay',
+                   self.mountpoint]
         status = util.subp(cmd)
 
         if status.return_code != 0:
@@ -750,6 +761,7 @@ class DockerMount(Mount):
         OverlayFS unmount backend.
         """
         mountpoint = self.mountpoint if path is None else path
+
         if Mount.get_dev_at_mountpoint(mountpoint) != 'overlay':
             raise MountError('Device mounted at {} is not an atomic mount.'.format(mountpoint))
         cid = self._get_overlay_mount_cid(driver)
