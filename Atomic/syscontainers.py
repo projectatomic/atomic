@@ -625,15 +625,6 @@ class SystemContainers(object):
                 tmpfilesout = os.path.join(SYSTEMD_TMPFILES_DEST, "%s.conf" % name)
         return unitfileout, tmpfilesout
 
-    def _resolve_remote_path(self, remote_path):
-        if not remote_path:
-            return None
-
-        real_path = os.path.realpath(remote_path)
-        if not os.path.exists(real_path):
-            raise ValueError("The container's rootfs is set to remote, but the remote rootfs does not exist")
-        return real_path
-
     def _checkout_wrapper(self, repo, name, img, deployment, mode, values=None, destination=None, extract_only=False, remote=None, prefix=None, installed_files_checksum=None, system_package='no'):
         """
         Wrapper function that groups parameters into a dictionary for better readbility
