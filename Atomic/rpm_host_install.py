@@ -82,7 +82,11 @@ class RPMHostInstall(object):
         return h.hexdigest()
 
     @staticmethod
-    def rm_add_files_to_host(old_installed_files_checksum, exports, prefix="/", files_template=None, values=None, rename_files=None):
+    def _should_use_hard_link(dest_path):
+        return dest_path.startswith("/usr/")
+
+    @staticmethod
+    def rm_add_files_to_host(old_installed_files_checksum, exports, prefix="/", files_template=None, values=None, rename_files=None, use_links=True):
         # if any file was installed on the host delete it
         if old_installed_files_checksum:
             for path, checksum in old_installed_files_checksum.items():
@@ -147,7 +151,8 @@ class RPMHostInstall(object):
                         shutil.copymode(src_file, dest_path)
                         created = True
                     else:
-                        created = RPMHostInstall._copyfile(selinux_hnd, src_file, dest_path)
+                        try_hardlink = use_links and RPMHostInstall._should_use_hard_link(dest_path)
+                        created = RPMHostInstall._copyfile(selinux_hnd, src_file, dest_path, try_hardlink=try_hardlink)
 
                     if created:
                         new_installed_files_checksum[rel_dest_path] = RPMHostInstall.file_checksum(dest_path)
