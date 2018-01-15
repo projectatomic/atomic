@@ -249,7 +249,7 @@ class SystemContainers(object):
         rootfs = os.path.join(rpm_content, "usr/lib/containers/atomic", name)
         os.makedirs(rootfs)
         try:
-            self._checkout(repo, name, image, 0, SystemContainers.CHECKOUT_MODE_INSTALL, values=values, destination=rootfs, prefix=rpm_content)
+            self._checkout_wrapper(repo, name, image, 0, SystemContainers.CHECKOUT_MODE_INSTALL, values=values, destination=rootfs, prefix=rpm_content)
             if self.display:
                 return None
             img = self.inspect_system_image(image)
@@ -532,7 +532,7 @@ class SystemContainers(object):
                 util.write_out("Generated rpm %s" % destination)
             return False
 
-        self._checkout(repo, name, image, 0, SystemContainers.CHECKOUT_MODE_INSTALL, values=values, remote=self.args.remote, system_package=self.args.system_package)
+        self._checkout_wrapper(repo, name, image, 0, SystemContainers.CHECKOUT_MODE_INSTALL, values=values, remote=self.args.remote, system_package=self.args.system_package)
 
     def _check_oci_configuration_file(self, conf_path, remote=None, include_all=False):
         with open(conf_path, 'r') as conf:
@@ -634,34 +634,54 @@ class SystemContainers(object):
             raise ValueError("The container's rootfs is set to remote, but the remote rootfs does not exist")
         return real_path
 
-    def _checkout(self, repo, name, img, deployment, mode, values=None, destination=None, extract_only=False, remote=None, prefix=None, installed_files_checksum=None, system_package='no'):
-        destination = destination or os.path.join(self._get_system_checkout_path(), "{}.{}".format(name, deployment))
-        unitfileout, tmpfilesout = self._get_systemd_destination_files(name, prefix)
+    def _checkout_wrapper(self, repo, name, img, deployment, mode, values=None, destination=None, extract_only=False, remote=None, prefix=None, installed_files_checksum=None, system_package='no'):
+        """
+        Wrapper function that groups parameters into a dictionary for better readbility
 
-        if mode == SystemContainers.CHECKOUT_MODE_INSTALL:
+        returns the same result that _checkout returns
+        """
+        options = {"name" : name,
+                   "img" : img,
+                   "deployment" : deployment,
+                   "upgrade_mode" : mode,
+                   "values" : values,
+                   "destination" : destination,
+                   "extract_only" : extract_only,
+                   "remote" : remote,
+                   "prefix" : prefix,
+                   "installed_files_checksum" : installed_files_checksum,
+                   "system_package" : system_package}
+        return self._checkout(repo, options)
+
+    def _checkout(self, repo, options):
+        options["destination"] = options["destination"] or os.path.join(self._get_system_checkout_path(), "{}.{}".format(options["name"], options["deployment"]))
+        unitfileout, tmpfilesout = self._get_systemd_destination_files(options["name"], options["prefix"])
+        options["unitfileout"] = unitfileout
+        options["tmpfilesout"] = tmpfilesout
+
+        install_mode = options["upgrade_mode"]  == SystemContainers.CHECKOUT_MODE_INSTALL
+
+        if install_mode:
             for f in [unitfileout, tmpfilesout]:
                 if os.path.exists(f):
                     raise ValueError("The file %s already exists." % f)
 
         try:
-            return self._do_checkout(repo, name, img, mode, deployment, values, destination, unitfileout, tmpfilesout, extract_only, remote, prefix,
-                                     installed_files_checksum=installed_files_checksum, system_package=system_package)
+            return self._do_checkout(repo, options)
         except (GLib.Error, ValueError, OSError, subprocess.CalledProcessError, KeyboardInterrupt) as e:
-            try:
-                if not extract_only and mode == SystemContainers.CHECKOUT_MODE_INSTALL:
-                    shutil.rmtree(destination)
-            except OSError:
-                pass
-            try:
-                if not extract_only and mode == SystemContainers.CHECKOUT_MODE_INSTALL:
+            if not options["extract_only"] and install_mode:
+                try:
+                    shutil.rmtree(options["destination"])
+                except OSError:
+                    pass
+                try:
                     os.unlink(unitfileout)
-            except OSError:
-                pass
-            try:
-                if not extract_only and mode == SystemContainers.CHECKOUT_MODE_INSTALL:
+                except OSError:
+                    pass
+                try:
                     os.unlink(tmpfilesout)
-            except OSError:
-                pass
+                except OSError:
+                    pass
             raise e
 
     @staticmethod
@@ -861,8 +881,7 @@ class SystemContainers(object):
         return destination
 
 
-    def _do_checkout(self, repo, name, img, mode, deployment, values, destination, unitfileout,
-                     tmpfilesout, extract_only, remote, prefix=None, installed_files_checksum=None, system_package='no'):
+    def _do_checkout(self, repo, options):
         """
         Actually do the checkout.
 
@@ -873,33 +892,33 @@ class SystemContainers(object):
         :rtype: dict
         :raises: AttributeError,NameError, OSError, ValueError
         """
-        if values is None:
-            values = {}
+        if options["values"] is None:
+            options["values"] = {}
 
         # Get the rev or raise out of the method
         try:
-            _, rev = self._resolve_image(repo, img)[0]
+            _, rev = self._resolve_image(repo, options["img"])[0]
         except (IndexError, TypeError):
-            raise ValueError("Image {} not found".format(img))
+            raise ValueError("Image {} not found".format(options["img"]))
 
-        remote_path = SystemContainers._get_remote_location(remote)
+        remote_path = SystemContainers._get_remote_location(options["remote"])
         if remote_path:
             exports = os.path.join(remote_path, "rootfs/exports")
         else:
-            exports = os.path.join(destination, "rootfs/exports")
+            exports = os.path.join(options["destination"], "rootfs/exports")
 
         unitfile = os.path.sep.join([exports, "service.template"])
         tmpfiles = os.path.sep.join([exports, "tmpfiles.template"])
 
-        util.write_out("Extracting to {}".format(destination))
+        util.write_out("Extracting to {}".format(options["destination"]))
 
         # upgrade will not restart the service if it was not already running
-        was_service_active = self._is_service_active(name)
+        was_service_active = self._is_service_active(options["name"])
 
         if self.display:
-            return values
+            return options["values"]
 
-        rootfs = self._prepare_rootfs_dirs(remote_path, destination, extract_only=extract_only)
+        rootfs = self._prepare_rootfs_dirs(remote_path, options["destination"], extract_only=options["extract_only"])
 
         manifest = self._image_manifest(repo, rev)
 
@@ -923,15 +942,15 @@ class SystemContainers(object):
                 if rootfs_fd:
                     os.close(rootfs_fd)
 
-        if extract_only:
-            return values
+        if options["extract_only"]:
+            return options["values"]
 
         if not os.path.exists(exports):
             util.write_out("""Warning: /exports directory not found.  Default config files will be generated.
-Warning: You may want to modify `%s` before starting the service""" % os.path.join(destination, "config.json"))
+Warning: You may want to modify `%s` before starting the service""" % os.path.join(options["destination"], "config.json"))
 
-        if system_package == 'auto':
-            system_package = "yes" if self._should_be_installed_rpm(exports) else 'no'
+        if options["system_package"] == 'auto':
+            options["system_package"] = "yes" if self._should_be_installed_rpm(exports) else 'no'
 
         manifest_file = os.path.join(exports, "manifest.json")
         installed_files_template = []
@@ -943,7 +962,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 try:
                     manifest = json.loads(f.read())
                 except ValueError:
-                    raise ValueError("Invalid manifest.json file in image: {}.".format(img))
+                    raise ValueError("Invalid manifest.json file in image: {}.".format(options["img"]))
                 if "installedFilesTemplate" in manifest:
                     installed_files_template = manifest["installedFilesTemplate"]
                 if "renameFiles" in manifest:
@@ -963,29 +982,29 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         else:
             systemd_template = SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE
 
-        values = self._amend_values(values, manifest, name, img, image_id, destination, prefix, unit_file_support_pidfile=SystemContainers._template_support_pidfile(systemd_template))
+        values = self._amend_values(options["values"], manifest, options["name"], options["img"], image_id, options["destination"], options["prefix"], unit_file_support_pidfile=SystemContainers._template_support_pidfile(systemd_template))
 
         src = os.path.join(exports, "config.json")
-        destination_path = os.path.join(destination, "config.json")
+        destination_path = os.path.join(options["destination"], "config.json")
         if os.path.exists(src):
             shutil.copyfile(src, destination_path)
         elif os.path.exists(src + ".template"):
             with open(src + ".template", 'r') as infile:
                 util.write_template(src + ".template", infile.read(), values, destination_path)
         else:
-            self._generate_default_oci_configuration(destination)
+            self._generate_default_oci_configuration(options["destination"])
 
         if remote_path:
-            SystemContainers._rewrite_rootfs(destination, rootfs)
+            SystemContainers._rewrite_rootfs(options["destination"], rootfs)
 
         # When upgrading, stop the service and remove previously installed
         # tmpfiles, before restarting the service.
-        if has_container_service and mode != SystemContainers.CHECKOUT_MODE_INSTALL:
+        if has_container_service and options["upgrade_mode"] != SystemContainers.CHECKOUT_MODE_INSTALL:
             if was_service_active:
-                self._systemctl_command("stop", name)
-            if os.path.exists(tmpfilesout):
+                self._systemctl_command("stop", options["name"])
+            if os.path.exists(options["tmpfilesout"]):
                 try:
-                    self._systemd_tmpfiles("--remove", tmpfilesout)
+                    self._systemd_tmpfiles("--remove", options["tmpfilesout"])
                 except subprocess.CalledProcessError:
                     pass
 
@@ -994,7 +1013,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             for k, v in rename_files.items():
                 template = Template(v)
                 try:
-                    new_v = template.substitute(values)
+                    new_v = template.substitute(options["values"])
                 except KeyError as e:
                     raise ValueError("The template file 'manifest.json' still contains an unreplaced value for: '%s'" % \
                                      (str(e)))
@@ -1004,38 +1023,38 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         # let's check if we can generate an rpm from the /exports directory
         rpm_file = rpm_installed = None
-        if system_package == 'yes':
-            img_obj = self.inspect_system_image(img)
+        if options["system_package"] == 'yes':
+            img_obj = self.inspect_system_image(options["img"])
             image_id = img_obj["ImageId"]
             labels = {k.lower() : v for k, v in img_obj.get('Labels', {}).items()}
-            (rpm_installed, rpm_file, _) = RPMHostInstall.generate_rpm(name, image_id, labels, exports, destination, values=values, installed_files_template=installed_files_template, rename_files=rename_files, defaultversion=deployment)
-        if rpm_installed or system_package == 'absent':
+            (rpm_installed, rpm_file, _) = RPMHostInstall.generate_rpm(options["name"], image_id, labels, exports, options["destination"], values=options["values"], installed_files_template=installed_files_template, rename_files=rename_files, defaultversion=options["deployment"])
+        if rpm_installed or options["system_package"] == 'absent':
             new_installed_files_checksum = {}
         else:
-            new_installed_files_checksum = RPMHostInstall.rm_add_files_to_host(installed_files_checksum, exports, prefix or "/", files_template=installed_files_template, values=values, rename_files=rename_files)
+            new_installed_files_checksum = RPMHostInstall.rm_add_files_to_host(options["installed_files_checksum"], exports, options["prefix"] or "/", files_template=installed_files_template, values=options["values"], rename_files=rename_files)
 
         new_installed_files = list(new_installed_files_checksum.keys())
         try:
-            with open(os.path.join(destination, "info"), 'w') as info_file:
-                info = {"image" : img,
+            with open(os.path.join(options["destination"], "info"), 'w') as info_file:
+                info = {"image" : options["img"],
                         "revision" : image_id,
                         "ostree-commit": rev,
                         'created' : calendar.timegm(time.gmtime()),
-                        "values" : values,
+                        "values" : options["values"],
                         "has-container-service" : has_container_service,
                         "installed-files": new_installed_files,
                         "installed-files-checksum": new_installed_files_checksum,
                         "installed-files-template": installed_files_template,
                         "rename-installed-files" : rename_files,
                         "rpm-installed" : rpm_installed,
-                        "system-package" : system_package,
-                        "remote" : remote,
+                        "system-package" : options["system_package"],
+                        "remote" : options["remote"],
                         "runtime" : self._get_oci_runtime()}
                 info_file.write(json.dumps(info, indent=4))
                 info_file.write("\n")
         except (NameError, AttributeError, OSError) as e:
             for i in new_installed_files:
-                os.remove(os.path.join(prefix or "/", os.path.relpath(i, "/")))
+                os.remove(os.path.join(options["prefix"] or "/", os.path.relpath(i, "/")))
             raise e
 
         if os.path.exists(tmpfiles):
@@ -1045,32 +1064,33 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             tmpfiles_template = SystemContainers._generate_tmpfiles_data(missing_bind_paths)
 
         if has_container_service:
-            util.write_template(unitfile, systemd_template, values, unitfileout)
-            shutil.copyfile(unitfileout, os.path.join(prefix or "/", destination, "%s.service" % name))
+            util.write_template(unitfile, systemd_template, options["values"], options["unitfileout"])
+            shutil.copyfile(options["unitfileout"], os.path.join(options["prefix"] or "/", options["destination"], "%s.service" % options["name"]))
         if (tmpfiles_template):
-            util.write_template(unitfile, tmpfiles_template, values, tmpfilesout)
-            shutil.copyfile(tmpfilesout, os.path.join(prefix or "/", destination, "tmpfiles-%s.conf" % name))
+            util.write_template(unitfile, tmpfiles_template, options["values"], options["tmpfilesout"])
+            shutil.copyfile(options["tmpfilesout"], os.path.join(options["prefix"] or "/", options["destination"], "tmpfiles-%s.conf" % options["name"]))
 
-        if not prefix:
-            sym = os.path.join(self._get_system_checkout_path(), name)
+
+        if not options["prefix"]:
+            sym = os.path.join(self._get_system_checkout_path(), options["name"])
             if os.path.exists(sym):
                 os.unlink(sym)
-            os.symlink(destination, sym)
+            os.symlink(options["destination"], sym)
 
         # if there is no container service, delete the checked out files.  At this point files copied to the host
         # are already handled.
         if not has_container_service:
             if not remote_path:
-                shutil.rmtree(os.path.join(destination, "rootfs"))
-            return values
+                shutil.rmtree(os.path.join(options["destination"], "rootfs"))
+            return options["values"]
 
-        if prefix:
-            return values
+        if options["prefix"]:
+            return options["values"]
 
-        sym = os.path.join(self._get_system_checkout_path(), name)
+        sym = os.path.join(self._get_system_checkout_path(), options["name"])
         if os.path.exists(sym):
             os.unlink(sym)
-        os.symlink(destination, sym)
+        os.symlink(options["destination"], sym)
 
         try:
             if rpm_installed:
@@ -1081,24 +1101,24 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
             self._systemctl_command("daemon-reload")
             if (tmpfiles_template):
-                self._systemd_tmpfiles("--create", tmpfilesout)
+                self._systemd_tmpfiles("--create", options["tmpfilesout"])
 
-            if mode == SystemContainers.CHECKOUT_MODE_INSTALL:
-                self._systemctl_command("enable", name)
+            if options["upgrade_mode"] == SystemContainers.CHECKOUT_MODE_INSTALL:
+                self._systemctl_command("enable", options["name"])
             elif was_service_active:
-                if mode == SystemContainers.CHECKOUT_MODE_UPGRADE_CONTROLLED:
+                if options["upgrade_mode"] == SystemContainers.CHECKOUT_MODE_UPGRADE_CONTROLLED:
                     must_rollback = False
                     try:
-                        self._systemctl_command("start", name)
+                        self._systemctl_command("start", options["name"])
                     except subprocess.CalledProcessError:
                         must_rollback = True
                     if must_rollback:
-                        util.write_err("Could not restart {}.  Attempt automatic rollback".format(name))
-                        self.rollback(name)
-                        self._systemctl_command("start", name)
+                        util.write_err("Could not restart {}.  Attempt automatic rollback".format(options["name"]))
+                        self.rollback(options["name"])
+                        self._systemctl_command("start", options["name"])
                         return {}
                 else:
-                    self._systemctl_command("start", name)
+                    self._systemctl_command("start", options["name"])
         except (subprocess.CalledProcessError, KeyboardInterrupt):
             if rpm_installed:
                 RPMHostInstall.uninstall_rpm(rpm_installed)
@@ -1107,7 +1127,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             os.unlink(sym)
             raise
 
-        return values
+        return options["values"]
 
     def _get_preinstalled_containers_path(self):
         return ATOMIC_USR
@@ -1257,7 +1277,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             system_package = 'yes' if rpm_installed else 'no'
 
         mode = SystemContainers.CHECKOUT_MODE_UPGRADE_CONTROLLED if controlled else SystemContainers.CHECKOUT_MODE_UPGRADE
-        self._checkout(repo, name, image, next_deployment, mode, values, remote=self.args.remote,
+        self._checkout_wrapper(repo, name, image, next_deployment, mode, values, remote=self.args.remote,
                        installed_files_checksum=installed_files_checksum, system_package=system_package)
 
     def rollback(self, name):
@@ -2231,7 +2251,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         repo = self._get_ostree_repo()
         if not repo:
             return False
-        self._checkout(repo, img, img, 0, SystemContainers.CHECKOUT_MODE_INSTALL, destination=destination, extract_only=True)
+        self._checkout_wrapper(repo, img, img, 0, SystemContainers.CHECKOUT_MODE_INSTALL, destination=destination, extract_only=True)
 
     @staticmethod
     def _encode_to_ostree_ref(name):
