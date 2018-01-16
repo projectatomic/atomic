@@ -5,6 +5,7 @@ import shutil
 import tempfile
 import unittest
 import subprocess
+import json
 
 from Atomic import util
 from Atomic.syscontainers import SystemContainers
@@ -108,6 +109,62 @@ class TestSystemContainers_do_checkout(unittest.TestCase):
             destination_rootfs = sc._prepare_rootfs_dirs(None, destination_location)
             self.assertEqual(destination_rootfs, expected_dest_rootfs)
             self.assertTrue(os.path.exists(expected_dest_rootfs), True)
+
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_write_config_to_dest(self):
+        """
+        This function checks 3 different cases for function 'write_config_to_dest'
+        1: checks when exports/config.json exist, the files are copied correctly
+        2: checks exports/config.json.template exist, the template is copied, and values inside the template are swapped by values
+        3: checks the  configuration was correct when the above 2 cases do not apply
+        """
+
+        def check_attr_in_json_file(json_file, attr_name, value, second_attr=None):
+            # We don't check existance here, because in this context, files do exist
+            with open(json_file, "r") as f:
+                json_val = json.loads(f.read())
+                actual_val =  json_val[attr_name][second_attr] if second_attr else json_val[attr_name]
+                self.assertEqual(actual_val, value)
+
+        try:
+            # Prepare the temp directory for verification
+            tmpdir = tempfile.mkdtemp()
+            dest_location = os.path.sep.join([tmpdir, "dest"])
+            dest_location_config = os.path.join(dest_location, "config.json")
+            # Note: in this context, the location of exports should not matter, as we are only copying files from exports
+            # in this function
+            exports_location = os.path.join(tmpdir, "rootfs/exports")
+            exports_json = os.path.join(exports_location, "config.json")
+
+            os.makedirs(exports_location)
+            os.mkdir(dest_location)
+            values = {"test_one": "$hello_test"}
+            with open(exports_json, 'w') as json_file:
+                json_file.write(json.dumps(values, indent=4))
+                json_file.write("\n")
+            new_values = {"hello_test" : "new_val"}
+
+            sc = SystemContainers()
+            sc._write_config_to_dest(dest_location, exports_location)
+            self.assertTrue(os.path.exists(dest_location_config), True)
+            check_attr_in_json_file(dest_location_config, "test_one", "$hello_test")
+            # We remove the file to keep the destination clean for next operation
+            os.remove(dest_location_config)
+
+            # Rename exports/config.json to exports/config.json.template
+            os.rename(exports_json, exports_json + ".template")
+            sc._write_config_to_dest(dest_location, exports_location, new_values)
+            self.assertTrue(os.path.exists(dest_location_config), True)
+            check_attr_in_json_file(dest_location_config, "test_one", "new_val")
+            os.remove(dest_location_config)
+
+            # Note: in this case, the configuration is generated and changed via 'generate_default_oci_configuration' which uses runc.
+            # Thus, we assume when user tries to run the unit test with this function, he will have runc installed
+            sc._write_config_to_dest(dest_location, os.path.join(tmpdir, "not_exist"))
+            self.assertTrue(os.path.exists(dest_location_config), True)
+            check_attr_in_json_file(dest_location_config, "root", "rootfs", second_attr="path")
 
         finally:
             shutil.rmtree(tmpdir)

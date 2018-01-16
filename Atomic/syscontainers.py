@@ -361,6 +361,31 @@ class SystemContainers(object):
                 os.makedirs(rootfs)
         return rootfs
 
+    def _write_config_to_dest(self, destination, exports_dir, values=None):
+        """
+        Write config.json based on user specified directories and the corresponding values
+        Note: we also assume the destination directory are existant/made before calling this function
+
+        :param destination: destination location for the container that will be containing config.json file
+        :param exports_dir: the directory user specified that is going to copy to the host
+        :values: values to substitute when the config template exist
+        """
+
+        src = os.path.join(exports_dir, "config.json")
+        destination_config = os.path.join(destination, "config.json")
+        src_config_template = src + ".template"
+
+        # Check for config.json in exports (user defined) directory
+        if os.path.exists(src):
+            shutil.copy(src, destination_config)
+        # Else, if we have a template, populate it
+        elif os.path.exists(src_config_template):
+            with open(src_config_template, 'r') as infile:
+                util.write_template(src_config_template, infile.read(), values, destination_config)
+        # Otherwise, use a default one
+        else:
+            self._generate_default_oci_configuration(destination)
+
     def install(self, image, name):
         """
         External container install logic.
@@ -430,6 +455,8 @@ class SystemContainers(object):
                 for k, v in setvalues.items():
                     values[k] = v
 
+            exports = os.path.sep.join([rootfs, 'exports'])
+
             manifest_file = os.path.sep.join([rootfs, 'exports', "manifest.json"])
             manifest = None
             if os.path.exists(manifest_file):
@@ -451,21 +478,8 @@ class SystemContainers(object):
 
             self._amend_values(values, manifest, name, image, image_id, base_dir)
 
-            # Check for config.json in exports
-            destination_config = os.path.sep.join([base_dir, 'config.json'])
-            template_config_file = os.path.sep.join([rootfs, 'exports', 'config.json.template'])
+            self._write_config_to_dest(base_dir, exports, values)
             template_tmpfiles = os.path.sep.join([rootfs, 'exports', 'tmpfiles.template'])
-            # If there is a config.json, use it
-            if os.path.exists(os.path.sep.join([rootfs, 'exports', 'config.json'])):
-                shutil.copy(os.path.sep.join([rootfs, 'exports', 'config.json']),
-                            destination_config)
-            # Else, if we have a template, populate it
-            elif os.path.exists(template_config_file):
-                with open(template_config_file, 'r') as infile:
-                    util.write_template(template_config_file, infile.read(), values, destination_config)
-            # Otherwise, use a default one
-            else:
-                self._generate_default_oci_configuration(destination_config)
 
             # If we have a tmpfiles template, populate it
             if os.path.exists(template_tmpfiles):
@@ -534,7 +548,8 @@ class SystemContainers(object):
 
         self._checkout_wrapper(repo, name, image, 0, SystemContainers.CHECKOUT_MODE_INSTALL, values=values, remote=self.args.remote, system_package=self.args.system_package)
 
-    def _check_oci_configuration_file(self, conf_path, remote=None, include_all=False):
+    def _check_oci_configuration_file(self, conf_dir_path, remote=None, include_all=False):
+        conf_path = os.path.join(conf_dir_path, "config.json")
         with open(conf_path, 'r') as conf:
             try:
                 configuration = json.loads(conf.read())
@@ -975,15 +990,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         options["values"] = self._amend_values(options["values"], manifest, options["name"], options["img"], image_id, options["destination"], options["prefix"], unit_file_support_pidfile=SystemContainers._template_support_pidfile(systemd_template))
 
-        src = os.path.join(exports, "config.json")
-        destination_path = os.path.join(options["destination"], "config.json")
-        if os.path.exists(src):
-            shutil.copyfile(src, destination_path)
-        elif os.path.exists(src + ".template"):
-            with open(src + ".template", 'r') as infile:
-                util.write_template(src + ".template", infile.read(), options["values"], destination_path)
-        else:
-            self._generate_default_oci_configuration(options["destination"])
+        self._write_config_to_dest(options["destination"], exports, options["values"])
 
         if remote_path:
             SystemContainers._rewrite_rootfs(options["destination"], rootfs)
@@ -1010,7 +1017,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                                      (str(e)))
                 rename_files[k] = new_v
 
-        missing_bind_paths = self._check_oci_configuration_file(destination_path, remote_path, False)
+        missing_bind_paths = self._check_oci_configuration_file(options["destination"], remote_path, False)
 
         # let's check if we can generate an rpm from the /exports directory
         rpm_file = rpm_installed = None
