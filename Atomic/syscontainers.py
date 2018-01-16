@@ -973,7 +973,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         else:
             systemd_template = SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE
 
-        values = self._amend_values(options["values"], manifest, options["name"], options["img"], image_id, options["destination"], options["prefix"], unit_file_support_pidfile=SystemContainers._template_support_pidfile(systemd_template))
+        options["values"] = self._amend_values(options["values"], manifest, options["name"], options["img"], image_id, options["destination"], options["prefix"], unit_file_support_pidfile=SystemContainers._template_support_pidfile(systemd_template))
 
         src = os.path.join(exports, "config.json")
         destination_path = os.path.join(options["destination"], "config.json")
@@ -981,7 +981,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             shutil.copyfile(src, destination_path)
         elif os.path.exists(src + ".template"):
             with open(src + ".template", 'r') as infile:
-                util.write_template(src + ".template", infile.read(), values, destination_path)
+                util.write_template(src + ".template", infile.read(), options["values"], destination_path)
         else:
             self._generate_default_oci_configuration(options["destination"])
 
