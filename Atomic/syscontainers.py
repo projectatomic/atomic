@@ -386,6 +386,43 @@ class SystemContainers(object):
         else:
             self._generate_default_oci_configuration(destination)
 
+    @staticmethod
+    def _get_manifest_attributes(manifest, attr_name, default_value):
+        """
+        Collects corresponding information from manifest file
+        based on attribtue name
+
+        :returns attribtues' corresponding value if it does exist
+        else returns a default value that is predefined
+        """
+        if manifest is not None and attr_name in manifest:
+            return manifest[attr_name]
+        return default_value
+
+    def _upgrade_tempfiles_clean(self, manifest, options, was_service_active):
+        """
+        When upgrading a container, we stop the service and remove previously
+        installed tmpfiles, before restarting the service
+
+        :param manifest: dictionary loaded from manifest json file
+        :param options: a dictionary which contains user input collectively
+        :param was_service_active: a boolean to indicate whether the container service was active
+        """
+        # The thought process here might be a bit tricky. When noContainerService is true, has_container_service
+        # will have the opposite value. Thus goes with the 'not' sign. Then because of the 'not', the default return
+        # value when noContainerService is not present should be False so that has_container_service will have
+        # a default value of True
+        has_container_service = not(SystemContainers._get_manifest_attributes(manifest, "noContainerService", False))
+
+        if has_container_service and options["upgrade_mode"] != SystemContainers.CHECKOUT_MODE_INSTALL:
+            if was_service_active:
+                self._systemctl_command("stop", options["name"])
+            if os.path.exists(options["tmpfilesout"]):
+                try:
+                    self._systemd_tmpfiles("--remove", options["tmpfilesout"])
+                except subprocess.CalledProcessError:
+                    pass
+
     def install(self, image, name):
         """
         External container install logic.
@@ -998,16 +1035,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if remote_path:
             SystemContainers._rewrite_rootfs(options["destination"], rootfs)
 
-        # When upgrading, stop the service and remove previously installed
-        # tmpfiles, before restarting the service.
-        if has_container_service and options["upgrade_mode"] != SystemContainers.CHECKOUT_MODE_INSTALL:
-            if was_service_active:
-                self._systemctl_command("stop", options["name"])
-            if os.path.exists(options["tmpfilesout"]):
-                try:
-                    self._systemd_tmpfiles("--remove", options["tmpfilesout"])
-                except subprocess.CalledProcessError:
-                    pass
+        self._upgrade_tempfiles_clean(manifest, options, was_service_active)
 
         # rename_files may contain variables that need to be replaced.
         if rename_files:

@@ -169,6 +169,22 @@ class TestSystemContainers_do_checkout(unittest.TestCase):
         finally:
             shutil.rmtree(tmpdir)
 
+    def test_get_manifest_attribtues(self):
+        """
+        This function checks 2 simple cases to verify the functionality of '_get_manifest_attribtues'
+        1: When the attribute is not in the manifest, a default val should be returned
+        2: When the key is there and manifest itself exist, its corresponding value should be returned
+        """
+        manifest = {"rename_files" : "test_val"}
+
+        # Test for the two cases mentioned above
+        test_val_one = SystemContainers._get_manifest_attributes(manifest, "rename_files", None)
+        self.assertEqual(test_val_one, "test_val")
+
+        test_val_two = SystemContainers._get_manifest_attributes(manifest, "non_existant", "test_two")
+        self.assertEqual(test_val_two, "test_two")
+
+
 @unittest.skipIf(no_mock, "Mock not found")
 class TestSystemContainers_container_exec(unittest.TestCase):
     """
