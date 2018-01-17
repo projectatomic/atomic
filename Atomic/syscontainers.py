@@ -423,6 +423,25 @@ class SystemContainers(object):
                 except subprocess.CalledProcessError:
                     pass
 
+    def _update_rename_file_value(self, manifest, values):
+        """
+        Substitute entries from rename_files content in manifest by the generated input values
+
+        :param manifest: dictionary loaded from manifest json file
+        :param values: the generated input values
+        """
+        rename_files = SystemContainers._get_manifest_attributes(manifest, "renameFiles", {})
+
+        if rename_files:
+            for k, v in rename_files.items():
+                template = Template(v)
+                try:
+                    new_v = template.substitute(values)
+                except KeyError as e:
+                    raise ValueError("The template file 'manifest.json' still contains an unreplaced value for: '%s'" % \
+                                     (str(e)))
+                rename_files[k] = new_v
+
     def install(self, image, name):
         """
         External container install logic.
@@ -1037,16 +1056,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         self._upgrade_tempfiles_clean(manifest, options, was_service_active)
 
-        # rename_files may contain variables that need to be replaced.
-        if rename_files:
-            for k, v in rename_files.items():
-                template = Template(v)
-                try:
-                    new_v = template.substitute(options["values"])
-                except KeyError as e:
-                    raise ValueError("The template file 'manifest.json' still contains an unreplaced value for: '%s'" % \
-                                     (str(e)))
-                rename_files[k] = new_v
+        self._update_rename_file_value(manifest, options["values"])
 
         missing_bind_paths = self._check_oci_configuration_file(options["destination"], remote_path, False)
 

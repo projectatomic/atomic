@@ -184,6 +184,29 @@ class TestSystemContainers_do_checkout(unittest.TestCase):
         test_val_two = SystemContainers._get_manifest_attributes(manifest, "non_existant", "test_two")
         self.assertEqual(test_val_two, "test_two")
 
+    def test_update_rename_file_value(self):
+        """
+        This function checks 2 different cases for function '_update_rename_file_value'
+        1: checks if the values will be successfully swapped given correct value combinations
+        2: checks when one of the values in "rename_files" is not replaced, error will come out
+        """
+
+        # Prepare for the values
+        sc = SystemContainers()
+        manifest = {"renameFiles" : {"testKey" : "$testVal",
+                                     "testKeySec" : "$testTwo"}}
+        values =  {"testVal" : "testSubOne",
+                    "testTwo" : "testSubTwo"}
+        secondValues = {"testVal" : "secondTestSubOne"}
+
+        # Test for the cases mentioned above
+        sc._update_rename_file_value(manifest, values)
+        self.assertEqual(manifest["renameFiles"]["testKey"], "testSubOne")
+        self.assertEqual(manifest["renameFiles"]["testKeySec"], "testSubTwo")
+
+        # Reset the value for next test case
+        manifest["renameFiles"]["testKey"] = "$testMisMatch"
+        self.assertRaises(ValueError, sc._update_rename_file_value, manifest, secondValues)
 
 @unittest.skipIf(no_mock, "Mock not found")
 class TestSystemContainers_container_exec(unittest.TestCase):
