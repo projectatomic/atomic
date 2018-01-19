@@ -151,6 +151,9 @@ The directives **installedFilesTemplate** and **renameFiles** from the
 **manifest.json** file can be used to modify the content and the final
 destination of the file.
 
+**useLinks** Specify if files copied to the host under */usr* should use
+hard links when possible.  By default it is True.
+
 This is the list of the variables that get a value from atomic and
 cannot be overriden by the user through **--set**:
 

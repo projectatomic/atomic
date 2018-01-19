@@ -963,6 +963,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         has_container_service = True
         rename_files = {}
         manifest = None
+        use_links = True
         if os.path.exists(manifest_file):
             with open(manifest_file, "r") as f:
                 try:
@@ -975,6 +976,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                     rename_files = manifest["renameFiles"]
                 if "noContainerService" in manifest and manifest["noContainerService"]:
                     has_container_service = False
+                if "useLinks" in manifest:
+                    use_links = manifest["useLinks"]
 
         image_manifest = self._image_manifest(repo, rev)
         image_id = rev
@@ -1029,7 +1032,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if rpm_installed or options["system_package"] == 'absent':
             new_installed_files_checksum = {}
         else:
-            new_installed_files_checksum = RPMHostInstall.rm_add_files_to_host(options["installed_files_checksum"], exports, options["prefix"] or "/", files_template=installed_files_template, values=options["values"], rename_files=rename_files)
+            new_installed_files_checksum = RPMHostInstall.rm_add_files_to_host(options["installed_files_checksum"], exports, options["prefix"] or "/", files_template=installed_files_template, values=options["values"], rename_files=rename_files, use_links=use_links)
 
         new_installed_files = list(new_installed_files_checksum.keys())
         try:
@@ -1047,6 +1050,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                         "rpm-installed" : rpm_installed,
                         "system-package" : options["system_package"],
                         "remote" : options["remote"],
+                        "use-links" : use_links,
                         "runtime" : self._get_oci_runtime()}
                 info_file.write(json.dumps(info, indent=4))
                 info_file.write("\n")
@@ -1297,6 +1301,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         installed_files_template = info["installed-files-template"] if "installed-files-template" in info and rpm_installed is None else None
         has_container_service = info["has-container-service"] if "has-container-service" in info else True
         rename_files = info["rename-installed-files"] if "rename-installed-files" in info else None
+        use_links = info["use-links"] if "use-links" in info else False
 
         was_service_active = has_container_service and self._is_service_active(name)
         unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
@@ -1327,7 +1332,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             shutil.copyfile(tmpfiles, tmpfilesout)
 
         if installed_files_checksum:
-            RPMHostInstall.rm_add_files_to_host(installed_files_checksum, os.path.join(destination, "rootfs/exports"), files_template=installed_files_template, rename_files=rename_files)
+            RPMHostInstall.rm_add_files_to_host(installed_files_checksum, os.path.join(destination, "rootfs/exports"), files_template=installed_files_template, rename_files=rename_files, use_links=use_links)
 
         os.unlink(path)
         os.symlink(destination, path)
