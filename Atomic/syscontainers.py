@@ -478,6 +478,46 @@ class SystemContainers(object):
 
         return rpm_install_content
 
+    def _write_info_file(self, options, manifest, rpm_install_content, image_id, rev):
+        """
+        Based on the information collected before in '_do_checkout' function, we collect and write this
+        information in json format into a info file at the container location
+
+        :param options: a dictionary which contains user's input collectively
+        :param manifest: dictionary loaded from manifest json file
+        :param rpm_install_content: a dictionary collected after handling system_package related actions
+        :param image_id: the id of the image
+        :param rev: the refspec of the corresponding image
+        """
+        installed_files_template = SystemContainers._get_manifest_attributes(manifest, "installedFilesTemplate", [])
+        rename_files = SystemContainers._get_manifest_attributes(manifest, "renameFiles", {})
+        has_container_service = not(SystemContainers._get_manifest_attributes(manifest, "noContainerService", False))
+
+        use_links = SystemContainers._get_manifest_attributes(manifest, "useLinks", True)
+
+        try:
+            with open(os.path.join(options["destination"], "info"), 'w') as info_file:
+                info = {"image" : options["img"],
+                        "revision" : image_id,
+                        "ostree-commit": rev,
+                        'created' : calendar.timegm(time.gmtime()),
+                        "values" : options["values"],
+                        "has-container-service" : has_container_service,
+                        "installed-files": rpm_install_content["new_installed_files"],
+                        "installed-files-checksum": rpm_install_content["new_installed_files_checksum"],
+                        "installed-files-template": installed_files_template,
+                        "rename-installed-files" : rename_files,
+                        "rpm-installed" : rpm_install_content["rpm_installed"],
+                        "system-package" : options["system_package"],
+                        "remote" : options["remote"],
+                        "use-links" : use_links,
+                        "runtime" : self._get_oci_runtime()}
+                info_file.write(json.dumps(info, indent=4))
+                info_file.write("\n")
+        except (NameError, AttributeError, OSError, IOError) as e:
+            for i in rpm_install_content["new_installed_files"]:
+                os.remove(os.path.join(options["prefix"] or "/", os.path.relpath(i, "/")))
+            raise e
 
     def install(self, image, name):
         """
@@ -1052,25 +1092,16 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             options["system_package"] = "yes" if self._should_be_installed_rpm(exports) else 'no'
 
         manifest_file = os.path.join(exports, "manifest.json")
-        installed_files_template = []
         has_container_service = True
-        rename_files = {}
         manifest = None
-        use_links = True
         if os.path.exists(manifest_file):
             with open(manifest_file, "r") as f:
                 try:
                     manifest = json.loads(f.read())
                 except ValueError:
                     raise ValueError("Invalid manifest.json file in image: {}.".format(options["img"]))
-                if "installedFilesTemplate" in manifest:
-                    installed_files_template = manifest["installedFilesTemplate"]
-                if "renameFiles" in manifest:
-                    rename_files = manifest["renameFiles"]
                 if "noContainerService" in manifest and manifest["noContainerService"]:
                     has_container_service = False
-                if "useLinks" in manifest:
-                    use_links = manifest["useLinks"]
 
         image_manifest = self._image_manifest(repo, rev)
         image_id = rev
@@ -1099,29 +1130,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         rpm_install_content = self._handle_system_package_files(options, manifest, exports)
 
-        try:
-            with open(os.path.join(options["destination"], "info"), 'w') as info_file:
-                info = {"image" : options["img"],
-                        "revision" : image_id,
-                        "ostree-commit": rev,
-                        'created' : calendar.timegm(time.gmtime()),
-                        "values" : options["values"],
-                        "has-container-service" : has_container_service,
-                        "installed-files": rpm_install_content["new_installed_files"],
-                        "installed-files-checksum": rpm_install_content["new_installed_files_checksum"],
-                        "installed-files-template": installed_files_template,
-                        "rename-installed-files" : rename_files,
-                        "rpm-installed" : rpm_install_content["rpm_installed"],
-                        "system-package" : options["system_package"],
-                        "remote" : options["remote"],
-                        "use-links" : use_links,
-                        "runtime" : self._get_oci_runtime()}
-                info_file.write(json.dumps(info, indent=4))
-                info_file.write("\n")
-        except (NameError, AttributeError, OSError) as e:
-            for i in rpm_install_content["new_installed_files"]:
-                os.remove(os.path.join(options["prefix"] or "/", os.path.relpath(i, "/")))
-            raise e
+        self._write_info_file(options, manifest, rpm_install_content, image_id, rev)
 
         if os.path.exists(tmpfiles):
             with open(tmpfiles, 'r') as infile:

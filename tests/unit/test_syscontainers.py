@@ -208,6 +208,44 @@ class TestSystemContainers_do_checkout(unittest.TestCase):
         manifest["renameFiles"]["testKey"] = "$testMisMatch"
         self.assertRaises(ValueError, sc._update_rename_file_value, manifest, secondValues)
 
+    def test_write_info_file(self):
+        """
+        This function checks 2 simple cases to verify functionality of '_write_info_file'
+        1: When error occurs, the files specified in 'new_install_files' are removed
+        2: Otherwise, the info file is written to the correct location
+        """
+
+        try:
+            # Prepare directories and values
+            tmpdir = tempfile.mkdtemp()
+            installed_file = tempfile.mkstemp(prefix=tmpdir)
+            installed_file_path = installed_file[1]
+            destination_dir = os.path.sep.join([tmpdir, "dest_dir"])
+            destination_info_path =  os.path.join(destination_dir, "info")
+
+            options = {"destination" : destination_dir,
+                       "prefix" : None,
+                       "img" : "test",
+                       "remote" : None,
+                       "system_package" : "no",
+                       "values" : {}}
+            rpm_install_content = {"new_installed_files" : [installed_file_path],
+                                   "rpm_installed" : False,
+                                   "new_installed_files_checksum" : {}}
+
+            # Since the destination is not created yet, we test here would result an IOError,
+            # leading to the installed_file to be removed
+            sc = SystemContainers()
+            self.assertRaises(IOError, sc._write_info_file, options, None, rpm_install_content, None, None)
+            self.assertFalse(os.path.exists(installed_file_path))
+
+            os.mkdir(destination_dir)
+            sc._write_info_file(options, None, rpm_install_content, None, None)
+            self.assertTrue(os.path.exists(destination_info_path))
+
+        finally:
+            shutil.rmtree(tmpdir)
+
 @unittest.skipIf(no_mock, "Mock not found")
 class TestSystemContainers_container_exec(unittest.TestCase):
     """
