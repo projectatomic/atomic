@@ -442,6 +442,43 @@ class SystemContainers(object):
                                      (str(e)))
                 rename_files[k] = new_v
 
+    def _handle_system_package_files(self, options, manifest, exports):
+        """
+        Based on user specified 'system-package' info, Check if an rpm can be generated from /exports,
+        if not, then we remove the old files installed and copy the new files from /exports/hostfs/xxxxx
+
+        :param manifest: dictionary loaded from manifest json file
+        :param exports: the export directory
+        :param options: a dictionary which contains input from users collectively
+        """
+
+        installed_files_template = SystemContainers._get_manifest_attributes(manifest, "installedFilesTemplate", [])
+        rename_files = SystemContainers._get_manifest_attributes(manifest, "renameFiles", {})
+        use_links = SystemContainers._get_manifest_attributes(manifest, "useLinks", True)
+
+        # let's check if we can generate an rpm from the /exports directory
+        rpm_file = rpm_installed = None
+        if options["system_package"] == 'yes':
+            img_obj = self.inspect_system_image(options["img"])
+            image_id = img_obj["ImageId"]
+            labels = {k.lower() : v for k, v in img_obj.get('Labels', {}).items()}
+            (rpm_installed, rpm_file, _) = RPMHostInstall.generate_rpm(options["name"], image_id, labels, exports, options["destination"], values=options["values"], installed_files_template=installed_files_template, rename_files=rename_files, defaultversion=options["deployment"])
+        if rpm_installed or options["system_package"] == 'absent':
+            new_installed_files_checksum = {}
+        else:
+            new_installed_files_checksum = RPMHostInstall.rm_add_files_to_host(options["installed_files_checksum"], exports, options["prefix"] or "/", files_template=installed_files_template, values=options["values"], rename_files=rename_files, use_links=use_links)
+
+        new_installed_files = list(new_installed_files_checksum.keys())
+
+        # Here, we pack the created attributes into a dictionary
+        rpm_install_content = {"new_installed_files" : new_installed_files,
+                               "new_installed_files_checksum" : new_installed_files_checksum,
+                               "rpm_installed" : rpm_installed,
+                               "rpm_file" : rpm_file}
+
+        return rpm_install_content
+
+
     def install(self, image, name):
         """
         External container install logic.
@@ -1060,19 +1097,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         missing_bind_paths = self._check_oci_configuration_file(options["destination"], remote_path, False)
 
-        # let's check if we can generate an rpm from the /exports directory
-        rpm_file = rpm_installed = None
-        if options["system_package"] == 'yes':
-            img_obj = self.inspect_system_image(options["img"])
-            image_id = img_obj["ImageId"]
-            labels = {k.lower() : v for k, v in img_obj.get('Labels', {}).items()}
-            (rpm_installed, rpm_file, _) = RPMHostInstall.generate_rpm(options["name"], image_id, labels, exports, options["destination"], values=options["values"], installed_files_template=installed_files_template, rename_files=rename_files, defaultversion=options["deployment"])
-        if rpm_installed or options["system_package"] == 'absent':
-            new_installed_files_checksum = {}
-        else:
-            new_installed_files_checksum = RPMHostInstall.rm_add_files_to_host(options["installed_files_checksum"], exports, options["prefix"] or "/", files_template=installed_files_template, values=options["values"], rename_files=rename_files, use_links=use_links)
+        rpm_install_content = self._handle_system_package_files(options, manifest, exports)
 
-        new_installed_files = list(new_installed_files_checksum.keys())
         try:
             with open(os.path.join(options["destination"], "info"), 'w') as info_file:
                 info = {"image" : options["img"],
@@ -1081,11 +1107,11 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                         'created' : calendar.timegm(time.gmtime()),
                         "values" : options["values"],
                         "has-container-service" : has_container_service,
-                        "installed-files": new_installed_files,
-                        "installed-files-checksum": new_installed_files_checksum,
+                        "installed-files": rpm_install_content["new_installed_files"],
+                        "installed-files-checksum": rpm_install_content["new_installed_files_checksum"],
                         "installed-files-template": installed_files_template,
                         "rename-installed-files" : rename_files,
-                        "rpm-installed" : rpm_installed,
+                        "rpm-installed" : rpm_install_content["rpm_installed"],
                         "system-package" : options["system_package"],
                         "remote" : options["remote"],
                         "use-links" : use_links,
@@ -1093,7 +1119,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 info_file.write(json.dumps(info, indent=4))
                 info_file.write("\n")
         except (NameError, AttributeError, OSError) as e:
-            for i in new_installed_files:
+            for i in rpm_install_content["new_installed_files"]:
                 os.remove(os.path.join(options["prefix"] or "/", os.path.relpath(i, "/")))
             raise e
 
@@ -1133,10 +1159,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         os.symlink(options["destination"], sym)
 
         try:
-            if rpm_installed:
-                RPMHostInstall.install_rpm(rpm_file)
+            if rpm_install_content["rpm_file"]:
+                RPMHostInstall.install_rpm(rpm_install_content["rpm_file"])
             else:
-                for installed_file in new_installed_files:
+                for installed_file in rpm_install_content["new_installed_files"]:
                     util.write_out("Created file {}".format(installed_file))
 
             self._systemctl_command("daemon-reload")
@@ -1160,9 +1186,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 else:
                     self._systemctl_command("start", options["name"])
         except (subprocess.CalledProcessError, KeyboardInterrupt):
-            if rpm_installed:
-                RPMHostInstall.uninstall_rpm(rpm_installed)
-            for installed_file in new_installed_files:
+            if rpm_install_content["rpm_installed"]:
+                RPMHostInstall.uninstall_rpm(rpm_install_content["rpm_installed"])
+            for installed_file in rpm_install_content["new_installed_files"]:
                 os.unlink(installed_file)
             os.unlink(sym)
             raise
