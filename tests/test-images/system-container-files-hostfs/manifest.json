@@ -9,5 +9,6 @@
     },
     "installedFilesTemplate" : [
         "/usr/local/lib/secret-message-template"
-    ]
+    ],
+    "useLinks" : false
 }

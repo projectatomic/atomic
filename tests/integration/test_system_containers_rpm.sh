@@ -152,6 +152,9 @@ do
     test -e $i
 done
 
+# we are using useLinks=false in the manifest.json, so ensure there is only one link.
+test $(stat -c%h /usr/local/lib/renamed-atomic-test-system-hostfs) == 1
+
 echo "This message will not be deleted" > /usr/local/lib/secret-message
 
 ATOMIC_OSTREE_TEST_FORCE_IMAGE_ID=NEW-ID ${ATOMIC} containers update atomic-test-system-hostfs
