@@ -519,6 +519,18 @@ class SystemContainers(object):
                 os.remove(os.path.join(options["prefix"] or "/", os.path.relpath(i, "/")))
             raise e
 
+    @staticmethod
+    def _get_manifest_json(manifest_dir, image):
+        manifest_file = os.path.join(manifest_dir, "manifest.json")
+        manifest = None
+        if os.path.exists(manifest_file):
+            with open(manifest_file, "r") as f:
+                try:
+                    manifest = json.loads(f.read())
+                except ValueError:
+                    raise ValueError("Invalid manifest.json file in image: {}.".format(image))
+        return manifest
+
     def install(self, image, name):
         """
         External container install logic.
@@ -590,15 +602,7 @@ class SystemContainers(object):
 
             exports = os.path.sep.join([rootfs, 'exports'])
 
-            manifest_file = os.path.sep.join([rootfs, 'exports', "manifest.json"])
-            manifest = None
-            if os.path.exists(manifest_file):
-                with open(manifest_file, "r") as f:
-                    try:
-                        manifest = json.loads(f.read())
-                    except ValueError:
-                        raise ValueError("Invalid manifest.json file in image: {}.".format(image))
-
+            manifest = SystemContainers._get_manifest_json(exports, image)
             # if we got here, we know there is one image
             repo = self._get_ostree_repo()
             imgs = self._resolve_image(repo, image)
@@ -1091,17 +1095,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if options["system_package"] == 'auto':
             options["system_package"] = "yes" if self._should_be_installed_rpm(exports) else 'no'
 
-        manifest_file = os.path.join(exports, "manifest.json")
-        has_container_service = True
-        manifest = None
-        if os.path.exists(manifest_file):
-            with open(manifest_file, "r") as f:
-                try:
-                    manifest = json.loads(f.read())
-                except ValueError:
-                    raise ValueError("Invalid manifest.json file in image: {}.".format(options["img"]))
-                if "noContainerService" in manifest and manifest["noContainerService"]:
-                    has_container_service = False
+        manifest = SystemContainers._get_manifest_json(exports, options["img"])
+        has_container_service = not(SystemContainers._get_manifest_attributes(manifest, "noContainerService", False))
 
         image_manifest = self._image_manifest(repo, rev)
         image_id = rev
