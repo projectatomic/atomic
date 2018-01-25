@@ -246,6 +246,51 @@ class TestSystemContainers_do_checkout(unittest.TestCase):
         finally:
             shutil.rmtree(tmpdir)
 
+    @patch("Atomic.rpm_host_install.RPMHostInstall.generate_rpm")
+    @patch("Atomic.rpm_host_install.RPMHostInstall.rm_add_files_to_host")
+    @patch("Atomic.syscontainers.SystemContainers.inspect_system_image")
+    def test_handle_system_package_files(self, _isi, _raf, _gr):
+        """
+        This function checks 3 simple cases to verify the basic functionality of handle_system_package_files
+        1: When 'system_package = absent'
+        2: When system_package is 'yes'
+        3: When system_package='no'
+
+        For 3 above cases, we verify if the expected outcome matches the actual outcome
+
+        Do note, this is just testing the workflow on a higher level of the subsequent function calls. IOW, the lower level function
+        call 'generate_rpm' or 'rm_add_files_to_host' will not be tested here (it is covered as a whole in integration test)
+        """
+        expected_checksum = {"test" : "test_checksum_xxx"}
+        _gr.return_value = (True, "rpm_file", None)
+        _raf.return_value = expected_checksum
+        _isi.return_value = {"ImageId" : {}}
+        manifest = {}
+
+        # Note, even though we replace the return value, we still need to make sure
+        # entries such as img or destination do exist in options to avoid key error
+        options = {"system_package" : "yes",
+                   "img" : None,
+                   "destination" : "",
+                   "values" : {},
+                   "deployment" : 1,
+                   "name" : "test"}
+        test_options_two = {"system_package" : "no",
+                            "installed_files_checksum": "",
+                            "prefix" : "",
+                            "values" : ""}
+        test_options_third = {"system_package" : "absent"}
+
+        sc = SystemContainers()
+        rpm_install_output_one = sc._handle_system_package_files(test_options_third, manifest, "")
+        self.assertEqual(rpm_install_output_one["new_installed_files_checksum"], {})
+
+        rpm_install_output_second = sc._handle_system_package_files(options, manifest, "")
+        self.assertEqual(rpm_install_output_second["rpm_installed"], True)
+
+        rpm_install_output_third = sc._handle_system_package_files(test_options_two, manifest, "")
+        self.assertEqual(rpm_install_output_third["new_installed_files_checksum"], expected_checksum)
+
 @unittest.skipIf(no_mock, "Mock not found")
 class TestSystemContainers_container_exec(unittest.TestCase):
     """
