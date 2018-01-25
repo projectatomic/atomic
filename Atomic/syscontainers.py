@@ -1462,7 +1462,12 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             if not os.path.exists(fullpath):
                 continue
             if fullpath.endswith(".0") or fullpath.endswith(".1"):
-                continue
+                # Skip the deployments if we have a symlink named in
+                # the same name except the ".[01]" ending.
+                # We avoid duplicates as we are already including the container
+                # in the results from the symlink and not from the deployments.
+                if os.path.islink(fullpath[:-2]):
+                    continue
 
             with open(os.path.join(fullpath, "info"), "r") as info_file:
                 info = json.load(info_file)

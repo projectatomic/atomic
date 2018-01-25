@@ -13,6 +13,7 @@ IFS=$'\n\t'
 # 6. install from a dockertar
 # 7. install from local docker
 # 8. install a run-once system container
+# 9. install a container with .0 in the name
 
 setup () {
     docker save atomic-test-system > ${WORK_DIR}/atomic-test-system.tar
@@ -108,7 +109,7 @@ assert_matches ${SECRET}-new ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/config.jso
 teardown
 
 
-# 5. installing from a dockertar
+# 6. installing from a dockertar
 export NAME="test-dockertar-system-container-$$"
 ${ATOMIC} install --name=${NAME} --set=RECEIVER=${SECRET} --system dockertar:/${WORK_DIR}/atomic-test-system.tar
 test -e /etc/tmpfiles.d/${NAME}.conf
@@ -119,7 +120,7 @@ test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/tmpfiles-${NAME}.conf
 teardown
 
 
-# 6. install from local docker
+# 7. install from local docker
 export NAME="test-docker-system-container-$$"
 ${ATOMIC} install --name=${NAME} --set=RECEIVER=${SECRET} --system docker:atomic-test-system:latest
 test -e /etc/tmpfiles.d/${NAME}.conf
@@ -130,12 +131,25 @@ test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/tmpfiles-${NAME}.conf
 teardown
 
 
-# 7. install a run-once container
+# 8. install a run-once container
 
-export NAME="atomic-test-runonce"
-${ATOMIC} pull --storage ostree docker:${NAME}:latest
-${ATOMIC} install --system --name=Saturn --set RECEIVER=Pluto ${NAME}:latest > ${WORK_DIR}/ps.out
+export NAME="Saturn"
+${ATOMIC} pull --storage ostree docker:atomic-test-runonce:latest
+${ATOMIC} install --system --name=${NAME} --set RECEIVER=Pluto atomic-test-runonce:latest > ${WORK_DIR}/ps.out
 assert_matches "HI Pluto from Saturn" ${WORK_DIR}/ps.out
+
+test \! -e /etc/systemd/system/${NAME}.service
+test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}
+test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0
+
+teardown
+
+# 9. install and uninstall a container with a name ending in .0
+
+export NAME="container.0"
+${ATOMIC} pull --storage ostree docker:atomic-test-system:latest
+${ATOMIC} install --system --name=${NAME} atomic-test-system:latest
+${ATOMIC} uninstall ${NAME}
 
 test \! -e /etc/systemd/system/${NAME}.service
 test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}
