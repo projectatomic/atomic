@@ -107,7 +107,7 @@ class Install(Atomic):
         if self.ostree_uri(self.image):
             return self.syscontainers.install(self.image, self.name)
         # Check if image exists
-        str_backend = 'ostree' if self.args.system else self.args.storage or storage
+        str_backend = 'ostree' if args_system else self.args.storage or storage
         be = be_utils.get_backend_from_string(str_backend)
         img_obj = be.has_image(self.args.image)
         if img_obj and img_obj.is_system_type:
