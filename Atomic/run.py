@@ -47,7 +47,7 @@ def cli(subparser):
     util.add_opt(runp)
     runp.add_argument("--replace", "-r", dest="replace", default=False,
                       action="store_true", help=_("Replaces an existing container by the same name"
-                                                  "if it exists."))
+                                                  " if it exists."))
     runp.add_argument("--storage", dest="storage", default=None,
                           help=_("Specify the storage. Default is currently '%s'.  You can"
                                  " change the default by editing /etc/atomic.conf and changing"
