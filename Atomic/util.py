@@ -37,7 +37,7 @@ ATOMIC_INSTALL_JSON = os.environ.get('ATOMIC_INSTALL_JSON', os.path.join(ATOMIC_
 
 GOMTREE_PATH = os.environ.get("GOMTREE_PATH", "/usr/bin/gomtree")
 BWRAP_OCI_PATH = os.environ.get("BWRAP_OCI", "/usr/bin/bwrap-oci")
-RUNC_PATH = os.environ.get("RUNC", "/bin/runc")
+RUNC_PATH = os.environ.get("RUNC", "/usr/bin/runc")
 SKOPEO_PATH = os.environ.get("SKOPEO_PATH", "/usr/bin/skopeo")
 KPOD_PATH = os.environ.get("KPOD_PATH", "/usr/bin/kpod")
 CAPSH_PATH = os.environ.get("CAPSH_PATH", "/usr/sbin/capsh")
