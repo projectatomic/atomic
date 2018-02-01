@@ -112,7 +112,7 @@ def get_registries():
             registries.append({'hostname': 'registry-1.docker.io', 'name': 'docker.io', 'search': True, 'secure': True})
     elif is_backend_available('docker'):
         dconf = get_docker_conf()
-        search_regs = [x['Name'] for x in dconf['Registries']]
+        search_regs = [x['Name'] for x in dconf['Registries']] if 'Registries' in dconf else ['docker.io']
         rconf = dconf['RegistryConfig']['IndexConfigs']
         # docker.io is special
         if 'docker.io' in rconf:
