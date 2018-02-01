@@ -1646,7 +1646,13 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             virtual_size = self._get_virtual_size(repo, manifest)
             if 'Labels' in manifest:
                 labels = manifest['Labels']
-            else:
+            elif 'history' in manifest:
+                for i in manifest['history']:
+                    if 'v1Compatibility' in i:
+                        config = json.loads(i['v1Compatibility'])
+                        if 'container_config' in config and 'Labels' in config['container_config']:
+                            labels.update(config['container_config']['Labels'])
+            if labels is None or len(labels) == 0:
                 config = self._image_config(repo, manifest)
                 if config:
                     config = json.loads(config)
