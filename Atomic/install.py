@@ -65,8 +65,6 @@ def cli(subparser):
         system_xor_user.add_argument("--system", dest="system",
                                      action='store_true', default=False,
                                      help=_('install a system container'))
-        installp.add_argument("--system-package", dest="system_package", default="auto",
-                              help=_('control how to install the package.  It accepts `auto`, `yes`, `no`, `build`'))
         installp.add_argument("--runtime", dest="runtime", default=None,
                               help=_('specify the OCI runtime to use for system and user containers'))
         installp.add_argument("--rootfs", dest="remote",
@@ -77,6 +75,8 @@ def cli(subparser):
                               action='append',
                               help=_("specify a variable in the VARIABLE=VALUE "
                                      "form for a system container"))
+    installp.add_argument("--system-package", dest="system_package", default="auto",
+                          help=_('control how to install the package.  It accepts `auto`, `yes`, `no`, `build`'))
     installp.add_argument("args", nargs=argparse.REMAINDER,
                           help=_("additional arguments appended to the image "
                                  "install method"))
