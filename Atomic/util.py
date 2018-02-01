@@ -363,7 +363,7 @@ def skopeo_delete(image, args=None):
     if not args:
         args=[]
 
-    cmd = [SKOPEO_PATH, 'delete', '--tls-verify=false'], + args + [image] # pylint: disable=invalid-unary-operand-type
+    cmd = [SKOPEO_PATH, 'delete', '--tls-verify=false'] + args + [image] # pylint: disable=invalid-unary-operand-type
     try:
         results = subp(cmd)
     except OSError:
