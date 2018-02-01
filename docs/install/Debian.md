@@ -9,7 +9,7 @@ On Debian, You will need to install the required build dependencies to build `at
 "rpm" is required in order to `diff` two Docker images.
 
 ```
-apt-get install go-md2man rpm python-selinux python-rpm python-dbus python-slip python-slip-dbus python-gobject
+apt-get install go-md2man rpm python-selinux python-rpm python-dbus python-slip python-slip-dbus python-gobject python-yaml python-dateutil
 ```
 
 Get the code
