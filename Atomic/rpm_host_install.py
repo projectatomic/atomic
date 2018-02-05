@@ -21,7 +21,7 @@ class RPMHostInstall(object):
             except OSError:
                 pass
 
-            ctx = selinux.selabel_lookup_raw(selinux_hnd, dest, mode)
+            ctx = selinux.selabel_lookup_raw(selinux_hnd, str(dest), mode)
             selinux.setfscreatecon_raw(ctx[1])
 
         if os.path.isdir(src):
@@ -144,7 +144,7 @@ class RPMHostInstall(object):
                             data = src_file_obj.read()
 
                         if selinux_hnd is not None:
-                            ctx = selinux.selabel_lookup_raw(selinux_hnd, dest_path, os.stat(src_file).st_mode)
+                            ctx = selinux.selabel_lookup_raw(selinux_hnd, str(dest_path), os.stat(src_file).st_mode)
                             selinux.setfscreatecon_raw(ctx[1])
 
                         util.write_template(src_file, data, values or {}, dest_path)
