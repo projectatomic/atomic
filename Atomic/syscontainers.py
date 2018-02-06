@@ -2065,10 +2065,6 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         args, img = self._convert_to_skopeo(image)
         return util.skopeo_inspect(img, args)
 
-    def _skopeo_get_layers(self, image, layers):
-        _, img = self._convert_to_skopeo(image)
-        return util.skopeo_layers(img, [], layers)
-
     def _image_manifest(self, repo, rev):
         return SystemContainers._get_commit_metadata(repo, rev, "docker.manifest")
 
@@ -2277,7 +2273,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         if can_use_skopeo_copy:
             return self._check_system_oci_image_skopeo_copy(repo, img, src_creds=src_creds)
-        return self._check_system_oci_image_no_skopeo_copy(repo, img, imagebranch)
+        else:
+            raise ValueError("Skopeo version too old, please install the newest version")
 
     def _check_system_oci_image_skopeo_copy(self, repo, img, src_creds=None):
         repo = self.get_ostree_repo_location()
@@ -2294,37 +2291,6 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             util.skopeo_copy("docker://" + img, destination, dest_ostree_tmp_dir=temp_dir, insecure=insecure, src_creds=src_creds)
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
-        return True
-
-    def _check_system_oci_image_no_skopeo_copy(self, repo, img, imagebranch):
-        try:
-            manifest = self._skopeo_get_manifest(img)
-        except ValueError:
-            raise ValueError("Unable to find {}".format(img))
-        layers = SystemContainers.get_layers_from_manifest(manifest)
-        missing_layers = []
-        for i in layers:
-            layer = i.replace("sha256:", "")
-            has_layer = repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1]
-            if not has_layer:
-                missing_layers.append(layer)
-                util.write_out("Pulling layer %s" % layer)
-        layers_dir = None
-        try:
-            layers_to_import = {}
-            if len(missing_layers):
-                layers_dir = self._skopeo_get_layers(img, missing_layers)
-                for root, _, files in os.walk(layers_dir):
-                    for f in files:
-                        if f.endswith(".tar"):
-                            layer_file = os.path.join(root, f)
-                            layer = f.replace(".tar", "")
-                            if not repo.resolve_rev("%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), True)[1]:
-                                layers_to_import[layer] = layer_file
-            self._import_layers_into_ostree(repo, imagebranch, manifest, layers_to_import)
-        finally:
-            if layers_dir:
-                shutil.rmtree(layers_dir)
         return True
 
     @staticmethod
