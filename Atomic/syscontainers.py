@@ -1623,12 +1623,13 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         commit = repo.load_commit(commit_rev)[1]
 
         timestamp = OSTree.commit_get_timestamp(commit)
-        branch_id = SystemContainers._decode_from_ostree_ref(imagebranch.replace(OSTREE_OCIIMAGE_PREFIX, ""))
+        img_ref_str = SystemContainers._get_img_ref_str(imagebranch)
+        branch_id = SystemContainers._decode_from_ostree_ref(img_ref_str)
 
         image_id = commit_rev
         id_ = None
 
-        if len(branch_id) == 64:
+        if SystemContainers._is_hex(branch_id):
             image_id = branch_id
             tag = "<none>"
         elif '@sha256:' in branch_id:
@@ -1699,9 +1700,21 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             if repo is None:
                 return []
         revs = [x for x in repo.list_refs()[1] if x.startswith(OSTREE_OCIIMAGE_PREFIX) \
-                and (get_all or len(x) != len(OSTREE_OCIIMAGE_PREFIX) + 64)]
+                and (get_all or not SystemContainers._is_hex(SystemContainers._get_img_ref_str(x)))]
 
         return [self._inspect_system_branch(repo, x) for x in revs]
+
+    @staticmethod
+    def _get_img_ref_str(ostree_ref_str):
+        return ostree_ref_str.replace(OSTREE_OCIIMAGE_PREFIX, "")
+
+    @staticmethod
+    def _is_hex(s):
+        try:
+            int(s, 16)
+            return True
+        except ValueError:
+            return False
 
     def _is_service_active(self, name):
         try:
@@ -1912,11 +1925,12 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         for i in repo.list_refs()[1]:
             if i.startswith(OSTREE_OCIIMAGE_PREFIX):
-                if len(i) == len(OSTREE_OCIIMAGE_PREFIX) + 64:
+                img_ref_str = SystemContainers._get_img_ref_str(i)
+                if SystemContainers._is_hex(img_ref_str):
                     refs[i] = False
                 else:
                     invalid_encoding = False
-                    for c in i.replace(OSTREE_OCIIMAGE_PREFIX, ""):
+                    for c in img_ref_str:
                         if not str.isalnum(str(c)) and c not in '.-_':
                             invalid_encoding = True
                             break
