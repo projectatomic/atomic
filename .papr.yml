@@ -28,7 +28,7 @@ timeout: 30m
 inherit: true
 
 host:
-  distro: centos/7/atomic/alpha
+  distro: centos/7/atomic/smoketested
   specs:
     secondary-disk: 10
 
