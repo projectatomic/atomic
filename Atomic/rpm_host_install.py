@@ -276,9 +276,9 @@ class RPMHostInstall(object):
         if os.path.exists("/run/ostree-booted"):
             raise ValueError("This doesn't work on Atomic Host yet")
         elif os.path.exists("/usr/bin/dnf"):
-            util.check_call(["dnf", "install", "-y", rpm])
+            util.check_call(["dnf", "install", "-C", "-y", rpm])
         else:
-            util.check_call(["yum", "install", "-y", rpm])
+            util.check_call(["yum", "install", "-C", "-y", rpm])
 
     @staticmethod
     def uninstall_rpm(rpm):
