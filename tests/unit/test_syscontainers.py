@@ -292,6 +292,44 @@ class TestSystemContainers_do_checkout(unittest.TestCase):
         self.assertEqual(rpm_install_output_third["new_installed_files_checksum"], expected_checksum)
 
 @unittest.skipIf(no_mock, "Mock not found")
+class TestSystemContainers_miscellaneous(unittest.TestCase):
+    """
+    Unit tests for general / utility functions in syscontainers.py
+    """
+    def test_encode_to_ostree_ref(self):
+        """
+        Verify that 1: image after encoded to ostree ref will be no longer hex
+        2: image contains no tag will have tag latest appended
+        3: qualified image(image with registry included) and non-qualified image will behave in the same way
+        when calling _encode_to_ostree_ref
+        """
+
+        def ensure_ref_is_not_hex(ref):
+            ref_is_hex = SystemContainers._is_hex(ref)
+            self.assertFalse(ref_is_hex)
+
+        qual_img_without_tag = "registry.fedoraproject.org/f27/kubernetes-apiserver"
+        qual_img_with_tag = qual_img_without_tag + ":tag"
+        non_qual_img_without_tag = "cafe"
+        non_qual_img_with_tag = non_qual_img_without_tag + ":tag"
+
+        qual_img_without_tag_ref = SystemContainers._encode_to_ostree_ref(qual_img_without_tag)
+        self.assertTrue(qual_img_without_tag_ref.endswith("latest"))
+        ensure_ref_is_not_hex(qual_img_without_tag_ref)
+
+        # The encoded ref will have ":" translated to _3A (unicode)
+        qual_img_with_tag_ref = SystemContainers._encode_to_ostree_ref(qual_img_with_tag)
+        self.assertTrue(qual_img_with_tag_ref.endswith("_3Atag"))
+        ensure_ref_is_not_hex(qual_img_with_tag_ref)
+
+        non_qual_img_without_tag_ref = SystemContainers._encode_to_ostree_ref(non_qual_img_without_tag)
+        ensure_ref_is_not_hex(non_qual_img_without_tag_ref)
+
+        non_qual_img_with_tag_ref = SystemContainers._encode_to_ostree_ref(non_qual_img_with_tag)
+        self.assertTrue(non_qual_img_with_tag_ref.endswith("_3Atag"))
+        ensure_ref_is_not_hex(non_qual_img_with_tag_ref)
+
+@unittest.skipIf(no_mock, "Mock not found")
 class TestSystemContainers_container_exec(unittest.TestCase):
     """
     Unit tests for the SystemContainres.container_exec method.
