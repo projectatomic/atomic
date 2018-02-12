@@ -51,9 +51,6 @@ class BackendUtils(object):
     def _get_backend(self, backend):
         return self.get_backend_from_string(backend, init=False)
 
-    def _get_backend_index_from_string(self, str_backend):
-        return [x().backend for x in self.BACKENDS].index(str_backend)
-
     @staticmethod
     def backend_has_image(backend, img):
         return True if backend.has_image(img) else False
@@ -85,7 +82,8 @@ class BackendUtils(object):
             if required:
                 raise ValueError("Unable to find {} in the {} backend".format(img, str_preferred_backend))
             # Didnt find in preferred, need to remove it from the list now
-            del backends[self._get_backend_index_from_string(str_preferred_backend)]
+            if be in backends:
+                del backends[backends.index(be)]
 
         # Did not find it in the preferred backend, keep looking
         img_in_backends = []
@@ -126,7 +124,8 @@ class BackendUtils(object):
             if required:
                 raise ValueError("Unable to find {} in the {} backend".format(container_name, str_preferred_backend))
             # Didnt find in preferred, need to remove it from the list now
-            del backends[self._get_backend_index_from_string(str_preferred_backend)]
+            if be in backends:
+                del backends[backends.index(be)]
 
         container_in_backends = []
         for backend in backends:
