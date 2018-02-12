@@ -60,6 +60,7 @@ class RpmWriter(object):
     RPMTAG_FILEFLAGS = 1037
     RPMTAG_FILEUSERNAME = 1039
     RPMTAG_FILEGROUPNAME = 1040
+    RPMTAG_SOURCERPM = 1044
 
     RPMTAG_PROVIDENAME = 1047
     RPMTAG_REQUIRENAME = 1049
@@ -324,6 +325,7 @@ class RpmWriter(object):
         self.add_header(RpmWriter.RPMTAG_RELEASE, 6, 1, "%s\0" % self.release)
         self.add_header(RpmWriter.RPMTAG_OS, 6, 1, "linux\0")
         self.add_header(RpmWriter.RPMTAG_ARCH, 6, 1, "noarch\0")
+        self.add_header(RpmWriter.RPMTAG_SOURCERPM, 6, 1, "\0")
 
         self.add_header(RpmWriter.RPMTAG_SUMMARY, 6, 1, self.summary + "\0")
         self.add_header(RpmWriter.RPMTAG_DESCRIPTION, 6, 1, self.description + "\0")
