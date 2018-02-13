@@ -141,6 +141,9 @@ ${ATOMIC} pull --storage ostree docker:atomic-test-runonce:latest
 ${ATOMIC} install --system --name=${NAME} --set RECEIVER=Pluto atomic-test-runonce:latest > ${WORK_DIR}/ps.out
 assert_matches "HI Pluto from Saturn" ${WORK_DIR}/ps.out
 
+${ATOMIC} run --storage ostree --set RECEIVER=Pluto atomic-test-runonce:latest echo Hello World > ${WORK_DIR}/ps.out
+assert_matches "Hello World" ${WORK_DIR}/ps.out
+
 test \! -e /etc/systemd/system/${NAME}.service
 test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}
 test \! -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0

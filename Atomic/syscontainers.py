@@ -578,7 +578,7 @@ class SystemContainers(object):
         # Return
         return return_value
 
-    def _run_once(self, image, name):
+    def _run_once(self, image, name, args=None):
         """
         Runs the container once and then removes it.
 
@@ -630,6 +630,11 @@ class SystemContainers(object):
             self._amend_values(values, manifest, name, image, image_id, base_dir)
 
             self._write_config_to_dest(base_dir, exports, values)
+            if args is not None:
+                conf_file = os.path.sep.join([base_dir, "config.json"])
+                tty = os.isatty(0)
+                self._rewrite_config_args(conf_file, conf_file, args, tty=tty)
+
             template_tmpfiles = os.path.sep.join([rootfs, 'exports', 'tmpfiles.template'])
 
             # If we have a tmpfiles template, populate it
@@ -2653,6 +2658,14 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             return config
 
     def container_exec(self, name, detach, args):
+        d = util.Decompose(name)
+        # if the name is fully qualified or isn't a valid name for a container, then run the image
+        if d.registry != "" or ':' in name:
+            repo = self._get_ostree_repo()
+            if not repo:
+                raise ValueError("Cannot find a configured OSTree repo")
+            return self._run_once(name, "run-once-{}".format(os.getpid()), args=args)
+
         is_container_running = self._is_service_active(name)
 
         tty = os.isatty(0)
@@ -2669,7 +2682,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         else:
             checkout = self._canonicalize_location(self.get_checkout(name))
             if checkout is None:
-                return self._run_once(name, "run-once-{}".format(os.getpid()), args=args)
+                raise ValueError("The container '{}' doesn't exist".format(name))
             if detach:
                 raise ValueError("Cannot use --detach with not running containers")
 
