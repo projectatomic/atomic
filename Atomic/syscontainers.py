@@ -1064,10 +1064,7 @@ class SystemContainers(object):
             raise ValueError("Image {} not found".format(options["img"]))
 
         remote_path = SystemContainers._get_remote_location(options["remote"])
-        if remote_path:
-            exports = os.path.join(remote_path, "rootfs/exports")
-        else:
-            exports = os.path.join(options["destination"], "rootfs/exports")
+        exports = os.path.join(remote_path or options["destination"], "rootfs/exports")
 
         unitfile = os.path.sep.join([exports, "service.template"])
         tmpfiles = os.path.sep.join([exports, "tmpfiles.template"])
