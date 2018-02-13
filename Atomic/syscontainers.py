@@ -17,6 +17,7 @@ from ctypes import cdll, CDLL
 import uuid
 from .rpm_host_install import RPMHostInstall, RPM_NAME_PREFIX
 import __main__
+import selinux
 
 try:
     import gi
@@ -226,6 +227,19 @@ class SystemContainers(object):
         # Same entrypoint
         return self.install(image, name)
 
+    def _create_rootfs(self, rootfs):
+        """
+        Ensure the rootfs directory exists and it has the correct SELinux label.
+        """
+        if os.getuid() == 0 and selinux.is_selinux_enabled() != 0:
+            label = selinux.getfilecon("/")[1]
+            selinux.setfscreatecon_raw(label)
+
+        try:
+            os.makedirs(rootfs)
+        finally:
+            selinux.setfscreatecon_raw(None)
+
     def build_rpm(self, repo, name, image, values, destination):
         """
         Create a checkout and generate an RPM file
@@ -247,7 +261,7 @@ class SystemContainers(object):
         temp_dir = tempfile.mkdtemp()
         rpm_content = os.path.join(temp_dir, "rpmroot")
         rootfs = os.path.join(rpm_content, "usr/lib/containers/atomic", name)
-        os.makedirs(rootfs)
+        self._create_rootfs(rootfs)
         try:
             self._checkout_wrapper(repo, name, image, 0, SystemContainers.CHECKOUT_MODE_INSTALL, values=values, destination=rootfs, prefix=rpm_content)
             if self.display:
@@ -358,7 +372,7 @@ class SystemContainers(object):
                 os.makedirs(destination)
         else:
             if not os.path.exists(rootfs):
-                os.makedirs(rootfs)
+                self._create_rootfs(rootfs)
         return rootfs
 
     def _write_config_to_dest(self, destination, exports_dir, values=None):
@@ -581,7 +595,7 @@ class SystemContainers(object):
         mounted_from_storage = False
         try:
             rootfs = os.path.sep.join([base_dir, 'rootfs'])
-            os.makedirs(rootfs)
+            self._create_rootfs(rootfs)
             try:
                 upperdir = os.path.sep.join([base_dir, 'upperdir'])
                 workdir = os.path.sep.join([base_dir, 'workdir'])
@@ -2551,7 +2565,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             layers_dir.append(rootfs)
             if os.path.exists(rootfs):
                 continue
-            os.makedirs(rootfs)
+            self._create_rootfs(rootfs)
             rootfs_fd = None
             try:
                 rootfs_fd = os.open(rootfs, os.O_DIRECTORY)

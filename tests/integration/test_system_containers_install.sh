@@ -59,6 +59,9 @@ test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/tmpfiles-${NAME}.conf
 test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/config.json
 test -e ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/info
 
+if sestatus | grep "SELinux status:.*enabled"; then
+    test "$(stat -c%C /)" = "$(stat -c%C ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/rootfs)"
+fi
 
 # 2. Check the value we set (--set) is exported into the config file
 assert_matches ${SECRET} ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}.0/config.json
