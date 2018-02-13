@@ -1156,7 +1156,6 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             util.write_template(unitfile, tmpfiles_template, options["values"], options["tmpfilesout"])
             shutil.copyfile(options["tmpfilesout"], os.path.join(options["prefix"] or "/", options["destination"], "tmpfiles-%s.conf" % options["name"]))
 
-
         if not options["prefix"]:
             sym = os.path.join(self._get_system_checkout_path(), options["name"])
             if os.path.exists(sym):
@@ -1172,11 +1171,6 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         if options["prefix"]:
             return options["values"]
-
-        sym = os.path.join(self._get_system_checkout_path(), options["name"])
-        if os.path.exists(sym):
-            os.unlink(sym)
-        os.symlink(options["destination"], sym)
 
         try:
             if rpm_install_content["rpm_file"]:
