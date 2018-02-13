@@ -2639,6 +2639,19 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                     s = os.stat(fullpath)
                     os.chmod(fullpath, s.st_mode | 0o600)
 
+    def _rewrite_config_args(self, orig_config, dest_config, args, tty=None, checkout=None):
+        with open(orig_config, 'r') as config_file:
+            config = json.loads(config_file.read())
+            if checkout is not None:
+                rootfs = os.path.realpath(os.path.normpath(os.path.join(checkout, config['root']['path'])))
+                config['root']['path'] = rootfs
+            config['process']['args'] = args
+            if tty is not None:
+                config['process']['terminal'] = tty
+            with open(dest_config, 'w') as conf:
+                conf.write(json.dumps(config, indent=4))
+            return config
+
     def container_exec(self, name, detach, args):
         is_container_running = self._is_service_active(name)
 
@@ -2656,21 +2669,15 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         else:
             checkout = self._canonicalize_location(self.get_checkout(name))
             if checkout is None:
-                raise ValueError("The container '{}' doesn't exist".format(name))
+                return self._run_once(name, "run-once-{}".format(os.getpid()), args=args)
             if detach:
                 raise ValueError("Cannot use --detach with not running containers")
 
             temp_dir = tempfile.mkdtemp()
             try:
                 orig_config = os.path.sep.join([checkout, 'config.json'])
-                with open(orig_config, 'r') as config_file:
-                    config = json.loads(config_file.read())
-                    new_path = os.path.realpath(os.path.normpath(os.path.join(checkout, config['root']['path'])))
-                    config['root']['path'] = new_path
-                    config['process']['args'] = args
-                    config['process']['terminal'] = tty
-                with open(os.path.sep.join([temp_dir, 'config.json']), 'w') as conf:
-                    conf.write(json.dumps(config, indent=4))
+                dest_config = os.path.sep.join([temp_dir, 'config.json'])
+                config = self._rewrite_config_args(orig_config, dest_config, args, tty=tty, checkout=checkout)
 
                 # The runtime directories are usually created by systemd when the
                 # service starts.  Since we are running the container outside of
