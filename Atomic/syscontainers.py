@@ -1173,32 +1173,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             return options["values"]
 
         try:
-            if rpm_install_content["rpm_file"]:
-                RPMHostInstall.install_rpm(rpm_install_content["rpm_file"])
-            else:
-                for installed_file in rpm_install_content["new_installed_files"]:
-                    util.write_out("Created file {}".format(installed_file))
-
-            self._systemctl_command("daemon-reload")
-            if (tmpfiles_template):
-                self._systemd_tmpfiles("--create", options["tmpfilesout"])
-
-            if options["upgrade_mode"] == SystemContainers.CHECKOUT_MODE_INSTALL:
-                self._systemctl_command("enable", options["name"])
-            elif was_service_active:
-                if options["upgrade_mode"] == SystemContainers.CHECKOUT_MODE_UPGRADE_CONTROLLED:
-                    must_rollback = False
-                    try:
-                        self._systemctl_command("start", options["name"])
-                    except subprocess.CalledProcessError:
-                        must_rollback = True
-                    if must_rollback:
-                        util.write_err("Could not restart {}.  Attempt automatic rollback".format(options["name"]))
-                        self.rollback(options["name"])
-                        self._systemctl_command("start", options["name"])
-                        return {}
-                else:
-                    self._systemctl_command("start", options["name"])
+            self._finalize_checkout(rpm_install_content, tmpfiles_template, options, was_service_active)
         except (subprocess.CalledProcessError, KeyboardInterrupt):
             if rpm_install_content["rpm_installed"]:
                 RPMHostInstall.uninstall_rpm(rpm_install_content["rpm_installed"])
@@ -1208,6 +1183,53 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             raise
 
         return options["values"]
+
+    def _finalize_checkout(self, rpm_install_content, tmpfiles_template, options, was_service_active):
+        """
+        Last stage of checking out a container. It includes outputting results,
+        setup for systemd part, and service starting
+        """
+        # Handle results based on rpm_install_content collected earlier
+        if rpm_install_content["rpm_file"]:
+            RPMHostInstall.install_rpm(rpm_install_content["rpm_file"])
+        else:
+            for installed_file in rpm_install_content["new_installed_files"]:
+                util.write_out("Created file {}".format(installed_file))
+
+        self._systemctl_command("daemon-reload")
+        if (tmpfiles_template):
+            self._systemd_tmpfiles("--create", options["tmpfilesout"])
+
+        # Note, when a rollback for container happens, the values from options will be reset to empty
+        self._systemd_service_setup(options, was_service_active)
+
+    def _systemd_service_setup(self, options, was_service_active):
+        """
+        Handle container service accordingly based on was_service_active and container name.
+        If the container service was active before, the new container service will be started as well
+        """
+        if options["upgrade_mode"] == SystemContainers.CHECKOUT_MODE_INSTALL:
+            self._systemctl_command("enable", options["name"])
+        elif was_service_active:
+            if options["upgrade_mode"] == SystemContainers.CHECKOUT_MODE_UPGRADE_CONTROLLED:
+                self._start_container_and_rollback_if_necessary(options)
+            else:
+                self._systemctl_command("start", options["name"])
+
+    def _start_container_and_rollback_if_necessary(self, options):
+        # Note, here we check if the container needs rollback by starting the
+        # container service. If no rollback is needed, the container service
+        # remains active
+        container_rollback_needed = False
+        try:
+            self._systemctl_command("start", options["name"])
+        except subprocess.CalledProcessError:
+            container_rollback_needed = True
+        if container_rollback_needed:
+            util.write_err("Could not restart {}.  Attempt automatic rollback".format(options["name"]))
+            self.rollback(options["name"])
+            self._systemctl_command("start", options["name"])
+            options["values"] = {}
 
     def _get_preinstalled_containers_path(self):
         return ATOMIC_USR
