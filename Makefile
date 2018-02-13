@@ -58,6 +58,7 @@ gotar: gotar.go
 clean:
 	$(PYTHON) setup.py clean
 	-rm -rf dist build *~ \#* *pyc .#* docs/*.1
+	rm -fr build
 
 .PHONY: install-only
 install-only:
