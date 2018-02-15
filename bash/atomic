@@ -677,8 +677,9 @@ _atomic_run() {
 	local all_options="$options_with_args
 		--help
 		--spc
+                --set
 	       --display
-	--quiet
+	       --quiet
 	       --replace
 	    --storage
 	"

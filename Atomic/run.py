@@ -4,6 +4,7 @@ from Atomic.backendutils import BackendUtils
 from Atomic.backends._docker import DockerBackend
 from . import util
 from Atomic.discovery import RegistryInspectError
+from .syscontainers import OSTREE_PRESENT
 
 try:
     from . import Atomic
@@ -59,6 +60,11 @@ def cli(subparser):
                              Run.print_spc()))
     runp.add_argument("-d", "--detach", default=False, action="store_true",
                       help=_("run the container in the background"))
+    if OSTREE_PRESENT:
+        runp.add_argument("--set", dest="setvalues",
+                          action='append',
+                          help=_("specify a variable in the VARIABLE=VALUE "
+                                 "form for a system container"))
     runp.add_argument("image", help=_("container image"))
     runp.add_argument("command", nargs=argparse.REMAINDER,
                       help=_("command to execute within the container. "

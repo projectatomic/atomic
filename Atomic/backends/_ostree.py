@@ -172,6 +172,7 @@ class OSTreeBackend(Backend):
                 args.image, args.storage))
         if len(args.command) == 0:
             return self.syscontainers.start_service(name)
+        self.syscontainers.set_args(args)
         return self.syscontainers.container_exec(name, args.detach, args.command)
 
     def tag_image(self, src, dest):

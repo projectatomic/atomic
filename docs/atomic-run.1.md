@@ -12,6 +12,7 @@ atomic-run - Execute container image run method
 [**-r**, **--replace**]
 [**--spc**]
 [**--storage**]
+[**--set**=*NAME*=*VALUE*]
 [**--quiet**]
 IMAGE [COMMAND] [ARG...]
 
@@ -85,9 +86,14 @@ NAME will default to the IMAGENAME if it is not specified.
 
 `/usr/bin/docker run -t -i --rm --privileged -v /:/host -v /run:/run --net=host --ipc=host --pid=host -e HOST=/host -e NAME=${NAME} -e IMAGE=${IMAGE} --name ${NAME} ${IMAGE}`
 
-**-storage**
+**--storage**
    Allows you to override the default definition for the storage backend where your image will reside if pulled.  If the image is already local,
 the --storage option will dictate where atomic should look for the image prior to running. Valid options are `docker` and `ostree`.
+
+**--set=NAME=VALUE**
+Set a value that is going to be used by a system container for its
+configuration and can be specified multiple times.  It is used only
+by --system.  OSTree is required for this feature to be available.
 
 
 **--quiet**
