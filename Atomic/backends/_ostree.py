@@ -166,6 +166,8 @@ class OSTreeBackend(Backend):
     def run(self, iobject, **kwargs):
         args = kwargs.get('args')
         name = args.image
+        if args.name is not None:
+            raise ValueError("--name is not supported by this backend")
         if len(args.command) == 0:
             return self.syscontainers.start_service(name)
         self.syscontainers.set_args(args)
