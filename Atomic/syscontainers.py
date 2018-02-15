@@ -2665,6 +2665,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             repo = self._get_ostree_repo()
             if not repo:
                 raise ValueError("Cannot find a configured OSTree repo")
+            name = self._pull_image_to_ostree(repo, name, False)
             return self._run_once(name, "run-once-{}".format(os.getpid()), args=args)
 
         is_container_running = self._is_service_active(name)

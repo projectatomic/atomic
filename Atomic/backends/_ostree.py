@@ -165,11 +165,7 @@ class OSTreeBackend(Backend):
 
     def run(self, iobject, **kwargs):
         args = kwargs.get('args')
-        try:
-            name = iobject.name
-        except AttributeError:  # iobject isn't populated
-            raise ValueError('Unable to find an image named {} in {}'.format(
-                args.image, args.storage))
+        name = args.image
         if len(args.command) == 0:
             return self.syscontainers.start_service(name)
         self.syscontainers.set_args(args)
