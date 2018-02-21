@@ -15,7 +15,7 @@
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 
 Name: atomic
-Version: 1.21
+Version: 1.22
 Release: %{shortcommit}-%{?dist}
 Summary: Tool for managing ProjectAtomic systems and containers
 License: LGPLv2+
