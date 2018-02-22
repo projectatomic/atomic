@@ -75,8 +75,8 @@ Change the OCI runtime used by the systemd service file for running
 system containers and user containers.  If runtime is not defined, the
 value **runtime** in the configuration file is used for system
 containers.  If there is no runtime defined in the configuration file
-as well, then the default **/bin/runc** is used for system containers.
-Conversely, for user containers the default value is **/bin/bwrap-oci**.
+as well, then the default **/usr/bin/runc** is used for system containers.
+Conversely, for user containers the default value is **/usr/bin/bwrap-oci**.
 
 **--set=NAME=VALUE**
 Set a value that is going to be used by a system container for its
