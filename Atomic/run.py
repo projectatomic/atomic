@@ -60,6 +60,8 @@ def cli(subparser):
                              Run.print_spc()))
     runp.add_argument("-d", "--detach", default=False, action="store_true",
                       help=_("run the container in the background"))
+    runp.add_argument("--runtime", dest="runtime", default=None,
+                      help=_('specify the OCI runtime to use for system and user containers'))
     if OSTREE_PRESENT:
         runp.add_argument("--set", dest="setvalues",
                           action='append',

@@ -80,6 +80,14 @@ NAME will default to the IMAGENAME if it is not specified.
 
 **-r** **--replace**
    Replaces an existing container by the same name if it exists prior to running.
+
+**--runtime=PATH**
+   Change the OCI runtime used by the systemd service file for running
+   system containers and user containers.  If runtime is not defined, the
+   value **runtime** in the configuration file is used for system
+   containers.  If there is no runtime defined in the configuration file
+   as well, then the default **/usr/bin/runc** is used for system containers.
+   Conversely, for user containers the default value is **/usr/bin/bwrap-oci**.
    
 **--spc**
   Run container in super privileged container mode.  The image will run with the following command:

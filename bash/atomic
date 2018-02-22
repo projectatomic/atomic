@@ -681,7 +681,8 @@ _atomic_run() {
 	       --display
 	       --quiet
 	       --replace
-	    --storage
+	       --runtime
+	       --storage
 	"
 
 	[ "$command" = "run" ] && all_options="$all_options"
