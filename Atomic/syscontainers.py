@@ -7,7 +7,6 @@ import tarfile
 from string import Template
 import calendar
 import shutil
-import stat # pylint: disable=bad-python3-import
 import subprocess
 import time
 import errno
@@ -2128,78 +2127,6 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             layers = manifest.get("Layers")
         return layers
 
-    def _import_layers_into_ostree(self, repo, imagebranch, manifest, layers):
-        def get_directory_size(path):
-            size = 0
-            seen = {}
-            for root, _, files in os.walk(path):
-                for f in files:
-                    s = os.lstat(os.path.join(root, f))
-                    key = "%s-%s" % (s.st_dev, s.st_ino)
-                    if key not in seen:
-                        seen[key] = key
-                        size += s.st_size
-            return GLib.Variant('s', str(size))
-
-        repo.prepare_transaction()
-        for layer, tar in layers.items():
-            mtree = OSTree.MutableTree()
-            def filter_func(*args):
-                info = args[2]
-
-                if info.get_file_type() == Gio.FileType.SPECIAL:
-                    return OSTree.RepoCommitFilterResult.SKIP
-
-                if info.get_file_type() == Gio.FileType.DIRECTORY:
-                    info.set_attribute_uint32("unix::mode", info.get_attribute_uint32("unix::mode") | stat.S_IWUSR)
-                return OSTree.RepoCommitFilterResult.ALLOW
-
-            modifier = OSTree.RepoCommitModifier.new(0, filter_func, None)
-
-            checkout = self._get_system_checkout_path()
-            destdir = checkout if os.path.exists(checkout) else None
-
-            try:
-                temp_dir = tempfile.mkdtemp(prefix=".", dir=destdir)
-                # NOTE: tarfile has an issue with utf8. This works around the problem
-                # by using the systems tar command.
-                # Ref: https://bugzilla.redhat.com/show_bug.cgi?id=1194473
-                subprocess.check_call(['tar', '-xf', tar, '-C', temp_dir])
-                if self.user:
-                    SystemContainers._correct_dir_permissions_for_user(temp_dir)
-
-                repo.write_directory_to_mtree(Gio.File.new_for_path(temp_dir), mtree, modifier)
-                root = repo.write_mtree(mtree)[1]
-
-                metav = GLib.Variant("a{sv}", {'docker.layer': GLib.Variant('s', layer),
-                                               'docker.size': get_directory_size(temp_dir)})
-                csum = repo.write_commit(None, "", None, metav, root)[1]
-            finally:
-                shutil.rmtree(temp_dir, ignore_errors=True)
-
-            repo.transaction_set_ref(None, "%s%s" % (OSTREE_OCIIMAGE_PREFIX, layer), csum)
-
-        # create a $OSTREE_OCIIMAGE_PREFIX$image-$tag branch
-        if not isinstance(manifest, str):
-            manifest = json.dumps(manifest)
-
-        metadata = GLib.Variant("a{sv}", {'docker.manifest': GLib.Variant('s', manifest)})
-        mtree = OSTree.MutableTree()
-        file_info = Gio.FileInfo()
-        file_info.set_attribute_uint32("unix::uid", 0)
-        file_info.set_attribute_uint32("unix::gid", 0)
-        file_info.set_attribute_uint32("unix::mode", 0o755 | stat.S_IFDIR)
-
-        dirmeta = OSTree.create_directory_metadata(file_info, None)
-        csum_dirmeta = repo.write_metadata(OSTree.ObjectType.DIR_META, None, dirmeta)[1]
-        mtree.set_metadata_checksum(OSTree.checksum_from_bytes(csum_dirmeta))
-
-        root = repo.write_mtree(mtree)[1]
-        csum = repo.write_commit(None, "", None, metadata, root)[1]
-        repo.transaction_set_ref(None, imagebranch, csum)
-
-        repo.commit_transaction(None)
-
     def _pull_docker_image(self, image):
         with tempfile.NamedTemporaryFile(mode="w") as temptar:
             util.check_call(["docker", "save", "-o", temptar.name, image])
@@ -2427,40 +2354,6 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if not repo:
             return False
         return bool(self._resolve_image(repo, img, allow_multiple=True))
-
-    def _pull_dockertar_layers(self, repo, imagebranch, temp_dir, input_layers, labels=None):
-        layers = {}
-        next_layer = {}
-        top_layer = None
-        for i in input_layers:
-            layer = i.replace("/layer.tar", "")
-            layers[layer] = os.path.join(temp_dir, i)
-            with open(os.path.join(temp_dir, layer, "json"), 'r') as f:
-                json_layer = json.loads(f.read())
-                parent = json_layer.get("parent")
-                if not parent:
-                    top_layer = layer
-                next_layer[parent] = layer
-
-        layers_map = {}
-        enc = sys.getdefaultencoding()
-        for k, v in layers.items():
-            out = util.check_output([ATOMIC_LIBEXEC + '/dockertar-sha256-helper', v],
-                                    stderr=DEVNULL)
-            layers_map[k] = out.decode(enc).replace("\n", "")
-        layers_ordered = []
-
-        it = top_layer
-        while it:
-            layers_ordered.append(layers_map[it])
-            it = next_layer.get(it)
-
-        manifest = json.dumps({"Layers" : layers_ordered, "Labels" : labels})
-
-        layers_to_import = {}
-        for k, v in layers.items():
-            layers_to_import[layers_map[k]] = v
-        self._import_layers_into_ostree(repo, imagebranch, manifest, layers_to_import)
 
     def validate_layer(self, layer):
         """
