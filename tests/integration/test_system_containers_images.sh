@@ -120,7 +120,7 @@ def make_number(x):
 def is_different(x, y):
     x = make_number(x)
     y = make_number(y)
-    return abs(x - y) > x * 0.01
+    return abs(x - y) > x * 0.04
 
 _sizes = [str(i["virtual_size"]) for i in json.load(sys.stdin) if i['repo']=='atomic-test-system']
 sizes = [size for size in _sizes if size != '']
