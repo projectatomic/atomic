@@ -182,7 +182,7 @@ class Install(Atomic):
 
     @staticmethod
     def ostree_uri(image_name):
-        for i in ['dockertar:', 'ostree:', 'docker:']:
+        for i in ['dockertar:', 'docker:']:
             if image_name.startswith(i):
                 return True
         return False

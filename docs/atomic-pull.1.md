@@ -45,12 +45,6 @@ that the saved tarball is specified:
 
 `atomic pull --storage ostree dockertar:/path/to/the/image.tar`
 
-An 'ostree' image refers to an image which is fetched from a remote
-OSTree repository.  The remote has to be already configured in the
-local OSTree repository:
-
-`atomic pull --storage ostree ostree:REMOTE/branch`
-
 If the user is not privileged, the image will be stored in the user
 specific repository.
 

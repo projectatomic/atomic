@@ -180,9 +180,7 @@ class SystemContainers(object):
     def _pull_image_to_ostree(self, repo, image, upgrade, src_creds=None):
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
-        if image.startswith("ostree:") and image.count(':') > 1:
-            self._check_system_ostree_image(repo, image, upgrade)
-        elif image.startswith("docker:") and image.count(':') > 1:
+        if image.startswith("docker:") and image.count(':') > 1:
             image = self._pull_docker_image(repo, image.replace("docker:", "", 1))
         elif image.startswith("dockertar:/"):
             tarpath = image.replace("dockertar:/", "", 1)
@@ -2245,16 +2243,6 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         finally:
             shutil.rmtree(temp_dir)
 
-    def _check_system_ostree_image(self, repo, img, upgrade):
-        imagebranch = img.replace("ostree:", "", 1)
-        current_rev = repo.resolve_rev(imagebranch, True)
-        if not current_rev:
-            raise ValueError("Internal error for image: %s.  Please pull the image again" % imagebranch)
-        if not upgrade and current_rev[1]:
-            return False
-        remote, branch = imagebranch.split(":")
-        return repo.pull(remote, [branch], 0, None)
-
     def _check_system_oci_image(self, repo, img, upgrade, src_creds=None):
         no_prefix_img = util.remove_skopeo_prefixes(img)
         imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(no_prefix_img))
@@ -2422,12 +2410,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
     @staticmethod
     def _get_ostree_image_branch(img):
-        if "ostree:" in img:
-            imagebranch = img.replace("ostree:", "")
-        else: # assume "oci:" image
-            img = SystemContainers._drop_sha256_prefix(img)
-            imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(img))
-        return imagebranch
+        img = SystemContainers._drop_sha256_prefix(img)
+        return "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(img))
 
     def has_image(self, img):
         """
