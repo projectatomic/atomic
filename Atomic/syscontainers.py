@@ -181,10 +181,10 @@ class SystemContainers(object):
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
         if image.startswith("docker:") and image.count(':') > 1:
-            image = self._pull_docker_image(repo, image.replace("docker:", "", 1))
+            image = self._pull_docker_image(image.replace("docker:", "", 1))
         elif image.startswith("dockertar:/"):
             tarpath = image.replace("dockertar:/", "", 1)
-            image = self._pull_docker_tar(repo, tarpath, os.path.basename(tarpath).replace(".tar", ""))
+            image = self._pull_docker_tar(tarpath, os.path.basename(tarpath).replace(".tar", ""))
         else: # Assume "oci:"
             self._check_system_oci_image(repo, image, upgrade, src_creds=src_creds)
         return image
@@ -2200,12 +2200,70 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         repo.commit_transaction(None)
 
-    def _pull_docker_image(self, repo, image):
+    def _pull_docker_image(self, image):
         with tempfile.NamedTemporaryFile(mode="w") as temptar:
             util.check_call(["docker", "save", "-o", temptar.name, image])
-            return self._pull_docker_tar(repo, temptar.name, image)
+            return self._pull_docker_tar(temptar.name, image)
 
-    def _pull_docker_tar(self, repo, tarpath, image):
+    def _pull_docker_tar(self, tarpath, image):
+        """
+        Resolves a docker tar and pull its content into ostree using skopeo
+        :param tarpath: the path for the docker tar file
+        :type tarpath: str
+        :param image: the default image name extracted from tar file name
+        :type image: str
+        :returns: the resolved image name that will be pulled into ostree
+        :rtype: str
+        """
+        image_name = SystemContainers._get_image_name_from_dockertar(tarpath) or image
+        can_use_skopeo_copy = util.check_output([util.SKOPEO_PATH, "copy", "--help"]).decode().find("ostree") >= 0
+
+        if not can_use_skopeo_copy:
+            raise ValueError("Skopeo version too old, Please use version after 1.21")
+
+        skopeo_source = "docker-archive:" + tarpath
+        self._skopeo_copy_img_to_ostree(image_name, skopeo_source)
+
+        # Return the image name for future usages
+        return image_name
+
+    def _skopeo_copy_img_to_ostree(self, img, skopeo_img_source, src_creds=None, insecure=None):
+        """
+        Perform skopeo copy operation to copy images from img_source to ostree location based on image
+        name
+        :param img: image name
+        :type img: str
+        :param skopeo_img_source: the source for skopeo copying
+        :type skopeo_img_source: str
+        :param src_creds: source credentials if pulled from online registries
+        :type src_creds: str in the form of USERNAME[:PASSWORD]
+        :param insecure: tell skopeo whether the registry is secure or not
+        :type insecure: bool
+        :returns: True if successfully performed copy operation, a ValueError can be raised upon failures
+        :rtype: bool
+        """
+        repo = self.get_ostree_repo_location()
+
+        checkout = self._get_system_checkout_path()
+        destdir = checkout if os.path.exists(checkout) else None
+        temp_dir = tempfile.mkdtemp(prefix=".", dir=destdir)
+
+        destination = "ostree:{}@{}".format(img, repo)
+        try:
+            util.skopeo_copy(skopeo_img_source, destination, dest_ostree_tmp_dir=temp_dir, insecure=insecure, src_creds=src_creds)
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        return True
+
+    @staticmethod
+    def _get_image_name_from_dockertar(tarpath):
+        """
+        Retrieve the image name from the dockertar file
+        :param tarpath: the path of the docker tar file
+        :type tarpath: str
+        :returns: the true image name got from the dockertar
+        :rtype: str
+        """
         temp_dir = tempfile.mkdtemp()
         try:
             with tarfile.open(tarpath, 'r') as t:
@@ -2216,28 +2274,13 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                     with open(manifest_file, 'r') as mfile:
                         manifest = mfile.read()
                     for m in json.loads(manifest):
-                        if "Config" in m:
-                            config_file = os.path.join(temp_dir, m["Config"])
-                            with open(config_file, 'r') as config:
-                                config = json.loads(config.read())
-                                labels = config['config']['Labels']
-                        imagename = m["RepoTags"][0] if m.get("RepoTags") else image
-                        imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(imagename))
-                        input_layers = m["Layers"]
-                        self._pull_dockertar_layers(repo, imagebranch, temp_dir, input_layers, labels=labels)
+                        imagename = m["RepoTags"][0] if m.get("RepoTags") else None
                 else:
                     repositories = ""
                     repositories_file = os.path.join(temp_dir, "repositories")
                     with open(repositories_file, 'r') as rfile:
                         repositories = rfile.read()
                     imagename = list(json.loads(repositories).keys())[0]
-                    imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(imagename))
-                    input_layers = []
-                    for name in os.listdir(temp_dir):
-                        if name == "repositories":
-                            continue
-                        input_layers.append(name + "/layer.tar")
-                    self._pull_dockertar_layers(repo, imagebranch, temp_dir, input_layers)
             return imagename
         finally:
             shutil.rmtree(temp_dir)
@@ -2272,26 +2315,15 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         can_use_skopeo_copy = util.check_output([util.SKOPEO_PATH, "copy", "--help"]).decode().find("ostree") >= 0
 
         if can_use_skopeo_copy:
-            return self._check_system_oci_image_skopeo_copy(repo, img, src_creds=src_creds)
+            return self._check_system_oci_image_skopeo_copy(img, src_creds=src_creds)
         else:
             raise ValueError("Skopeo version too old, please install the newest version")
 
-    def _check_system_oci_image_skopeo_copy(self, repo, img, src_creds=None):
-        repo = self.get_ostree_repo_location()
-
-        checkout = self._get_system_checkout_path()
-        destdir = checkout if os.path.exists(checkout) else None
-        temp_dir = tempfile.mkdtemp(prefix=".", dir=destdir)
-
+    def _check_system_oci_image_skopeo_copy(self, img, src_creds=None):
         # Pass the original name to "skopeo copy" so we don't resolve it in atomic
         insecure, img = self._get_skopeo_args(img, full_resolution=False)
-
-        destination = "ostree:{}@{}".format(img, repo)
-        try:
-            util.skopeo_copy("docker://" + img, destination, dest_ostree_tmp_dir=temp_dir, insecure=insecure, src_creds=src_creds)
-        finally:
-            shutil.rmtree(temp_dir, ignore_errors=True)
-        return True
+        skopeo_img_src = "docker://" + img
+        return self._skopeo_copy_img_to_ostree(img, skopeo_img_src, src_creds=src_creds, insecure=insecure)
 
     @staticmethod
     def _generate_tmpfiles_data(missing_bind_paths):
