@@ -179,6 +179,12 @@ class SystemContainers(object):
     def _pull_image_to_ostree(self, repo, image, upgrade, src_creds=None):
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
+
+        # Since we are migrating to use skopeo only, we will move the check for ostree upper level too
+        can_use_skopeo_copy = util.check_output([util.SKOPEO_PATH, "copy", "--help"]).decode().find("ostree") >= 0
+        if not can_use_skopeo_copy:
+            raise ValueError("Skopeo version too old, Please use skopeo version after 1.21")
+
         if image.startswith("docker:") and image.count(':') > 1:
             image = self._pull_docker_image(image.replace("docker:", "", 1))
         elif image.startswith("dockertar:/"):
@@ -2128,9 +2134,19 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         return layers
 
     def _pull_docker_image(self, image):
-        with tempfile.NamedTemporaryFile(mode="w") as temptar:
-            util.check_call(["docker", "save", "-o", temptar.name, image])
-            return self._pull_docker_tar(temptar.name, image)
+        """
+        Use skopeo to copy docker image from docker daemon to ostree
+
+        :param image: The full name of image to pull. E.g: docker:image:latest
+        :type image: str
+        :returns image name
+        :rtype: str
+        """
+        skopeo_source = "docker-daemon:" + image
+        self._skopeo_copy_img_to_ostree(image, skopeo_source)
+
+        # Return back the image name for future usages
+        return image
 
     def _pull_docker_tar(self, tarpath, image):
         """
@@ -2143,10 +2159,6 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         :rtype: str
         """
         image_name = SystemContainers._get_image_name_from_dockertar(tarpath) or image
-        can_use_skopeo_copy = util.check_output([util.SKOPEO_PATH, "copy", "--help"]).decode().find("ostree") >= 0
-
-        if not can_use_skopeo_copy:
-            raise ValueError("Skopeo version too old, Please use version after 1.21")
 
         skopeo_source = "docker-archive:" + tarpath
         self._skopeo_copy_img_to_ostree(image_name, skopeo_source)
@@ -2239,12 +2251,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             # and never let it fail.
             pass
 
-        can_use_skopeo_copy = util.check_output([util.SKOPEO_PATH, "copy", "--help"]).decode().find("ostree") >= 0
-
-        if can_use_skopeo_copy:
-            return self._check_system_oci_image_skopeo_copy(img, src_creds=src_creds)
-        else:
-            raise ValueError("Skopeo version too old, please install the newest version")
+        return self._check_system_oci_image_skopeo_copy(img, src_creds=src_creds)
 
     def _check_system_oci_image_skopeo_copy(self, img, src_creds=None):
         # Pass the original name to "skopeo copy" so we don't resolve it in atomic
