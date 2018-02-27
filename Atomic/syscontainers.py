@@ -1340,6 +1340,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if os.path.realpath(path).endswith(".0"):
             next_deployment = 1
 
+        if rebase:
+            rebase = self._pull_image_to_ostree(repo, rebase, False)
+
         info, rpm_installed, installed_files_checksum = SystemContainers._gather_installed_files_info(system_checkout_path, name)
         image = rebase or info["image"]
         values = info["values"]

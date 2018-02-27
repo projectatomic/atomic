@@ -20,6 +20,7 @@ IFS=$'\n\t'
 setup () {
     ${ATOMIC} pull --storage ostree docker:atomic-test-system:latest
     ${ATOMIC} pull --storage ostree docker:atomic-test-system-update:latest
+    docker tag atomic-test-system:latest atomic-test-system-new:latest
 }
 
 teardown () {
@@ -224,6 +225,9 @@ assert_matches "running" ${WORK_DIR}/ps.out
 ${ATOMIC} containers rollback ${NAME}
 assert_matches ${SECRET} ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}/config.json
 assert_matches 8083 ${ATOMIC_OSTREE_CHECKOUT_PATH}/${NAME}/config.json
+
+# Update can rebase to an image not present in the repository.
+${ATOMIC} containers update ${NAME} --rebase docker:atomic-test-system-new:latest > ${WORK_DIR}/update.out
 
 
 # 10. Updating/rolling back an image with a remote rootfs works
