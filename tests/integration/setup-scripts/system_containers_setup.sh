@@ -43,3 +43,7 @@ export PYTHON=${PYTHON:-/usr/bin/python}
 export ATOMIC_OSTREE_REPO=${WORK_DIR}/repo
 export ATOMIC_OSTREE_CHECKOUT_PATH=${WORK_DIR}/checkout
 export NAME="test-system-container-$$"
+
+# This is to prevent the case where the ostree checkout path
+# can be non-existent when no container installation happens prior
+mkdir -p $ATOMIC_OSTREE_CHECKOUT_PATH
