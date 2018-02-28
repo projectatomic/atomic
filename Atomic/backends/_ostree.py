@@ -128,6 +128,8 @@ class OSTreeBackend(Backend):
         return self.syscontainers.install(image, name)
 
     def uninstall(self, iobject, name=None, **kwargs):
+        if name is not None:
+            raise ValueError("System containers do not support --name. Please use atomic uninstall NAME")
         return self.syscontainers.uninstall(iobject.name)
 
     def prune(self):
