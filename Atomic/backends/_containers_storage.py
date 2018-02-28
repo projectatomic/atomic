@@ -224,7 +224,7 @@ class ContainersStorageBackend(Backend): #pylint: disable=metaclass-assignment
             image_objects.append(self._make_image(image['id'], image))
         return image_objects
 
-    def get_dangling_images(self):
+    def get_dangling_images(self, force_update=True):
         images = json.loads(util.kpod(["images", "--filter", "dangling=true", "--format", "json"]))
         return [x['id'] for x in images]
 

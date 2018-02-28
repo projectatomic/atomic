@@ -195,7 +195,7 @@ class Images(Atomic):
 
             else:
                 indicator = ""
-                if image.is_dangling:
+                if image.is_dangling_cached:
                     indicator += "*"
                 elif image.used:
                     indicator += ">"

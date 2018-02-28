@@ -76,6 +76,7 @@ class DockerBackend(Backend):
     def __init__(self):
         self.input = None
         self._d = None
+        self._dangling_images = None
 
     @property
     def available(self):
@@ -411,8 +412,10 @@ class DockerBackend(Backend):
             util.write_out("Removed dangling Image {}".format(iid))
         return 0
 
-    def get_dangling_images(self):
-        return self._get_images(get_all=True, quiet=True, filters={"dangling": True})
+    def get_dangling_images(self, force_update=True):
+        if self._dangling_images == None or force_update:
+            self._dangling_images = self._get_images(get_all=True, quiet=True, filters={"dangling": True})
+        return self._dangling_images
 
     def install(self, image, name, **kwargs):
         pass

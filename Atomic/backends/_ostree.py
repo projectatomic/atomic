@@ -149,7 +149,7 @@ class OSTreeBackend(Backend):
         return layers
 
     @staticmethod
-    def get_dangling_images():
+    def get_dangling_images(force_update=True):  # pylint: disable=unused-argument
         return []
 
     def make_remote_image(self, image):

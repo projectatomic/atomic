@@ -187,10 +187,12 @@ class Image(object): # pylint: disable=eq-without-hash
         return _version
 
     @property
+    def is_dangling_cached(self):
+        return self.id in self.backend.get_dangling_images(force_update=False)
+
+    @property
     def is_dangling(self):
-        if self.id in self.backend.get_dangling_images():
-            return True
-        return False
+        return self.id in self.backend.get_dangling_images(force_update=True)
 
     @property
     def virtual_size(self):
