@@ -72,7 +72,7 @@ def cli(subparser):
     updatep.set_defaults(_class=Containers, func='update')
     updatep.add_argument("container", nargs='?',
                          help=_("Specify one or more containers. Must be final arguments."))
-    updatep.add_argument("--rebase", dest="rebase", default=None,
+    updatep.add_argument("--rebase", metavar='IMAGE', dest="rebase", default=None,
                          help=_("Rebase to a different image (useful for upgrading to a different tag)"))
     updatep.add_argument("-a", "--all", action='store_true', dest="all", default=False, help=_("Update all containers"))
     if OSTREE_PRESENT:
