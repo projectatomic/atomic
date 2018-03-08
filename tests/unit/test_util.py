@@ -104,6 +104,8 @@ class TestAtomicUtil(unittest.TestCase):
                   ('docker.io/library/foobar/busybox:2.1', ('docker.io', 'library/foobar', 'busybox', '2.1', '')),
                   ('docker.io/busybox:2.1', ('docker.io', 'library', 'busybox', '2.1', '')),
                   ('docker.io/busybox', ('docker.io', 'library', 'busybox', 'latest', '')),
+                  ('docker.io:5000/busybox', ('docker.io:5000', '', 'busybox', 'latest', '')),
+                  ('docker.io:5000/library/busybox:2.1', ('docker.io:5000', 'library', 'busybox', '2.1', '')),
                   ('busybox', ('', '', 'busybox', 'latest', '')),
                   ('busybox:2.1', ('', '', 'busybox', '2.1', '')),
                   ('library/busybox', ('', 'library', 'busybox', 'latest', '')),

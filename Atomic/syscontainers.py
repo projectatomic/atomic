@@ -1521,11 +1521,11 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                     config = json.load(config_file)
                     command = u' '.join(config["process"]["args"])
 
-            registry, image, tag = SystemContainers._parse_imagename(image)
-            if registry:
-                image = "%s/%s:%s" % (registry, image, tag)
+            d = util.Decompose(image)
+            if d.registry:
+                image = "%s/%s:%s" % (d.registry, d.image_with_repo, d.tag)
             else:
-                image = "%s:%s" % (image, tag)
+                image = "%s:%s" % (d.image, d.tag)
 
             container = {'Image' : image, 'ImageID' : revision, 'Id' : x, 'Created' : created, 'Names' : [x],
                          'Command' : command, 'Type' : 'system', 'Runtime' : runtime, "Preinstalled" : are_preinstalled}
@@ -2013,27 +2013,12 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if '@sha256:' in image:
             image = image.split('@sha256:')[0]
         image = image.replace("oci:", "", 1).replace("docker:", "", 1)
-        _, image, tag = SystemContainers._parse_imagename(image)
-        name = image.split("/")[-1]
-        if tag != "latest":
-            name = "%s-%s" % (name, tag)
-
-        return name
-
-    @staticmethod
-    def _parse_imagename(imagename):
-        sep = imagename.find("/")
-        reg, image = imagename[:sep], imagename[sep + 1:]
-        if '.' not in reg:
-            # if the registry doesn't look like a domain, consider it as the
-            # image prefix
-            reg = ""
-            image = imagename
-        sep = image.find(":")
-        if sep > 0:
-            return reg, image[:sep], image[sep + 1:]
+        d = util.Decompose(image)
+        if d.tag != "latest":
+            name = "%s-%s" % (d.image, d.tag)
         else:
-            return reg, image, "latest"
+            name = d.image
+        return name
 
     def _get_skopeo_args(self, image, full_resolution=False):
         """
@@ -2312,11 +2297,11 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         if name.startswith("oci:"):
             name = name[len("oci:"):]
-        registry, image, tag = SystemContainers._parse_imagename(name)
-        if registry:
-            fullname = "%s/%s:%s" % (registry, image, tag)
+        d = util.Decompose(name)
+        if d.registry:
+            fullname = "%s/%s:%s" % (d.registry, d.image_with_repo, d.tag)
         else:
-            fullname = "%s:%s" % (image, tag)
+            fullname = "%s:%s" % (d.image_with_repo, d.tag)
 
         ret = "".join([convert(i) for i in fullname])
         return ret

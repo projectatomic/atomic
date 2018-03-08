@@ -999,6 +999,9 @@ class Decompose(object):
             repo = ''
         if reg == 'docker.io' and repo == '':
             repo = 'library'
+            implicit_repo = True
+        else:
+            implicit_repo = False
         if not tag and not digest:
             tag = "latest"
 
@@ -1011,6 +1014,10 @@ class Decompose(object):
         self._image = str(image) if image else ''
         self._tag = str(tag) if tag else ''
         self._digest = str(digest) if digest else ''
+        if not implicit_repo and self._repo:
+            self._image_with_repo = "%s/%s" % (self._repo, self._image)
+        else:
+            self._image_with_repo = self._image
 
         if self._tag and self._digest:
             raise ValueError("An image name cannot have both a tag and manifest digest in its name")
@@ -1034,6 +1041,10 @@ class Decompose(object):
     @property
     def digest(self):
         return self._digest
+
+    @property
+    def image_with_repo(self):
+        return self._image_with_repo
 
     @property
     def no_tag(self):
