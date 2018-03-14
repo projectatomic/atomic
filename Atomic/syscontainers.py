@@ -103,6 +103,15 @@ class SystemContainers(object):
         return util.get_atomic_config_item(config_item, atomic_config=self.atomic_config)
 
     def _do_syncfs(self, rootfs, rootfs_fd):
+        """
+        Executes libc's syncfs.
+
+        :param rootfs: The root file system path.
+        :type rootfs: str
+        :param rootfs_fd: The rootfs file descriptor.
+        :type rootfs_fd: int
+        :raises: OSError
+        """
         # Fallback to sync --file-system if loading it from libc fails.
         try:
             cdll.LoadLibrary("libc.so.6")
@@ -118,9 +127,24 @@ class SystemContainers(object):
 
     @property
     def available(self):
+        """
+        Property exposing OSTREE_PRESENT global.
+        """
         return OSTREE_PRESENT
 
     def _checkout_layer(self, repo, rootfs_fd, rootfs, rev):
+        """
+        Checks out a single layer.
+
+        :param repo: OSTree repo used to checkout contents.
+        :type repo: OSTree.Repo
+        :param rootfs_fd: The rootfs file descriptor.
+        :type rootfs_fd: int
+        :param rootfs: The root file system path.
+        :type rootfs: str
+        :param rev: the refspec of the corresponding image
+        :type rev: str
+        """
         options = OSTree.RepoCheckoutAtOptions() # pylint: disable=no-member
         options.overwrite_mode = OSTree.RepoCheckoutOverwriteMode.UNION_FILES
         options.process_whiteouts = True
@@ -167,6 +191,15 @@ class SystemContainers(object):
 
     @staticmethod
     def _split_set_args(setvalues):
+        """
+        Splits key=value into dict[key]=value.
+
+        :param setvalues: List of key=value
+        :type setvalues: list
+        :returns: Parsed dictionary
+        :rtype: dict
+        :raises: ValueError
+        """
         values = {}
         for i in setvalues:
             split = i.find("=")
@@ -177,6 +210,21 @@ class SystemContainers(object):
         return values
 
     def _pull_image_to_ostree(self, repo, image, upgrade, src_creds=None):
+        """
+        Pulls an image to ostree.
+
+        :param repo: OSTree repo used to checkout content.
+        :type repo: OSTree.Repo
+        :param image: Name of the image to build the container and rpm from.
+        :type image: str
+        :param upgrade: If this is an upgrade
+        :type upgrade: bool
+        :param src_creds: source credentials if pulled from online registries
+        :type src_creds: str in the form of USERNAME[:PASSWORD]
+        :returns: The image pulled
+        :rtype: str
+        :raises: ValueError
+        """
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
 
@@ -200,7 +248,6 @@ class SystemContainers(object):
 
         :param image: Name of the image to pull. If not provided self.args.image is used.
         :type image: str or None
-
         :param kwargs: Arguments to pass to the pull
         :type kwargs: dict or None
         """
@@ -233,6 +280,9 @@ class SystemContainers(object):
     def _create_rootfs(self, rootfs):
         """
         Ensure the rootfs directory exists and it has the correct SELinux label.
+
+        :param rootfs: The root file system path.
+        :type rootfs: str
         """
         if os.getuid() == 0 and selinux.is_selinux_enabled() != 0:
             label = selinux.getfilecon("/")[1]
@@ -293,8 +343,11 @@ class SystemContainers(object):
         Get the corresponding fields from info file based on the container name
 
         :param checkout: path for checkout
+        :type checkout: str
         :param name: name for the container
+        :type name: str
         :returns: info object, rpm_installed field value, installed_files_checksum field value
+        :rtype: tuple(dict, mixed, dict)
         """
         with open(os.path.join(checkout, name, "info"), "r") as info_file:
             info = json.loads(info_file.read())
@@ -312,9 +365,11 @@ class SystemContainers(object):
         Parse the remote input and return actual remote path
 
         :param remote_input: input path from user
+        :type remote_input: str
         :returns: the parsed remote location
+        :rtype: str
+        :raises: ValueError
         """
-
         if not remote_input:
             return None
 
@@ -338,7 +393,10 @@ class SystemContainers(object):
         When remote rootfs is specified, we rewrite the ['root']['path']
 
         :param destination: the destination of the container
+        :type destination: str
         :param remote_rootfs: remote rootfs location
+        :type remote_rootfs: str
+        :raises: ValueError, OSError
         """
         destination_path = os.path.join(destination, "config.json")
         with open(destination_path, 'r') as config_file:
@@ -358,10 +416,15 @@ class SystemContainers(object):
         Generate rootfs path based on user inputs and make directories accordingly
 
         :param remote_path: path for remote
+        :type remote_path: str
         :param destination: the destination location for a container
+        :type destination: str
         :param extract_only: if specified, only image layers will be checked out to destination
+        :type extract_only: bool
+        :returns: The rootfs path
+        :rtype: str
+        :raises: OSError
         """
-
         if extract_only:
             rootfs = destination
         elif remote_path:
@@ -670,6 +733,11 @@ class SystemContainers(object):
     def _install(self, image, name):
         """
         Internal container install logic.
+
+        :param image: The image reference
+        :type image: str
+        :param name: The name to call the installed image
+        :type name: str
         """
         repo = self._get_ostree_repo()
         if not repo:
@@ -738,6 +806,13 @@ class SystemContainers(object):
 
 
     def _generate_default_oci_configuration(self, destination):
+        """
+        Creates and writes to disk the default oci configuration file.
+
+        :param destination: Path to write the config.json file.
+        :type destination: str
+        :raises: IOError
+        """
         conf_path = os.path.join(destination, "config.json")
         try:
             # Try to use $RUNTIME spec to generate a default configuration file.
@@ -760,6 +835,9 @@ class SystemContainers(object):
 
 
     def _get_oci_runtime(self):
+        """
+        Returns the runtime in use.
+        """
         if self.runtime:
             return self.runtime
 
@@ -803,7 +881,12 @@ class SystemContainers(object):
         """
         Wrapper function that groups parameters into a dictionary for better readbility
 
-        returns the same result that _checkout returns
+        .. todo::
+
+           Clean up inputs.
+
+        :returns: the same result that _checkout returns
+        :raises: GLib.Error, ValueError, OSError, subprocess.CalledProcessError, KeyboardInterrupt
         """
         options = {"name" : name,
                    "img" : img,
@@ -819,6 +902,18 @@ class SystemContainers(object):
         return self._checkout(repo, options)
 
     def _checkout(self, repo, options):
+        """
+        Wraps _do_checkout and attempts to clean up on errors.
+
+        .. todo::
+
+           Clean up inputs.
+
+        :param options: Options, similar to kwargs, to pass to _do_checkout
+        :type options: dict
+        :returns: the same result that _checkout returns
+        :raises: GLib.Error, ValueError, OSError, subprocess.CalledProcessError, KeyboardInterrupt
+        """
         options["destination"] = options["destination"] or os.path.join(self._get_system_checkout_path(), "{}.{}".format(options["name"], options["deployment"]))
         unitfileout, tmpfilesout = self._get_systemd_destination_files(options["name"], options["prefix"])
         options["unitfileout"] = unitfileout
@@ -1053,9 +1148,15 @@ class SystemContainers(object):
         .. todo::
 
            This method should be simplified by breaking it up into smaller, reusable methods.
+           Clean up inputs.
 
+        :param repo: The repo to look at or None for default
+        :type repo: str or None
+        :param options: Options, similar to kwargs, to pass to _do_checkout
+        :type options: dict
+        :returns: the same result that _checkout returns
         :rtype: dict
-        :raises: AttributeError,NameError, OSError, ValueError
+        :raises: AttributeError, NameError, GLib.Error, ValueError, OSError, subprocess.CalledProcessError, KeyboardInterrupt
         """
         if options["values"] is None:
             options["values"] = {}
@@ -1235,9 +1336,28 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             options["values"] = {}
 
     def _get_preinstalled_containers_path(self):
+        """
+        Returns the ATOMIC_USR global.
+
+        .. todo::
+
+            Should a property be created in place of this protected method?
+        :returns: The path to preinstalled containers
+        :rtype: str
+        """
         return ATOMIC_USR
 
     def _get_system_checkout_path(self):
+        """
+        Returns the path that checkouts should live.
+
+        .. todo::
+
+            Should a property be created in place of this protected method?
+
+        :returns: The path to checkouts
+        :rtype: str
+        """
         if os.environ.get("ATOMIC_OSTREE_CHECKOUT_PATH"):
             return os.environ.get("ATOMIC_OSTREE_CHECKOUT_PATH")
         if self.get_atomic_config_item(["checkout_path"]):
@@ -1251,6 +1371,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         """
         Returns the ostree repo location on disk.
 
+        .. todo::
+
+            Should a property be created in place of this method?
+
         :returns: Path to the ostree repository.
         :rtype: str
         """
@@ -1259,6 +1383,16 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         return self._repo_location
 
     def _find_ostree_repo_location(self):
+        """
+        Returns and, if needed creates, the ostree repo location.
+
+        .. todo::
+
+            Should a property be created in place of this protected method?
+
+        :returns: Path to the ostree repo location
+        :rtype: str
+        """
         location = os.environ.get("ATOMIC_OSTREE_REPO")
         if location is not None:
             return location
@@ -1286,6 +1420,17 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         return os.path.join(storage_path, "ostree")
 
     def _get_ostree_repo(self):
+        """
+        Returns and, if needed creates, the ostree repo.
+
+        .. todo::
+
+            Should a property be created in place of this protected method?
+
+        :returns: The instance of the OSTree repo in use/created
+        :rtype: OSTree.Repo
+        """
+
         if not OSTREE_PRESENT:
             return None
 
@@ -1307,6 +1452,13 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         """
         Returns information on provided image in ostree. Same as foo = [inspect_system_image(image)].
 
+        .. todo::
+
+            Should a property be created in place of this method?
+
+        :param image: The image to inspect
+        :type image: str
+        :returns: The version or None if unknown
         :rtype: list or None
         """
         image_inspect = self.inspect_system_image(image)
@@ -1324,6 +1476,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         :type setvalues: list or None
         :param rebase: Name of the image to rebase or None to sense from info file.
         :type rebase: str or None
+        :param controlled: TODO
+        :type controlled: bool
+        :raises: ValueError
         """
         if self._is_preinstalled_container(name):
             raise ValueError("Cannot update a preinstalled container")
@@ -1393,8 +1548,13 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         Rolls back a container to a previous version. If the service is rolledback by running
         the service will be stopped, rolled back, and then started.
 
+        .. todo::
+
+           Simplify!
+
         :param name: The container to rollback.
         :type name: str
+        :raises: ValueError, OSError
         """
         system_checkout_path = self._get_system_checkout_path()
         path = os.path.join(system_checkout_path, name)
@@ -1468,6 +1628,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         :type container: str
         :returns: The status of the service.
         :rtype: dict
+        :raises: IOError
         """
         info_path = os.path.join(self._get_system_checkout_path(), container, "info")
         if not os.path.exists(info_path):
@@ -1640,6 +1801,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         Returns information on a specific image.
 
         :param image: The name of the image to inspect.
+        :type image: str
         :returns: Information on a given image.
         :rtype: dict or None
         """
@@ -1649,6 +1811,17 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         return self._inspect_system_branch(repo, image)
 
     def _inspect_system_branch(self, repo, imagebranch):
+        """
+        Returns data about a specific image branch
+
+        :param repo: The repo used to inspect
+        :param repo: OSTree.Repo
+        :param imagebranch: The name of the image to inspect.
+        :type imagebranch: str
+        :returns: Dictionary of data of the imagebranch
+        :rtype: dict
+        :raises: ValueError
+        """
         if imagebranch.startswith(OSTREE_OCIIMAGE_PREFIX):
             commit_rev = repo.resolve_rev(imagebranch, False)[1]
             if not commit_rev:
@@ -1748,6 +1921,14 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
     @staticmethod
     def _is_hex(s):
+        """
+        Helper static method to check if the input is a hex.
+
+        :param s: Possibly a hex string
+        :type s: str
+        :returns: True if hex, False otherwise
+        :rtype: bool
+        """
         try:
             int(s, 16)
             return True
@@ -1790,6 +1971,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         :param name: The name of the system container to start.
         :type name: str
+        :raises: ValueError
         """
         try:
             self._systemctl_command("start", name)
@@ -1802,6 +1984,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         :param name: The name of the system container to stop.
         :type name: str
+        :raises: ValueError
         """
         try:
             self._systemctl_command("stop", name)
@@ -1809,6 +1992,17 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             raise ValueError(e.output)
 
     def _systemd_tmpfiles(self, command, name, quiet=False):
+        """
+        Execute systemd-tmpfiles based on input.
+
+        :param command: The (sub)command to pass to systemd-tmpfiles
+        :type command: str
+        :param name: The name to pass to the command
+        :type name: str
+        :param quiet: Write the command to terminal if False (default)
+        :type quiet: bool
+        :raises: OSError
+        """
         cmd = ["systemd-tmpfiles"] + [command, name]
         if not quiet:
             util.write_out(" ".join(cmd))
@@ -1816,6 +2010,21 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             util.check_call(cmd)
 
     def _systemctl_command(self, command, name=None, now=False, quiet=False):
+        """
+        Executes the systemctl command based on inputs.
+
+        :param command: The systemctl (sub)command.
+        :type command: str
+        :param name: Optional name to pass in the command
+        :type name: str or None
+        :param now: If --now should be appended (default False)
+        :type now: bool
+        :param quiet: Write the command to terminal if False (default)
+        :type quiet: bool
+        :returns: The output of the command or None
+        :rtype: str or None
+        :raises: OSError
+        """
         cmd = ["systemctl"]
         if self.user:
             cmd.append("--user")
@@ -1852,6 +2061,14 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         return None
 
     def _is_preinstalled_container(self, name):
+        """
+        Protected method noting if a container is preinstalled.
+
+        :param name: The name of the container.
+        :type name: str
+        :returns: True if preinstalled, False otherwise.
+        :rtype: bool
+        """
         path = os.path.join(self._get_system_checkout_path(), name)
         if os.path.exists(path):
             return False
@@ -1865,6 +2082,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         :param name: The name of the system container to uninstall.
         :type name: str
+        :raises: OSError
         """
         if self._is_preinstalled_container(name):
             RPMHostInstall.uninstall_rpm("%s-%s" % (RPM_NAME_PREFIX, name))
@@ -2005,6 +2223,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         """
         Returns the system name of a given image.
 
+        .. todo::
+
+           Should this become a property?
+
         :param image: The name of the image to inspect.
         :type image: str
         :returns: The system name of the image (name-tag).
@@ -2052,6 +2274,14 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             return None, "docker://" + image
 
     def _skopeo_get_manifest(self, image):
+        """
+        Returns the manifest as found by skopeo inspect.
+
+        :param image: The image to inspect
+        :type image: str
+        :returns: The result of the inspect
+        :rtype: dict or str
+        """
         args, img = self._convert_to_skopeo(image)
         return util.skopeo_inspect(img, args)
 
@@ -2079,6 +2309,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         :type remote: bool
         :returns: The manifest structure or None
         :rtype: dict or None
+        :raises: ValueError
         """
         repo = self._get_ostree_repo()
         if not repo:
@@ -2210,6 +2441,12 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             shutil.rmtree(temp_dir)
 
     def _check_system_oci_image(self, repo, img, upgrade, src_creds=None):
+        """
+        TODO
+
+        :rtype: Bool or ??
+        :raises: ValueError
+        """
         no_prefix_img = util.remove_skopeo_prefixes(img)
         imagebranch = "%s%s" % (OSTREE_OCIIMAGE_PREFIX, SystemContainers._encode_to_ostree_ref(no_prefix_img))
         current_rev = repo.resolve_rev(imagebranch, True)
@@ -2471,6 +2708,12 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         return layers_dir
 
     def _prune_storage(self, repo):
+        """
+        Removes no longer used items in storage.
+
+        :param repo: The OSTree.Repo instance to prune
+        :type repo: OSTree.Repo
+        """
         storage = self.get_storage_path()
         if not os.path.exists(storage):
             return
@@ -2498,6 +2741,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         :type debug: bool
         :returns: Shell exit code from mount command
         :rtype: int
+        :raises: OSError
         """
         repo = self._get_ostree_repo()
         if not repo:
@@ -2514,6 +2758,12 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
     @staticmethod
     def _correct_dir_permissions_for_user(path):
+        """
+        "Fixes" file and directory permissions. Dirs=0o700, files=0o600.
+
+        :param path: The path to correct permissions.
+        :type path: str
+        """
         os.chmod(path, 0o700)
         for root, dirs, files in os.walk(path, topdown=False, followlinks=True):
             if os.path.islink(root):
@@ -2542,6 +2792,19 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             return config
 
     def container_exec(self, name, detach, args):
+        """
+        Run exec on a container.
+
+        :param name: The name of the container.
+        :type name: str
+        :param detach: If detach should be used.
+        :type detatch: bool
+        :param args: Arguments to pass to exec
+        :type args: list
+        :returns: The call result
+        :rtype: int
+        :raises: ValueError, OSError, subprocess.CalledProcessError
+        """
         d = util.Decompose(name)
         # if the name is fully qualified or isn't a valid name for a container, then run the image
         if d.registry != "" or ':' in name:
