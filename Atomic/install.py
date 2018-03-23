@@ -171,7 +171,7 @@ class Install(Atomic):
             if result == 0:
                 if installation or install_args:
                     # Only write the install data if the installation worked.
-                    util.InstallData.write_install_data(install_data)
+                    util.InstallData.write_install_data(install_data, append=True)
             return result
 
 

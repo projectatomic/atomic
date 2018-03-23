@@ -483,7 +483,7 @@ class DockerBackend(Backend):
         if cmd:
             result = util.check_call(cmd, env=atomic.cmd_env())
             if result == 0:
-                util.InstallData.delete_by_id(iobject.id, ignore=ignore)
+                util.InstallData.delete_by_id(iobject.id, name, ignore=ignore)
             return result
 
         system_package_nvra = None
@@ -494,8 +494,9 @@ class DockerBackend(Backend):
             RPMHostInstall.uninstall_rpm(system_package_nvra)
 
         # Delete the entry in the install data
-        util.InstallData.delete_by_id(iobject.id, ignore=ignore)
-        return self.delete_image(iobject.image, force=args.force)
+        last_image = util.InstallData.delete_by_id(iobject.id, name, ignore=ignore)
+        if last_image:
+            return self.delete_image(iobject.image, force=args.force)
 
     def version(self, image):
         return self.get_layers(image)

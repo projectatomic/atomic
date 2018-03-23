@@ -203,9 +203,9 @@ class TestAtomicUtil(unittest.TestCase):
 
 
 class MockIO(object):
-    original_data = {"install_test": {"install_date": "2017-03-22 17:19:41", "id": "49779293ca711789a77bbdc35547a6b9ecb193a51b4e360fea95c4d206605d18"}}
-    new_data_fq = {"install_date": "2017-04-22 17:19:41","id": "16e9fdecc1febc87fb1ca09271009cf5f28eb8d4aec5515922ef298c145a6726"}
-    new_data_name= {"install_date": "2017-04-22 17:19:41","id": "16e9fdecc1febc87fb1ca09271009cf5f28eb8d4aec5515922ef298c145a6726"}
+    original_data = {"install_test": [{"install_date": "2017-03-22 17:19:41", "id": "49779293ca711789a77bbdc35547a6b9ecb193a51b4e360fea95c4d206605d18"}]}
+    new_data_fq = [{"install_date": "2017-04-22 17:19:41","id": "16e9fdecc1febc87fb1ca09271009cf5f28eb8d4aec5515922ef298c145a6726"}]
+    new_data_name= [{"install_date": "2017-04-22 17:19:41","id": "16e9fdecc1febc87fb1ca09271009cf5f28eb8d4aec5515922ef298c145a6726"}]
     install_data = original_data
 
     @classmethod
@@ -218,7 +218,6 @@ class MockIO(object):
 
     @classmethod
     def reset_data(cls):
-        cls.install_data = {}
         cls.install_data = cls.original_data
 
     @classmethod

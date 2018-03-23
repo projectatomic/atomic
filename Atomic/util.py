@@ -874,22 +874,33 @@ class InstallData(object):
                     # see https://github.com/projectatomic/atomic/pull/966
                     if os.fstat(f.fileno()).st_size == 0:
                         return {}
-                    return json.load(f)
+                    data = json.load(f)
+                    # Backwards compatibility - we supported only one container per image
+                    # if the file is stored in the old format, then automatically convert
+                    # it to the new format where each image name can refer to a list of
+                    # installed containers.
+                    for k, v in data.items():
+                        if isinstance(v, dict):
+                            data[k] = [v]
+                    return data
             except IOError as e:
                 if e.errno == errno.ENOENT:
                     return {}
                 raise e
 
     @classmethod
-    def write_install_data(cls, new_data):
+    def write_install_data(cls, new_data, append=False):
         install_data = cls.read_install_data()
         with file_lock(ATOMIC_INSTALL_JSON):
-            if len(new_data) < 1:
-                install_data = {}
+            if not append:
+                install_data = new_data
             else:
-                for x in new_data:
-                    install_data[x] = new_data[x]
+                for k, v in new_data.items():
+                    if k not in install_data:
+                        install_data[k] = []
+                    install_data[k].append(v)
             temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False)
+
             json.dump(install_data, temp_file)
             temp_file.close()
             if not os.path.exists(ATOMIC_VAR_LIB):
@@ -900,8 +911,10 @@ class InstallData(object):
     def get_install_data_by_id(cls, iid):
         install_data = cls.read_install_data()
         for installed_image in install_data:
-            if install_data[installed_image]['id'] == iid:
-                return install_data[installed_image]
+            containers = install_data[installed_image]
+            for container in containers:
+                if container['id'] == iid:
+                    return container
         raise ValueError("Unable to find {} in installed image data ({}). Re-run command with -i to ignore".format(iid, ATOMIC_INSTALL_JSON))
 
     @classmethod
@@ -909,21 +922,29 @@ class InstallData(object):
         if not install_data:
             install_data = cls.read_install_data()
         for installed_image in install_data:
-            if install_data[installed_image]['id'] == iid:
-                return installed_image
+            containers = install_data[installed_image]
+            for container in containers:
+                if container['id'] == iid:
+                    return installed_image
         raise ValueError("Unable to find {} in installed image data ({}). Re-run command with -i to ignore".format(iid, ATOMIC_INSTALL_JSON))
 
     @classmethod
-    def delete_by_id(cls, iid, ignore=False):
+    def delete_by_id(cls, iid, name, ignore=False):
+        last_image = False
         install_data = cls.read_install_data()
-        try:
-            id_key = InstallData.get_install_name_by_id(iid, install_data=install_data)
-        except ValueError as e:
-            if not ignore:
-                raise ValueError(str(e))
-            return
-        del install_data[id_key]
-        return cls.write_install_data(install_data)
+        for installed_image in install_data:
+            containers = install_data[installed_image]
+            for index, container in enumerate(containers):
+                if container['id'] == iid and container['container_name'] == name:
+                    del containers[index]
+                    install_data[installed_image] = containers
+                    if len(containers) == 0:
+                        del install_data[installed_image]
+                        last_image = True
+                    cls.write_install_data(install_data)
+                    return last_image
+        if not ignore:
+            raise ValueError("Unable to find {} in the installed containers".format(iid))
 
     @classmethod
     def image_installed(cls, img_object):
