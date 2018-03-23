@@ -284,14 +284,15 @@ class SystemContainers(object):
         :param rootfs: The root file system path.
         :type rootfs: str
         """
-        if os.getuid() == 0 and selinux.is_selinux_enabled() != 0:
+        if os.getuid() == 0 and selinux.is_selinux_enabled():
             label = selinux.getfilecon("/")[1]
             selinux.setfscreatecon_raw(label)
 
         try:
             os.makedirs(rootfs)
         finally:
-            selinux.setfscreatecon_raw(None)
+            if selinux.is_selinux_enabled():
+                selinux.setfscreatecon_raw(None)
 
     def build_rpm(self, repo, name, image, values, destination):
         """
