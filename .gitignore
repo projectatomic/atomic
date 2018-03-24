@@ -10,5 +10,4 @@ tests/test-images/Dockerfile.secret
 *.rej
 *.out
 *~
-dockertar-sha256-helper
 gotar

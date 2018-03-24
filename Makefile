@@ -14,7 +14,7 @@ export GOPATH = $(shell pwd)/godeps
 BOX="fedora_atomic"
 
 .PHONY: all
-all: python-build docs pylint-check dockertar-sha256-helper gotar
+all: python-build docs pylint-check gotar
 
 .PHONY: test-python3-pylint
 test-python3-pylint:
@@ -48,9 +48,6 @@ docs/%.1: docs/%.1.md
 .PHONY: docs
 docs: $(MANPAGES_MD:%.md=%)
 
-dockertar-sha256-helper: dockertar-sha256-helper.go
-	$(GO) build dockertar-sha256-helper.go
-
 gotar: gotar.go
 	$(GO) build -o $@ $<
 
@@ -70,7 +67,7 @@ install-only:
 	ln -fs ../share/atomic/atomic $(DESTDIR)/usr/bin/atomic
 
 	install -d -m 0755 $(DESTDIR)/usr/libexec/atomic
-	install -m 0755 dockertar-sha256-helper migrate.sh gotar $(DESTDIR)/usr/libexec/atomic
+	install -m 0755 migrate.sh gotar $(DESTDIR)/usr/libexec/atomic
 
 	[ -d $(SYSCONFDIR) ] || mkdir -p $(SYSCONFDIR)
 	install -m 644 atomic.sysconfig $(SYSCONFDIR)/atomic
