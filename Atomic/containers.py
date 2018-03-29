@@ -245,7 +245,7 @@ class Containers(Atomic):
             self.beu.dump_backends()
 
         if (len(self.args.containers) > 0 and self.args.all) or (len(self.args.containers) < 1 and not self.args.all):
-            raise ValueError("You must select --all or provide a list of images to delete.")
+            raise ValueError("You must select --all or provide a list of containers to delete.")
 
         if self.args.all:
             if self.args.storage:
@@ -263,7 +263,7 @@ class Containers(Atomic):
             raise ValueError("No containers to delete")
         four_col = "   {0:12} {1:20} {2:25} {3:10}"
         if not self.args.assumeyes:
-            util.write_out("Do you wish to delete the following images?\n")
+            util.write_out("Do you wish to delete the following containers?\n")
         else:
             util.write_out("The following containers will be deleted.\n")
         util.write_out(four_col.format("ID", "NAME", 'IMAGE_NAME', "STORAGE"))
