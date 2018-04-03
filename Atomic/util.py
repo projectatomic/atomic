@@ -902,6 +902,10 @@ class InstallData(object):
             for k, v in new_data.items():
                 if k not in install_data:
                     install_data[k] = []
+                for index, c in enumerate(install_data[k]):
+                    if c.get('container_name') == v.get('container_name') and c.get('id') == v.get('id'):
+                        del install_data[k][index]
+                        break
                 install_data[k].append(v)
         temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False)
 
@@ -944,8 +948,13 @@ class InstallData(object):
             install_data = cls.read_install_data_locked()
             for installed_image in install_data:
                 containers = install_data[installed_image]
+                if not name and len(containers) > 1:
+                    raise ValueError("Name not specified but more than one container installed")
+
                 for index, container in enumerate(containers):
-                    if container['id'] == iid and container['container_name'] == name:
+                    if name is not None and container['container_name'] != name:
+                        continue
+                    if container['id'] == iid:
                         del containers[index]
                         install_data[installed_image] = containers
                         if len(containers) == 0:

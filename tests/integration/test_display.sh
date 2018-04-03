@@ -91,3 +91,11 @@ if [[ ${OUTPUT} != ${RESULT} ]]; then
     echo "Uninstall display failed for uninstall-1"
     exit 1
 fi
+
+# Add test case for issue #1217
+export ATOMIC_INSTALL_JSON=empty.json
+${ATOMIC} install atomic-test-1
+${ATOMIC} run atomic-test-1
+${ATOMIC} stop atomic-test-1
+${ATOMIC} --assumeyes containers delete atomic-test-1
+${ATOMIC} --debug uninstall atomic-test-1
