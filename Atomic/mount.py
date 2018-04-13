@@ -576,6 +576,10 @@ class DockerMount(Mount):
         """
         OverlayFS mount backend.
         """
+        if 'rw' in options:
+            raise MountError('The OverlayFS backend does not support '
+                             'writeable mounts.')
+
         cid = self._identifier_as_cid(identifier)
 
         if self.mnt_mkdir:
