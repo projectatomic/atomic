@@ -17,6 +17,7 @@ import uuid
 from .rpm_host_install import RPMHostInstall, RPM_NAME_PREFIX
 import __main__
 import selinux
+import getpass
 
 try:
     import gi
@@ -466,6 +467,13 @@ class SystemContainers(object):
         # Otherwise, use a default one
         else:
             self._generate_default_oci_configuration(destination)
+
+        if self.user:
+            with open(destination_config, 'r') as config_file:
+                config = json.loads(config_file.read())
+            self._configure_userns(config)
+            with open(destination_config, 'w') as conf:
+                conf.write(json.dumps(config, indent=4))
 
     @staticmethod
     def _get_manifest_attributes(manifest, attr_name, default_value):
@@ -2778,6 +2786,89 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 if not os.path.islink(fullpath):
                     s = os.stat(fullpath)
                     os.chmod(fullpath, s.st_mode | 0o600)
+
+    def _configure_userns(self, config):
+        """
+        Configure the userns for the specified OCI configuration.
+        """
+        config['linux']['namespaces'] = [i for i in config['linux']['namespaces'] if i['type'] != 'network']
+
+        namespaces = set([i['type'] for i in config['linux']['namespaces']])
+
+        # force the 'user' namespace
+        if 'user' not in namespaces:
+            config['linux']['namespaces'].append({'type' : 'user'})
+            namespaces.add('user')
+
+        all_namespaces = set(['pid', 'uts', 'network', 'mount', 'ipc', 'user'])
+
+        drop_sys = len(all_namespaces - namespaces) > 0
+
+        new_mounts = []
+        for i in config['mounts']:
+            if drop_sys and i['destination'].startswith("/sys"):
+                continue
+            if 'options' not in i:
+                i['options'] = []
+
+            if not i['destination'].startswith('/dev'):
+                if 'nodev' not in i['options']:
+                    i['options'].append('nodev')
+                if 'nosuid' not in i['options']:
+                    i['options'].append('nosuid')
+            new_mounts.append(i)
+
+        if drop_sys:
+            sys_mount = {
+                "destination": "/sys",
+                "type": "bind",
+                "source": "/sys",
+                "options": [
+                    "rbind",
+                    "nosuid",
+                    "noexec",
+                    "nodev",
+                    "ro"
+                ]
+            }
+            new_mounts.append(sys_mount)
+
+        config['mounts'] = new_mounts
+
+        if 'resources' in config['linux'] and 'devices' in config['linux']['resources']:
+            del config['linux']['resources']['devices']
+
+        username = getpass.getuser()
+        def get_subid(root_id, path):
+            prefix = username + ":"
+            r = [
+                {
+                    "containerID": 0,
+                    "hostID": root_id,
+                    "size": 1
+                }
+            ]
+            try:
+                with open(path) as f:
+                    for i in f.readlines():
+                        if i.startswith(prefix):
+                            _, hostid, size = [i.strip() for i in i.split(':')]
+                            extra_ids = {
+                                "containerID": 1,
+                                "hostID": int(hostid),
+                                "size": int(size)
+                            }
+                            r.append(extra_ids)
+
+            except IOError as e:
+                if e.errno != errno.ENOENT:
+                    raise
+            return r
+
+        if 'uidMappings' not in config['linux']:
+            config['linux']['uidMappings'] = get_subid(os.getuid(), "/etc/subuid")
+        if 'gidMappings' not in config['linux']:
+            config['linux']['gidMappings'] = get_subid(os.getuid(), "/etc/subgid")
 
     def _rewrite_config_args(self, orig_config, dest_config, args, tty=None, checkout=None):
         with open(orig_config, 'r') as config_file:
