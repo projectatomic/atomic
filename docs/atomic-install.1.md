@@ -75,8 +75,7 @@ Change the OCI runtime used by the systemd service file for running
 system containers and user containers.  If runtime is not defined, the
 value **runtime** in the configuration file is used for system
 containers.  If there is no runtime defined in the configuration file
-as well, then the default **/usr/bin/runc** is used for system containers.
-Conversely, for user containers the default value is **/usr/bin/bwrap-oci**.
+as well, then the default **/usr/bin/runc** is used.
 
 **--set=NAME=VALUE**
 Set a value that is going to be used by a system container for its
@@ -220,8 +219,8 @@ image defines a .spec file.  This is the default.
 
 **--user**
 If running as non-root, specify to install the image from the current
-OSTree repository and manage it through systemd and bubblewrap.
-OSTree and bwrap-oci are required for this feature to be available.
+OSTree repository and manage it through systemd and runc.
+OSTree and runc are required for this feature to be available.
 The same image format as for **--system** is supported.  Please refer
 to **--system** for more information.
 

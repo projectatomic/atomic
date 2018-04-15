@@ -853,8 +853,6 @@ class SystemContainers(object):
         if self._runtime_from_info_file:
             return self._runtime_from_info_file
 
-        if self.user:
-            return util.BWRAP_OCI_PATH
         return util.RUNC_PATH
 
     def _generate_systemd_startstop_directives(self, name, pidfile=None, unit_file_support_pidfile=False):
