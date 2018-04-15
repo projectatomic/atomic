@@ -817,7 +817,7 @@ class SystemContainers(object):
         conf_path = os.path.join(destination, "config.json")
         try:
             # Try to use $RUNTIME spec to generate a default configuration file.
-            args = [self._get_oci_runtime(), 'spec']
+            args = [self._get_oci_runtime(), 'spec', "--rootless"]
             util.subp(args, cwd=destination)
             with open(conf_path, 'r') as conf:
                 configuration = json.loads(conf.read())
