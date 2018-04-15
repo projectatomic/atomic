@@ -855,7 +855,7 @@ class SystemContainers(object):
 
     def _generate_systemd_runtime_startstop_directives(self, name, runtime, pidfile=None, unit_file_support_pidfile=False):
         runtime_has_pidfile = "--pid-file" in str(util.check_output([runtime, "run", "--help"], stderr=DEVNULL))
-        systemd_cgroup = " --systemd-cgroup" if "--systemd-cgroup" in str(util.check_output([runtime, "--help"], stderr=DEVNULL)) else ""
+        systemd_cgroup = " --systemd-cgroup" if not self.user and "--systemd-cgroup" in str(util.check_output([runtime, "--help"], stderr=DEVNULL)) else ""
 
         if unit_file_support_pidfile and runtime_has_pidfile:
             start = "{} {} run -d --pid-file {} '{}'".format(runtime, systemd_cgroup, pidfile, name)
