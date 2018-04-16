@@ -35,9 +35,11 @@ setup () {
     # Perform setup routines here.
     copy /etc/sysconfig/docker-storage-setup /etc/sysconfig/docker-storage-setup.atomic-tests-backup
     TEST_DEV_1=/dev/vdb
+    findmnt -o SOURCE
     if findmnt -o SOURCE | grep "^$TEST_DEV_1"; then
-        findmnt -o SOURCE | grep "^$TEST_DEV_1" | uniq | xargs umount
+	findmnt -o SOURCE | grep "^$TEST_DEV_1" | uniq | xargs umount
     fi
+
     wipefs -a "$TEST_DEV_1"
     TEST_DEV_1_pvs=${TEST_DEV_1}1
 
@@ -48,12 +50,12 @@ setup () {
 teardown () {
     # Cleanup your test data.
     local mnt
-    set -e
+    set +e
     wipefs -a "$TEST_DEV_1"
     copy /etc/sysconfig/docker-storage-setup.atomic-tests-backup /etc/sysconfig/docker-storage-setup
     remove /etc/sysconfig/docker-storage-setup.atomic-tests-backup
     local vgname=$(echo "$VGROUP"|sed 's/ //g')
-    set +e
+
     mnt=$(findmnt -n -o TARGET --first-only --source /dev/${vgname}/${lvname})
     if [ -n "$mnt" ];then
        umount $mnt
@@ -76,13 +78,31 @@ MIN_DATA_SIZE=0G
 EOF
     # Add a device to volume group backing root filesystem.
 
+    set +e
     OUTPUT=$(${ATOMIC} storage modify --add-device $TEST_DEV_1 2>&1)
+    if grep 'No extents available for allocation' <<< $OUTPUT; then
+        exit 77
+    fi
+    if [[ $? -ne 0 ]]; then
+        exit 1
+    fi
+    set -e
+
     grep -q "^DEVS=\"$TEST_DEV_1\"$" /etc/sysconfig/docker-storage-setup
     [ $(pvs --noheadings -o vg_name $TEST_DEV_1_pvs) == $VGROUP ]
 
     # Removing it should undo all that.
 
-    ${ATOMIC} storage modify --remove-device $TEST_DEV_1
+    set +e
+    OUTPUT=$(${ATOMIC} storage modify --remove-device $TEST_DEV_1 2>&1)
+    if grep 'No extents available for allocation' <<< $OUTPUT; then
+        exit 77
+    fi
+    if [[ $? -ne 0 ]]; then
+        exit 1
+    fi
+    set -e
+
     ! (pvs --noheadings -o pv_name | grep -q $TEST_DEV_1_pvs)
     ! grep -q "^DEVS=\"$TEST_DEV_1\"$" /etc/sysconfig/docker-storage-setup
 
