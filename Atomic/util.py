@@ -1094,7 +1094,7 @@ class SkopeoError(object):
         self.msg = ""
         for line in shlex.split(string_error):
             key, _, msg = line.partition("=")
-            setattr(SkopeoError, key, msg)
+            setattr(self, key, msg)
 
 def write_template(inputfilename, data, values, destination):
     if destination:
