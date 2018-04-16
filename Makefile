@@ -59,7 +59,7 @@ clean:
 
 .PHONY: install-only
 install-only:
-	$(PYTHON) setup.py install --install-scripts /usr/share/atomic `test -n "$(DESTDIR)" && echo --root $(DESTDIR)`
+	$(PYTHON) setup.py install --prefix=/usr --install-scripts /usr/share/atomic `test -n "$(DESTDIR)" && echo --root $(DESTDIR)`
 
 	(cd $(DESTDIR)/$(PYTHONSITELIB) && rm -f atomic-$(VERSION)-*egg-info)
 

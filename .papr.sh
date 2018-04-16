@@ -8,7 +8,7 @@ if test -z "${INSIDE_CONTAINER:-}"; then
 
         # by default, the root LV on AH is only 3G, but we need a
         # bit more for our tests
-        lvresize -r -L +5G atomicos/root
+        lvresize -r -L +5G atomicos/root || true
 
         if grep -q ID=fedora /etc/os-release; then
             if [ ! -e /var/tmp/ostree-unlock-ovl.* ]; then
@@ -43,7 +43,7 @@ if test -z "${INSIDE_CONTAINER:-}"; then
                --workdir /code \
                -e INSIDE_CONTAINER=1 \
                -e PYTHON=$PYTHON \
-               registry.fedoraproject.org/fedora:26 /code/.papr.sh
+               registry.fedoraproject.org/fedora:27 /code/.papr.sh
 
     # run the testsuite on the host
     if [ -z ${NO_TEST} ]; then
@@ -76,4 +76,7 @@ if [ -z ${NO_TEST} ]; then
     make pylint-check
     make test-python3-pylint
 fi
+
+rm -rf /host/usr/bin/atomic /host/usr/lib/python*/site-packages/Atomic
+
 make PYTHON=$PYTHON PYLINT=true install DESTDIR=/host
