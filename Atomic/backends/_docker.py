@@ -450,7 +450,7 @@ class DockerBackend(Backend):
         # We have a container by that name, need to stop and delete it
         if con_obj:
             if con_obj.running:
-                self.stop_container(con_obj)
+                self.stop_container(con_obj, args=atomic.args)
             self.delete_container(con_obj.id)
 
         if args.force:
