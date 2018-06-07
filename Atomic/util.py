@@ -344,6 +344,8 @@ def skopeo_inspect(image, args=None, return_json=True, newline=False):
         raise ValueError("skopeo must be installed to perform remote inspections")
     if results.return_code is not 0:
         error = SkopeoError(results.stderr.decode('utf-8').rstrip()).msg
+        if error == "":
+            error = results.stderr.decode('utf-8').rstrip()
         raise ValueError(error)
     else:
         if return_json:
