@@ -455,7 +455,6 @@ class DockerBackend(Backend):
             # have deleted it
             if self.has_container(name):
                 self.delete_container(con_obj.id)
-            return
 
         if args.force:
             self.delete_containers_by_image(iobject, force=True)
