@@ -40,12 +40,12 @@ HOME = os.path.expanduser("~")
 ATOMIC_LIBEXEC = os.environ.get('ATOMIC_LIBEXEC', '/usr/libexec/atomic')
 ATOMIC_VAR = '/var/lib/containers/atomic'
 ATOMIC_USR = '/usr/lib/containers/atomic'
-ATOMIC_VAR_USER = os.path.join(os.environ.get('XDG_DATA_DIR'), "containers/atomic") if os.environ.get('XDG_DATA_DIR') else "%s/.containers/atomic" % HOME
+ATOMIC_VAR_USER = os.path.join(os.environ.get('XDG_DATA_HOME'), "containers/atomic") if os.environ.get('XDG_DATA_HOME') else "%s/.local/share/containers/atomic" % HOME
 OSTREE_OCIIMAGE_PREFIX = "ociimage/"
 SYSTEMD_UNIT_FILES_DEST = "/etc/systemd/system"
 SYSTEMD_UNIT_FILES_DEST_USER = "%s/.config/systemd/user" % HOME
 SYSTEMD_TMPFILES_DEST = "/etc/tmpfiles.d"
-SYSTEMD_TMPFILES_DEST_USER = os.path.join(os.environ.get('XDG_DATA_DIR'), "containers/tmpfiles") if os.environ.get('XDG_DATA_DIR') else "%s/.containers/tmpfiles" % HOME
+SYSTEMD_TMPFILES_DEST_USER = os.path.join(os.environ.get('XDG_DATA_HOME'), "containers/tmpfiles") if os.environ.get('XDG_DATA_HOME') else "%s/.local/share/containers/tmpfiles" % HOME
 SYSTEMD_UNIT_FILES_DEST_PREFIX = "%s/usr/lib/systemd/system"
 SYSTEMD_TMPFILES_DEST_PREFIX = "%s/usr/lib/tmpfiles.d"
 SYSTEMD_UNIT_FILE_DEFAULT_TEMPLATE = """
@@ -1405,9 +1405,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             return location
 
         if self.user:
-            if os.environ.get('XDG_DATA_DIR'):
-                return os.path.join(os.environ.get('XDG_DATA_DIR'), "containers/atomic/repo")
-            return os.path.join(HOME, ".containers/atomic/repo")
+            if os.environ.get('XDG_DATA_HOME'):
+                return os.path.join(os.environ.get('XDG_DATA_HOME'), "containers/atomic/repo")
+            return os.path.join(HOME, ".local/share/containers/atomic/repo")
 
         if self.get_atomic_config_item(["ostree_repository"]) is not None:
             return self.get_atomic_config_item(["ostree_repository"])
