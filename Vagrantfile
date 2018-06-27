@@ -31,6 +31,6 @@ Vagrant.configure(2) do |config|
         centos_atomic.vm.box_url = "https://ci.centos.org/artifacts/sig-atomic/centos-continuous/images/cloud/latest/images/centos-atomic-host-7-vagrant-libvirt.box"
     end
     config.vm.define "fedora_cloud" do |fedora_cloud|
-        fedora_cloud.vm.box =  "fedora/26-cloud-base"
+        fedora_cloud.vm.box =  "fedora/28-cloud-base"
     end
 end
