@@ -1,4 +1,4 @@
-FROM registry.fedoraproject.org/fedora:26
+FROM registry.fedoraproject.org/fedora:28
 
 # NB: we also install python2 reqs here (which the builddep
 # does not catch since on F24 we build for py3) so that we

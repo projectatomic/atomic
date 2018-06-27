@@ -4,11 +4,11 @@ branches:
   - try
 
 host:
-  distro: fedora/27/atomic
+  distro: fedora/28/atomic
   specs:
     secondary-disk: 10
 
-context: fedora/27/atomic
+context: fedora/28/atomic
 
 required: true
 
@@ -39,11 +39,11 @@ context: centos/7/atomic
 inherit: true
 
 host:
-  distro: fedora/27/cloud
+  distro: fedora/28/cloud
   specs:
     secondary-disk: 10
 
-context: fedora/27/cloud
+context: fedora/28/cloud
 
 # we install atomic to get the runtime reqs but of course,
 # its files will get overwritten by the containerized build

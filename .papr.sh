@@ -43,7 +43,7 @@ if test -z "${INSIDE_CONTAINER:-}"; then
                --workdir /code \
                -e INSIDE_CONTAINER=1 \
                -e PYTHON=$PYTHON \
-               registry.fedoraproject.org/fedora:27 /code/.papr.sh
+               registry.fedoraproject.org/fedora:28 /code/.papr.sh
 
     # run the testsuite on the host
     if [ -z ${NO_TEST} ]; then
