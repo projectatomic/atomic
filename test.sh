@@ -143,6 +143,11 @@ make_docker_images () {
 
 make_docker_images
 
+
+if ! skopeo copy docker-daemon://atomic-test-system:latest ostree:test@$ATOMIC_OSTREE_REPO; then
+   export SKOPEO_NO_OSTREE=1
+fi
+
 if [ ! -n "${PYTHON+ }" ]; then
     if hash python3 > /dev/null 2>&1 /dev/null; then
         PYTHON=$(hash -t python3)

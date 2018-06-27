@@ -1,5 +1,6 @@
 #pylint: skip-file
 import unittest
+import os
 from Atomic.pull import Pull
 from Atomic.syscontainers import SystemContainers
 from Atomic.backends._docker import DockerBackend
@@ -24,12 +25,16 @@ class TestAtomicPull(unittest.TestCase):
             self.user = False
 
     def test_pull_as_privileged_user(self):
+        if os.getenv("SKOPEO_NO_OSTREE"):
+            return
         args = self.Args()
         testobj = SystemContainers()
         testobj.set_args(args)
         testobj.pull_image()
 
     def test_pull_as_nonprivileged_user(self):
+        if os.getenv("SKOPEO_NO_OSTREE"):
+            return
         args = self.Args()
         args.user = True
         testobj = SystemContainers()
