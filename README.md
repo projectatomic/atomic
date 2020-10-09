@@ -1,3 +1,10 @@
+# ⚠️ The Atomic tool has been deprecated. ⚠️
+
+The [Podman](https://podman.io) project has replaced it with
+most of its functionality implemented. Please open issues and questions
+with the [Podman repository](https://github.com/containers/podman).
+
+
 # Atomic: /usr/bin/atomic
 
 This project defines the entrypoint for Project Atomic hosts.  On an
